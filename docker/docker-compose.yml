@@ -1,0 +1,77 @@
+version: '3'
+
+services:
+  postgres-db:
+    container_name: marketing-db
+    image: postgis/postgis:latest
+    environment:
+      POSTGRES_USER: "postgres"
+      POSTGRES_PASSWORD: "postgres"
+      POSTGRES_DB: "db_marketing_project"
+    ports:
+      - "5432:5432"
+    networks:
+      - observability
+    restart: always
+
+  loki:
+    container_name: loki
+    image: grafana/loki:2.9.0
+    volumes:
+      - loki_data:/loki
+      - ./config/loki-config.yml:/etc/loki/loki-config.yml
+    networks:
+      - observability
+    ports:
+      - "3100:3100"
+    restart: always
+
+  promtail:
+    container_name: promtail
+    image: grafana/promtail:2.9.0
+    volumes:
+      - /var/log:/var/log
+      - ./config/promtail-config.yml:/etc/promtail/promtail-config.yml
+    networks:
+      - observability
+    restart: always
+    command: -config.file=/etc/promtail/promtail-config.yml
+
+  prometheus:
+    container_name: prometheus
+    image: prom/prometheus:latest
+    labels:
+      application: "Prometheus"
+    volumes:
+      - ./config/prometheus-config.yml:/etc/prometheus/prometheus.yml
+      - prometheus_data:/prometheus
+    networks:
+      - observability
+    ports:
+      - "9090:9090"
+    restart: always
+
+  grafana:
+    container_name: grafana
+    image: grafana/grafana:latest
+    labels:
+      application: "Grafana"
+    volumes:
+      - grafana_data:/var/lib/grafana
+    ports:
+      - "3000:3000"
+    networks:
+      - observability
+    restart: always
+
+networks:
+  observability:
+    driver: bridge
+
+volumes:
+  loki_data:
+    driver: local
+  prometheus_data:
+    driver: local
+  grafana_data:
+    driver: local
