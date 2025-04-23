@@ -1,6 +1,7 @@
 package com.marketingproject.shared.constants.valitation;
 
 public final class ClientValidationMessages {
+    public static final String INVALID_EIN = "Invalid identification number format. The correct format is XX-XXXXXXX, where X is a digit.";
     public static final String BUSINESS_NAME_REQUIRED = "Business name is required.";
     public static final String BUSINESS_NAME_SIZE = "Business name must be lass than 255 characters.";
     public static final String BUSINESS_FIELD_REQUIRED = "Business field is required.";
@@ -19,4 +20,6 @@ public final class ClientValidationMessages {
     public static final String CONFIRM_PASSWORD_REQUIRED = "Confirm password is required.";
     public static final String DIFFERENT_PASSWORDS = "Passwords do not match.";
     public static final String VALIDATION_CODE_NOT_VALIDATED = "User validation code is not validated.";
+    public static final String CURRENT_EQUALS_NEW_PASSWORD = "Current password cannot be the same as the new password.";
+    public static final String SOCIAL_MEDIA_REQUIRED = "At least one social media URL must be provided.";
 }

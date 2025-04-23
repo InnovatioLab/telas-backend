@@ -15,6 +15,9 @@ public interface ClientRepository extends JpaRepository<Client, UUID> {
            "WHERE c.identificationNumber = :identificationNumber")
     boolean existsByIdentificationNumber(String identificationNumber);
 
+    @Query("SELECT c FROM Client c JOIN FETCH c.addresses LEFT JOIN FETCH c.attachments LEFT JOIN FETCH c.advertisingAttachments LEFT JOIN FETCH c.notifications WHERE c.id = :id AND c.status = 'ACTIVE'")
+    Optional<Client> findActiveById(UUID id);
+
 
     @Query("SELECT c FROM Client c JOIN FETCH c.addresses LEFT JOIN FETCH c.attachments LEFT JOIN FETCH c.advertisingAttachments LEFT JOIN FETCH c.notifications WHERE c.identificationNumber = :identificationNumber AND c.status = 'ACTIVE'")
     Optional<Client> findActiveByIdentificationNumber(String identificationNumber);

@@ -26,6 +26,27 @@ services:
       - "3100:3100"
     restart: always
 
+  minio:
+    container_name: minio
+    image: minio/minio:latest
+    restart: always
+    environment:
+      MINIO_ROOT_USER: "GAryDiMncAmCuhahv4Qr"
+      MINIO_ROOT_PASSWORD: "PSEbwJezWEUObuYnbabnp9nV-UsD1qXsv9aMqxl3rcs="
+    command: server /data --console-address ":9001"
+    ports:
+      - "9000:9000" # MinIO API
+      - "9001:9001" # MinIO Console
+    networks:
+      - observability
+    entrypoint: >
+      /bin/sh -c "
+      /usr/bin/docker-entrypoint.sh server /data --console-address ':9001' &
+      sleep 5 &&
+      mc alias set local http://127.0.0.1:9000 GAryDiMncAmCuhahv4Qr PSEbwJezWEUObuYnbabnp9nV-UsD1qXsv9aMqxl3rcs= &&
+      mc mb local/projeto-marketing || true
+      "
+  
   promtail:
     container_name: promtail
     image: grafana/promtail:2.9.0

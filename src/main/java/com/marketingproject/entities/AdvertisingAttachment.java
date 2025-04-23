@@ -1,6 +1,7 @@
 package com.marketingproject.entities;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.marketingproject.dtos.request.AdvertisingAttachmentRequestDto;
 import com.marketingproject.shared.audit.BaseAudit;
 import jakarta.persistence.*;
 import lombok.Getter;
@@ -46,4 +47,10 @@ public class AdvertisingAttachment extends BaseAudit implements Serializable {
             inverseJoinColumns = @JoinColumn(name = "attachment_id")
     )
     private Set<Attachment> attachments = new HashSet<>();
+
+    public AdvertisingAttachment(AdvertisingAttachmentRequestDto request, Client client) {
+        name = request.getName();
+        type = request.getType();
+        this.client = client;
+    }
 }

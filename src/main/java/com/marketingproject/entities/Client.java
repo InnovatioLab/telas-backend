@@ -66,6 +66,10 @@ public class Client extends BaseAudit implements Serializable {
     @JoinColumn(name = "owner_id", referencedColumnName = "id", nullable = false)
     private Owner owner;
 
+    @OneToOne(cascade = CascadeType.ALL)
+    @JoinColumn(name = "social_media_id", referencedColumnName = "id", nullable = true)
+    private SocialMedia socialMedia;
+
     @OneToMany(mappedBy = "client", cascade = CascadeType.ALL)
     private List<Address> addresses = new ArrayList<>();
 
@@ -89,7 +93,26 @@ public class Client extends BaseAudit implements Serializable {
         status = request.getStatus();
         contact = new Contact(request.getContact());
         owner = new Owner(request.getOwner(), this);
+        socialMedia = request.getSocialMedia() != null ? new SocialMedia(request.getSocialMedia()) : null;
         addresses.addAll(request.getAddresses().stream().map(address -> new Address(address, this)).toList());
+    }
+
+    public void update(ClientRequestDto request) {
+        businessName = request.getBusinessName();
+        identificationNumber = request.getIdentificationNumber();
+        businessField = request.getBusinessField();
+        role = request.getRole();
+        status = request.getStatus();
+        contact.update(request.getContact());
+        owner.update(request.getOwner());
+        socialMedia.update(request.getSocialMedia());
+
+        addresses.clear();
+        addresses.addAll(request.getAddresses().stream().map(address -> new Address(address, this)).toList());
+    }
+
+    public boolean isAdmin() {
+        return Role.ADMIN.equals(role);
     }
 
     public String toStringMapper() throws JsonProcessingException {

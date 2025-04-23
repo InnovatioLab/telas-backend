@@ -50,6 +50,17 @@ CREATE TABLE "contacts"
   "updated_at"         TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT (now())
 );
 
+CREATE TABLE "social_medias"
+(
+  "id"            UUID PRIMARY KEY,
+  "instagram_url" TEXT                     NULL     DEFAULT NULL,
+  "facebook_url"  TEXT                     NULL     DEFAULT NULL,
+  "linkedin_url"  TEXT                     NULL     DEFAULT NULL,
+  "x_url"         TEXT                     NULL     DEFAULT NULL,
+  "created_at"    TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT (now()),
+  "updated_at"    TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT (now())
+);
+
 CREATE TABLE "owners"
 (
   "id"                    UUID PRIMARY KEY,
@@ -74,13 +85,15 @@ CREATE TABLE "clients"
   "verification_code_id"  UUID                     NOT NULL,
   "contact_id"            UUID                     NOT NULL,
   "owner_id"              UUID                     NOT NULL,
+  "social_media_id"       UUID                     NULL     DEFAULT NULL,
   "created_at"            TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT (now()),
   "updated_at"            TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT (now()),
   "deleted_at"            TIMESTAMP WITH TIME ZONE NULL     DEFAULT NULL,
   "trial_ends_at"         TIMESTAMP WITH TIME ZONE NULL     DEFAULT NULL,
-  CONSTRAINT "client_verification_code" FOREIGN KEY ("verification_code_id") REFERENCES "verification_codes" ("id") ON UPDATE NO ACTION ON DELETE NO ACTION,
-  CONSTRAINT "client_contact" FOREIGN KEY ("contact_id") REFERENCES "contacts" ("id") ON UPDATE NO ACTION ON DELETE NO ACTION,
-  CONSTRAINT "client_owner" FOREIGN KEY ("owner_id") REFERENCES "owners" ("id") ON UPDATE NO ACTION ON DELETE NO ACTION
+  CONSTRAINT "fk_client_verification_code" FOREIGN KEY ("verification_code_id") REFERENCES "verification_codes" ("id") ON UPDATE NO ACTION ON DELETE NO ACTION,
+  CONSTRAINT "fk_client_contact" FOREIGN KEY ("contact_id") REFERENCES "contacts" ("id") ON UPDATE NO ACTION ON DELETE NO ACTION,
+  CONSTRAINT "fk_client_owner" FOREIGN KEY ("owner_id") REFERENCES "owners" ("id") ON UPDATE NO ACTION ON DELETE NO ACTION,
+  CONSTRAINT "fk_client_social_media" FOREIGN KEY ("social_media_id") REFERENCES "social_medias" ("id") ON UPDATE NO ACTION ON DELETE SET NULL
 );
 
 CREATE TABLE "plans"

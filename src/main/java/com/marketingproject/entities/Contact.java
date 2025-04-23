@@ -59,4 +59,12 @@ public class Contact extends BaseAudit implements Serializable {
         email = ValidateDataUtils.isNullOrEmptyString(request.getEmail()) ? email : request.getEmail();
     }
 
+    public void update(ContactRequestDto contact) {
+        contactPreference = contact.getContactPreference();
+        if (ContactPreference.EMAIL.equals(contactPreference)) {
+            email = ValidateDataUtils.isNullOrEmptyString(contact.getEmail()) ? email : contact.getEmail();
+        } else {
+            phone = ValidateDataUtils.isNullOrEmptyString(contact.getPhone()) ? phone : contact.getPhone();
+        }
+    }
 }

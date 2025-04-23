@@ -1,7 +1,19 @@
 package com.marketingproject.infra.security.services;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.marketingproject.infra.security.model.LoginRequestDto;
+import com.marketingproject.infra.security.model.PasswordRequestDto;
+import com.marketingproject.infra.security.model.PasswordUpdateRequestDto;
+import jakarta.validation.Valid;
 import org.springframework.security.core.userdetails.UserDetailsService;
+import org.springframework.validation.annotation.Validated;
 
 public interface AuthService extends UserDetailsService {
+    String login(@Validated LoginRequestDto requestDto) throws JsonProcessingException;
 
+    void sendPasswordRecoveryCode(String identificationNumber);
+
+    void resetPassword(String identificationNumber, @Valid PasswordRequestDto request);
+
+    void updatePassword(@Valid PasswordUpdateRequestDto request);
 }

@@ -54,4 +54,11 @@ public class Owner extends BaseAudit implements Serializable {
         this.client = client;
     }
 
+    public void update(OwnerRequestDto owner) {
+        identificationNumber = owner.getIdentificationNumber();
+        firstName = owner.getFirstName();
+        lastName = owner.getLastName();
+        email = owner.getEmail();
+        phone = owner.getPhone();
+    }
 }

@@ -1,4 +1,4 @@
-package com.marketingproject.dtos.request;
+package com.marketingproject.infra.security.model;
 
 
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;

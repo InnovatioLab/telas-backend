@@ -21,11 +21,12 @@ public class ClientRequestHelper {
     private final ContactRepository contactRepository;
 
     @Transactional(readOnly = true)
-    public void validateClientRequest(ClientRequestDto request) {
+    public void validateClientRequest(ClientRequestDto request, Client client) {
         request.validate();
-        verifyUniqueIdentificationNumber(request);
-        verifyUniqueEmail(request);
+        verifyUniqueIdentificationNumber(request, client);
+        verifyUniqueEmail(request, client);
     }
+
 
     @Transactional(readOnly = true)
     public void verifyUniqueEmail(String email) {
@@ -56,23 +57,53 @@ public class ClientRequestHelper {
         }
     }
 
-    void verifyUniqueEmail(ClientRequestDto request) {
-        if (ownerRepository.existsByEmail(request.getOwner().getEmail())) {
-            throw new BusinessRuleException(OwnerValidationMessages.EMAIL_UNIQUE);
-        }
+    void verifyUniqueEmail(ClientRequestDto request, Client client) {
+        String newEmail = request.getContact().getEmail();
+        String ownerEmail = request.getOwner().getEmail();
 
-        if (contactRepository.existsByEmail(request.getContact().getEmail())) {
-            throw new BusinessRuleException(ClientValidationMessages.EMAIL_UNIQUE);
+        if (client != null) {
+            if (isEmailChanged(client.getContact().getEmail(), newEmail) && contactRepository.existsByEmail(newEmail)) {
+                throw new BusinessRuleException(ClientValidationMessages.EMAIL_UNIQUE);
+            }
+            if (isEmailChanged(client.getOwner().getEmail(), ownerEmail) && ownerRepository.existsByEmail(ownerEmail)) {
+                throw new BusinessRuleException(ClientValidationMessages.EMAIL_UNIQUE);
+            }
+        } else {
+            if (ownerRepository.existsByEmail(ownerEmail)) {
+                throw new BusinessRuleException(OwnerValidationMessages.EMAIL_UNIQUE);
+            }
+            if (contactRepository.existsByEmail(newEmail)) {
+                throw new BusinessRuleException(ClientValidationMessages.EMAIL_UNIQUE);
+            }
         }
     }
 
-    void verifyUniqueIdentificationNumber(ClientRequestDto request) {
-        if (ownerRepository.existsByIdentificationNumber(request.getOwner().getIdentificationNumber())) {
-            throw new BusinessRuleException(OwnerValidationMessages.IDENTIFICATION_NUMBER_UNIQUE);
-        }
+    void verifyUniqueIdentificationNumber(ClientRequestDto request, Client client) {
+        String newIdNumber = request.getIdentificationNumber();
+        String ownerIdNumber = request.getOwner().getIdentificationNumber();
 
-        if (clientRepository.existsByIdentificationNumber(request.getIdentificationNumber())) {
-            throw new BusinessRuleException(ClientValidationMessages.IDENTIFICATION_NUMBER_UNIQUE);
+        if (client != null) {
+            if (isIdNumberChanged(client.getOwner().getIdentificationNumber(), ownerIdNumber) && ownerRepository.existsByIdentificationNumber(ownerIdNumber)) {
+                throw new BusinessRuleException(ClientValidationMessages.EMAIL_UNIQUE);
+            }
+            if (isIdNumberChanged(client.getIdentificationNumber(), newIdNumber) && clientRepository.existsByIdentificationNumber(newIdNumber)) {
+                throw new BusinessRuleException(ClientValidationMessages.EMAIL_UNIQUE);
+            }
+        } else {
+            if (ownerRepository.existsByIdentificationNumber(ownerIdNumber)) {
+                throw new BusinessRuleException(OwnerValidationMessages.IDENTIFICATION_NUMBER_UNIQUE);
+            }
+            if (clientRepository.existsByIdentificationNumber(newIdNumber)) {
+                throw new BusinessRuleException(ClientValidationMessages.IDENTIFICATION_NUMBER_UNIQUE);
+            }
         }
+    }
+
+    private boolean isEmailChanged(String currentEmail, String newEmail) {
+        return !currentEmail.equals(newEmail);
+    }
+
+    private boolean isIdNumberChanged(String currentId, String newId) {
+        return !currentId.equals(newId);
     }
 }

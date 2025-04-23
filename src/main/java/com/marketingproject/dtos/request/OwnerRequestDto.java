@@ -27,8 +27,7 @@ public class OwnerRequestDto implements Serializable {
     private static final long serialVersionUID = -3963846843873646628L;
 
     @NotEmpty(message = OwnerValidationMessages.IDENTIFICATION_NUMBER_REQUIRED)
-    @Size(min = 9, max = 9, message = OwnerValidationMessages.IDENTIFICATION_NUMBER_SIZE)
-    @Pattern(regexp = SharedConstants.REGEX_ONLY_NUMBERS, message = OwnerValidationMessages.IDENTIFICATION_NUMBER_REGEX)
+    @Pattern(regexp = SharedConstants.REGEX_IDENTIFICATION_NUMBER_OWNER, message = OwnerValidationMessages.INVALID_SSN)
     @JsonDeserialize(using = TrimStringDeserializer.class)
     private String identificationNumber;
 
