@@ -12,6 +12,7 @@ import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
+import org.hibernate.envers.NotAudited;
 
 import java.io.Serial;
 import java.io.Serializable;
@@ -56,9 +57,10 @@ public class Monitor extends BaseAudit implements Serializable {
     private Address address;
 
     @JsonIgnore
+    @NotAudited
     @ManyToMany
     @JoinTable(
-            name = "monitor_advertising_attachments",
+            name = "monitors_advertising_attachments",
             joinColumns = @JoinColumn(name = "monitor_id"),
             inverseJoinColumns = @JoinColumn(name = "advertising_attachment_id")
     )

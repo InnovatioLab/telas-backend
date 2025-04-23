@@ -32,14 +32,14 @@ public class BucketServiceImpl implements BucketService {
     private final Logger log = LoggerFactory.getLogger(BucketServiceImpl.class);
     private final MinioClient minioClient;
 
-    @Value("${minio.bucket.name}")
+    @Value("${MINIO_BUCKET_NAME}")
     private String bucketName;
 
     @Autowired
     BucketServiceImpl(
-            @Value("${minio.endpoint}") String endpoint,
-            @Value("${minio.access.key}") String accessKey,
-            @Value("${minio.secret.key}") String secretKey) {
+            @Value("${MINIO_ENDPOINT}") String endpoint,
+            @Value("${MINIO_ACCESS_KEY}") String accessKey,
+            @Value("${MINIO_SECRET_KEY}") String secretKey) {
         minioClient = MinioClient.builder()
                 .endpoint(endpoint)
                 .credentials(accessKey, secretKey)

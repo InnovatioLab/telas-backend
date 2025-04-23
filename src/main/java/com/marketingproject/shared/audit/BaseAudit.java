@@ -33,12 +33,12 @@ public abstract class BaseAudit implements Serializable {
     private Instant updatedAt;
 
     @JsonIgnore
-    @Column(name = "nm_usuario_cadastro", updatable = false)
+    @Column(name = "username_create", updatable = false)
     @CreatedBy
     private String usernameCreate;
 
     @JsonIgnore
-    @Column(name = "nm_usuario_atualizacao", insertable = false)
+    @Column(name = "username_update", insertable = false)
     @LastModifiedBy
     private String usernameUpdate;
 

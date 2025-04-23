@@ -7,6 +7,7 @@ import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
+import org.hibernate.envers.NotAudited;
 
 import java.io.Serial;
 import java.io.Serializable;
@@ -40,6 +41,7 @@ public class AdvertisingAttachment extends BaseAudit implements Serializable {
     private Client client;
 
     @JsonIgnore
+    @NotAudited
     @ManyToMany
     @JoinTable(
             name = "advertising_attachments_attachments",

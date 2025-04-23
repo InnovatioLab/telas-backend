@@ -46,19 +46,23 @@ CREATE TABLE "contacts"
   "contact_preference" contact_preference       NOT NULL,
   "email"              VARCHAR(255) UNIQUE      NOT NULL,
   "phone"              VARCHAR(11),
+  "username_create"    VARCHAR(255)             NULL     DEFAULT NULL,
+  "username_update"    VARCHAR(255)             NULL     DEFAULT NULL,
   "created_at"         TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT (now()),
   "updated_at"         TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT (now())
 );
 
 CREATE TABLE "social_medias"
 (
-  "id"            UUID PRIMARY KEY,
-  "instagram_url" TEXT                     NULL     DEFAULT NULL,
-  "facebook_url"  TEXT                     NULL     DEFAULT NULL,
-  "linkedin_url"  TEXT                     NULL     DEFAULT NULL,
-  "x_url"         TEXT                     NULL     DEFAULT NULL,
-  "created_at"    TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT (now()),
-  "updated_at"    TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT (now())
+  "id"              UUID PRIMARY KEY,
+  "instagram_url"   TEXT                     NULL     DEFAULT NULL,
+  "facebook_url"    TEXT                     NULL     DEFAULT NULL,
+  "linkedin_url"    TEXT                     NULL     DEFAULT NULL,
+  "x_url"           TEXT                     NULL     DEFAULT NULL,
+  "username_create" VARCHAR(255)             NULL     DEFAULT NULL,
+  "username_update" VARCHAR(255)             NULL     DEFAULT NULL,
+  "created_at"      TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT (now()),
+  "updated_at"      TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT (now())
 );
 
 CREATE TABLE "owners"
@@ -69,6 +73,8 @@ CREATE TABLE "owners"
   "email"                 VARCHAR(255) UNIQUE      NOT NULL,
   "identification_number" VARCHAR(15)              NOT NULL UNIQUE,
   "phone"                 VARCHAR(11),
+  "username_create"       VARCHAR(255)             NULL     DEFAULT NULL,
+  "username_update"       VARCHAR(255)             NULL     DEFAULT NULL,
   "created_at"            TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT (now()),
   "updated_at"            TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT (now())
 );
@@ -86,6 +92,8 @@ CREATE TABLE "clients"
   "contact_id"            UUID                     NOT NULL,
   "owner_id"              UUID                     NOT NULL,
   "social_media_id"       UUID                     NULL     DEFAULT NULL,
+  "username_create"       VARCHAR(255)             NULL     DEFAULT NULL,
+  "username_update"       VARCHAR(255)             NULL     DEFAULT NULL,
   "created_at"            TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT (now()),
   "updated_at"            TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT (now()),
   "deleted_at"            TIMESTAMP WITH TIME ZONE NULL     DEFAULT NULL,
@@ -108,6 +116,8 @@ CREATE TABLE "plans"
   "status"                  default_status           NOT NULL,
   "monitors_quantity"       INTEGER                  NOT NULL,
   "advertising_attachments" INTEGER                  NOT NULL,
+  "username_create"         VARCHAR(255)             NULL     DEFAULT NULL,
+  "username_update"         VARCHAR(255)             NULL     DEFAULT NULL,
   "created_at"              TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT (now()),
   "updated_at"              TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT (now()),
   "inactivated_at"          TIMESTAMP WITH TIME ZONE
@@ -115,13 +125,15 @@ CREATE TABLE "plans"
 
 CREATE TABLE "subscriptions"
 (
-  "id"         UUID PRIMARY KEY,
-  "plan_id"    UUID                     NOT NULL,
-  "client_id"  UUID                     NOT NULL,
-  "discount"   DECIMAL(5, 2)            NOT NULL DEFAULT 0.00,
-  "status"     subscription_status      NOT NULL DEFAULT 'PENDING',
-  "started_at" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT (now()),
-  "ends_at"    TIMESTAMP WITH TIME ZONE NOT NULL,
+  "id"              UUID PRIMARY KEY,
+  "plan_id"         UUID                     NOT NULL,
+  "client_id"       UUID                     NOT NULL,
+  "discount"        DECIMAL(5, 2)            NOT NULL DEFAULT 0.00,
+  "status"          subscription_status      NOT NULL DEFAULT 'PENDING',
+  "username_create" VARCHAR(255)             NULL     DEFAULT NULL,
+  "username_update" VARCHAR(255)             NULL     DEFAULT NULL,
+  "started_at"      TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT (now()),
+  "ends_at"         TIMESTAMP WITH TIME ZONE NOT NULL,
   CONSTRAINT "fk_subscription_plan" FOREIGN KEY ("plan_id") REFERENCES "plans" ("id") ON UPDATE NO ACTION ON DELETE NO ACTION,
   CONSTRAINT "fk_subscription_client" FOREIGN KEY ("client_id") REFERENCES "clients" ("id") ON UPDATE NO ACTION ON DELETE NO ACTION
 );
@@ -133,6 +145,8 @@ CREATE TABLE "payments"
   "payment_method"  VARCHAR(50)              NOT NULL,
   "amount"          NUMERIC(10, 2)           NOT NULL,
   "status"          payment_status           NOT NULL DEFAULT 'PENDING',
+  "username_create" VARCHAR(255)             NULL     DEFAULT NULL,
+  "username_update" VARCHAR(255)             NULL     DEFAULT NULL,
   "created_at"      TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT (now()),
   "updated_at"      TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT (now()),
   CONSTRAINT "fk_transaction_subscription" FOREIGN KEY ("subscription_id") REFERENCES "subscriptions" ("id") ON UPDATE NO ACTION ON DELETE NO ACTION
@@ -140,53 +154,61 @@ CREATE TABLE "payments"
 
 CREATE TABLE "addresses"
 (
-  "id"         UUID PRIMARY KEY,
-  "street"     VARCHAR(100)             NOT NULL,
-  "number"     VARCHAR(10)              NOT NULL,
-  "zip_code"   VARCHAR(10)              NOT NULL,
-  "city"       VARCHAR(50)              NOT NULL,
-  "state"      VARCHAR(2)               NOT NULL,
-  "country"    VARCHAR(100)             NOT NULL DEFAULT 'USA',
-  "complement" VARCHAR(100),
-  "client_id"  UUID                     NULL     DEFAULT NULL,
-  "created_at" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT (now()),
-  "updated_at" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT (now()),
+  "id"              UUID PRIMARY KEY,
+  "street"          VARCHAR(100)             NOT NULL,
+  "number"          VARCHAR(10)              NOT NULL,
+  "zip_code"        VARCHAR(10)              NOT NULL,
+  "city"            VARCHAR(50)              NOT NULL,
+  "state"           VARCHAR(2)               NOT NULL,
+  "country"         VARCHAR(100)             NOT NULL DEFAULT 'USA',
+  "complement"      VARCHAR(100),
+  "client_id"       UUID                     NULL     DEFAULT NULL,
+  "username_create" VARCHAR(255)             NULL     DEFAULT NULL,
+  "username_update" VARCHAR(255)             NULL     DEFAULT NULL,
+  "created_at"      TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT (now()),
+  "updated_at"      TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT (now()),
   CONSTRAINT "client_address" FOREIGN KEY ("client_id") REFERENCES "clients" ("id") ON UPDATE NO ACTION ON DELETE NO ACTION
 );
 
 CREATE TABLE "monitors"
 (
-  "id"             UUID PRIMARY KEY,
-  "fl_active"      BOOLEAN                           DEFAULT TRUE,
-  "address_id"     UUID                     NOT NULL,
-  "type"           VARCHAR(50)              NOT NULL DEFAULT 'BASIC',
-  "size_in_inches" NUMERIC(5, 2)            NOT NULL DEFAULT 0.00,
-  "latitude"       DOUBLE PRECISION         NOT NULL,
-  "longitude"      DOUBLE PRECISION         NOT NULL,
-  "created_at"     TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT (now()),
-  "updated_at"     TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT (now()),
+  "id"              UUID PRIMARY KEY,
+  "fl_active"       BOOLEAN                           DEFAULT TRUE,
+  "address_id"      UUID                     NOT NULL,
+  "type"            VARCHAR(50)              NOT NULL DEFAULT 'BASIC',
+  "size_in_inches"  NUMERIC(5, 2)            NOT NULL DEFAULT 0.00,
+  "latitude"        DOUBLE PRECISION         NOT NULL,
+  "longitude"       DOUBLE PRECISION         NOT NULL,
+  "username_create" VARCHAR(255)             NULL     DEFAULT NULL,
+  "username_update" VARCHAR(255)             NULL     DEFAULT NULL,
+  "created_at"      TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT (now()),
+  "updated_at"      TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT (now()),
   CONSTRAINT "fk_monitor_address" FOREIGN KEY ("address_id") REFERENCES "addresses" ("id") ON UPDATE NO ACTION ON DELETE CASCADE
 );
 
 CREATE TABLE "attachments"
 (
-  "id"         UUID PRIMARY KEY,
-  "name"       VARCHAR(255)             NOT NULL,
-  "mime_type"  VARCHAR(5)               NOT NULL,
-  "client_id"  UUID                     NOT NULL,
-  "created_at" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT (now()),
-  "updated_at" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT (now()),
+  "id"              UUID PRIMARY KEY,
+  "name"            VARCHAR(255)             NOT NULL,
+  "mime_type"       VARCHAR(5)               NOT NULL,
+  "client_id"       UUID                     NOT NULL,
+  "username_create" VARCHAR(255)             NULL     DEFAULT NULL,
+  "username_update" VARCHAR(255)             NULL     DEFAULT NULL,
+  "created_at"      TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT (now()),
+  "updated_at"      TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT (now()),
   CONSTRAINT "fk_attachment_client" FOREIGN KEY ("client_id") REFERENCES "clients" ("id") ON UPDATE NO ACTION ON DELETE CASCADE
 );
 
 CREATE TABLE "advertising_attachments"
 (
-  "id"         UUID PRIMARY KEY,
-  "name"       VARCHAR(255)             NOT NULL,
-  "mime_type"  VARCHAR(5)               NOT NULL,
-  "client_id"  UUID                     NOT NULL,
-  "created_at" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT (now()),
-  "updated_at" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT (now()),
+  "id"              UUID PRIMARY KEY,
+  "name"            VARCHAR(255)             NOT NULL,
+  "mime_type"       VARCHAR(5)               NOT NULL,
+  "client_id"       UUID                     NOT NULL,
+  "username_create" VARCHAR(255)             NULL     DEFAULT NULL,
+  "username_update" VARCHAR(255)             NULL     DEFAULT NULL,
+  "created_at"      TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT (now()),
+  "updated_at"      TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT (now()),
   CONSTRAINT "fk_advertising_attachment_client" FOREIGN KEY ("client_id") REFERENCES "clients" ("id") ON UPDATE NO ACTION ON DELETE CASCADE
 );
 
@@ -228,13 +250,15 @@ CREATE TABLE "monitors_advertising_attachments"
 
 CREATE TABLE "notifications"
 (
-  "id"            UUID PRIMARY KEY,
-  "message"       TEXT                     NOT NULL,
-  "fl_visualized" BOOLEAN                           DEFAULT FALSE,
-  "action_url"    TEXT                     NULL     DEFAULT NULL,
-  "client_id"     UUID                     NOT NULL,
-  "created_at"    TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT (now()),
-  "updated_at"    TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT (now()),
+  "id"              UUID PRIMARY KEY,
+  "message"         TEXT                     NOT NULL,
+  "fl_visualized"   BOOLEAN                           DEFAULT FALSE,
+  "action_url"      TEXT                     NULL     DEFAULT NULL,
+  "client_id"       UUID                     NOT NULL,
+  "username_create" VARCHAR(255)             NULL     DEFAULT NULL,
+  "username_update" VARCHAR(255)             NULL     DEFAULT NULL,
+  "created_at"      TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT (now()),
+  "updated_at"      TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT (now()),
   CONSTRAINT "fk_notification_client" FOREIGN KEY ("client_id") REFERENCES "clients" ("id") ON UPDATE NO ACTION ON DELETE CASCADE
 );
 

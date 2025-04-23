@@ -3,6 +3,7 @@ package com.marketingproject.infra.security.controllers;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.marketingproject.dtos.response.ResponseDto;
 import com.marketingproject.infra.security.model.LoginRequestDto;
+import com.marketingproject.infra.security.model.PasswordRequestDto;
 import com.marketingproject.infra.security.model.PasswordUpdateRequestDto;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
@@ -27,12 +28,12 @@ public interface AuthController {
     })
     ResponseEntity<?> sendPasswordRecoveryCode(String identificationNumber);
 
-//    @Operation(summary = "Endpoint to reset the user's password", responses = {
-//            @ApiResponse(responseCode = "200", description = "Password reset successfully."),
-//            @ApiResponse(responseCode = "400", description = "Invalid request data."),
-//            @ApiResponse(responseCode = "404", description = "User not found.")
-//    })
-//    ResponseEntity<?> resetPassword(String identificationNumber, PasswordRequestDto request);
+    @Operation(summary = "Endpoint to reset the user's password", responses = {
+            @ApiResponse(responseCode = "200", description = "Password reset successfully."),
+            @ApiResponse(responseCode = "400", description = "Invalid request data."),
+            @ApiResponse(responseCode = "404", description = "User not found.")
+    })
+    ResponseEntity<?> resetPassword(String identificationNumber, PasswordRequestDto request);
 
     @Operation(summary = "Endpoint to update the user's password", responses = {
             @ApiResponse(responseCode = "200", description = "Password updated successfully."),

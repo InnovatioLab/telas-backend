@@ -36,7 +36,7 @@ public class AddressRequestDto implements Serializable {
     private String number;
 
     @NotEmpty(message = AddressValidationMessages.ZIP_CODE_REQUIRED)
-    @Size(min = 10, max = 10, message = AddressValidationMessages.ZIP_CODE_SIZE)
+    @Size(min = 9, max = 9, message = AddressValidationMessages.ZIP_CODE_SIZE)
     @Pattern(regexp = SharedConstants.REGEX_ONLY_NUMBERS, message = AddressValidationMessages.ZIP_CODE_REGEX)
     @JsonDeserialize(using = TrimStringDeserializer.class)
     private String zipCode;
@@ -58,7 +58,7 @@ public class AddressRequestDto implements Serializable {
     @JsonDeserialize(using = TrimStringDeserializer.class)
     private String country;
 
-    @Size(min = 2, max = 2, message = AddressValidationMessages.COMPLEMENT_SIZE)
+    @Size(max = 100, message = AddressValidationMessages.COMPLEMENT_SIZE)
     @JsonDeserialize(using = TrimStringDeserializer.class)
     private String complement;
 
@@ -67,7 +67,8 @@ public class AddressRequestDto implements Serializable {
         addressParams.append(street).append(", ");
         addressParams.append(number).append(", ");
         addressParams.append(city).append(", ");
-        addressParams.append(state);
+        addressParams.append(state).append(", ");
+        addressParams.append(zipCode);
         return addressParams.toString();
     }
 }

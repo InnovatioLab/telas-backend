@@ -13,6 +13,7 @@ import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
+import org.hibernate.envers.NotAudited;
 
 import java.io.Serial;
 import java.io.Serializable;
@@ -54,7 +55,9 @@ public class Client extends BaseAudit implements Serializable {
     @Enumerated(EnumType.STRING)
     private DefaultStatus status = DefaultStatus.INACTIVE;
 
-    @OneToOne
+    @JsonIgnore
+    @NotAudited
+    @OneToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "verification_code_id", referencedColumnName = "id", nullable = false)
     private VerificationCode verificationCode;
 

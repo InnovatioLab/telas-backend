@@ -27,17 +27,18 @@ public class AuthenticatedUserServiceImpl implements AuthenticatedUserService {
             throw new UnauthorizedException(AuthValidationMessageConstants.ERROR_NO_AUTHENTICATION);
         }
 
-        Client client = (Client) authentication.getPrincipal();
-        return new AuthenticatedUser(client);
+        AuthenticatedUser authenticatedUser = (AuthenticatedUser) authentication.getPrincipal();
+        return authenticatedUser;
     }
 
     @Transactional(readOnly = true)
     @Override
     public AuthenticatedUser validateSelfOrAdmin(UUID id) {
         Client loggedClient = getLoggedUser().client();
+        AuthenticatedUser authenticatedUser = new AuthenticatedUser(loggedClient);
 
         if (loggedClient.isAdmin() || loggedClient.getId().equals(id)) {
-            return new AuthenticatedUser(loggedClient);
+            return authenticatedUser;
         }
 
         throw new ForbiddenException(AuthValidationMessageConstants.ERROR_NO_PERMISSION);
@@ -47,9 +48,10 @@ public class AuthenticatedUserServiceImpl implements AuthenticatedUserService {
     @Override
     public AuthenticatedUser validateAdmin() {
         Client loggedClient = getLoggedUser().client();
+        AuthenticatedUser authenticatedUser = new AuthenticatedUser(loggedClient);
 
         if (loggedClient.isAdmin()) {
-            return new AuthenticatedUser(loggedClient);
+            return authenticatedUser;
         }
 
         throw new ForbiddenException(AuthValidationMessageConstants.ERROR_NO_PERMISSION);

@@ -1,7 +1,6 @@
 package com.marketingproject.dtos.request;
 
 
-import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
@@ -11,7 +10,7 @@ import java.io.Serializable;
 
 @Getter
 @Setter
-@AllArgsConstructor
+//@AllArgsConstructor
 @NoArgsConstructor
 public class PaymentRequestDto implements Serializable {
     @Serial

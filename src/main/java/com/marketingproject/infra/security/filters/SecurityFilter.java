@@ -1,5 +1,6 @@
 package com.marketingproject.infra.security.filters;
 
+import com.marketingproject.infra.security.model.AuthenticatedUser;
 import com.marketingproject.infra.security.services.AuthService;
 import com.marketingproject.infra.security.services.TokenService;
 import jakarta.servlet.FilterChain;
@@ -10,7 +11,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
-import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
@@ -33,7 +33,7 @@ public class SecurityFilter extends OncePerRequestFilter {
 
         if (token != null) {
             String identificationNumber = tokenService.validateToken(token);
-            UserDetails user = authService.loadUserByUsername(identificationNumber);
+            AuthenticatedUser user = (AuthenticatedUser) authService.loadUserByUsername(identificationNumber);
             Authentication authentication = new UsernamePasswordAuthenticationToken(user, null, user.getAuthorities());
             SecurityContextHolder.getContext().setAuthentication(authentication);
         }

@@ -65,6 +65,7 @@ public class MonitorServiceImpl implements MonitorService {
     @Override
     @Transactional(readOnly = true)
     public Monitor findById(UUID monitorId) {
+        authenticatedUserService.validateAdmin();
         return repository.findById(monitorId).orElseThrow(() -> new ResourceNotFoundException(MonitorValidationMessages.MONITOR_NOT_FOUND));
     }
 }
