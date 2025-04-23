@@ -33,8 +33,9 @@ public class MonitorRequestDto implements Serializable {
 
     private Boolean active;
 
-//    private Double latitude;
-//    private Double longitude;
+    private Double latitude;
+
+    private Double longitude;
 
     @NotNull(message = MonitorValidationMessages.ADDRESS_REQUIRED)
     private @Valid AddressRequestDto address;

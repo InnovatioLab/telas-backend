@@ -61,4 +61,13 @@ public class AddressRequestDto implements Serializable {
     @Size(min = 2, max = 2, message = AddressValidationMessages.COMPLEMENT_SIZE)
     @JsonDeserialize(using = TrimStringDeserializer.class)
     private String complement;
+
+    public String getCoordinatesParams() {
+        StringBuilder addressParams = new StringBuilder();
+        addressParams.append(street).append(", ");
+        addressParams.append(number).append(", ");
+        addressParams.append(city).append(", ");
+        addressParams.append(state);
+        return addressParams.toString();
+    }
 }

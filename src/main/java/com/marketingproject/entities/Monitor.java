@@ -1,6 +1,11 @@
 package com.marketingproject.entities;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.SerializationFeature;
+import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
+import com.marketingproject.dtos.request.MonitorRequestDto;
 import com.marketingproject.enums.MonitorType;
 import com.marketingproject.shared.audit.BaseAudit;
 import jakarta.persistence.*;
@@ -12,6 +17,7 @@ import java.io.Serial;
 import java.io.Serializable;
 import java.math.BigDecimal;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
 import java.util.UUID;
 
@@ -58,5 +64,37 @@ public class Monitor extends BaseAudit implements Serializable {
     )
     private Set<AdvertisingAttachment> advertisingAttachments = new HashSet<AdvertisingAttachment>();
 
+    public Monitor(MonitorRequestDto request) {
+        this(request, List.of());
+    }
 
+    public Monitor(MonitorRequestDto request, List<AdvertisingAttachment> advertisingAttachmentsList) {
+        type = request.getType();
+        size = request.getSize();
+        latitude = request.getLatitude();
+        longitude = request.getLongitude();
+        address = new Address(request.getAddress());
+        advertisingAttachments.addAll(advertisingAttachmentsList);
+    }
+
+
+    public void update(MonitorRequestDto request, List<AdvertisingAttachment> advertisingAttachmentsList) {
+        type = request.getType();
+        size = request.getSize();
+        latitude = request.getLatitude();
+        longitude = request.getLongitude();
+        address.update(request.getAddress());
+
+        advertisingAttachments.clear();
+        advertisingAttachments.addAll(advertisingAttachmentsList);
+
+    }
+
+    public String toStringMapper() throws JsonProcessingException {
+        ObjectMapper objectMapper = new ObjectMapper();
+        objectMapper.registerModule(new JavaTimeModule())
+                .configure(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS, false);
+
+        return objectMapper.writeValueAsString(this);
+    }
 }

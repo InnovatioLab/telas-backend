@@ -53,6 +53,11 @@ public class Address extends BaseAudit implements Serializable {
     private Client client;
 
     public Address(AddressRequestDto request, Client client) {
+        this(request);
+        this.client = client;
+    }
+
+    public Address(AddressRequestDto request) {
         street = request.getStreet();
         number = request.getNumber();
         zipCode = request.getZipCode();
@@ -60,7 +65,26 @@ public class Address extends BaseAudit implements Serializable {
         state = request.getState();
         country = request.getCountry();
         complement = request.getComplement();
-        this.client = client;
     }
 
+    public void update(AddressRequestDto request) {
+        street = request.getStreet();
+        number = request.getNumber();
+        zipCode = request.getZipCode();
+        city = request.getCity();
+        state = request.getState();
+        country = request.getCountry();
+        complement = request.getComplement();
+        client = null;
+    }
+
+    public boolean hasChanged(AddressRequestDto address) {
+        return !street.equals(address.getStreet())
+               || !number.equals(address.getNumber())
+               || !zipCode.equals(address.getZipCode())
+               || !city.equals(address.getCity())
+               || !state.equals(address.getState())
+               || (address.getCountry() != null && !country.equals(address.getCountry()))
+               || (address.getComplement() != null && !complement.equals(address.getComplement()));
+    }
 }

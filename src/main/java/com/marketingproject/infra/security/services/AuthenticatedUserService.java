@@ -8,4 +8,6 @@ public interface AuthenticatedUserService {
     AuthenticatedUser getLoggedUser();
 
     AuthenticatedUser validateSelfOrAdmin(UUID id);
+
+    AuthenticatedUser validateAdmin();
 }

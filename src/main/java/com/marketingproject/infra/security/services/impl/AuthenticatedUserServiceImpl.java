@@ -10,12 +10,15 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
 public class AuthenticatedUserServiceImpl implements AuthenticatedUserService {
+
+    @Transactional(readOnly = true)
     @Override
     public AuthenticatedUser getLoggedUser() {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
@@ -28,6 +31,7 @@ public class AuthenticatedUserServiceImpl implements AuthenticatedUserService {
         return new AuthenticatedUser(client);
     }
 
+    @Transactional(readOnly = true)
     @Override
     public AuthenticatedUser validateSelfOrAdmin(UUID id) {
         Client loggedClient = getLoggedUser().client();
@@ -37,5 +41,18 @@ public class AuthenticatedUserServiceImpl implements AuthenticatedUserService {
         }
 
         throw new ForbiddenException(AuthValidationMessageConstants.ERROR_NO_PERMISSION);
+    }
+
+    @Transactional(readOnly = true)
+    @Override
+    public AuthenticatedUser validateAdmin() {
+        Client loggedClient = getLoggedUser().client();
+
+        if (loggedClient.isAdmin()) {
+            return new AuthenticatedUser(loggedClient);
+        }
+
+        throw new ForbiddenException(AuthValidationMessageConstants.ERROR_NO_PERMISSION);
+
     }
 }
