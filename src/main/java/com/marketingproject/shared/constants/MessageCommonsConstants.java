@@ -2,6 +2,7 @@ package com.marketingproject.shared.constants;
 
 public class MessageCommonsConstants {
     public static final String SAVE_SUCCESS_MESSAGE = "The record has been successfully saved!";
+    public static final String UPDATE_SUCCESS_MESSAGE = "The record has been successfully updated!";
     public static final String CODE_SENT_SUCCESS_MESSAGE = "A new code has been sent to your main contact! Please check and try again.";
     public static final String PASSWORD_CHANGED_SUCCESS_MESSAGE = "Password successfully changed! You can access the platform with your new password.";
     public static final String REGISTERED_SUCCESS_MESSAGE = "Registration successfully completed! Welcome to Marketing Project.";

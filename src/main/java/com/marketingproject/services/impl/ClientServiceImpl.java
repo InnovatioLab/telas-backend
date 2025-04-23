@@ -240,6 +240,7 @@ public class ClientServiceImpl implements ClientService {
         repository.save(client);
     }
 
+
     protected Client findByIdentification(String identification) {
         return repository.findByIdentificationNumber(identification)
                 .orElseThrow(() -> new ResourceNotFoundException(ClientValidationMessages.USER_NOT_FOUND));

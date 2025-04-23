@@ -30,6 +30,10 @@ public class AttachmentHelper {
 
     @Transactional
     public <T extends AttachmentRequestDto> void validate(List<T> requestList) {
+        if (ValidateDataUtils.isNullOrEmpty(requestList)) {
+            throw new BusinessRuleException(AttachmentValidationMessages.ATTACHMENT_LIST_EMPTY);
+        }
+
         requestList.forEach(AttachmentRequestDto::validate);
     }
 
@@ -39,10 +43,6 @@ public class AttachmentHelper {
 
     @Transactional
     public <T extends AttachmentRequestDto> void saveAttachments(List<T> requestList, Client client) {
-        if (ValidateDataUtils.isNullOrEmpty(requestList)) {
-            throw new BusinessRuleException(AttachmentValidationMessages.ATTACHMENT_LIST_EMPTY);
-        }
-
         requestList.forEach(attachment -> {
             if (attachment.getId() == null) {
                 if (attachment instanceof AdvertisingAttachmentRequestDto advertisingAttachment) {
@@ -70,10 +70,6 @@ public class AttachmentHelper {
 
     @Transactional
     public <T extends AttachmentRequestDto> void removeAttachmentsNotSent(List<T> requestList, Client client) {
-        if (ValidateDataUtils.isNullOrEmpty(requestList)) {
-            throw new BusinessRuleException(AttachmentValidationMessages.ATTACHMENT_LIST_EMPTY);
-        }
-
         List<UUID> attachmentIds = requestList.stream()
                 .map(AttachmentRequestDto::getId)
                 .filter(Objects::nonNull)
