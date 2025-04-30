@@ -13,18 +13,19 @@ import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
+import org.hibernate.envers.AuditTable;
 import org.hibernate.envers.NotAudited;
 
 import java.io.Serial;
 import java.io.Serializable;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.UUID;
+import java.util.*;
+import java.util.stream.Collectors;
 
 @Getter
 @Setter
 @Entity
 @Table(name = "clients")
+@AuditTable("clients_aud")
 @NoArgsConstructor
 public class Client extends BaseAudit implements Serializable {
     @Serial
@@ -41,7 +42,8 @@ public class Client extends BaseAudit implements Serializable {
     @Column(name = "identification_number", nullable = false, unique = true)
     private String identificationNumber;
 
-    @Column(name = "password", columnDefinition = "TEXT", nullable = false)
+    @NotAudited
+    @Column(name = "password", columnDefinition = "TEXT")
     private String password;
 
     @Column(name = "role", nullable = false)
@@ -51,7 +53,7 @@ public class Client extends BaseAudit implements Serializable {
     @Column(name = "business_field", nullable = false)
     private String businessField;
 
-    @Column(name = "status", nullable = false)
+    @Column(name = "status", columnDefinition = "default_status", nullable = false)
     @Enumerated(EnumType.STRING)
     private DefaultStatus status = DefaultStatus.INACTIVE;
 
@@ -70,22 +72,21 @@ public class Client extends BaseAudit implements Serializable {
     private Owner owner;
 
     @OneToOne(cascade = CascadeType.ALL)
-    @JoinColumn(name = "social_media_id", referencedColumnName = "id", nullable = true)
+    @JoinColumn(name = "social_media_id", referencedColumnName = "id")
     private SocialMedia socialMedia;
 
     @OneToMany(mappedBy = "client", cascade = CascadeType.ALL)
-    private List<Address> addresses = new ArrayList<>();
+    private Set<Address> addresses = new HashSet<>();
 
-    @JsonIgnore
     @OneToMany(mappedBy = "client", cascade = CascadeType.ALL)
-    private List<Attachment> attachments = new ArrayList<>();
+    private Set<Attachment> attachments = new HashSet<>();
 
-    @JsonIgnore
     @OneToMany(mappedBy = "client", cascade = CascadeType.ALL)
-    private List<AdvertisingAttachment> advertisingAttachments = new ArrayList<>();
+    private Set<AdvertisingAttachment> advertisingAttachments = new HashSet<>();
 
-    @JsonIgnore
-    @OneToMany(mappedBy = "client", cascade = CascadeType.ALL)
+    @NotAudited
+    @OneToMany(mappedBy = "client", cascade = CascadeType.ALL, fetch = FetchType.EAGER)
+    @OrderBy("createdAt DESC")
     private List<Notification> notifications = new ArrayList<>();
 
     public Client(ClientRequestDto request) {
@@ -96,11 +97,20 @@ public class Client extends BaseAudit implements Serializable {
         status = request.getStatus();
         contact = new Contact(request.getContact());
         owner = new Owner(request.getOwner(), this);
-        socialMedia = request.getSocialMedia() != null ? new SocialMedia(request.getSocialMedia()) : null;
-        addresses.addAll(request.getAddresses().stream().map(address -> new Address(address, this)).toList());
+
+        socialMedia = Optional.ofNullable(request.getSocialMedia())
+                .map(SocialMedia::new)
+                .orElse(null);
+
+        addresses = request.getAddresses().stream()
+                .map(address -> new Address(address, this))
+                .peek(address -> address.setUsernameCreate(request.getBusinessName()))
+                .collect(Collectors.toSet());
+
+        setUsernameCreateForRelatedEntities(request.getBusinessName());
     }
 
-    public void update(ClientRequestDto request) {
+    public void update(ClientRequestDto request, String updatedBy) {
         businessName = request.getBusinessName();
         identificationNumber = request.getIdentificationNumber();
         businessField = request.getBusinessField();
@@ -108,10 +118,32 @@ public class Client extends BaseAudit implements Serializable {
         status = request.getStatus();
         contact.update(request.getContact());
         owner.update(request.getOwner());
-        socialMedia.update(request.getSocialMedia());
+        Optional.ofNullable(socialMedia).ifPresent(socialMedia -> socialMedia.update(request.getSocialMedia()));
 
-        addresses.clear();
-        addresses.addAll(request.getAddresses().stream().map(address -> new Address(address, this)).toList());
+        addresses = request.getAddresses().stream()
+                .map(address -> new Address(address, this))
+                .peek(address -> address.setUsernameUpdate(updatedBy))
+                .collect(Collectors.toSet());
+
+        setUsernameUpdateForRelatedEntities(updatedBy);
+    }
+
+    private void setUsernameCreateForRelatedEntities(String username) {
+        setUsernameCreate(username);
+        contact.setUsernameCreate(username);
+        owner.setUsernameCreate(username);
+        if (socialMedia != null) {
+            socialMedia.setUsernameCreate(username);
+        }
+    }
+
+    private void setUsernameUpdateForRelatedEntities(String username) {
+        setUsernameUpdate(username);
+        contact.setUsernameUpdate(username);
+        owner.setUsernameUpdate(username);
+        if (socialMedia != null) {
+            socialMedia.setUsernameUpdate(username);
+        }
     }
 
     public boolean isAdmin() {

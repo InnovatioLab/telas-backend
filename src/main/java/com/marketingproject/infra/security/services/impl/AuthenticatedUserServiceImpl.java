@@ -17,7 +17,6 @@ import java.util.UUID;
 @Service
 @RequiredArgsConstructor
 public class AuthenticatedUserServiceImpl implements AuthenticatedUserService {
-
     @Transactional(readOnly = true)
     @Override
     public AuthenticatedUser getLoggedUser() {
@@ -27,8 +26,7 @@ public class AuthenticatedUserServiceImpl implements AuthenticatedUserService {
             throw new UnauthorizedException(AuthValidationMessageConstants.ERROR_NO_AUTHENTICATION);
         }
 
-        AuthenticatedUser authenticatedUser = (AuthenticatedUser) authentication.getPrincipal();
-        return authenticatedUser;
+        return (AuthenticatedUser) authentication.getPrincipal();
     }
 
     @Transactional(readOnly = true)

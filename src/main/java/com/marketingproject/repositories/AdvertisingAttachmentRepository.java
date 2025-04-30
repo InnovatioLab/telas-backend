@@ -11,6 +11,6 @@ import java.util.UUID;
 
 @Repository
 public interface AdvertisingAttachmentRepository extends JpaRepository<AdvertisingAttachment, UUID> {
-    @Query("SELECT a FROM AdvertisingAttachment a WHERE a.id IN :id")
-    Optional<List<AdvertisingAttachment>> findAllByIdIn(List<UUID> ids);
+    @Query("SELECT a FROM AdvertisingAttachment a WHERE a.id IN :ids")
+    Optional<List<AdvertisingAttachment>> findAllById(List<UUID> ids);
 }

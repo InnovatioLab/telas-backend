@@ -6,6 +6,7 @@ import com.marketingproject.dtos.request.AdvertisingAttachmentRequestDto;
 import com.marketingproject.dtos.request.AttachmentRequestDto;
 import com.marketingproject.dtos.request.ClientRequestDto;
 import com.marketingproject.dtos.request.ContactRequestDto;
+import com.marketingproject.dtos.response.ClientResponseDto;
 import com.marketingproject.entities.Client;
 import com.marketingproject.entities.Contact;
 import com.marketingproject.entities.VerificationCode;
@@ -52,22 +53,30 @@ public class ClientServiceImpl implements ClientService {
 
         Client client = new Client(request);
         VerificationCode verificationCode = verificationCodeService.save(CodeType.CONTACT, client);
+        verificationCode.setValidated(true);
         client.setVerificationCode(verificationCode);
 
-        MessagingDataDto messagingData = new MessagingDataDto(client, verificationCode, client.getContact().getContactPreference());
-        verificationCodeService.send(messagingData, SharedConstants.TEMPLATE_EMAIL_CONTACT_VERIFICATION, SharedConstants.EMAIL_SUBJECT_CONTACT_VERIFICATION);
+//        MessagingDataDto messagingData = new MessagingDataDto(client, verificationCode, client.getContact().getContactPreference());
+//        verificationCodeService.send(messagingData, SharedConstants.TEMPLATE_EMAIL_CONTACT_VERIFICATION, SharedConstants.EMAIL_SUBJECT_CONTACT_VERIFICATION);
 
         repository.save(client);
     }
 
+
     @Override
-    public Client findById(UUID id) {
-        return repository.findActiveById(id).orElseThrow(() -> new ResourceNotFoundException(ClientValidationMessages.USER_NOT_FOUND));
+    @Transactional(readOnly = true)
+    public ClientResponseDto findById(UUID id) {
+        return repository.findActiveById(id)
+                .map(ClientResponseDto::new)
+                .orElseThrow(() -> new ResourceNotFoundException(ClientValidationMessages.USER_NOT_FOUND));
     }
 
     @Override
-    public Client findActiveByIdentification(String identification) {
-        return repository.findActiveByIdentificationNumber(identification)
+    @Transactional(readOnly = true)
+    public ClientResponseDto getDataFromToken() {
+        UUID clientId = authenticatedUserService.getLoggedUser().client().getId();
+        return repository.findActiveById(clientId)
+                .map(ClientResponseDto::new)
                 .orElseThrow(() -> new ResourceNotFoundException(ClientValidationMessages.USER_NOT_FOUND));
     }
 
@@ -191,13 +200,13 @@ public class ClientServiceImpl implements ClientService {
     public void update(ClientRequestDto request, UUID id) throws JsonProcessingException {
         AuthenticatedUser authenticatedUser = authenticatedUserService.validateSelfOrAdmin(id);
 
-        Client client = findById(id);
+        Client client = findEntityById(id);
         helper.validateClientRequest(request, client);
 
         CustomRevisionListener.setUsername(authenticatedUser.client().getBusinessName());
         CustomRevisionListener.setOldData(client.toStringMapper());
 
-        client.update(request);
+        client.update(request, authenticatedUser.client().getBusinessName());
         repository.save(client);
     }
 
@@ -208,7 +217,7 @@ public class ClientServiceImpl implements ClientService {
 
         AuthenticatedUser authenticatedUser = authenticatedUserService.validateSelfOrAdmin(clientId);
 
-        Client client = findById(clientId);
+        Client client = findEntityById(clientId);
 
         if (!client.getAttachments().isEmpty()) {
             CustomRevisionListener.setUsername(authenticatedUser.client().getBusinessName());
@@ -227,7 +236,7 @@ public class ClientServiceImpl implements ClientService {
         attachmentHelper.validate(request);
         AuthenticatedUser authenticatedUser = authenticatedUserService.validateSelfOrAdmin(clientId);
 
-        Client client = findById(clientId);
+        Client client = findEntityById(clientId);
 
         if (!client.getAdvertisingAttachments().isEmpty()) {
             CustomRevisionListener.setUsername(authenticatedUser.client().getBusinessName());
@@ -238,6 +247,15 @@ public class ClientServiceImpl implements ClientService {
 
         attachmentHelper.saveAttachments(request, client);
         repository.save(client);
+    }
+
+    protected Client findActiveByIdentification(String identification) {
+        return repository.findActiveByIdentificationNumber(identification)
+                .orElseThrow(() -> new ResourceNotFoundException(ClientValidationMessages.USER_NOT_FOUND));
+    }
+
+    protected Client findEntityById(UUID id) {
+        return repository.findActiveById(id).orElseThrow(() -> new ResourceNotFoundException(ClientValidationMessages.USER_NOT_FOUND));
     }
 
 

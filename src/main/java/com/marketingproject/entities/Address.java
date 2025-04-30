@@ -7,6 +7,7 @@ import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
+import org.hibernate.envers.AuditTable;
 
 import java.io.Serial;
 import java.io.Serializable;
@@ -16,6 +17,7 @@ import java.util.UUID;
 @Setter
 @Entity
 @Table(name = "addresses")
+@AuditTable("addresses_aud")
 @NoArgsConstructor
 public class Address extends BaseAudit implements Serializable {
     @Serial

@@ -18,6 +18,7 @@ import org.springframework.mail.MailException;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.mail.javamail.MimeMessageHelper;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.io.IOException;
 import java.io.StringWriter;
@@ -32,6 +33,7 @@ public class EmailServiceImpl implements EmailService {
     @Value("${spring.mail.username}")
     private String emailFrom;
 
+    @Transactional
     @Override
     public void send(EmailDataDto data) {
         try {

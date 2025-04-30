@@ -1,61 +1,35 @@
 package com.marketingproject.dtos.response;
 
-import com.marketingproject.entities.*;
-import com.marketingproject.enums.DefaultStatus;
-import com.marketingproject.enums.Role;
+import com.marketingproject.entities.Monitor;
 import lombok.Getter;
 
 import java.io.Serial;
 import java.io.Serializable;
-import java.util.List;
-import java.util.Set;
-import java.util.UUID;
 
 @Getter
-public final class ClientResponseDto implements Serializable {
+public final class MonitorsResponseDto implements Serializable {
     @Serial
-    private static final long serialVersionUID = 5288515525105234502L;
+    private static final long serialVersionUID = -2929124221854520175L;
 
-    private final UUID id;
+    private final String id;
+    private final boolean active;
+    private final String type;
+    private final double size;
+    private final double distanceInKm;
 
-    private final String businessName;
+    public MonitorsResponseDto(Monitor monitor, double distance) {
+        id = monitor.getId().toString();
+        active = monitor.isActive();
+        type = monitor.getType().name();
+        size = monitor.getSize().doubleValue();
+        distanceInKm = distance;
+    }
 
-    private final String identificationNumber;
-
-    private final Role role;
-
-    private final String businessField;
-
-    private final DefaultStatus status;
-
-    private final Contact contact;
-
-    private final Owner owner;
-
-    private final SocialMedia socialMedia;
-
-    private final Set<Address> addresses;
-
-    private final Set<Attachment> attachments;
-
-    private final Set<AdvertisingAttachment> advertisingAttachments;
-
-    private final List<Notification> notifications;
-
-
-    public ClientResponseDto(Client entity) {
-        id = entity.getId();
-        businessName = entity.getBusinessName();
-        identificationNumber = entity.getIdentificationNumber();
-        role = entity.getRole();
-        businessField = entity.getBusinessField();
-        status = entity.getStatus();
-        contact = entity.getContact();
-        owner = entity.getOwner();
-        socialMedia = entity.getSocialMedia();
-        addresses = entity.getAddresses();
-        attachments = entity.getAttachments();
-        advertisingAttachments = entity.getAdvertisingAttachments();
-        notifications = entity.getNotifications();
+    public MonitorsResponseDto(String id, boolean active, String type, double size, double distance) {
+        this.id = id;
+        this.active = active;
+        this.type = type;
+        this.size = size;
+        distanceInKm = distance;
     }
 }

@@ -6,6 +6,7 @@ import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
+import org.hibernate.envers.AuditTable;
 
 import java.io.Serial;
 import java.io.Serializable;
@@ -17,6 +18,7 @@ import java.util.UUID;
 @Setter
 @Entity
 @Table(name = "plans")
+@AuditTable("plans_aud")
 @NoArgsConstructor
 public class Plan extends BaseAudit implements Serializable {
     @Serial
@@ -45,7 +47,7 @@ public class Plan extends BaseAudit implements Serializable {
     @Column(name = "yearly_price", precision = 10, scale = 2)
     private BigDecimal yearlyPrice;
 
-    @Column(name = "status", nullable = false)
+    @Column(name = "status", columnDefinition = "default_status", nullable = false)
     @Enumerated(EnumType.STRING)
     private DefaultStatus status;
 

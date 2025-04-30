@@ -13,4 +13,6 @@ public final class AttachmentValidationMessages {
     public static final String TYPE_INVALID = "Attachment type is invalid";
     public static final String BYTES_REQUIRED = "Attachment bytes are required";
     public static final String ATTACHMENT_NOT_FOUND = "Attachment not found";
+    public static final String NAME_SIZE = "Attachment name must be at most 255 characters";
+    public static final String TYPE_SIZE = "Attachment type must be at most 15 characters";
 }

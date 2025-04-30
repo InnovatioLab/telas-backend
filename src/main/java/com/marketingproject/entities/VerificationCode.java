@@ -1,7 +1,6 @@
 package com.marketingproject.entities;
 
 import com.marketingproject.enums.CodeType;
-import com.marketingproject.shared.audit.BaseAudit;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -17,7 +16,7 @@ import java.util.UUID;
 @Entity
 @Table(name = "verification_codes")
 @NoArgsConstructor
-public class VerificationCode extends BaseAudit implements Serializable {
+public class VerificationCode implements Serializable {
     @Serial
     private static final long serialVersionUID = 1084934057135367842L;
 
@@ -29,7 +28,7 @@ public class VerificationCode extends BaseAudit implements Serializable {
     @Column(name = "code")
     private String code;
 
-    @Column(name = "type")
+    @Column(name = "type", columnDefinition = "code_type")
     @Enumerated(EnumType.STRING)
     private CodeType codeType;
 

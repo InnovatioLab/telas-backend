@@ -36,7 +36,7 @@ public class ClientRequestDto implements Serializable {
     private String businessName;
 
     @NotEmpty(message = OwnerValidationMessages.IDENTIFICATION_NUMBER_REQUIRED)
-    @Pattern(regexp = SharedConstants.REGEX_IDENTIFICATION_NUMBER_CLIENT, message = ClientValidationMessages.INVALID_EIN)
+//    @Pattern(regexp = SharedConstants.REGEX_IDENTIFICATION_NUMBER_CLIENT, message = ClientValidationMessages.INVALID_EIN)
     @JsonDeserialize(using = TrimStringDeserializer.class)
     private String identificationNumber;
 
@@ -64,6 +64,7 @@ public class ClientRequestDto implements Serializable {
 
     public void validate() {
         contact.validate(true);
+        owner.validate();
 
         if (socialMedia != null) {
             socialMedia.validate();

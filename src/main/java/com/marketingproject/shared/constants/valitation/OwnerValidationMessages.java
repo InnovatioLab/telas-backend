@@ -12,4 +12,5 @@ public final class OwnerValidationMessages {
     public static final String IDENTIFICATION_NUMBER_UNIQUE = "Owner identification number must be unique";
     public static final String EMAIL_UNIQUE = "Owner email must be unique";
     public static final String INVALID_SSN = "Invalid identification number format. The correct format is XXX-XX-XXXX, where X is a digit.";
+    public static final String CONTACT_REQUIRED = "At least one contact method (phone or email) is required";
 }

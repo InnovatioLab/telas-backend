@@ -9,6 +9,7 @@ import com.marketingproject.shared.utils.TrimStringDeserializer;
 import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Pattern;
+import jakarta.validation.constraints.Size;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -30,11 +31,13 @@ public class AttachmentRequestDto implements Serializable {
 
     @NotEmpty(message = AttachmentValidationMessages.NAME_REQUIRED)
     @Pattern(regexp = SharedConstants.REGEX_ATTACHMENT_NAME, message = AttachmentValidationMessages.NAME_INVALID)
+    @Size(max = 255, message = AttachmentValidationMessages.NAME_SIZE)
     @JsonDeserialize(using = TrimStringDeserializer.class)
     private String name;
 
     @NotEmpty(message = AttachmentValidationMessages.TYPE_REQUIRED)
     @Pattern(regexp = SharedConstants.REGEX_ATTACHMENT_TYPE, message = AttachmentValidationMessages.TYPE_INVALID)
+    @Size(max = 15, message = AttachmentValidationMessages.TYPE_SIZE)
     @JsonDeserialize(using = TrimStringDeserializer.class)
     private String type;
 

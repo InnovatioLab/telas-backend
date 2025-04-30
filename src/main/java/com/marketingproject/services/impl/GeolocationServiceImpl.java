@@ -33,26 +33,44 @@ public class GeolocationServiceImpl implements GeolocationService {
     @Override
     @Transactional
     public void getMonitorCoordinates(MonitorRequestDto request) {
-        GeolocalizationResponseDto geolocalizationResponse = geolocationRequest(request);
+        GeolocalizationResponseDto response = geolocationRequest(request);
+        validateResponse(response);
+        request.setLatitude(response.getLat());
+        request.setLongitude(response.getLng());
+    }
 
-        if (geolocalizationResponse == null) {
+    @Override
+    @Transactional(readOnly = true)
+    public Map<String, Double> getCoordinatesFromZipCode(String zipCode) {
+        GeolocalizationResponseDto response = geolocationRequest(zipCode);
+        validateResponse(response);
+        return Map.of("latitude", response.getLat(), "longitude", response.getLng());
+    }
+
+    void validateResponse(GeolocalizationResponseDto response) {
+        if (response == null) {
             log.error("Geolocation response is null");
             throw new BusinessRuleException("Error while fetching geolocation data");
         }
-
-        request.setLatitude(geolocalizationResponse.getLat());
-        request.setLongitude(geolocalizationResponse.getLng());
     }
 
     GeolocalizationResponseDto geolocationRequest(MonitorRequestDto request) {
-        String param = request.getAddress().getCoordinatesParams();
+        return fetchGeolocationData(request.getAddress().getCoordinatesParams());
+    }
 
+    GeolocalizationResponseDto geolocationRequest(String zipCode) {
+        return fetchGeolocationData(zipCode + ", US");
+    }
+
+    GeolocalizationResponseDto fetchGeolocationData(String param) {
         try {
-            GeolocalizationApiResponse response = httpClientUtil.makeGetRequest(getGeolocalizacaoUrl(), GeolocalizationApiResponse.class,
-                    Map.of(ADDRESS_PARAM, param, API_KEY_PARAM, getApiKey()));
+            GeolocalizationApiResponse apiResponse = httpClientUtil.makeGetRequest(
+                    geolocalizacaoUrl, GeolocalizationApiResponse.class,
+                    Map.of(ADDRESS_PARAM, param, API_KEY_PARAM, apiKey)
+            );
 
-            if (response != null && !response.getResults().isEmpty()) {
-                GeolocalizationApiResponse.Location location = response.getResults().get(0).getGeometry().getLocation();
+            if (apiResponse != null && !apiResponse.getResults().isEmpty()) {
+                GeolocalizationApiResponse.Location location = apiResponse.getResults().get(0).getGeometry().getLocation();
                 return new GeolocalizationResponseDto(location.getLat(), location.getLng());
             }
             return null;

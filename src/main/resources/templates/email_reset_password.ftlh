@@ -93,47 +93,47 @@
     <div class="content">
         <table role="presentation" style="width: 100%; border-collapse: collapse;">
             <tr class="header">
-                <td style="padding-bottom: 30px; padding-top: 20px;"><h1>Raízes Cearenses</h1></td>
+                <td style="padding-bottom: 30px; padding-top: 20px;"><h1></h1></td>
             </tr>
             <tr>
-                <td style="padding-bottom: 10px;">Olá<strong style="font-weight: 500;"> ${nomeUsuario}</strong></td>
+                <td style="padding-bottom: 10px;">Hello<strong style="font-weight: 500;"> ${name}</strong></td>
             </tr>
             <tr>
-                <td>Bom ter você conosco novamente no Raízes Cearenses!</td>
+                <td>Good to have you back with us at X!</td>
             </tr>
             <tr>
                 <td style="padding-bottom: 30px;">
-                    Para recuperar sua senha e ter acesso as nossas funcionalidades, insira o código abaixo na <br> tela
-                    de validação do sistema:
+                    To recover your password and access our features, enter the code below on the system validation
+                    screen:
                 </td>
             </tr>
             <tr>
                 <td style="text-align:center;background-color:#ffffff;line-height:50px;color: #00763B;">
-                    <h3 style="font-size:26px; font-weight:700;color: #00763B;">Seu código de recuperação de senha é:
-                        <br> ${codigoVerificacao}</h3>
+                    <h3 style="font-size:26px; font-weight:700;color: #00763B;">Your password recovery code is:
+                        <br> ${verificationCode}</h3>
                 </td>
             </tr>
             <tr>
                 <td style="padding-top: 30px;">
-                    <strong>Este código é válido por 15 minutos.</strong> Caso expire, você pode solicitar um novo no
-                    sistema.
+                    <strong>This code is valid for 15 minutes.</strong> If it expires, you can request a new one in the
+                    system.
                 </td>
             </tr>
             <tr>
                 <td>
-                    Se você não solicitou recuperação de senha, por favor, ignore este e-mail.
+                    If you did not request password recovery, please ignore this email.
                 </td>
             </tr>
             <tr>
                 <td>
-                    Qualquer dúvida, nossa equipe está à disposição para ajudar!
+                    If you have any questions, our team is available to help!
                 </td>
             </tr>
         </table>
     </div>
     <div class="footer">
-        <p>Atenciosamente,<br>Equipe Raízes Cearenses</p>
-        <p>Contato: <a href="mailto:raizes.cearenses@ematerce.ce.gov.br" style="color: #131518;">raizes.cearenses@ematerce.ce.gov.br</a>
+        <p>Graciously,<br></p>
+        <p>Contact: <a href="mailto:raizes.cearenses@ematerce.ce.gov.br" style="color: #131518;">test@gmail.com</a>
         </p>
     </div>
 </div>

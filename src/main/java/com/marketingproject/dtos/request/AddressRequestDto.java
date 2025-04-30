@@ -36,7 +36,7 @@ public class AddressRequestDto implements Serializable {
     private String number;
 
     @NotEmpty(message = AddressValidationMessages.ZIP_CODE_REQUIRED)
-    @Size(min = 9, max = 9, message = AddressValidationMessages.ZIP_CODE_SIZE)
+    @Size(min = 5, max = 5, message = AddressValidationMessages.ZIP_CODE_SIZE)
     @Pattern(regexp = SharedConstants.REGEX_ONLY_NUMBERS, message = AddressValidationMessages.ZIP_CODE_REGEX)
     @JsonDeserialize(using = TrimStringDeserializer.class)
     private String zipCode;

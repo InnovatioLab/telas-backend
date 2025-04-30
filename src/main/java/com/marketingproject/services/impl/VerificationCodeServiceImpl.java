@@ -51,6 +51,7 @@ public class VerificationCodeServiceImpl implements VerificationCodeService {
         client.getVerificationCode().setValidated(true);
     }
 
+    @Transactional
     @Override
     public void send(MessagingDataDto messagingDataDto, String template, String subject) {
         if (ContactPreference.EMAIL.equals(messagingDataDto.getContactPreference())) {

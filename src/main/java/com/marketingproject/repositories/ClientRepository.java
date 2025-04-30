@@ -15,13 +15,27 @@ public interface ClientRepository extends JpaRepository<Client, UUID> {
            "WHERE c.identificationNumber = :identificationNumber")
     boolean existsByIdentificationNumber(String identificationNumber);
 
-    @Query("SELECT c FROM Client c JOIN FETCH c.addresses LEFT JOIN FETCH c.attachments LEFT JOIN FETCH c.advertisingAttachments LEFT JOIN FETCH c.notifications WHERE c.id = :id AND c.status = 'ACTIVE'")
+    @Query("SELECT c FROM Client c JOIN FETCH c.addresses LEFT JOIN FETCH c.attachments LEFT JOIN FETCH c.advertisingAttachments WHERE c.id = :id AND c.status = 'ACTIVE'")
     Optional<Client> findActiveById(UUID id);
 
-
-    @Query("SELECT c FROM Client c JOIN FETCH c.addresses LEFT JOIN FETCH c.attachments LEFT JOIN FETCH c.advertisingAttachments LEFT JOIN FETCH c.notifications WHERE c.identificationNumber = :identificationNumber AND c.status = 'ACTIVE'")
+    @Query(value = """
+            SELECT c.* 
+            FROM clients c 
+            INNER JOIN addresses ad ON c.id = ad.client_id 
+            LEFT JOIN attachments a ON c.id = a.client_id 
+            LEFT JOIN advertising_attachments aa ON c.id = aa.client_id 
+            WHERE c.identification_number = :identificationNumber AND c.status = 'ACTIVE'
+            """, nativeQuery = true)
     Optional<Client> findActiveByIdentificationNumber(String identificationNumber);
 
-    @Query("SELECT c FROM Client c JOIN FETCH c.addresses LEFT JOIN FETCH c.attachments LEFT JOIN FETCH c.advertisingAttachments LEFT JOIN FETCH c.notifications WHERE c.identificationNumber = :identificationNumber")
+
+    @Query(value = """
+            SELECT c.* 
+            FROM clients c 
+            INNER JOIN addresses ad ON c.id = ad.client_id             
+            LEFT JOIN attachments a ON c.id = a.client_id 
+            LEFT JOIN advertising_attachments aa ON c.id = aa.client_id 
+            WHERE c.identification_number = :identificationNumber 
+            """, nativeQuery = true)
     Optional<Client> findByIdentificationNumber(String identificationNumber);
 }

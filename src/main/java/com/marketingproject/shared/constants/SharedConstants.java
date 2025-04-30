@@ -20,8 +20,8 @@ public final class SharedConstants {
     public static final List<String> FORMATOS_PERMITIDOS_ANEXO = List.of("jpeg", "png");
 
     public static final String REGEX_ONLY_NUMBERS = "^\\d+$";
-    public static final String REGEX_IDENTIFICATION_NUMBER_CLIENT = "^\\\\d{2}-?\\\\d{7}$";
-    public static final String REGEX_IDENTIFICATION_NUMBER_OWNER = "^(?!666|000|9\\\\d{2})\\\\d{3}-(?!00)\\\\d{2}-(?!0{4})\\\\d{4}$";
+    public static final String REGEX_IDENTIFICATION_NUMBER_CLIENT = "^\\d{9}$";
+    public static final String REGEX_IDENTIFICATION_NUMBER_OWNER = "^(?!666|000|9\\d{2})\\d{9}$";
     public static final String REGEX_ALPHANUMERIC = "^[A-Za-zÀ-ÿ0-9\\s]*$";
     public static final String REGEX_PASSWORD = "^[a-zA-Z0-9!@#$%^&*()_+\\-=\\[\\]{};':\"\\\\|,.<>\\/?]+$";
     public static final String REGEX_ONLY_LETTERS = "^[a-zA-ZÀ-ÖØ-öø-ÿ\\s]*$";

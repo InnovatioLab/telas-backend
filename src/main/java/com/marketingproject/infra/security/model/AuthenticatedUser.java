@@ -1,5 +1,6 @@
 package com.marketingproject.infra.security.model;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.marketingproject.entities.Client;
 import com.marketingproject.enums.DefaultStatus;
 import org.springframework.security.core.GrantedAuthority;
@@ -14,6 +15,7 @@ public record AuthenticatedUser(Client client) implements UserDetails {
         return List.of();
     }
 
+    @JsonIgnore
     @Override
     public String getPassword() {
         return client.getPassword();
@@ -39,6 +41,7 @@ public record AuthenticatedUser(Client client) implements UserDetails {
         return true;
     }
 
+    @JsonIgnore
     @Override
     public boolean isEnabled() {
         return DefaultStatus.ACTIVE.equals(client.getStatus());

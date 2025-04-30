@@ -3,6 +3,7 @@ package com.marketingproject.controllers.impl;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.marketingproject.controllers.MonitorController;
 import com.marketingproject.dtos.request.MonitorRequestDto;
+import com.marketingproject.dtos.response.MonitorsResponseDto;
 import com.marketingproject.dtos.response.ResponseDto;
 import com.marketingproject.services.MonitorService;
 import com.marketingproject.shared.constants.MessageCommonsConstants;
@@ -13,6 +14,8 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.math.BigDecimal;
+import java.util.List;
 import java.util.UUID;
 
 @RestController
@@ -45,5 +48,17 @@ public class MonitorControllerImpl implements MonitorController {
     public ResponseEntity<?> findById(@PathVariable(name = "id") UUID monitorId) {
         return ResponseEntity.status(HttpStatus.OK)
                 .body(ResponseDto.fromData(service.findById(monitorId), HttpStatus.OK, MessageCommonsConstants.FIND_ID_SUCCESS_MESSAGE));
+    }
+
+    @Override
+    @GetMapping("/nearest")
+    public ResponseEntity<?> findNearestActiveMonitors(
+            @RequestParam String zipCode,
+            @RequestParam(required = false) BigDecimal size,
+            @RequestParam(required = false) String type,
+            @RequestParam(defaultValue = "3") int limit) {
+        List<MonitorsResponseDto> monitors = service.findNearestActiveMonitors(zipCode, size, type, limit);
+        String message = monitors.isEmpty() ? MessageCommonsConstants.FIND_FILTER_EMPTY_MESSAGE : MessageCommonsConstants.FIND_ALL_SUCCESS_MESSAGE;
+        return ResponseEntity.status(HttpStatus.OK).body(ResponseDto.fromData(monitors, HttpStatus.OK, message));
     }
 }

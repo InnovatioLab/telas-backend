@@ -1,4 +1,4 @@
-package br.gov.ce.ematerce.raizescearenses.shared.constants;
+package com.marketingproject.shared.constants;
 
 import org.springframework.http.HttpMethod;
 
@@ -6,72 +6,43 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-public class RotasPermitidasConstants {
-  protected static final Map<HttpMethod, List<String>> ROTAS_PERMITIDAS = new HashMap<>();
+public class AllowedEndpointsConstants {
+    protected static final Map<HttpMethod, List<String>> ALLOWED_ENDPOINTS = new HashMap<>();
 
-  static {
-    ROTAS_PERMITIDAS.put(HttpMethod.GET, List.of(
-            "/health-check",
-            "/qa",
-            "/qa/**",
-            "/usuario/{login}",
-            "/usuario/situacao-cadastro/{login}",
-            "/usuario/perfil/tipo",
-            "/usuario/validar-usuario-cadastrado/{email}",
-            "/usuario/busca-usuario/{identificador}",
-            "/usuario/verificar-whatsapp/{numeroWhatsapp}",
-            "/usuario/produtores",
-            "/usuario/dados-usuario/{id}",
-            "/termo-condicao/consulta",
-            "/grupo-categoria/**",
-            "/oferta/dados-oferta/{id}",
-            "/oferta/usuario/dados-oferta/{id}",
-            "/swagger-ui/**",
-            "/v*/api-docs/**",
-            "/actuator/**",
-            "/swagger-resources/**",
-            "/docs"
-    ));
-    ROTAS_PERMITIDAS.put(HttpMethod.POST, List.of(
-            "/usuario",
-            "/usuario/upload/{login}",
-            "/usuario/reenviar-codigo/{login}",
-            "/newsletter/inscricao-newsletter",
-            "/oferta/dados-oferta",
-            "/oferta/filtro",
-            "/auth/login",
-            "/auth/login-social",
-            "/auth/atualizar-token",
-            "/auth/recuperar-senha/{login}"
-    ));
-    ROTAS_PERMITIDAS.put(HttpMethod.PATCH, List.of(
-            "/usuario/criar-senha/{login}",
-            "/usuario/validacao-codigo/{login}",
-            "/usuario/alterar-contato/{login}",
-            "/usuario/atualiza-dados-perfil/{id}",
-            "/auth/redefinir-senha/{login}"
-    ));
-    ROTAS_PERMITIDAS.put(HttpMethod.DELETE, List.of(
-            "/qa",
-            "/qa/**",
-            "/usuario/inativar-firebase/{uid}",
-            "/auth/invalidar-codigo-senha/{login}"
-    ));
-    ROTAS_PERMITIDAS.put(HttpMethod.PUT, List.of(
-            "/usuario/{id}"
-    ));
-  }
+    static {
+        ALLOWED_ENDPOINTS.put(HttpMethod.GET, List.of(
+                "/clients/{identificationNumber}",
+                "/clients/{id}",
+                "/monitors/nearest",
+                "/swagger-ui/**",
+                "/v*/api-docs/**",
+                "/actuator/**",
+                "/swagger-resources/**",
+                "/docs"
+        ));
+        ALLOWED_ENDPOINTS.put(HttpMethod.POST, List.of(
+                "/clients",
+                "/clients/resend-code/{identification}",
+                "/auth/login",
+                "/auth/recovery-password/{identificationNumber}"
+        ));
+        ALLOWED_ENDPOINTS.put(HttpMethod.PATCH, List.of(
+                "/clients/create-password/{identification}",
+                "/clients/update-contact/{identification}",
+                "/auth/reset-password/{identificationNumber}"
+        ));
+    }
 
-  private RotasPermitidasConstants() {
-  }
+    private AllowedEndpointsConstants() {
+    }
 
-  public static Map<HttpMethod, List<String>> getRotasPermitidas() {
-    return ROTAS_PERMITIDAS;
-  }
+    public static Map<HttpMethod, List<String>> getAllowedEndpoints() {
+        return ALLOWED_ENDPOINTS;
+    }
 
-  public static boolean isRotaPermitida(HttpMethod method, String uri) {
-    String normalizedUri = uri.replaceAll("/\\d+", "/*").replaceAll("/[a-f0-9\\-]{36}", "/*").replaceAll("\\{\\w+\\}", "*");
-    return ROTAS_PERMITIDAS.getOrDefault(method, List.of()).stream()
-            .anyMatch(allowedUri -> allowedUri.replaceAll("\\{\\w+\\}", "*").equals(normalizedUri));
-  }
+    public static boolean isAllowedURL(HttpMethod method, String uri) {
+        String normalizedUri = uri.replaceAll("/\\d+", "/*").replaceAll("/[a-f0-9\\-]{36}", "/*").replaceAll("\\{\\w+\\}", "*");
+        return ALLOWED_ENDPOINTS.getOrDefault(method, List.of()).stream()
+                .anyMatch(allowedUri -> allowedUri.replaceAll("\\{\\w+\\}", "*").equals(normalizedUri));
+    }
 }

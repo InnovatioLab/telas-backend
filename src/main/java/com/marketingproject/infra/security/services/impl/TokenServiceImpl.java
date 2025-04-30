@@ -12,7 +12,6 @@ import com.marketingproject.shared.constants.valitation.AuthValidationMessageCon
 import lombok.RequiredArgsConstructor;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import org.bson.Document;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -20,6 +19,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
+import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
@@ -29,7 +29,7 @@ import java.util.Set;
 public class TokenServiceImpl implements TokenService {
     private final Logger log = LogManager.getLogger(TokenServiceImpl.class);
 
-    @Value("${api.secutiry.token.secret}")
+    @Value("${api.security.token.secret}")
     private String secret;
 
     @Override
@@ -38,12 +38,17 @@ public class TokenServiceImpl implements TokenService {
         try {
             Algorithm algorithm = Algorithm.HMAC256(secret);
             AuthenticatedUser user = new AuthenticatedUser(client);
+
+            Map<String, Object> payload = Map.of(
+                    SharedConstants.PERMISSIONS, new ArrayList<>(getPermissions(user)),
+                    "businessName", client.getBusinessName(),
+                    "identificationNumber", client.getIdentificationNumber()
+            );
+
             return JWT.create()
                     .withIssuer(SharedConstants.PROJECT_NAME)
                     .withSubject(client.getId().toString())
-                    .withPayload(getPermissions(user).toJson())
-                    .withPayload(Map.of("businessName", client.getBusinessName()))
-                    .withPayload(Map.of("identificationNumber", client.getIdentificationNumber()))
+                    .withPayload(payload)
                     .withExpiresAt(genExpirationDate())
                     .sign(algorithm);
         } catch (JWTCreationException ex) {
@@ -61,7 +66,8 @@ public class TokenServiceImpl implements TokenService {
                     .withIssuer(SharedConstants.PROJECT_NAME)
                     .build()
                     .verify(token)
-                    .getSubject();
+                    .getClaim("identificationNumber")
+                    .asString();
         } catch (JWTVerificationException ex) {
             log.error("Error while verifying JWT token, message: {}", ex.getMessage());
             return "";
@@ -75,11 +81,11 @@ public class TokenServiceImpl implements TokenService {
     }
 
 
-    Document getPermissions(AuthenticatedUser authenticatedUser) {
+    Set<String> getPermissions(AuthenticatedUser authenticatedUser) {
         Set<String> set = new HashSet<>();
         authenticatedUser.getAuthorities().forEach(permission ->
                 set.add(String.valueOf(permission))
         );
-        return new Document(SharedConstants.PERMISSIONS, set);
+        return set;
     }
 }

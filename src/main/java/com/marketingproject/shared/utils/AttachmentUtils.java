@@ -11,7 +11,7 @@ public class AttachmentUtils {
     }
 
     public static String format(Attachment attachment) {
-        return attachment.getId().toString() + DOT + attachment.getType();
+        return attachment.getId().toString() + DOT + getType(attachment.getName());
     }
 
     public static String format(AdvertisingAttachment attachment) {

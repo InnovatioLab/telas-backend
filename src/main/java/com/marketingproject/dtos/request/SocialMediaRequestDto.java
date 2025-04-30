@@ -1,6 +1,5 @@
 package com.marketingproject.dtos.request;
 
-
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import com.marketingproject.infra.exceptions.BusinessRuleException;
 import com.marketingproject.shared.constants.valitation.ClientValidationMessages;
@@ -9,6 +8,7 @@ import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
+import org.hibernate.validator.constraints.URL;
 
 import java.io.Serial;
 import java.io.Serializable;
@@ -21,15 +21,19 @@ public class SocialMediaRequestDto implements Serializable {
     @Serial
     private static final long serialVersionUID = -3963846843873646628L;
 
+    @URL(message = "Invalid Instagram URL")
     @JsonDeserialize(using = TrimStringDeserializer.class)
     private String instagramUrl;
 
+    @URL(message = "Invalid Facebook URL")
     @JsonDeserialize(using = TrimStringDeserializer.class)
     private String facebookUrl;
 
+    @URL(message = "Invalid LinkedIn URL")
     @JsonDeserialize(using = TrimStringDeserializer.class)
     private String linkedinUrl;
 
+    @URL(message = "Invalid X URL")
     @JsonDeserialize(using = TrimStringDeserializer.class)
     private String xUrl;
 
@@ -38,5 +42,4 @@ public class SocialMediaRequestDto implements Serializable {
             throw new BusinessRuleException(ClientValidationMessages.SOCIAL_MEDIA_REQUIRED);
         }
     }
-
 }

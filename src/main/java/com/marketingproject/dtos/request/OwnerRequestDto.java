@@ -2,10 +2,12 @@ package com.marketingproject.dtos.request;
 
 
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
+import com.marketingproject.infra.exceptions.BusinessRuleException;
 import com.marketingproject.shared.constants.SharedConstants;
 import com.marketingproject.shared.constants.valitation.ContactValidationMessages;
 import com.marketingproject.shared.constants.valitation.OwnerValidationMessages;
 import com.marketingproject.shared.utils.TrimStringDeserializer;
+import com.marketingproject.shared.utils.ValidateDataUtils;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.Pattern;
@@ -27,7 +29,7 @@ public class OwnerRequestDto implements Serializable {
     private static final long serialVersionUID = -3963846843873646628L;
 
     @NotEmpty(message = OwnerValidationMessages.IDENTIFICATION_NUMBER_REQUIRED)
-    @Pattern(regexp = SharedConstants.REGEX_IDENTIFICATION_NUMBER_OWNER, message = OwnerValidationMessages.INVALID_SSN)
+//    @Pattern(regexp = SharedConstants.REGEX_IDENTIFICATION_NUMBER_OWNER, message = OwnerValidationMessages.INVALID_SSN)
     @JsonDeserialize(using = TrimStringDeserializer.class)
     private String identificationNumber;
 
@@ -50,4 +52,10 @@ public class OwnerRequestDto implements Serializable {
     @Email(message = ContactValidationMessages.EMAIL_INVALID)
     @JsonDeserialize(using = TrimStringDeserializer.class)
     private String email;
+
+    public void validate() {
+        if (ValidateDataUtils.isNullOrEmptyString(phone) && ValidateDataUtils.isNullOrEmptyString(email)) {
+            throw new BusinessRuleException(OwnerValidationMessages.CONTACT_REQUIRED);
+        }
+    }
 }

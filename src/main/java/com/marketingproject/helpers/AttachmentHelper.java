@@ -8,6 +8,7 @@ import com.marketingproject.entities.Client;
 import com.marketingproject.infra.exceptions.BusinessRuleException;
 import com.marketingproject.repositories.AdvertisingAttachmentRepository;
 import com.marketingproject.repositories.AttachmentRepository;
+import com.marketingproject.repositories.MonitorRepository;
 import com.marketingproject.services.BucketService;
 import com.marketingproject.shared.constants.valitation.AttachmentValidationMessages;
 import com.marketingproject.shared.utils.AttachmentUtils;
@@ -17,6 +18,7 @@ import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.io.ByteArrayInputStream;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 import java.util.UUID;
@@ -26,6 +28,7 @@ import java.util.UUID;
 public class AttachmentHelper {
     private final AttachmentRepository attachmentRepository;
     private final AdvertisingAttachmentRepository advertisingAttachmentRepository;
+    private final MonitorRepository monitorRepository;
     private final BucketService bucketService;
 
     @Transactional
@@ -79,47 +82,55 @@ public class AttachmentHelper {
 
         if (isAdvertisingAttachment) {
             List<AdvertisingAttachment> advertisingAttachmentsToDelete = client.getAdvertisingAttachments().stream()
-                    .filter(attachment -> attachmentIds.contains(attachment.getId()))
+                    .filter(attachment -> !attachmentIds.contains(attachment.getId()))
                     .toList();
 
-            client.getAdvertisingAttachments().removeAll(advertisingAttachmentsToDelete);
             removeAdvertisingAttachments(advertisingAttachmentsToDelete, client);
         } else {
             List<Attachment> attachmentsToDelete = client.getAttachments().stream()
-                    .filter(attachment -> attachmentIds.contains(attachment.getId()))
+                    .filter(attachment -> !attachmentIds.contains(attachment.getId()))
                     .toList();
 
-            client.getAttachments().removeAll(attachmentsToDelete);
             removeAttachment(attachmentsToDelete, client);
         }
     }
 
     void removeAttachment(List<Attachment> attachmentsToDelete, Client client) {
-        // Remove os relacionamentos na tabela pivô advertising_attachments_attachments
         attachmentsToDelete.forEach(attachment -> {
-            client.getAdvertisingAttachments().forEach(advertisingAttachment ->
-                    advertisingAttachment.getAttachments().remove(attachment)
-            );
+            List<AdvertisingAttachment> toRemove = new ArrayList<>();
+
+            client.getAdvertisingAttachments().forEach(advertisingAttachment -> {
+                advertisingAttachment.getAttachments().remove(attachment);
+
+                if (advertisingAttachment.getAttachments().isEmpty()) {
+                    removeAdvertisingAttachmentFromMonitors(advertisingAttachment);
+                    toRemove.add(advertisingAttachment);
+                }
+            });
+
+            toRemove.forEach(client.getAdvertisingAttachments()::remove);
+            advertisingAttachmentRepository.deleteAll(toRemove);
+
             bucketService.deleteAttachment(AttachmentUtils.format(attachment));
         });
 
-        client.getAttachments().removeAll(attachmentsToDelete);
+        attachmentsToDelete.forEach(client.getAttachments()::remove);
         attachmentRepository.deleteAll(attachmentsToDelete);
     }
 
     void removeAdvertisingAttachments(List<AdvertisingAttachment> advertisingAttachmentsToDelete, Client client) {
-        // Remove os relacionamentos na tabela pivô monitor_advertising_attachments
         advertisingAttachmentsToDelete.forEach(advertisingAttachment -> {
-            advertisingAttachment.getClient().getAdvertisingAttachments().remove(advertisingAttachment);
+            client.getAdvertisingAttachments().remove(advertisingAttachment);
             advertisingAttachment.getAttachments().clear();
+            removeAdvertisingAttachmentFromMonitors(advertisingAttachment);
             bucketService.deleteAttachment(AttachmentUtils.format(advertisingAttachment));
         });
 
-        // Remove os AdvertisingAttachments da lista de AdvertisingAttachments do Client
-        client.getAdvertisingAttachments().removeAll(advertisingAttachmentsToDelete);
-
-        // Remove os relacionamentos na entidade Monitors
-
         advertisingAttachmentRepository.deleteAll(advertisingAttachmentsToDelete);
+    }
+
+    void removeAdvertisingAttachmentFromMonitors(AdvertisingAttachment advertisingAttachment) {
+        monitorRepository.findByAdvertisingAttachmentId(advertisingAttachment.getId())
+                .forEach(monitor -> monitor.getAdvertisingAttachments().remove(advertisingAttachment));
     }
 }

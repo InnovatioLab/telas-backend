@@ -8,6 +8,7 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.RequestBody;
 
+import java.math.BigDecimal;
 import java.util.UUID;
 
 @Tag(name = "Monitors", description = "Endpoints to manage monitors")
@@ -37,4 +38,9 @@ public interface MonitorController {
             @ApiResponse(responseCode = "404", description = "Monitor not found."),
     })
     ResponseEntity<?> findById(UUID monitorId);
+
+    @Operation(summary = "Endpoint contract to get a list of the nearest active monitors from zipCode", responses = {
+            @ApiResponse(responseCode = "200", description = "Monitors founded successfully.")
+    })
+    ResponseEntity<?> findNearestActiveMonitors(String zipCode, BigDecimal size, String type, int limit);
 }

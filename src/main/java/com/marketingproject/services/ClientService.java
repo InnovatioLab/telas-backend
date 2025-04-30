@@ -5,7 +5,7 @@ import com.marketingproject.dtos.request.AdvertisingAttachmentRequestDto;
 import com.marketingproject.dtos.request.AttachmentRequestDto;
 import com.marketingproject.dtos.request.ClientRequestDto;
 import com.marketingproject.dtos.request.ContactRequestDto;
-import com.marketingproject.entities.Client;
+import com.marketingproject.dtos.response.ClientResponseDto;
 import com.marketingproject.infra.security.model.AuthenticatedUser;
 import com.marketingproject.infra.security.model.PasswordRequestDto;
 import com.marketingproject.infra.security.model.PasswordUpdateRequestDto;
@@ -16,9 +16,9 @@ import java.util.UUID;
 public interface ClientService {
     void save(ClientRequestDto request);
 
-    Client findById(UUID id);
+    ClientResponseDto findById(UUID id);
 
-    Client findActiveByIdentification(String identification);
+    ClientResponseDto getDataFromToken();
 
     void validateCode(String identification, String codigo);
 

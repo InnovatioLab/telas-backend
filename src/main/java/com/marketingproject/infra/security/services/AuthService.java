@@ -5,10 +5,9 @@ import com.marketingproject.infra.security.model.LoginRequestDto;
 import com.marketingproject.infra.security.model.PasswordRequestDto;
 import com.marketingproject.infra.security.model.PasswordUpdateRequestDto;
 import jakarta.validation.Valid;
-import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.validation.annotation.Validated;
 
-public interface AuthService extends UserDetailsService {
+public interface AuthService {
     String login(@Validated LoginRequestDto requestDto) throws JsonProcessingException;
 
     void sendPasswordRecoveryCode(String identificationNumber);
