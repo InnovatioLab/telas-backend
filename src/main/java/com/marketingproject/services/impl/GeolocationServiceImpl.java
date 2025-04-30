@@ -41,8 +41,8 @@ public class GeolocationServiceImpl implements GeolocationService {
 
     @Override
     @Transactional(readOnly = true)
-    public Map<String, Double> getCoordinatesFromZipCode(String zipCode) {
-        GeolocalizationResponseDto response = geolocationRequest(zipCode);
+    public Map<String, Double> getCoordinatesFromZipCode(String zipCode, String countryCode) {
+        GeolocalizationResponseDto response = geolocationRequest(zipCode, countryCode);
         validateResponse(response);
         return Map.of("latitude", response.getLat(), "longitude", response.getLng());
     }
@@ -58,8 +58,8 @@ public class GeolocationServiceImpl implements GeolocationService {
         return fetchGeolocationData(request.getAddress().getCoordinatesParams());
     }
 
-    GeolocalizationResponseDto geolocationRequest(String zipCode) {
-        return fetchGeolocationData(zipCode + ", US");
+    GeolocalizationResponseDto geolocationRequest(String zipCode, String countryCode) {
+        return fetchGeolocationData(zipCode + ", " + countryCode);
     }
 
     GeolocalizationResponseDto fetchGeolocationData(String param) {

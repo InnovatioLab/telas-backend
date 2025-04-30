@@ -3,7 +3,7 @@ package com.marketingproject.controllers.impl;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.marketingproject.controllers.MonitorController;
 import com.marketingproject.dtos.request.MonitorRequestDto;
-import com.marketingproject.dtos.response.MonitorsResponseDto;
+import com.marketingproject.dtos.response.MonitorMinResponseDto;
 import com.marketingproject.dtos.response.ResponseDto;
 import com.marketingproject.services.MonitorService;
 import com.marketingproject.shared.constants.MessageCommonsConstants;
@@ -52,12 +52,13 @@ public class MonitorControllerImpl implements MonitorController {
 
     @Override
     @GetMapping("/nearest")
+    @SecurityRequirement(name = "jwt")
     public ResponseEntity<?> findNearestActiveMonitors(
             @RequestParam String zipCode,
             @RequestParam(required = false) BigDecimal size,
             @RequestParam(required = false) String type,
             @RequestParam(defaultValue = "3") int limit) {
-        List<MonitorsResponseDto> monitors = service.findNearestActiveMonitors(zipCode, size, type, limit);
+        List<MonitorMinResponseDto> monitors = service.findNearestActiveMonitors(zipCode, size, type, limit);
         String message = monitors.isEmpty() ? MessageCommonsConstants.FIND_FILTER_EMPTY_MESSAGE : MessageCommonsConstants.FIND_ALL_SUCCESS_MESSAGE;
         return ResponseEntity.status(HttpStatus.OK).body(ResponseDto.fromData(monitors, HttpStatus.OK, message));
     }

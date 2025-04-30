@@ -5,6 +5,7 @@ import com.marketingproject.dtos.request.AdvertisingAttachmentRequestDto;
 import com.marketingproject.dtos.request.AttachmentRequestDto;
 import com.marketingproject.dtos.request.ClientRequestDto;
 import com.marketingproject.dtos.request.ContactRequestDto;
+import com.marketingproject.dtos.request.filters.ClientFilterRequestDto;
 import com.marketingproject.infra.security.model.PasswordRequestDto;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
@@ -94,4 +95,12 @@ public interface ClientController {
             @ApiResponse(responseCode = "404", description = "Some data not found."),
     })
     ResponseEntity<?> uploadAdvertisingAttachments(@Valid List<AdvertisingAttachmentRequestDto> request, UUID clientId) throws JsonProcessingException;
+
+    @Operation(summary = "Endpoint contract to get paginated clients from filters", responses = {
+            @ApiResponse(responseCode = "200", description = "Records found successfully."),
+            @ApiResponse(responseCode = "400", description = "Request with invalid data."),
+            @ApiResponse(responseCode = "401", description = "Unauthorized."),
+            @ApiResponse(responseCode = "403", description = "Forbidden.")
+    })
+    ResponseEntity<?> findAllFilters(ClientFilterRequestDto request);
 }

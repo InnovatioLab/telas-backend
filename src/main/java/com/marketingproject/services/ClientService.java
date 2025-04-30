@@ -5,7 +5,10 @@ import com.marketingproject.dtos.request.AdvertisingAttachmentRequestDto;
 import com.marketingproject.dtos.request.AttachmentRequestDto;
 import com.marketingproject.dtos.request.ClientRequestDto;
 import com.marketingproject.dtos.request.ContactRequestDto;
+import com.marketingproject.dtos.request.filters.ClientFilterRequestDto;
+import com.marketingproject.dtos.response.ClientMinResponseDto;
 import com.marketingproject.dtos.response.ClientResponseDto;
+import com.marketingproject.dtos.response.PaginationResponseDto;
 import com.marketingproject.infra.security.model.AuthenticatedUser;
 import com.marketingproject.infra.security.model.PasswordRequestDto;
 import com.marketingproject.infra.security.model.PasswordUpdateRequestDto;
@@ -39,4 +42,6 @@ public interface ClientService {
     void uploadAttachments(List<AttachmentRequestDto> request, UUID clientId) throws JsonProcessingException;
 
     void uploadAdvertisingAttachments(List<AdvertisingAttachmentRequestDto> request, UUID clientId) throws JsonProcessingException;
+
+    PaginationResponseDto<List<ClientMinResponseDto>> findAllFilters(ClientFilterRequestDto request);
 }

@@ -44,7 +44,7 @@ public class Address extends BaseAudit implements Serializable {
     private String state;
 
     @Column(name = "country")
-    private String country = "USA";
+    private String country = "US";
 
     @Column(name = "complement")
     private String complement;

@@ -29,6 +29,7 @@ public class AllowedEndpointsConstants {
         ALLOWED_ENDPOINTS.put(HttpMethod.PATCH, List.of(
                 "/clients/create-password/{identification}",
                 "/clients/update-contact/{identification}",
+                "/clients/validate-code/{identification}",
                 "/auth/reset-password/{identificationNumber}"
         ));
     }

@@ -2,11 +2,11 @@ package com.marketingproject.dtos.request;
 
 
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
+import com.marketingproject.dtos.validation.ValidEIN;
 import com.marketingproject.enums.DefaultStatus;
 import com.marketingproject.enums.Role;
 import com.marketingproject.shared.constants.SharedConstants;
 import com.marketingproject.shared.constants.valitation.ClientValidationMessages;
-import com.marketingproject.shared.constants.valitation.OwnerValidationMessages;
 import com.marketingproject.shared.utils.TrimStringDeserializer;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotEmpty;
@@ -35,8 +35,7 @@ public class ClientRequestDto implements Serializable {
     @JsonDeserialize(using = TrimStringDeserializer.class)
     private String businessName;
 
-    @NotEmpty(message = OwnerValidationMessages.IDENTIFICATION_NUMBER_REQUIRED)
-//    @Pattern(regexp = SharedConstants.REGEX_IDENTIFICATION_NUMBER_CLIENT, message = ClientValidationMessages.INVALID_EIN)
+    @ValidEIN
     @JsonDeserialize(using = TrimStringDeserializer.class)
     private String identificationNumber;
 

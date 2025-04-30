@@ -7,5 +7,5 @@ import java.util.Map;
 public interface GeolocationService {
     void getMonitorCoordinates(MonitorRequestDto request);
 
-    Map<String, Double> getCoordinatesFromZipCode(String zipCode);
+    Map<String, Double> getCoordinatesFromZipCode(String zipCode, String countryCode);
 }

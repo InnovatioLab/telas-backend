@@ -2,7 +2,6 @@ package com.marketingproject.infra.security.services.impl;
 
 import com.marketingproject.entities.Client;
 import com.marketingproject.enums.CodeType;
-import com.marketingproject.enums.DefaultStatus;
 import com.marketingproject.infra.exceptions.BusinessRuleException;
 import com.marketingproject.infra.security.model.AuthenticatedUser;
 import com.marketingproject.infra.security.model.LoginRequestDto;
@@ -67,7 +66,7 @@ public class AuthServiceImpl implements AuthService {
         AuthenticatedUser authClient = authenticatedUserService.getLoggedUser();
         Client client = authClient.client();
 
-        if (DefaultStatus.ACTIVE.equals(client.getStatus()) && CodeType.PASSWORD.equals(client.getVerificationCode().getCodeType())) {
+        if (CodeType.PASSWORD.equals(client.getVerificationCode().getCodeType())) {
             clientService.updatePassword(request, authClient);
         }
     }

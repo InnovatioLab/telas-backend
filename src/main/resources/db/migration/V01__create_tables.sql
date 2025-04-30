@@ -254,7 +254,7 @@ CREATE TABLE "addresses"
   "zip_code"        VARCHAR(10)              NOT NULL,
   "city"            VARCHAR(50)              NOT NULL,
   "state"           VARCHAR(2)               NOT NULL,
-  "country"         VARCHAR(100)             NOT NULL DEFAULT 'USA',
+  "country"         VARCHAR(100)             NOT NULL DEFAULT 'US',
   "complement"      VARCHAR(100),
   "client_id"       UUID                     NULL     DEFAULT NULL,
   "username_create" VARCHAR(255)             NULL     DEFAULT NULL,

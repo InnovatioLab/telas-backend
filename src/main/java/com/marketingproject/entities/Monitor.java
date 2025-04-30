@@ -1,6 +1,5 @@
 package com.marketingproject.entities;
 
-import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
@@ -57,7 +56,6 @@ public class Monitor extends BaseAudit implements Serializable {
     @JoinColumn(name = "address_id", referencedColumnName = "id")
     private Address address;
 
-    @JsonIgnore
     @ManyToMany
     @JoinTable(
             name = "monitors_advertising_attachments",

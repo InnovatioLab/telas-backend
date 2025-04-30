@@ -6,6 +6,9 @@ import com.marketingproject.dtos.request.AdvertisingAttachmentRequestDto;
 import com.marketingproject.dtos.request.AttachmentRequestDto;
 import com.marketingproject.dtos.request.ClientRequestDto;
 import com.marketingproject.dtos.request.ContactRequestDto;
+import com.marketingproject.dtos.request.filters.ClientFilterRequestDto;
+import com.marketingproject.dtos.response.ClientMinResponseDto;
+import com.marketingproject.dtos.response.PaginationResponseDto;
 import com.marketingproject.dtos.response.ResponseDto;
 import com.marketingproject.infra.security.model.PasswordRequestDto;
 import com.marketingproject.services.ClientService;
@@ -107,5 +110,16 @@ public class ClientControllerImpl implements ClientController {
         service.uploadAdvertisingAttachments(request, clientId);
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(ResponseDto.fromData(null, HttpStatus.CREATED, MessageCommonsConstants.UPLOAD_SUCCESS_MESSAGE));
+    }
+
+    @Override
+    @GetMapping("/filters")
+    @SecurityRequirement(name = "jwt")
+    public ResponseEntity<?> findAllFilters(ClientFilterRequestDto request) {
+        PaginationResponseDto<List<ClientMinResponseDto>> response = service.findAllFilters(request);
+
+        String msg = response.getList().isEmpty() ? MessageCommonsConstants.FIND_FILTER_EMPTY_MESSAGE : MessageCommonsConstants.FIND_ALL_SUCCESS_MESSAGE;
+
+        return ResponseEntity.status(HttpStatus.OK).body(ResponseDto.fromData(response, HttpStatus.OK, msg));
     }
 }

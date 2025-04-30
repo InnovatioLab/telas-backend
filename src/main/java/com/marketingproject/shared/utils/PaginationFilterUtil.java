@@ -1,6 +1,6 @@
 package com.marketingproject.shared.utils;
 
-import com.marketingproject.dtos.request.PaginationRequestDto;
+import com.marketingproject.dtos.request.filters.PaginationRequestDto;
 import com.marketingproject.infra.exceptions.BusinessRuleException;
 import com.marketingproject.shared.constants.MessageCommonsConstants;
 import org.springframework.data.domain.PageRequest;

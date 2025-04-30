@@ -1,18 +1,18 @@
 package com.marketingproject.dtos.response;
 
-import com.marketingproject.entities.*;
+import com.marketingproject.entities.Client;
+import com.marketingproject.entities.Contact;
+import com.marketingproject.entities.Owner;
 import com.marketingproject.enums.DefaultStatus;
 import com.marketingproject.enums.Role;
 import lombok.Getter;
 
 import java.io.Serial;
 import java.io.Serializable;
-import java.util.List;
-import java.util.Set;
 import java.util.UUID;
 
 @Getter
-public final class ClientResponseDto implements Serializable {
+public final class ClientMinResponseDto implements Serializable {
     @Serial
     private static final long serialVersionUID = 5288515525105234502L;
 
@@ -32,18 +32,8 @@ public final class ClientResponseDto implements Serializable {
 
     private final Owner owner;
 
-    private final SocialMedia socialMedia;
 
-    private final Set<Address> addresses;
-
-    private final List<LinkResponseDto> attachments;
-
-    private final List<LinkResponseDto> advertisingAttachments;
-
-    private final List<Notification> notifications;
-
-
-    public ClientResponseDto(Client entity, List<LinkResponseDto> attachmentUrls, List<LinkResponseDto> advertisingAttachmentUrls) {
+    public ClientMinResponseDto(Client entity) {
         id = entity.getId();
         businessName = entity.getBusinessName();
         identificationNumber = entity.getIdentificationNumber();
@@ -52,10 +42,5 @@ public final class ClientResponseDto implements Serializable {
         status = entity.getStatus();
         contact = entity.getContact();
         owner = entity.getOwner();
-        socialMedia = entity.getSocialMedia();
-        addresses = entity.getAddresses();
-        attachments = attachmentUrls;
-        advertisingAttachments = advertisingAttachmentUrls;
-        notifications = entity.getNotifications();
     }
 }

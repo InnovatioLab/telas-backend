@@ -59,7 +59,7 @@ public class Client extends BaseAudit implements Serializable {
 
     @JsonIgnore
     @NotAudited
-    @OneToOne(fetch = FetchType.LAZY)
+    @OneToOne
     @JoinColumn(name = "verification_code_id", referencedColumnName = "id", nullable = false)
     private VerificationCode verificationCode;
 
@@ -75,7 +75,7 @@ public class Client extends BaseAudit implements Serializable {
     @JoinColumn(name = "social_media_id", referencedColumnName = "id")
     private SocialMedia socialMedia;
 
-    @OneToMany(mappedBy = "client", cascade = CascadeType.ALL)
+    @OneToMany(mappedBy = "client", cascade = CascadeType.ALL, fetch = FetchType.EAGER)
     private Set<Address> addresses = new HashSet<>();
 
     @OneToMany(mappedBy = "client", cascade = CascadeType.ALL)

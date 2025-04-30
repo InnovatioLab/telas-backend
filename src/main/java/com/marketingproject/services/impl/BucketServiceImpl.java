@@ -84,7 +84,9 @@ public class BucketServiceImpl implements BucketService {
         return objectNames.stream().map(this::getLink).collect(Collectors.toList());
     }
 
-    protected String getLink(String objectName) {
+    @Override
+    @Transactional
+    public String getLink(String objectName) {
         try {
             return minioClient.getPresignedObjectUrl(
                     GetPresignedObjectUrlArgs.builder()

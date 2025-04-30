@@ -7,7 +7,7 @@ import java.io.Serial;
 import java.io.Serializable;
 
 @Getter
-public final class MonitorsResponseDto implements Serializable {
+public final class MonitorMinResponseDto implements Serializable {
     @Serial
     private static final long serialVersionUID = -2929124221854520175L;
 
@@ -17,7 +17,7 @@ public final class MonitorsResponseDto implements Serializable {
     private final double size;
     private final double distanceInKm;
 
-    public MonitorsResponseDto(Monitor monitor, double distance) {
+    public MonitorMinResponseDto(Monitor monitor, double distance) {
         id = monitor.getId().toString();
         active = monitor.isActive();
         type = monitor.getType().name();
@@ -25,7 +25,7 @@ public final class MonitorsResponseDto implements Serializable {
         distanceInKm = distance;
     }
 
-    public MonitorsResponseDto(String id, boolean active, String type, double size, double distance) {
+    public MonitorMinResponseDto(String id, boolean active, String type, double size, double distance) {
         this.id = id;
         this.active = active;
         this.type = type;

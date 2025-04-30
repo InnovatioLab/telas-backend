@@ -15,28 +15,11 @@ import java.util.UUID;
 public interface MonitorRepository extends JpaRepository<Monitor, UUID> {
     @Override
     @NotNull
-    @Query("SELECT m FROM Monitor m LEFT JOIN m.advertisingAttachments WHERE m.id = :id")
+    @Query("SELECT m FROM Monitor m LEFT JOIN FETCH m.advertisingAttachments WHERE m.id = :id")
     Optional<Monitor> findById(@NotNull UUID id);
 
     @Query("SELECT m FROM Monitor m JOIN m.advertisingAttachments aa WHERE aa.id = :advertisingAttachmentId")
     List<Monitor> findByAdvertisingAttachmentId(UUID advertisingAttachmentId);
-
-//    @Query(value = """
-//                SELECT m.id, m.fl_active, m.type, m.size_in_inches, m.latitude, m.longitude,
-//                       ROUND(
-//                           CAST(
-//                               ST_Distance(
-//                                   ST_SetSRID(ST_MakePoint(:longitude, :latitude), 4326)::geography,
-//                                   ST_SetSRID(ST_MakePoint(m.longitude, m.latitude), 4326)::geography
-//                               ) / 1000 AS numeric
-//                           ), 2
-//                       ) AS distance
-//                FROM monitors m
-//                WHERE m.fl_active = TRUE
-//                ORDER BY distance
-//                LIMIT :limit
-//            """, nativeQuery = true)
-//    List<Object[]> findNearestActiveMonitorsWithDistance(double latitude, double longitude, int limit);
 
     @Query(value = """
                 SELECT m.id, m.fl_active, m.type, m.size_in_inches, m.latitude, m.longitude,

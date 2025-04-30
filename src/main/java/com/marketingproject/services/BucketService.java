@@ -9,4 +9,6 @@ public interface BucketService {
     void deleteAttachment(String fileName);
 
     List<String> getLinksDownload(List<String> objectNames);
+
+    String getLink(String objectName);
 }

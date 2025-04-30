@@ -2,6 +2,7 @@ package com.marketingproject.dtos.request;
 
 
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
+import com.marketingproject.dtos.validation.ValidSSN;
 import com.marketingproject.infra.exceptions.BusinessRuleException;
 import com.marketingproject.shared.constants.SharedConstants;
 import com.marketingproject.shared.constants.valitation.ContactValidationMessages;
@@ -28,8 +29,7 @@ public class OwnerRequestDto implements Serializable {
     @Serial
     private static final long serialVersionUID = -3963846843873646628L;
 
-    @NotEmpty(message = OwnerValidationMessages.IDENTIFICATION_NUMBER_REQUIRED)
-//    @Pattern(regexp = SharedConstants.REGEX_IDENTIFICATION_NUMBER_OWNER, message = OwnerValidationMessages.INVALID_SSN)
+    @ValidSSN
     @JsonDeserialize(using = TrimStringDeserializer.class)
     private String identificationNumber;
 

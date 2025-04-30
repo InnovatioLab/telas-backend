@@ -6,7 +6,11 @@ import com.marketingproject.dtos.request.AdvertisingAttachmentRequestDto;
 import com.marketingproject.dtos.request.AttachmentRequestDto;
 import com.marketingproject.dtos.request.ClientRequestDto;
 import com.marketingproject.dtos.request.ContactRequestDto;
+import com.marketingproject.dtos.request.filters.ClientFilterRequestDto;
+import com.marketingproject.dtos.response.ClientMinResponseDto;
 import com.marketingproject.dtos.response.ClientResponseDto;
+import com.marketingproject.dtos.response.LinkResponseDto;
+import com.marketingproject.dtos.response.PaginationResponseDto;
 import com.marketingproject.entities.Client;
 import com.marketingproject.entities.Contact;
 import com.marketingproject.entities.VerificationCode;
@@ -22,13 +26,20 @@ import com.marketingproject.infra.security.model.PasswordRequestDto;
 import com.marketingproject.infra.security.model.PasswordUpdateRequestDto;
 import com.marketingproject.infra.security.services.AuthenticatedUserService;
 import com.marketingproject.repositories.ClientRepository;
+import com.marketingproject.services.BucketService;
 import com.marketingproject.services.ClientService;
 import com.marketingproject.services.VerificationCodeService;
 import com.marketingproject.shared.audit.CustomRevisionListener;
 import com.marketingproject.shared.constants.SharedConstants;
 import com.marketingproject.shared.constants.valitation.AuthValidationMessageConstants;
 import com.marketingproject.shared.constants.valitation.ClientValidationMessages;
+import com.marketingproject.shared.utils.AttachmentUtils;
+import com.marketingproject.shared.utils.PaginationFilterUtil;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -45,6 +56,7 @@ public class ClientServiceImpl implements ClientService {
     private final AttachmentHelper attachmentHelper;
     private final VerificationCodeService verificationCodeService;
     private final AuthenticatedUserService authenticatedUserService;
+    private final BucketService bucketService;
 
     @Override
     @Transactional
@@ -53,7 +65,6 @@ public class ClientServiceImpl implements ClientService {
 
         Client client = new Client(request);
         VerificationCode verificationCode = verificationCodeService.save(CodeType.CONTACT, client);
-        verificationCode.setValidated(true);
         client.setVerificationCode(verificationCode);
 
 //        MessagingDataDto messagingData = new MessagingDataDto(client, verificationCode, client.getContact().getContactPreference());
@@ -62,22 +73,19 @@ public class ClientServiceImpl implements ClientService {
         repository.save(client);
     }
 
-
     @Override
     @Transactional(readOnly = true)
     public ClientResponseDto findById(UUID id) {
-        return repository.findActiveById(id)
-                .map(ClientResponseDto::new)
-                .orElseThrow(() -> new ResourceNotFoundException(ClientValidationMessages.USER_NOT_FOUND));
+        return buildClientResponse(repository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException(ClientValidationMessages.USER_NOT_FOUND)));
     }
 
     @Override
     @Transactional(readOnly = true)
     public ClientResponseDto getDataFromToken() {
         UUID clientId = authenticatedUserService.getLoggedUser().client().getId();
-        return repository.findActiveById(clientId)
-                .map(ClientResponseDto::new)
-                .orElseThrow(() -> new ResourceNotFoundException(ClientValidationMessages.USER_NOT_FOUND));
+        return buildClientResponse(repository.findActiveById(clientId)
+                .orElseThrow(() -> new ResourceNotFoundException(ClientValidationMessages.USER_NOT_FOUND)));
     }
 
     @Override
@@ -247,6 +255,57 @@ public class ClientServiceImpl implements ClientService {
 
         attachmentHelper.saveAttachments(request, client);
         repository.save(client);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public PaginationResponseDto<List<ClientMinResponseDto>> findAllFilters(ClientFilterRequestDto request) {
+        authenticatedUserService.validateAdmin();
+        Sort order = request.setOrdering();
+
+        Pageable pageable = PaginationFilterUtil.getPageable(request, order);
+        Specification<Client> filter = PaginationFilterUtil.addSpecificationFilter(
+                null,
+                request.getGenericFilter(),
+                this::filterClients
+        );
+
+        Page<Client> page = repository.findAll(filter, pageable);
+        List<ClientMinResponseDto> response = page.stream().map(ClientMinResponseDto::new).toList();
+        return PaginationResponseDto.fromResult(response, (int) page.getTotalElements(), page.getTotalPages(), request.getPage());
+    }
+
+    ClientResponseDto buildClientResponse(Client client) {
+        List<LinkResponseDto> attachmentLinks = client.getAttachments().stream()
+                .map(attachment -> new LinkResponseDto(attachment.getId(), bucketService.getLink(AttachmentUtils.format(attachment))))
+                .toList();
+
+        List<LinkResponseDto> advertisingAttachmentLinks = client.getAdvertisingAttachments().stream()
+                .map(attachment -> new LinkResponseDto(attachment.getId(), bucketService.getLink(AttachmentUtils.format(attachment))))
+                .toList();
+
+        return new ClientResponseDto(client, attachmentLinks, advertisingAttachmentLinks);
+    }
+
+    Specification<Client> filterClients(Specification<Client> specification, String genericFilter) {
+        String filter = "%" + genericFilter.toLowerCase() + "%";
+
+        return specification.and((root, query, criteriaBuilder) -> criteriaBuilder.or(
+                criteriaBuilder.like(criteriaBuilder.lower(
+                        criteriaBuilder.concat(
+                                criteriaBuilder.concat(root.get("owner").get("firstName"), " "),
+                                root.get("owner").get("lastName"))), filter),
+                criteriaBuilder.like(criteriaBuilder.lower(root.get("businessName")), filter),
+                criteriaBuilder.like(criteriaBuilder.lower(root.get("businessField")), filter),
+                criteriaBuilder.like(root.get("contact").get("email"), filter),
+                criteriaBuilder.like(root.get("owner").get("email"), filter),
+                criteriaBuilder.equal(root.get("contact").get("phone"), genericFilter),
+                criteriaBuilder.equal(root.get("owner").get("phone"), genericFilter),
+                criteriaBuilder.like(root.get("identificationNumber"), filter),
+                criteriaBuilder.like(root.get("owner").get("identificationNumber"), filter),
+                criteriaBuilder.equal(root.get("status"), genericFilter),
+                criteriaBuilder.equal(root.get("role"), genericFilter)
+        ));
     }
 
     protected Client findActiveByIdentification(String identification) {
