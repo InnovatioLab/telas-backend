@@ -46,4 +46,8 @@ public record AuthenticatedUser(Client client) implements UserDetails {
     public boolean isEnabled() {
         return DefaultStatus.ACTIVE.equals(client.getStatus());
     }
+
+    public boolean isTermsAccepted() {
+        return client.isTermsAccepted();
+    }
 }

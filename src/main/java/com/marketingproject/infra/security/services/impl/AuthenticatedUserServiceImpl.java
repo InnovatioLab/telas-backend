@@ -9,6 +9,7 @@ import com.marketingproject.shared.constants.valitation.AuthValidationMessageCon
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -54,5 +55,15 @@ public class AuthenticatedUserServiceImpl implements AuthenticatedUserService {
 
         throw new ForbiddenException(AuthValidationMessageConstants.ERROR_NO_PERMISSION);
 
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public void verifyTermsAccepted(UserDetails user) {
+        AuthenticatedUser authenticatedUser = (AuthenticatedUser) user;
+
+        if (!authenticatedUser.isTermsAccepted()) {
+            throw new ForbiddenException(AuthValidationMessageConstants.ERROR_TERMS_NOT_ACCEPTED);
+        }
     }
 }

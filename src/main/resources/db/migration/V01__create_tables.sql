@@ -65,6 +65,7 @@ CREATE TABLE "social_medias"
   "facebook_url"    TEXT                     NULL     DEFAULT NULL,
   "linkedin_url"    TEXT                     NULL     DEFAULT NULL,
   "x_url"           TEXT                     NULL     DEFAULT NULL,
+  "tiktok_url"      TEXT                     NULL     DEFAULT NULL,
   "username_create" VARCHAR(255)             NULL     DEFAULT NULL,
   "username_update" VARCHAR(255)             NULL     DEFAULT NULL,
   "created_at"      TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT (now()),
@@ -78,10 +79,22 @@ CREATE TABLE "social_medias_aud"
   "facebook_url"  TEXT     NULL DEFAULT NULL,
   "linkedin_url"  TEXT     NULL DEFAULT NULL,
   "x_url"         TEXT     NULL DEFAULT NULL,
+  "tiktok_url"    TEXT     NULL DEFAULT NULL,
   "audit_id"      BIGINT   NOT NULL,
   "audit_type"    SMALLINT NULL DEFAULT NULL,
   CONSTRAINT "pk_tbsocial_medias_aud" PRIMARY KEY ("id", "audit_id"),
   CONSTRAINT "fk_tbsocial_medias_aud_tbaudit" FOREIGN KEY ("audit_id") REFERENCES "audit" ("audit_id") ON UPDATE NO ACTION ON DELETE NO ACTION
+);
+
+CREATE TABLE "terms_conditions"
+(
+  "id"              UUID PRIMARY KEY,
+  "version"         VARCHAR(10)              NOT NULL,
+  "content"         VARCHAR(7000)            NOT NULL,
+  "username_create" VARCHAR(255)             NULL     DEFAULT NULL,
+  "username_update" VARCHAR(255)             NULL     DEFAULT NULL,
+  "created_at"      TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT (now()),
+  "updated_at"      TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT (now())
 );
 
 CREATE TABLE "owners"
@@ -117,6 +130,7 @@ CREATE TABLE "clients"
   "id"                    UUID PRIMARY KEY,
   "business_name"         VARCHAR(255)             NOT NULL,
   "identification_number" VARCHAR(9)               NOT NULL UNIQUE,
+  "website_url"           TEXT                     NULL     DEFAULT NULL,
   "password"              TEXT,
   "role"                  VARCHAR(20)              NOT NULL DEFAULT 'CLIENT',
   "business_field"        VARCHAR(50)              NOT NULL,
@@ -127,11 +141,14 @@ CREATE TABLE "clients"
   "social_media_id"       UUID                     NULL     DEFAULT NULL,
   "username_create"       VARCHAR(255)             NULL     DEFAULT NULL,
   "username_update"       VARCHAR(255)             NULL     DEFAULT NULL,
+  "term_condition_id"     UUID                     NULL     DEFAULT NULL,
   "created_at"            TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT (now()),
   "updated_at"            TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT (now()),
   "deleted_at"            TIMESTAMP WITH TIME ZONE NULL     DEFAULT NULL,
   "trial_ends_at"         TIMESTAMP WITH TIME ZONE NULL     DEFAULT NULL,
+  "term_accepted_at"      TIMESTAMP WITH TIME ZONE NULL     DEFAULT NULL,
   CONSTRAINT "fk_client_verification_code" FOREIGN KEY ("verification_code_id") REFERENCES "verification_codes" ("id") ON UPDATE NO ACTION ON DELETE NO ACTION,
+  CONSTRAINT "fk_client_term_condition" FOREIGN KEY ("term_condition_id") REFERENCES "terms_conditions" ("id") ON UPDATE NO ACTION ON DELETE NO ACTION,
   CONSTRAINT "fk_client_contact" FOREIGN KEY ("contact_id") REFERENCES "contacts" ("id") ON UPDATE NO ACTION ON DELETE NO ACTION,
   CONSTRAINT "fk_client_owner" FOREIGN KEY ("owner_id") REFERENCES "owners" ("id") ON UPDATE NO ACTION ON DELETE NO ACTION,
   CONSTRAINT "fk_client_social_media" FOREIGN KEY ("social_media_id") REFERENCES "social_medias" ("id") ON UPDATE NO ACTION ON DELETE SET NULL
@@ -283,31 +300,38 @@ CREATE TABLE "addresses_aud"
 
 CREATE TABLE "monitors"
 (
-  "id"              UUID PRIMARY KEY,
-  "fl_active"       BOOLEAN                           DEFAULT TRUE,
-  "address_id"      UUID                     NOT NULL,
-  "type"            VARCHAR(50)              NOT NULL DEFAULT 'BASIC',
-  "size_in_inches"  NUMERIC(5, 2)            NOT NULL DEFAULT 0.00,
-  "latitude"        DOUBLE PRECISION         NOT NULL,
-  "longitude"       DOUBLE PRECISION         NOT NULL,
-  "username_create" VARCHAR(255)             NULL     DEFAULT NULL,
-  "username_update" VARCHAR(255)             NULL     DEFAULT NULL,
-  "created_at"      TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT (now()),
-  "updated_at"      TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT (now()),
-  CONSTRAINT "fk_monitor_address" FOREIGN KEY ("address_id") REFERENCES "addresses" ("id") ON UPDATE NO ACTION ON DELETE CASCADE
+  "id"                   UUID PRIMARY KEY,
+  "fl_active"            BOOLEAN                           DEFAULT TRUE,
+  "type"                 VARCHAR(50)              NOT NULL DEFAULT 'BASIC',
+  "max_blocks"           INTEGER                  NOT NULL,
+  "location_description" VARCHAR(255)             NULL     DEFAULT NULL,
+  "size_in_inches"       NUMERIC(5, 2)            NOT NULL DEFAULT 0.00,
+  "latitude"             DOUBLE PRECISION         NOT NULL,
+  "longitude"            DOUBLE PRECISION         NOT NULL,
+  "address_id"           UUID                     NOT NULL,
+  "partner_id"           UUID                     NULL     DEFAULT NULL,
+  "username_create"      VARCHAR(255)             NULL     DEFAULT NULL,
+  "username_update"      VARCHAR(255)             NULL     DEFAULT NULL,
+  "created_at"           TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT (now()),
+  "updated_at"           TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT (now()),
+  CONSTRAINT "fk_monitor_address" FOREIGN KEY ("address_id") REFERENCES "addresses" ("id") ON UPDATE NO ACTION ON DELETE CASCADE,
+  CONSTRAINT "fk_monitor_partner" FOREIGN KEY ("partner_id") REFERENCES "clients" ("id") ON UPDATE NO ACTION ON DELETE NO ACTION
 );
 
 CREATE TABLE "monitors_aud"
 (
-  "id"             UUID     NOT NULL,
-  "fl_active"      BOOLEAN,
-  "address_id"     UUID,
-  "type"           VARCHAR(50),
-  "size_in_inches" NUMERIC(5, 2),
-  "latitude"       DOUBLE PRECISION,
-  "longitude"      DOUBLE PRECISION,
-  "audit_id"       BIGINT   NOT NULL,
-  "audit_type"     SMALLINT NULL DEFAULT NULL,
+  "id"                   UUID     NOT NULL,
+  "fl_active"            BOOLEAN,
+  "address_id"           UUID,
+  "partner_id"           UUID,
+  "max_blocks"           INTEGER,
+  "location_description" VARCHAR(255),
+  "type"                 VARCHAR(50),
+  "size_in_inches"       NUMERIC(5, 2),
+  "latitude"             DOUBLE PRECISION,
+  "longitude"            DOUBLE PRECISION,
+  "audit_id"             BIGINT   NOT NULL,
+  "audit_type"           SMALLINT NULL DEFAULT NULL,
   CONSTRAINT "pk_tbmonitors_aud" PRIMARY KEY ("id", "audit_id"),
   CONSTRAINT "fk_tbmonitors_aud_tbaudit" FOREIGN KEY ("audit_id") REFERENCES "audit" ("audit_id") ON UPDATE NO ACTION ON DELETE NO ACTION
 );
@@ -343,6 +367,7 @@ CREATE TABLE "advertising_attachments"
   "name"            VARCHAR(255)             NOT NULL,
   "mime_type"       VARCHAR(15)              NOT NULL,
   "client_id"       UUID                     NOT NULL,
+  "validation"      VARCHAR(15)              NOT NULL DEFAULT 'PENDING',
   "username_create" VARCHAR(255)             NULL     DEFAULT NULL,
   "username_update" VARCHAR(255)             NULL     DEFAULT NULL,
   "created_at"      TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT (now()),
@@ -356,10 +381,39 @@ CREATE TABLE "advertising_attachments_aud"
   "name"       VARCHAR(255),
   "mime_type"  VARCHAR(15),
   "client_id"  UUID,
+  "validation" VARCHAR(15),
   "audit_id"   BIGINT   NOT NULL,
   "audit_type" SMALLINT NULL DEFAULT NULL,
   CONSTRAINT "pk_tbadvertising_attachments_aud" PRIMARY KEY ("id", "audit_id"),
   CONSTRAINT "fk_tbadvertising_attachments_aud_tbaudit" FOREIGN KEY ("audit_id") REFERENCES "audit" ("audit_id") ON UPDATE NO ACTION ON DELETE NO ACTION
+);
+
+CREATE TABLE "refused_attachments"
+(
+  "id"              UUID PRIMARY KEY,
+  "justification"   VARCHAR(100)             NOT NULL,
+  "description"     VARCHAR(255)             NULL     DEFAULT NULL,
+  "attachment_id"   UUID                     NOT NULL,
+  "validator_id"    UUID                     NOT NULL,
+  "username_create" VARCHAR(255)             NULL     DEFAULT NULL,
+  "username_update" VARCHAR(255)             NULL     DEFAULT NULL,
+  "created_at"      TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT (now()),
+  "updated_at"      TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT (now()),
+  CONSTRAINT "fk_refused_attachment_advertising_attachment" FOREIGN KEY ("attachment_id") REFERENCES "advertising_attachments" ("id") ON UPDATE NO ACTION ON DELETE NO ACTION,
+  CONSTRAINT "fk_refused_attachment_validator" FOREIGN KEY ("validator_id") REFERENCES "clients" ("id") ON UPDATE NO ACTION ON DELETE NO ACTION
+);
+
+CREATE TABLE "refused_attachments_aud"
+(
+  "id"            UUID     NOT NULL,
+  "justification" VARCHAR(100),
+  "description"   VARCHAR(255),
+  "attachment_id" UUID,
+  "validator_id"  UUID,
+  "audit_id"      BIGINT   NOT NULL,
+  "audit_type"    SMALLINT NULL DEFAULT NULL,
+  CONSTRAINT "pk_tbarefused_attachments_aud" PRIMARY KEY ("id", "audit_id"),
+  CONSTRAINT "fk_tbarefused_attachments_aud_tbaudit" FOREIGN KEY ("audit_id") REFERENCES "audit" ("audit_id") ON UPDATE NO ACTION ON DELETE NO ACTION
 );
 
 CREATE TABLE "advertising_attachments_attachments"
@@ -380,28 +434,17 @@ CREATE TABLE "advertising_attachments_attachments_aud"
   CONSTRAINT "fk_tbadvertising_attachments_attachments_aud_tbaudit" FOREIGN KEY ("audit_id") REFERENCES "audit" ("audit_id") ON UPDATE NO ACTION ON DELETE NO ACTION
 );
 
--- CREATE TABLE "client_attachments"
--- (
---   "client_id"     UUID NOT NULL,
---   "attachment_id" UUID NOT NULL,
---   PRIMARY KEY ("client_id", "attachment_id"),
---   CONSTRAINT "fk_client_attachment_client" FOREIGN KEY ("client_id") REFERENCES "clients" ("id") ON UPDATE NO ACTION ON DELETE CASCADE,
---   CONSTRAINT "fk_client_attachment_attachment" FOREIGN KEY ("attachment_id") REFERENCES "attachments" ("id") ON UPDATE NO ACTION ON DELETE CASCADE
--- );
--- 
--- CREATE TABLE "client_advertising_attachments"
--- (
---   "client_id"                 UUID NOT NULL,
---   "advertising_attachment_id" UUID NOT NULL,
---   PRIMARY KEY ("client_id", "advertising_attachment_id"),
---   CONSTRAINT "fk_client_advertising_attachment_client" FOREIGN KEY ("client_id") REFERENCES "clients" ("id") ON UPDATE NO ACTION ON DELETE CASCADE,
---   CONSTRAINT "fk_client_advertising_attachment_advertising_attachment" FOREIGN KEY ("advertising_attachment_id") REFERENCES "advertising_attachments" ("id") ON UPDATE NO ACTION ON DELETE CASCADE
--- );
-
 CREATE TABLE "monitors_advertising_attachments"
 (
-  "monitor_id"                UUID NOT NULL,
-  "advertising_attachment_id" UUID NOT NULL,
+  "monitor_id"                UUID                     NOT NULL,
+  "advertising_attachment_id" UUID                     NOT NULL,
+  "display_type"              VARCHAR(50)              NOT NULL DEFAULT 'INTERLEAVED',
+  "block_time"                INTEGER                  NOT NULL,
+  "order"                     INTEGER                  NOT NULL,
+  "username_create"           VARCHAR(255)             NULL     DEFAULT NULL,
+  "username_update"           VARCHAR(255)             NULL     DEFAULT NULL,
+  "created_at"                TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT (now()),
+  "updated_at"                TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT (now()),
   PRIMARY KEY ("monitor_id", "advertising_attachment_id"),
   CONSTRAINT "fk_monitor_advertising_attachment_monitor" FOREIGN KEY ("monitor_id") REFERENCES "monitors" ("id") ON UPDATE NO ACTION ON DELETE CASCADE,
   CONSTRAINT "fk_monitor_advertising_attachment_advertising_attachment" FOREIGN KEY ("advertising_attachment_id") REFERENCES "advertising_attachments" ("id") ON UPDATE NO ACTION ON DELETE CASCADE
@@ -411,15 +454,40 @@ CREATE TABLE "monitors_advertising_attachments_aud"
 (
   "monitor_id"                UUID     NOT NULL,
   "advertising_attachment_id" UUID     NOT NULL,
+  "display_type"              VARCHAR(50),
+  "block_time"                INTEGER,
+  "order"                     INTEGER,
   "audit_id"                  BIGINT   NOT NULL,
   "audit_type"                SMALLINT NULL DEFAULT NULL,
+  CONSTRAINT "pk_tbmonitors_advertising_attachments_aud" PRIMARY KEY ("monitor_id", "advertising_attachment_id", "audit_id"),
   CONSTRAINT "fk_tbmonitors_advertising_attachments_aud_tbaudit" FOREIGN KEY ("audit_id") REFERENCES "audit" ("audit_id") ON UPDATE NO ACTION ON DELETE NO ACTION
+);
+
+CREATE TABLE "clients_monitors"
+(
+  "id"         UUID PRIMARY KEY,
+  "monitor_id" UUID NOT NULL,
+  "client_id"  UUID NOT NULL,
+  CONSTRAINT "fk_client_monitor" FOREIGN KEY ("client_id") REFERENCES "clients" ("id") ON UPDATE NO ACTION ON DELETE NO ACTION,
+  CONSTRAINT "fk_monitor_client" FOREIGN KEY ("monitor_id") REFERENCES "monitors" ("id") ON UPDATE NO ACTION ON DELETE NO ACTION
+);
+
+CREATE TABLE "clients_monitors_aud"
+(
+  "id"         UUID     NOT NULL,
+  "monitor_id" UUID     NOT NULL,
+  "client_id"  UUID     NOT NULL,
+  "audit_id"   BIGINT   NOT NULL,
+  "audit_type" SMALLINT NULL DEFAULT NULL,
+  CONSTRAINT "pk_tbclients_monitors_aud" PRIMARY KEY ("id", "audit_id"),
+  CONSTRAINT "fk_tbclients_monitors_aud_tbaudit" FOREIGN KEY ("audit_id") REFERENCES "audit" ("audit_id") ON UPDATE NO ACTION ON DELETE NO ACTION
 );
 
 CREATE TABLE "notifications"
 (
   "id"              UUID PRIMARY KEY,
   "message"         TEXT                     NOT NULL,
+  "reference"       VARCHAR(255)             NOT NULL,
   "fl_visualized"   BOOLEAN                           DEFAULT FALSE,
   "action_url"      TEXT                     NULL     DEFAULT NULL,
   "client_id"       UUID                     NOT NULL,
@@ -429,6 +497,15 @@ CREATE TABLE "notifications"
   "updated_at"      TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT (now()),
   CONSTRAINT "fk_notification_client" FOREIGN KEY ("client_id") REFERENCES "clients" ("id") ON UPDATE NO ACTION ON DELETE CASCADE
 );
+
+INSERT INTO "terms_conditions" (id, version, content, created_at, updated_at, username_create, username_update)
+VALUES ('eb1f62bf-9d16-45c1-be45-bd52f97dffb2',
+        '0.0.1',
+        'This is a generic condition term for version 0.0.1.',
+        now(),
+        now(),
+        'Virtual Assistant',
+        'Virtual Assistant');
 
 CREATE INDEX idx_clients_identification_number ON clients (identification_number);
 CREATE INDEX idx_monitors_fl_active ON monitors (fl_active);

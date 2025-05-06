@@ -13,8 +13,6 @@ public final class SharedConstants {
     public static final String TEMPLATE_EMAIL_CONTACT_VERIFICATION = "email_contact_confirmation.ftlh";
     public static final String TEMPLATE_EMAIL_RESET_PASSWORD = "email_reset_password.ftlh";
     public static final String EMAIL_SUBJECT_RESET_PASSWORD = "Password Reset - Marketing Project";
-
-    public static final int TAMANHO_PADRAO_NOME_RAZAO_SOCIAL = 100;
     public static final int ZERO = 0;
 
     public static final List<String> FORMATOS_PERMITIDOS_ANEXO = List.of("jpeg", "png");

@@ -27,7 +27,7 @@
             line-height: 42px;
         }
 
-        h1, h3 {
+        h1, h3, .label, .container-link {
             color: #00763B;
         }
 
@@ -69,6 +69,13 @@
             box-shadow: 0px 4px 4px 0px #00000040;
         }
 
+        .container-link {
+            text-align: center;
+            margin: 0 auto;
+            width: 100%;
+            padding-top: 30px;
+        }
+
         .footer {
             color: #131518;
             max-width: 1300px;
@@ -93,40 +100,48 @@
     <div class="content">
         <table role="presentation" style="width: 100%; border-collapse: collapse;">
             <tr class="header">
-                <td style="padding-bottom: 30px; padding-top: 20px;"><h1></h1></td>
+                <td style="padding-bottom: 30px; padding-top: 20px;"><h1>Marketing Project</h1></td>
             </tr>
             <tr>
-                <td style="padding-bottom: 10px;">Hello<strong style="font-weight: 500;"> ${name}</strong></td>
-            </tr>
-            <tr>
-                <td>Good to have you back with us at X!</td>
+                <td style="padding-bottom: 20px;">
+                    Hello, ${recipient}
+                </td>
             </tr>
             <tr>
                 <td style="padding-bottom: 30px;">
-                    To recover your password and access our features, enter the code below on the system validation
-                    screen:
+                    Your attachment has been validated!
                 </td>
             </tr>
             <tr>
-                <td style="text-align:center;background-color:#ffffff;line-height:50px;color: #00763B;">
-                    <h3 style="font-size:26px; font-weight:700;color: #00763B;">Your password recovery code is:
-                        <br> ${verificationCode}</h3>
+                <td style="padding-bottom: 10px;">
+                    <strong>Attachment:</strong> ${attachmentName}
                 </td>
             </tr>
             <tr>
-                <td style="padding-top: 30px;">
-                    <strong>This code is valid for 15 minutes.</strong> If it expires, you can request a new one in the
-                    system.
+                <td style="padding-bottom: 10px;">
+                    <strong>Status:</strong> ${status}
                 </td>
             </tr>
+            <#if justification?has_content>
+                <tr>
+                    <td style="padding-bottom: 10px;">
+                        <strong>Justification:</strong> ${justification}
+                    </td>
+                </tr>
+            </#if>
+            <#if description?has_content>
+                <tr>
+                    <td style="padding-bottom: 10px;">
+                        <strong>Description:</strong> ${description}
+                    </td>
+                </tr>
+            </#if>
             <tr>
-                <td>
-                    If you did not request password recovery, please ignore this email.
-                </td>
-            </tr>
-            <tr>
-                <td>
-                    If you have any questions, our team is available to help!
+                <td class="container-link">
+                    View details<strong>
+                        <br>
+                        <a href="${link}" target="_blank"
+                           style="color: #00763B; text-decoration: none;">Link</a></strong>
                 </td>
             </tr>
         </table>

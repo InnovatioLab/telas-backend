@@ -1,5 +1,6 @@
 package com.marketingproject.entities;
 
+import com.marketingproject.enums.NotificationReference;
 import com.marketingproject.shared.audit.BaseAudit;
 import jakarta.persistence.*;
 import lombok.Getter;
@@ -8,6 +9,7 @@ import lombok.Setter;
 
 import java.io.Serial;
 import java.io.Serializable;
+import java.util.Map;
 import java.util.UUID;
 
 @Getter
@@ -24,6 +26,10 @@ public class Notification extends BaseAudit implements Serializable {
     @Column(name = "id")
     private UUID id;
 
+    @Column(name = "reference", nullable = false)
+    @Enumerated(EnumType.STRING)
+    private NotificationReference reference;
+
     @Column(name = "message", columnDefinition = "TEXT", nullable = false)
     private String message;
 
@@ -36,5 +42,13 @@ public class Notification extends BaseAudit implements Serializable {
     @ManyToOne
     @JoinColumn(name = "client_id", referencedColumnName = "id", nullable = false)
     private Client client;
+
+    public Notification(NotificationReference notificationReference, Client client, Map<String, String> params) {
+        reference = notificationReference;
+        this.client = client;
+        message = notificationReference.getNotificationMessage(params);
+        actionUrl = params.get("link");
+
+    }
 
 }

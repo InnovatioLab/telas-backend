@@ -2,20 +2,15 @@ package com.marketingproject.services.impl;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.marketingproject.dtos.MessagingDataDto;
-import com.marketingproject.dtos.request.AdvertisingAttachmentRequestDto;
-import com.marketingproject.dtos.request.AttachmentRequestDto;
-import com.marketingproject.dtos.request.ClientRequestDto;
-import com.marketingproject.dtos.request.ContactRequestDto;
+import com.marketingproject.dtos.request.*;
 import com.marketingproject.dtos.request.filters.ClientFilterRequestDto;
-import com.marketingproject.dtos.response.ClientMinResponseDto;
-import com.marketingproject.dtos.response.ClientResponseDto;
-import com.marketingproject.dtos.response.LinkResponseDto;
-import com.marketingproject.dtos.response.PaginationResponseDto;
-import com.marketingproject.entities.Client;
-import com.marketingproject.entities.Contact;
-import com.marketingproject.entities.VerificationCode;
+import com.marketingproject.dtos.request.filters.FilterPendingAttachmentRequestDto;
+import com.marketingproject.dtos.response.*;
+import com.marketingproject.entities.*;
+import com.marketingproject.enums.AttachmentValidationType;
 import com.marketingproject.enums.CodeType;
 import com.marketingproject.enums.DefaultStatus;
+import com.marketingproject.enums.Role;
 import com.marketingproject.helpers.AttachmentHelper;
 import com.marketingproject.helpers.ClientRequestHelper;
 import com.marketingproject.infra.exceptions.BusinessRuleException;
@@ -25,9 +20,11 @@ import com.marketingproject.infra.security.model.AuthenticatedUser;
 import com.marketingproject.infra.security.model.PasswordRequestDto;
 import com.marketingproject.infra.security.model.PasswordUpdateRequestDto;
 import com.marketingproject.infra.security.services.AuthenticatedUserService;
+import com.marketingproject.repositories.AdvertisingAttachmentRepository;
 import com.marketingproject.repositories.ClientRepository;
 import com.marketingproject.services.BucketService;
 import com.marketingproject.services.ClientService;
+import com.marketingproject.services.TermConditionService;
 import com.marketingproject.services.VerificationCodeService;
 import com.marketingproject.shared.audit.CustomRevisionListener;
 import com.marketingproject.shared.constants.SharedConstants;
@@ -35,6 +32,7 @@ import com.marketingproject.shared.constants.valitation.AuthValidationMessageCon
 import com.marketingproject.shared.constants.valitation.ClientValidationMessages;
 import com.marketingproject.shared.utils.AttachmentUtils;
 import com.marketingproject.shared.utils.PaginationFilterUtil;
+import jakarta.persistence.criteria.Predicate;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -44,6 +42,10 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Instant;
+import java.time.LocalDate;
+import java.time.format.DateTimeParseException;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
@@ -57,6 +59,8 @@ public class ClientServiceImpl implements ClientService {
     private final VerificationCodeService verificationCodeService;
     private final AuthenticatedUserService authenticatedUserService;
     private final BucketService bucketService;
+    private final TermConditionService termConditionService;
+    private final AdvertisingAttachmentRepository advertisingAttachmentRepository;
 
     @Override
     @Transactional
@@ -65,6 +69,7 @@ public class ClientServiceImpl implements ClientService {
 
         Client client = new Client(request);
         VerificationCode verificationCode = verificationCodeService.save(CodeType.CONTACT, client);
+        verificationCode.setValidated(true);
         client.setVerificationCode(verificationCode);
 
 //        MessagingDataDto messagingData = new MessagingDataDto(client, verificationCode, client.getContact().getContactPreference());
@@ -78,6 +83,12 @@ public class ClientServiceImpl implements ClientService {
     public ClientResponseDto findById(UUID id) {
         return buildClientResponse(repository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException(ClientValidationMessages.USER_NOT_FOUND)));
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Client findEntityById(UUID id) {
+        return repository.findActiveById(id).orElseThrow(() -> new ResourceNotFoundException(ClientValidationMessages.USER_NOT_FOUND));
     }
 
     @Override
@@ -220,7 +231,7 @@ public class ClientServiceImpl implements ClientService {
 
     @Transactional
     @Override
-    public void uploadAttachments(List<AttachmentRequestDto> request, UUID clientId) throws JsonProcessingException {
+    public void uploadAttachments(List<AttachmentRequestDto> request, UUID clientId) {
         attachmentHelper.validate(request);
 
         AuthenticatedUser authenticatedUser = authenticatedUserService.validateSelfOrAdmin(clientId);
@@ -229,12 +240,10 @@ public class ClientServiceImpl implements ClientService {
 
         if (!client.getAttachments().isEmpty()) {
             CustomRevisionListener.setUsername(authenticatedUser.client().getBusinessName());
-            CustomRevisionListener.setOldData(client.toStringMapper());
-
-            attachmentHelper.removeAttachmentsNotSent(request, client);
+            client.setUsernameUpdate(authenticatedUser.client().getBusinessName());
         }
 
-        attachmentHelper.saveAttachments(request, client);
+        attachmentHelper.saveAttachments(request, client, false);
         repository.save(client);
     }
 
@@ -253,8 +262,43 @@ public class ClientServiceImpl implements ClientService {
             attachmentHelper.removeAttachmentsNotSent(request, client);
         }
 
-        attachmentHelper.saveAttachments(request, client);
+        boolean isAdmin = authenticatedUser.client().isAdmin();
+
+        attachmentHelper.saveAttachments(request, client, isAdmin);
         repository.save(client);
+    }
+
+    @Transactional
+    @Override
+    public void acceptTermsAndConditions() {
+        Client client = authenticatedUserService.getLoggedUser().client();
+        TermCondition actualTermCondition = termConditionService.getActualTermCondition();
+        client.setTermCondition(actualTermCondition);
+        client.setTermAcceptedAt(Instant.now());
+        repository.save(client);
+    }
+
+    @Transactional
+    @Override
+    public void changeRoleToPartner(UUID clientId) throws JsonProcessingException {
+        Client admin = authenticatedUserService.validateAdmin().client();
+        Client partner = findEntityById(clientId);
+
+        if (!Role.PARTNER.equals(partner.getRole())) {
+            CustomRevisionListener.setUsername(admin.getBusinessName());
+            CustomRevisionListener.setOldData(partner.toStringMapper());
+
+            partner.setRole(Role.PARTNER);
+            partner.setUsernameUpdate(admin.getBusinessName());
+            repository.save(partner);
+        }
+    }
+
+    @Transactional
+    @Override
+    public void validateAttachment(UUID attachmentId, AttachmentValidationType validation, RefusedAttachmentRequestDto request) throws JsonProcessingException {
+        Client admin = authenticatedUserService.validateAdmin().client();
+        attachmentHelper.validateAttachment(attachmentId, validation, request, admin);
     }
 
     @Override
@@ -275,16 +319,22 @@ public class ClientServiceImpl implements ClientService {
         return PaginationResponseDto.fromResult(response, (int) page.getTotalElements(), page.getTotalPages(), request.getPage());
     }
 
-    ClientResponseDto buildClientResponse(Client client) {
-        List<LinkResponseDto> attachmentLinks = client.getAttachments().stream()
-                .map(attachment -> new LinkResponseDto(attachment.getId(), bucketService.getLink(AttachmentUtils.format(attachment))))
-                .toList();
+    @Override
+    @Transactional(readOnly = true)
+    public PaginationResponseDto<List<AttachmentPendingResponseDto>> findPendingAttachmentsByFilter(FilterPendingAttachmentRequestDto request) {
+        authenticatedUserService.validateAdmin();
+        Sort order = request.setOrdering();
 
-        List<LinkResponseDto> advertisingAttachmentLinks = client.getAdvertisingAttachments().stream()
-                .map(attachment -> new LinkResponseDto(attachment.getId(), bucketService.getLink(AttachmentUtils.format(attachment))))
-                .toList();
+        Pageable pageable = PaginationFilterUtil.getPageable(request, order);
+        Specification<AdvertisingAttachment> filter = PaginationFilterUtil.addSpecificationFilter(
+                (root, query, criteriaBuilder) -> criteriaBuilder.equal(root.get("validation"), AttachmentValidationType.PENDING),
+                request.getGenericFilter(),
+                this::filterAttachments
+        );
 
-        return new ClientResponseDto(client, attachmentLinks, advertisingAttachmentLinks);
+        Page<AdvertisingAttachment> page = advertisingAttachmentRepository.findAll(filter, pageable);
+        List<AttachmentPendingResponseDto> response = page.stream().map(attachment -> new AttachmentPendingResponseDto(attachment, bucketService.getLink(AttachmentUtils.format(attachment)))).toList();
+        return PaginationResponseDto.fromResult(response, (int) page.getTotalElements(), page.getTotalPages(), request.getPage());
     }
 
     Specification<Client> filterClients(Specification<Client> specification, String genericFilter) {
@@ -308,15 +358,52 @@ public class ClientServiceImpl implements ClientService {
         ));
     }
 
+    Specification<AdvertisingAttachment> filterAttachments(Specification<AdvertisingAttachment> specification, String genericFilter) {
+        return specification.and((root, query, criteriaBuilder) -> {
+            List<Predicate> predicates = new ArrayList<>();
+
+            predicates.add(criteriaBuilder.like(
+                    criteriaBuilder.lower(root.get("name")),
+                    "%" + genericFilter.toLowerCase() + "%"
+            ));
+            predicates.add(criteriaBuilder.like(
+                    criteriaBuilder.lower(root.get("client").get("businessName")),
+                    "%" + genericFilter.toLowerCase() + "%"
+            ));
+            predicates.add(criteriaBuilder.equal(
+                    root.get("client").get("identificationNumber"),
+                    genericFilter
+            ));
+
+            try {
+                LocalDate submissionDate = LocalDate.parse(genericFilter);
+                predicates.add(criteriaBuilder.equal(
+                        criteriaBuilder.function("date", LocalDate.class, root.get("createdAt")),
+                        submissionDate
+                ));
+            } catch (DateTimeParseException ignored) {
+            }
+
+            return criteriaBuilder.or(predicates.toArray(new Predicate[0]));
+        });
+    }
+
+    ClientResponseDto buildClientResponse(Client client) {
+        List<LinkResponseDto> attachmentLinks = client.getAttachments().stream()
+                .map(attachment -> new LinkResponseDto(attachment.getId(), bucketService.getLink(AttachmentUtils.format(attachment))))
+                .toList();
+
+        List<LinkResponseDto> advertisingAttachmentLinks = client.getAdvertisingAttachments().stream()
+                .map(attachment -> new LinkResponseDto(attachment.getId(), bucketService.getLink(AttachmentUtils.format(attachment))))
+                .toList();
+
+        return new ClientResponseDto(client, attachmentLinks, advertisingAttachmentLinks);
+    }
+
     protected Client findActiveByIdentification(String identification) {
         return repository.findActiveByIdentificationNumber(identification)
                 .orElseThrow(() -> new ResourceNotFoundException(ClientValidationMessages.USER_NOT_FOUND));
     }
-
-    protected Client findEntityById(UUID id) {
-        return repository.findActiveById(id).orElseThrow(() -> new ResourceNotFoundException(ClientValidationMessages.USER_NOT_FOUND));
-    }
-
 
     protected Client findByIdentification(String identification) {
         return repository.findByIdentificationNumber(identification)

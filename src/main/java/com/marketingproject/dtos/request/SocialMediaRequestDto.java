@@ -37,8 +37,12 @@ public class SocialMediaRequestDto implements Serializable {
     @JsonDeserialize(using = TrimStringDeserializer.class)
     private String xUrl;
 
+    @URL(message = "Invalid Tiktok URL")
+    @JsonDeserialize(using = TrimStringDeserializer.class)
+    private String tiktokUrl;
+
     public void validate() {
-        if (instagramUrl == null && facebookUrl == null && linkedinUrl == null && xUrl == null) {
+        if (instagramUrl == null && facebookUrl == null && linkedinUrl == null && xUrl == null && tiktokUrl == null) {
             throw new BusinessRuleException(ClientValidationMessages.SOCIAL_MEDIA_REQUIRED);
         }
     }

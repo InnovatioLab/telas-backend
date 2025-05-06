@@ -13,7 +13,6 @@ public class AllowedEndpointsConstants {
         ALLOWED_ENDPOINTS.put(HttpMethod.GET, List.of(
                 "/clients/{identificationNumber}",
                 "/clients/{id}",
-                "/monitors/nearest",
                 "/swagger-ui/**",
                 "/v*/api-docs/**",
                 "/actuator/**",

@@ -1,6 +1,10 @@
 package com.marketingproject.entities;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.SerializationFeature;
+import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import com.marketingproject.dtos.request.AttachmentRequestDto;
 import com.marketingproject.shared.audit.BaseAudit;
 import jakarta.persistence.*;
@@ -43,6 +47,14 @@ public class Attachment extends BaseAudit implements Serializable {
         name = request.getName();
         type = request.getType();
         this.client = client;
+    }
+
+    public String toStringMapper() throws JsonProcessingException {
+        ObjectMapper objectMapper = new ObjectMapper();
+        objectMapper.registerModule(new JavaTimeModule())
+                .configure(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS, false);
+
+        return objectMapper.writeValueAsString(this);
     }
 
 

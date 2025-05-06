@@ -15,4 +15,8 @@ public final class AttachmentValidationMessages {
     public static final String ATTACHMENT_NOT_FOUND = "Attachment not found";
     public static final String NAME_SIZE = "Attachment name must be at most 255 characters";
     public static final String TYPE_SIZE = "Attachment type must be at most 15 characters";
+    public static final String JUSTIFICATION_LENGTH = "Justification must be at most 100 characters";
+    public static final String DESCRIPTION_LENGTH = "Description must be at most 255 characters";
+    public static final String PENDING_VALIDATION_NOT_ACCEPTED = "Attachment with pending validation cannot be accepted";
+    public static final String JUSTIFICATION_REQUIRED = "Justification is required";
 }

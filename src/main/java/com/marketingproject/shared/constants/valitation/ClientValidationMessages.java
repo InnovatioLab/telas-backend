@@ -22,4 +22,5 @@ public final class ClientValidationMessages {
     public static final String VALIDATION_CODE_NOT_VALIDATED = "User validation code is not validated.";
     public static final String CURRENT_EQUALS_NEW_PASSWORD = "Current password cannot be the same as the new password.";
     public static final String SOCIAL_MEDIA_REQUIRED = "At least one social media URL must be provided.";
+    public static final String INVALID_ROLE = "Invalid role.";
 }

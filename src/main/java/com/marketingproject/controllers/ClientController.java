@@ -1,11 +1,10 @@
 package com.marketingproject.controllers;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
-import com.marketingproject.dtos.request.AdvertisingAttachmentRequestDto;
-import com.marketingproject.dtos.request.AttachmentRequestDto;
-import com.marketingproject.dtos.request.ClientRequestDto;
-import com.marketingproject.dtos.request.ContactRequestDto;
+import com.marketingproject.dtos.request.*;
 import com.marketingproject.dtos.request.filters.ClientFilterRequestDto;
+import com.marketingproject.dtos.request.filters.FilterPendingAttachmentRequestDto;
+import com.marketingproject.enums.AttachmentValidationType;
 import com.marketingproject.infra.security.model.PasswordRequestDto;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
@@ -103,4 +102,36 @@ public interface ClientController {
             @ApiResponse(responseCode = "403", description = "Forbidden.")
     })
     ResponseEntity<?> findAllFilters(ClientFilterRequestDto request);
+
+    @Operation(summary = "Endpoint contract to accept current Terms and Conditions", responses = {
+            @ApiResponse(responseCode = "202", description = "Terms and conditions accepted successfully."),
+            @ApiResponse(responseCode = "401", description = "Unauthorized.")
+    })
+    ResponseEntity<?> acceptTermsConditions();
+
+    @Operation(summary = "Endpoint contract to change client role to Partner", responses = {
+            @ApiResponse(responseCode = "200", description = "Role changed successfully."),
+            @ApiResponse(responseCode = "401", description = "Unauthorized."),
+            @ApiResponse(responseCode = "403", description = "Forbidden."),
+            @ApiResponse(responseCode = "404", description = "Client not found."),
+    })
+    ResponseEntity<?> changeRoleToPartner(UUID clientId) throws JsonProcessingException;
+
+    @Operation(summary = "Endpoint contract to filter and list pending advertising attachments", responses = {
+            @ApiResponse(responseCode = "200", description = "Attachments filtered successfully."),
+            @ApiResponse(responseCode = "400", description = "Erro while filtering pending attachments"),
+            @ApiResponse(responseCode = "401", description = "Unauthorized."),
+            @ApiResponse(responseCode = "403", description = "Forbidden."),
+            @ApiResponse(responseCode = "404", description = "Some data not found."),
+    })
+    ResponseEntity<?> findPendingAttachmentsByFilter(FilterPendingAttachmentRequestDto request);
+
+    @Operation(summary = "Endpoint contract to validate an advertising attachment", responses = {
+            @ApiResponse(responseCode = "200", description = "Attachment validated successfully."),
+            @ApiResponse(responseCode = "400", description = "Request with invalid data. "),
+            @ApiResponse(responseCode = "401", description = "Unauthorized."),
+            @ApiResponse(responseCode = "403", description = "Forbidden."),
+            @ApiResponse(responseCode = "404", description = "Some data not found."),
+    })
+    ResponseEntity<?> validateAttachment(AttachmentValidationType validation, RefusedAttachmentRequestDto request, UUID attachmentId) throws JsonProcessingException;
 }

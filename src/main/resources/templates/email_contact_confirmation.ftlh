@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="pt-br">
 <head>
-    <title>Sistema Raízes Cearenses</title>
+    <title>Marketing Project</title>
     <meta charset="UTF-8"/>
     <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
     <meta http-equiv="X-UA-Compatible" content="ie=edge"/>
@@ -134,7 +134,7 @@
     </div>
     <div class="footer">
         <p>Graciously,<br></p>
-        <p>Contact: <a href="mailto:raizes.cearenses@ematerce.ce.gov.br" style="color: #131518;">test@gmail.com</a>
+        <p>Contact: <a href="mailto:test@gmail.com" style="color: #131518;">test@gmail.com</a>
         </p>
     </div>
 </div>

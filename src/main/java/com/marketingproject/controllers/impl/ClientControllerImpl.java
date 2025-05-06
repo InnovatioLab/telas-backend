@@ -2,14 +2,14 @@ package com.marketingproject.controllers.impl;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.marketingproject.controllers.ClientController;
-import com.marketingproject.dtos.request.AdvertisingAttachmentRequestDto;
-import com.marketingproject.dtos.request.AttachmentRequestDto;
-import com.marketingproject.dtos.request.ClientRequestDto;
-import com.marketingproject.dtos.request.ContactRequestDto;
+import com.marketingproject.dtos.request.*;
 import com.marketingproject.dtos.request.filters.ClientFilterRequestDto;
+import com.marketingproject.dtos.request.filters.FilterPendingAttachmentRequestDto;
+import com.marketingproject.dtos.response.AttachmentPendingResponseDto;
 import com.marketingproject.dtos.response.ClientMinResponseDto;
 import com.marketingproject.dtos.response.PaginationResponseDto;
 import com.marketingproject.dtos.response.ResponseDto;
+import com.marketingproject.enums.AttachmentValidationType;
 import com.marketingproject.infra.security.model.PasswordRequestDto;
 import com.marketingproject.services.ClientService;
 import com.marketingproject.shared.constants.MessageCommonsConstants;
@@ -122,4 +122,47 @@ public class ClientControllerImpl implements ClientController {
 
         return ResponseEntity.status(HttpStatus.OK).body(ResponseDto.fromData(response, HttpStatus.OK, msg));
     }
+
+    @Override
+    @PatchMapping("/accept-terms-conditions")
+    @SecurityRequirement(name = "jwt")
+    public ResponseEntity<?> acceptTermsConditions() {
+        service.acceptTermsAndConditions();
+        return ResponseEntity.status(HttpStatus.ACCEPTED).body(
+                ResponseDto.fromData(null, HttpStatus.ACCEPTED, MessageCommonsConstants.ACCEPT_TERMS_CONDITIONS_SUCCESS_MESSAGE));
+    }
+
+    @Override
+    @PatchMapping("/partner/{id}")
+    @SecurityRequirement(name = "jwt")
+    public ResponseEntity<?> changeRoleToPartner(@PathVariable(name = "id") UUID clientId) throws JsonProcessingException {
+        service.changeRoleToPartner(clientId);
+        return ResponseEntity.status(HttpStatus.OK)
+                .body(ResponseDto.fromData(null, HttpStatus.OK, MessageCommonsConstants.UPDATE_SUCCESS_MESSAGE));
+    }
+
+    @Override
+    @GetMapping("/pending-attachments")
+    @SecurityRequirement(name = "jwt")
+    public ResponseEntity<?> findPendingAttachmentsByFilter(FilterPendingAttachmentRequestDto request) {
+        PaginationResponseDto<List<AttachmentPendingResponseDto>> response = service.findPendingAttachmentsByFilter(request);
+
+        String msg = response.getList().isEmpty() ? MessageCommonsConstants.FIND_FILTER_EMPTY_MESSAGE : MessageCommonsConstants.FIND_ALL_SUCCESS_MESSAGE;
+
+        return ResponseEntity.status(HttpStatus.OK).body(ResponseDto.fromData(response, HttpStatus.OK, msg));
+    }
+
+    @Override
+    @PatchMapping("/validate-attachment/{id}")
+    @SecurityRequirement(name = "jwt")
+    public ResponseEntity<?> validateAttachment(
+            @RequestParam("validation") AttachmentValidationType validation,
+            @RequestBody(required = false) RefusedAttachmentRequestDto request,
+            @PathVariable(name = "id") UUID attachmentId) throws JsonProcessingException {
+
+        service.validateAttachment(attachmentId, validation, request);
+        return ResponseEntity.status(HttpStatus.OK).body(ResponseDto.fromData(null, HttpStatus.OK, MessageCommonsConstants.ATTACHMENT_VALIDATION_MESSAGE));
+    }
+
+
 }

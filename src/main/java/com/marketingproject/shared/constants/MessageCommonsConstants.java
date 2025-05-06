@@ -18,6 +18,8 @@ public class MessageCommonsConstants {
     public static final String HISTORY_EMPTY_MESSAGE = "The selected record has no edit history.";
     public static final String REGISTRATIONS_FOUND_MESSAGE = "Registrations found.";
     public static final String START_PAGE_ERROR_MESSAGE = "Pagination must start from page 1.";
+    public static final String ACCEPT_TERMS_CONDITIONS_SUCCESS_MESSAGE = "Terms and conditions accepted successfully!";
+    public static final String ATTACHMENT_VALIDATION_MESSAGE = "Attachment successfully validated!";
 
     private MessageCommonsConstants() {
     }

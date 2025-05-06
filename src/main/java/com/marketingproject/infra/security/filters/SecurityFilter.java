@@ -2,6 +2,7 @@ package com.marketingproject.infra.security.filters;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.marketingproject.dtos.response.ResponseDto;
+import com.marketingproject.infra.security.services.AuthenticatedUserService;
 import com.marketingproject.infra.security.services.TokenService;
 import com.marketingproject.shared.constants.AllowedEndpointsConstants;
 import jakarta.servlet.FilterChain;
@@ -25,10 +26,12 @@ import java.util.Arrays;
 public class SecurityFilter extends OncePerRequestFilter {
     private final TokenService tokenService;
     private final UserDetailsService userDetailsService;
+    private final AuthenticatedUserService authenticatedUserService;
 
-    public SecurityFilter(TokenService tokenService, UserDetailsService userDetailsService) {
+    public SecurityFilter(TokenService tokenService, UserDetailsService userDetailsService, AuthenticatedUserService authenticatedUserService) {
         this.tokenService = tokenService;
         this.userDetailsService = userDetailsService;
+        this.authenticatedUserService = authenticatedUserService;
     }
 
     @Override
@@ -36,8 +39,10 @@ public class SecurityFilter extends OncePerRequestFilter {
         String idToken = recoverToken(request);
         String requestUri = request.getRequestURI();
         HttpMethod requestMethod = HttpMethod.valueOf(request.getMethod());
+        boolean acceptTermsURL = "/api/clients/accept-terms-conditions".equals(requestUri);
         String fixedRequest = requestUri.replace("/api", "");
         boolean allowedURL = AllowedEndpointsConstants.isAllowedURL(requestMethod, fixedRequest);
+
 
         if (allowedURL) {
             filterChain.doFilter(request, response);
@@ -48,8 +53,13 @@ public class SecurityFilter extends OncePerRequestFilter {
             if (idToken != null) {
                 String identificationNumber = tokenService.validateToken(idToken);
                 UserDetails user = userDetailsService.loadUserByUsername(identificationNumber);
+
                 Authentication authentication = new UsernamePasswordAuthenticationToken(user, null, user.getAuthorities());
                 SecurityContextHolder.getContext().setAuthentication(authentication);
+
+                if (!acceptTermsURL) {
+                    authenticatedUserService.verifyTermsAccepted(user);
+                }
             }
 
             filterChain.doFilter(request, response);

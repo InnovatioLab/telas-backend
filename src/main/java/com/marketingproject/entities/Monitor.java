@@ -43,8 +43,14 @@ public class Monitor extends BaseAudit implements Serializable {
     @Enumerated(EnumType.STRING)
     private MonitorType type = MonitorType.BASIC;
 
+    @Column(name = "location_description")
+    private String locationDescription;
+
     @Column(name = "size_in_inches", precision = 5, scale = 2, nullable = false)
     private BigDecimal size = BigDecimal.valueOf(0.00);
+
+    @Column(name = "max_blocks", nullable = false)
+    private Integer maxBlocks;
 
     @Column(name = "latitude", nullable = false)
     private Double latitude;
@@ -56,6 +62,10 @@ public class Monitor extends BaseAudit implements Serializable {
     @JoinColumn(name = "address_id", referencedColumnName = "id")
     private Address address;
 
+    @OneToOne
+    @JoinColumn(name = "partner_id", referencedColumnName = "id")
+    private Client partner;
+
     @ManyToMany
     @JoinTable(
             name = "monitors_advertising_attachments",
@@ -64,30 +74,33 @@ public class Monitor extends BaseAudit implements Serializable {
     )
     private Set<AdvertisingAttachment> advertisingAttachments = new HashSet<AdvertisingAttachment>();
 
-    public Monitor(MonitorRequestDto request) {
-        this(request, List.of());
+    @ManyToMany
+    @JoinTable(
+            name = "clients_monitors",
+            joinColumns = @JoinColumn(name = "monitor_id"),
+            inverseJoinColumns = @JoinColumn(name = "client_id")
+    )
+    private Set<Client> clients = new HashSet<Client>();
+
+    public Monitor(MonitorRequestDto request, Client partner) {
+        this(request, partner, Set.of(), List.of());
     }
 
-    public Monitor(MonitorRequestDto request, List<AdvertisingAttachment> advertisingAttachmentsList) {
+    public Monitor(MonitorRequestDto request, Client partner, Set<Client> clients, List<AdvertisingAttachment> advertisingAttachmentsList) {
         type = request.getType();
         size = request.getSize();
+        locationDescription = request.getLocationDescription();
+        maxBlocks = request.getMaxBlocks();
         latitude = request.getLatitude();
         longitude = request.getLongitude();
         address = new Address(request.getAddress());
+        this.partner = partner;
         advertisingAttachments.addAll(advertisingAttachmentsList);
+        this.clients.addAll(clients);
     }
 
-
-    public void update(MonitorRequestDto request, List<AdvertisingAttachment> advertisingAttachmentsList) {
-        type = request.getType();
-        size = request.getSize();
-        latitude = request.getLatitude();
-        longitude = request.getLongitude();
-        address.update(request.getAddress());
-
-        advertisingAttachments.clear();
-        advertisingAttachments.addAll(advertisingAttachmentsList);
-
+    public String getPartnerBusinessName() {
+        return partner.getBusinessName();
     }
 
     public String toStringMapper() throws JsonProcessingException {

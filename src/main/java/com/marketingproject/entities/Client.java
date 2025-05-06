@@ -18,6 +18,7 @@ import org.hibernate.envers.NotAudited;
 
 import java.io.Serial;
 import java.io.Serializable;
+import java.time.Instant;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -53,9 +54,22 @@ public class Client extends BaseAudit implements Serializable {
     @Column(name = "business_field", nullable = false)
     private String businessField;
 
+    @Column(name = "website_url", columnDefinition = "TEXT")
+    private String websiteUrl;
+
     @Column(name = "status", columnDefinition = "default_status", nullable = false)
     @Enumerated(EnumType.STRING)
     private DefaultStatus status = DefaultStatus.INACTIVE;
+
+    @NotAudited
+    @Column(name = "term_accepted_at", columnDefinition = "TIMESTAMP WITHOUT TIME ZONE")
+    private Instant termAcceptedAt;
+
+    @NotAudited
+    @JsonIgnore
+    @ManyToOne
+    @JoinColumn(name = "term_condition_id", referencedColumnName = "id")
+    private TermCondition termCondition;
 
     @JsonIgnore
     @NotAudited
@@ -93,7 +107,7 @@ public class Client extends BaseAudit implements Serializable {
         businessName = request.getBusinessName();
         identificationNumber = request.getIdentificationNumber();
         businessField = request.getBusinessField();
-        role = request.getRole();
+        websiteUrl = request.getWebsiteUrl();
         status = request.getStatus();
         contact = new Contact(request.getContact());
         owner = new Owner(request.getOwner(), this);
@@ -114,7 +128,7 @@ public class Client extends BaseAudit implements Serializable {
         businessName = request.getBusinessName();
         identificationNumber = request.getIdentificationNumber();
         businessField = request.getBusinessField();
-        role = request.getRole();
+        websiteUrl = request.getWebsiteUrl();
         status = request.getStatus();
         contact.update(request.getContact());
         owner.update(request.getOwner());
@@ -156,5 +170,9 @@ public class Client extends BaseAudit implements Serializable {
                 .configure(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS, false);
 
         return objectMapper.writeValueAsString(this);
+    }
+
+    public boolean isTermsAccepted() {
+        return termAcceptedAt != null;
     }
 }

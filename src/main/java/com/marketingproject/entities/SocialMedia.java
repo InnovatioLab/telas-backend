@@ -39,6 +39,9 @@ public class SocialMedia extends BaseAudit implements Serializable {
     @Column(name = "x_url", columnDefinition = "TEXT")
     private String xUrl;
 
+    @Column(name = "tiktok_url", columnDefinition = "TEXT")
+    private String tiktokUrl;
+
     public SocialMedia(SocialMediaRequestDto socialMediaRequestDto) {
         instagramUrl = socialMediaRequestDto.getInstagramUrl();
         facebookUrl = socialMediaRequestDto.getFacebookUrl();

@@ -4,7 +4,6 @@ package com.marketingproject.dtos.request;
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import com.marketingproject.dtos.validation.ValidEIN;
 import com.marketingproject.enums.DefaultStatus;
-import com.marketingproject.enums.Role;
 import com.marketingproject.shared.constants.SharedConstants;
 import com.marketingproject.shared.constants.valitation.ClientValidationMessages;
 import com.marketingproject.shared.utils.TrimStringDeserializer;
@@ -17,6 +16,7 @@ import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
+import org.hibernate.validator.constraints.URL;
 
 import java.io.Serial;
 import java.io.Serializable;
@@ -45,7 +45,9 @@ public class ClientRequestDto implements Serializable {
     @JsonDeserialize(using = TrimStringDeserializer.class)
     private String businessField;
 
-    private Role role = Role.CLIENT;
+    @URL(message = "Invalid Website URL")
+    @JsonDeserialize(using = TrimStringDeserializer.class)
+    private String websiteUrl;
 
     private DefaultStatus status = DefaultStatus.INACTIVE;
 

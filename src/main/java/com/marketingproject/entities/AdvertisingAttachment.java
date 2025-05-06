@@ -1,7 +1,12 @@
 package com.marketingproject.entities;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.SerializationFeature;
+import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import com.marketingproject.dtos.request.AdvertisingAttachmentRequestDto;
+import com.marketingproject.enums.AttachmentValidationType;
 import com.marketingproject.shared.audit.BaseAudit;
 import jakarta.persistence.*;
 import lombok.Getter;
@@ -37,10 +42,17 @@ public class AdvertisingAttachment extends BaseAudit implements Serializable {
     @Column(name = "mime_type", nullable = false, length = 5)
     private String type;
 
+    @Column(name = "validation", nullable = false)
+    @Enumerated(EnumType.STRING)
+    private AttachmentValidationType validation = AttachmentValidationType.PENDING;
+
     @JsonIgnore
     @ManyToOne
     @JoinColumn(name = "client_id", referencedColumnName = "id", nullable = false)
     private Client client;
+
+    @OneToOne(cascade = CascadeType.ALL, mappedBy = "attachment")
+    private RefusedAttachment refusedAttachment;
 
     @JsonIgnore
     @NotAudited
@@ -56,5 +68,13 @@ public class AdvertisingAttachment extends BaseAudit implements Serializable {
         name = request.getName();
         type = request.getType();
         this.client = client;
+    }
+
+    public String toStringMapper() throws JsonProcessingException {
+        ObjectMapper objectMapper = new ObjectMapper();
+        objectMapper.registerModule(new JavaTimeModule())
+                .configure(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS, false);
+
+        return objectMapper.writeValueAsString(this);
     }
 }
