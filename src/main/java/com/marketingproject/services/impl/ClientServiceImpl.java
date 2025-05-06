@@ -282,7 +282,7 @@ public class ClientServiceImpl implements ClientService {
     @Override
     public void changeRoleToPartner(UUID clientId) throws JsonProcessingException {
         Client admin = authenticatedUserService.validateAdmin().client();
-        Client partner = findEntityById(clientId);
+        Client partner = repository.findById(clientId).orElseThrow(() -> new ResourceNotFoundException(ClientValidationMessages.USER_NOT_FOUND));
 
         if (!Role.PARTNER.equals(partner.getRole())) {
             CustomRevisionListener.setUsername(admin.getBusinessName());
