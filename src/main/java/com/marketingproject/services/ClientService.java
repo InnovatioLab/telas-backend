@@ -22,6 +22,8 @@ public interface ClientService {
 
     ClientResponseDto findById(UUID id);
 
+    Client findActiveEntityById(UUID id);
+
     Client findEntityById(UUID id);
 
     ClientResponseDto getDataFromToken();

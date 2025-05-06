@@ -81,14 +81,20 @@ public class ClientServiceImpl implements ClientService {
     @Override
     @Transactional(readOnly = true)
     public ClientResponseDto findById(UUID id) {
-        return buildClientResponse(repository.findById(id)
-                .orElseThrow(() -> new ResourceNotFoundException(ClientValidationMessages.USER_NOT_FOUND)));
+        return buildClientResponse(findEntityById(id));
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Client findActiveEntityById(UUID id) {
+        return repository.findActiveById(id).orElseThrow(() -> new ResourceNotFoundException(ClientValidationMessages.USER_NOT_FOUND));
     }
 
     @Override
     @Transactional(readOnly = true)
     public Client findEntityById(UUID id) {
-        return repository.findActiveById(id).orElseThrow(() -> new ResourceNotFoundException(ClientValidationMessages.USER_NOT_FOUND));
+        return repository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException(ClientValidationMessages.USER_NOT_FOUND));
     }
 
     @Override
@@ -219,7 +225,7 @@ public class ClientServiceImpl implements ClientService {
     public void update(ClientRequestDto request, UUID id) throws JsonProcessingException {
         AuthenticatedUser authenticatedUser = authenticatedUserService.validateSelfOrAdmin(id);
 
-        Client client = findEntityById(id);
+        Client client = findActiveEntityById(id);
         helper.validateClientRequest(request, client);
 
         CustomRevisionListener.setUsername(authenticatedUser.client().getBusinessName());
@@ -236,7 +242,7 @@ public class ClientServiceImpl implements ClientService {
 
         AuthenticatedUser authenticatedUser = authenticatedUserService.validateSelfOrAdmin(clientId);
 
-        Client client = findEntityById(clientId);
+        Client client = findActiveEntityById(clientId);
 
         if (!client.getAttachments().isEmpty()) {
             CustomRevisionListener.setUsername(authenticatedUser.client().getBusinessName());
@@ -253,7 +259,7 @@ public class ClientServiceImpl implements ClientService {
         attachmentHelper.validate(request);
         AuthenticatedUser authenticatedUser = authenticatedUserService.validateSelfOrAdmin(clientId);
 
-        Client client = findEntityById(clientId);
+        Client client = findActiveEntityById(clientId);
 
         if (!client.getAdvertisingAttachments().isEmpty()) {
             CustomRevisionListener.setUsername(authenticatedUser.client().getBusinessName());
