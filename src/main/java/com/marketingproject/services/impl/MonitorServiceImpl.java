@@ -1,20 +1,19 @@
 package com.marketingproject.services.impl;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
+import com.marketingproject.dtos.request.MonitorAdvertisingAttachmentRequestDto;
 import com.marketingproject.dtos.request.MonitorRequestDto;
-import com.marketingproject.dtos.response.LinkResponseDto;
+import com.marketingproject.dtos.response.MonitorAdvertisingAttachmentResponseDto;
 import com.marketingproject.dtos.response.MonitorMinResponseDto;
 import com.marketingproject.dtos.response.MonitorResponseDto;
-import com.marketingproject.entities.Address;
-import com.marketingproject.entities.AdvertisingAttachment;
-import com.marketingproject.entities.Client;
-import com.marketingproject.entities.Monitor;
+import com.marketingproject.entities.*;
 import com.marketingproject.enums.AttachmentValidationType;
 import com.marketingproject.enums.Role;
 import com.marketingproject.infra.exceptions.ResourceNotFoundException;
 import com.marketingproject.infra.security.model.AuthenticatedUser;
 import com.marketingproject.infra.security.services.AuthenticatedUserService;
 import com.marketingproject.repositories.AdvertisingAttachmentRepository;
+import com.marketingproject.repositories.MonitorAdvertisingAttachmentRepository;
 import com.marketingproject.repositories.MonitorRepository;
 import com.marketingproject.services.BucketService;
 import com.marketingproject.services.ClientService;
@@ -41,6 +40,7 @@ import java.util.stream.Collectors;
 public class MonitorServiceImpl implements MonitorService {
     private final AuthenticatedUserService authenticatedUserService;
     private final MonitorRepository repository;
+    private final MonitorAdvertisingAttachmentRepository monitorAdvertisingAttachmentRepository;
     private final GeolocationService geolocationService;
     private final AdvertisingAttachmentRepository advertisingAttachmentRepository;
     private final BucketService bucketService;
@@ -50,6 +50,7 @@ public class MonitorServiceImpl implements MonitorService {
     @Transactional
     public void save(MonitorRequestDto request, UUID monitorId) throws JsonProcessingException {
         AuthenticatedUser authenticatedUser = authenticatedUserService.validateAdmin();
+        request.validadeAdvertisingAttachmentsOrderIndex();
         Client partner = clientService.findEntityById(request.getPartnerId());
 
         if (!Role.PARTNER.equals(partner.getRole())) {
@@ -61,27 +62,14 @@ public class MonitorServiceImpl implements MonitorService {
         List<AdvertisingAttachment> advertisingAttachments = getAdvertisingAttachments(request);
         Set<Client> clients = getClients(advertisingAttachments);
 
-        Monitor monitor;
-
-        if (monitorId != null) {
-            monitor = findEntityById(monitorId);
-            boolean addressChanged = monitor.getAddress().hasChanged(request.getAddress());
-
-            if (addressChanged) {
-                geolocationService.getMonitorCoordinates(request);
-            }
-
-            CustomRevisionListener.setUsername(authenticatedUser.client().getBusinessName());
-            CustomRevisionListener.setOldData(monitor.toStringMapper());
-            update(request, monitor, partner, clients, advertisingAttachments);
-            monitor.setUsernameUpdate(authenticatedUser.client().getBusinessName());
-        } else {
-            geolocationService.getMonitorCoordinates(request);
-            monitor = new Monitor(request, partner, clients, advertisingAttachments);
-            monitor.setUsernameCreate(authenticatedUser.client().getBusinessName());
-        }
+        Monitor monitor = (monitorId != null) ? updateExistingMonitor(request, monitorId, authenticatedUser, partner, clients, advertisingAttachments)
+                : createNewMonitor(request, authenticatedUser, partner, clients, advertisingAttachments);
 
         repository.save(monitor);
+
+        if (monitorId == null) {
+            monitorAdvertisingAttachmentRepository.saveAll(monitor.getMonitorAdvertisingAttachments());
+        }
     }
 
     @Override
@@ -91,9 +79,9 @@ public class MonitorServiceImpl implements MonitorService {
 
         Monitor entity = repository.findById(monitorId).orElseThrow(() -> new ResourceNotFoundException(MonitorValidationMessages.MONITOR_NOT_FOUND));
 
-        List<LinkResponseDto> advertisingAttachmentLinks = entity.getAdvertisingAttachments().stream()
-                .filter(attachment -> AttachmentValidationType.APPROVED.equals(attachment.getValidation()))
-                .map(attachment -> new LinkResponseDto(attachment.getId(), bucketService.getLink(AttachmentUtils.format(attachment))))
+        List<MonitorAdvertisingAttachmentResponseDto> advertisingAttachmentLinks = entity.getMonitorAdvertisingAttachments().stream()
+                .filter(monitorAttachment -> AttachmentValidationType.APPROVED.equals(monitorAttachment.getAdvertisingAttachment().getValidation()))
+                .map(monitorAttachment -> new MonitorAdvertisingAttachmentResponseDto(monitorAttachment, bucketService.getLink(AttachmentUtils.format(monitorAttachment.getAdvertisingAttachment()))))
                 .toList();
 
         return new MonitorResponseDto(entity, advertisingAttachmentLinks);
@@ -124,24 +112,29 @@ public class MonitorServiceImpl implements MonitorService {
                 .toList();
     }
 
-    private Set<Client> getClients(List<AdvertisingAttachment> advertisingAttachments) {
-        return advertisingAttachments.isEmpty() ? Set.of() : advertisingAttachments.stream()
-                .map(AdvertisingAttachment::getClient)
-                .collect(Collectors.toSet());
+    private Monitor createNewMonitor(MonitorRequestDto request, AuthenticatedUser authenticatedUser, Client partner, Set<Client> clients, List<AdvertisingAttachment> advertisingAttachments) {
+        geolocationService.getMonitorCoordinates(request);
+        Monitor monitor = new Monitor(request, partner, clients, advertisingAttachments);
+        monitor.setUsernameCreate(authenticatedUser.client().getBusinessName());
+        return monitor;
     }
 
-    private List<AdvertisingAttachment> getAdvertisingAttachments(MonitorRequestDto request) {
-        List<AdvertisingAttachment> advertisingAttachments = advertisingAttachmentRepository.findAllById(
-                ValidateDataUtils.isNullOrEmpty(request.getAdvertisingAttachmentsIds())
-                        ? List.of()
-                        : request.getAdvertisingAttachmentsIds()
-        ).orElseThrow(() -> new ResourceNotFoundException(AttachmentValidationMessages.ATTACHMENT_NOT_FOUND));
+    private Monitor updateExistingMonitor(MonitorRequestDto request, UUID monitorId, AuthenticatedUser authenticatedUser, Client partner, Set<Client> clients, List<AdvertisingAttachment> advertisingAttachments) throws JsonProcessingException {
+        Monitor monitor = findEntityById(monitorId);
 
-        advertisingAttachments.removeIf(attachment -> !AttachmentValidationType.APPROVED.equals(attachment.getValidation()));
-        return advertisingAttachments;
+        if (monitor.getAddress().hasChanged(request.getAddress())) {
+            geolocationService.getMonitorCoordinates(request);
+        }
+
+        CustomRevisionListener.setUsername(authenticatedUser.client().getBusinessName());
+        CustomRevisionListener.setOldData(monitor.toStringMapper());
+        updateMonitorDetails(request, monitor, partner, clients, advertisingAttachments);
+        monitor.setUsernameUpdate(authenticatedUser.client().getBusinessName());
+
+        return monitor;
     }
 
-    private void update(MonitorRequestDto request, Monitor monitor, Client partner, Set<Client> clients, List<AdvertisingAttachment> advertisingAttachments) {
+    private void updateMonitorDetails(MonitorRequestDto request, Monitor monitor, Client partner, Set<Client> clients, List<AdvertisingAttachment> advertisingAttachments) {
         monitor.setType(request.getType());
         monitor.setLocationDescription(request.getLocationDescription());
         monitor.setMaxBlocks(request.getMaxBlocks());
@@ -150,8 +143,16 @@ public class MonitorServiceImpl implements MonitorService {
         monitor.setLongitude(request.getLongitude());
         monitor.getAddress().update(request.getAddress());
 
-        monitor.getAdvertisingAttachments().clear();
-        monitor.getAdvertisingAttachments().addAll(advertisingAttachments);
+        if (!ValidateDataUtils.isNullOrEmpty(advertisingAttachments)) {
+            monitorAdvertisingAttachmentRepository.deleteAll(monitor.getMonitorAdvertisingAttachments());
+            monitor.getMonitorAdvertisingAttachments().clear();
+
+            advertisingAttachments.forEach(attachment -> monitor.getMonitorAdvertisingAttachments().add(
+                    new MonitorAdvertisingAttachment(request.getAdvertisingAttachments().get(advertisingAttachments.indexOf(attachment)), monitor, attachment)
+            ));
+
+            monitorAdvertisingAttachmentRepository.saveAll(monitor.getMonitorAdvertisingAttachments());
+        }
 
         monitor.getClients().clear();
         monitor.getClients().addAll(clients);
@@ -159,6 +160,27 @@ public class MonitorServiceImpl implements MonitorService {
         if (!monitor.getPartner().getId().equals(request.getPartnerId())) {
             monitor.setPartner(partner);
         }
+    }
+
+    private Set<Client> getClients(List<AdvertisingAttachment> advertisingAttachments) {
+        return advertisingAttachments.isEmpty() ? Set.of() : advertisingAttachments.stream()
+                .map(AdvertisingAttachment::getClient)
+                .collect(Collectors.toSet());
+    }
+
+    private List<AdvertisingAttachment> getAdvertisingAttachments(MonitorRequestDto request) {
+        List<UUID> advertisingAttachmentIds = request.getAdvertisingAttachments().stream()
+                .map(MonitorAdvertisingAttachmentRequestDto::getId)
+                .toList();
+
+        List<AdvertisingAttachment> advertisingAttachments = advertisingAttachmentRepository.findAllById(
+                ValidateDataUtils.isNullOrEmpty(advertisingAttachmentIds)
+                        ? List.of()
+                        : advertisingAttachmentIds
+        ).orElseThrow(() -> new ResourceNotFoundException(AttachmentValidationMessages.ATTACHMENT_NOT_FOUND));
+
+        advertisingAttachments.removeIf(attachment -> !AttachmentValidationType.APPROVED.equals(attachment.getValidation()));
+        return advertisingAttachments;
     }
 
     Monitor findEntityById(UUID monitorId) {

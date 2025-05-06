@@ -1,5 +1,6 @@
 package com.marketingproject.entities;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
@@ -7,6 +8,7 @@ import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import com.marketingproject.dtos.request.MonitorRequestDto;
 import com.marketingproject.enums.MonitorType;
 import com.marketingproject.shared.audit.BaseAudit;
+import com.marketingproject.shared.utils.ValidateDataUtils;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -16,10 +18,8 @@ import org.hibernate.envers.AuditTable;
 import java.io.Serial;
 import java.io.Serializable;
 import java.math.BigDecimal;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
-import java.util.UUID;
+import java.util.*;
+import java.util.stream.IntStream;
 
 @Getter
 @Setter
@@ -66,13 +66,9 @@ public class Monitor extends BaseAudit implements Serializable {
     @JoinColumn(name = "partner_id", referencedColumnName = "id")
     private Client partner;
 
-    @ManyToMany
-    @JoinTable(
-            name = "monitors_advertising_attachments",
-            joinColumns = @JoinColumn(name = "monitor_id"),
-            inverseJoinColumns = @JoinColumn(name = "advertising_attachment_id")
-    )
-    private Set<AdvertisingAttachment> advertisingAttachments = new HashSet<AdvertisingAttachment>();
+    @JsonIgnore
+    @OneToMany(mappedBy = "id.monitor")
+    private Set<MonitorAdvertisingAttachment> monitorAdvertisingAttachments = new HashSet<>();
 
     @ManyToMany
     @JoinTable(
@@ -95,8 +91,36 @@ public class Monitor extends BaseAudit implements Serializable {
         longitude = request.getLongitude();
         address = new Address(request.getAddress());
         this.partner = partner;
-        advertisingAttachments.addAll(advertisingAttachmentsList);
+
+        if (!ValidateDataUtils.isNullOrEmpty(request.getAdvertisingAttachments())) {
+            IntStream.range(0, advertisingAttachmentsList.size()).forEach(index -> {
+                AdvertisingAttachment advertisingAttachment = advertisingAttachmentsList.get(index);
+                MonitorAdvertisingAttachment monitorAdvertisingAttachment = new MonitorAdvertisingAttachment(request.getAdvertisingAttachments().get(index), this, advertisingAttachment);
+                monitorAdvertisingAttachments.add(monitorAdvertisingAttachment);
+            });
+        }
+
         this.clients.addAll(clients);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hashCode(getId());
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (o == null || getClass() != o.getClass()) {
+            return false;
+        }
+        Monitor monitor = (Monitor) o;
+        return Objects.equals(getId(), monitor.getId());
+    }
+
+    public List<AdvertisingAttachment> getAdvertisingAttachments() {
+        return monitorAdvertisingAttachments.stream()
+                .map(MonitorAdvertisingAttachment::getAdvertisingAttachment)
+                .toList();
     }
 
     public String getPartnerBusinessName() {

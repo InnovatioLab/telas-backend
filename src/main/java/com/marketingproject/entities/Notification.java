@@ -1,5 +1,6 @@
 package com.marketingproject.entities;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.marketingproject.enums.NotificationReference;
 import com.marketingproject.shared.audit.BaseAudit;
 import jakarta.persistence.*;
@@ -39,6 +40,7 @@ public class Notification extends BaseAudit implements Serializable {
     @Column(name = "fl_visualized", nullable = false)
     private boolean visualized = false;
 
+    @JsonIgnore
     @ManyToOne
     @JoinColumn(name = "client_id", referencedColumnName = "id", nullable = false)
     private Client client;

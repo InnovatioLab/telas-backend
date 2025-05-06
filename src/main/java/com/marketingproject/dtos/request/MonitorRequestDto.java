@@ -3,9 +3,11 @@ package com.marketingproject.dtos.request;
 
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import com.marketingproject.enums.MonitorType;
+import com.marketingproject.infra.exceptions.BusinessRuleException;
 import com.marketingproject.shared.constants.SharedConstants;
 import com.marketingproject.shared.constants.valitation.MonitorValidationMessages;
 import com.marketingproject.shared.utils.TrimStringDeserializer;
+import com.marketingproject.shared.utils.ValidateDataUtils;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Digits;
 import jakarta.validation.constraints.NotNull;
@@ -19,8 +21,10 @@ import lombok.Setter;
 import java.io.Serial;
 import java.io.Serializable;
 import java.math.BigDecimal;
+import java.util.Comparator;
 import java.util.List;
 import java.util.UUID;
+import java.util.concurrent.atomic.AtomicInteger;
 
 @Getter
 @Setter
@@ -52,8 +56,30 @@ public class MonitorRequestDto implements Serializable {
     @NotNull(message = MonitorValidationMessages.ADDRESS_REQUIRED)
     private @Valid AddressRequestDto address;
 
-    private List<UUID> advertisingAttachmentsIds;
+    private @Valid List<MonitorAdvertisingAttachmentRequestDto> advertisingAttachments;
 
     @NotNull(message = MonitorValidationMessages.PARTNER_ID_REQUIRED)
     private UUID partnerId;
+
+    public void validadeAdvertisingAttachmentsOrderIndex() {
+        if (!ValidateDataUtils.isNullOrEmpty(advertisingAttachments)) {
+            boolean hasDuplicates = advertisingAttachments.stream()
+                                            .map(MonitorAdvertisingAttachmentRequestDto::getOrderIndex)
+                                            .distinct()
+                                            .count() < advertisingAttachments.size();
+
+            if (hasDuplicates) {
+                throw new BusinessRuleException(MonitorValidationMessages.ADVERTISING_ATTACHMENT_ORDER_INDEX_DUPLICATED);
+            }
+
+            adjustAdvertisingAttachmentsOrder();
+        }
+    }
+
+    private void adjustAdvertisingAttachmentsOrder() {
+        advertisingAttachments.sort(Comparator.comparing(MonitorAdvertisingAttachmentRequestDto::getOrderIndex));
+
+        AtomicInteger sequence = new AtomicInteger(1);
+        advertisingAttachments.forEach(attachment -> attachment.setOrderIndex(sequence.getAndIncrement()));
+    }
 }

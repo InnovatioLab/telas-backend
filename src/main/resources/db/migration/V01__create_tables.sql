@@ -440,7 +440,7 @@ CREATE TABLE "monitors_advertising_attachments"
   "advertising_attachment_id" UUID                     NOT NULL,
   "display_type"              VARCHAR(50)              NOT NULL DEFAULT 'INTERLEAVED',
   "block_time"                INTEGER                  NOT NULL,
-  "order"                     INTEGER                  NOT NULL,
+  "order_index"               INTEGER                  NOT NULL,
   "username_create"           VARCHAR(255)             NULL     DEFAULT NULL,
   "username_update"           VARCHAR(255)             NULL     DEFAULT NULL,
   "created_at"                TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT (now()),
@@ -456,7 +456,7 @@ CREATE TABLE "monitors_advertising_attachments_aud"
   "advertising_attachment_id" UUID     NOT NULL,
   "display_type"              VARCHAR(50),
   "block_time"                INTEGER,
-  "order"                     INTEGER,
+  "order_index"               INTEGER,
   "audit_id"                  BIGINT   NOT NULL,
   "audit_type"                SMALLINT NULL DEFAULT NULL,
   CONSTRAINT "pk_tbmonitors_advertising_attachments_aud" PRIMARY KEY ("monitor_id", "advertising_attachment_id", "audit_id"),
@@ -465,21 +465,20 @@ CREATE TABLE "monitors_advertising_attachments_aud"
 
 CREATE TABLE "clients_monitors"
 (
-  "id"         UUID PRIMARY KEY,
   "monitor_id" UUID NOT NULL,
   "client_id"  UUID NOT NULL,
+  CONSTRAINT "pk_clients_monitors" PRIMARY KEY ("monitor_id", "client_id"),
   CONSTRAINT "fk_client_monitor" FOREIGN KEY ("client_id") REFERENCES "clients" ("id") ON UPDATE NO ACTION ON DELETE NO ACTION,
   CONSTRAINT "fk_monitor_client" FOREIGN KEY ("monitor_id") REFERENCES "monitors" ("id") ON UPDATE NO ACTION ON DELETE NO ACTION
 );
 
 CREATE TABLE "clients_monitors_aud"
 (
-  "id"         UUID     NOT NULL,
   "monitor_id" UUID     NOT NULL,
   "client_id"  UUID     NOT NULL,
   "audit_id"   BIGINT   NOT NULL,
   "audit_type" SMALLINT NULL DEFAULT NULL,
-  CONSTRAINT "pk_tbclients_monitors_aud" PRIMARY KEY ("id", "audit_id"),
+  CONSTRAINT "pk_tbclients_monitors_aud" PRIMARY KEY ("monitor_id", "client_id", "audit_id"),
   CONSTRAINT "fk_tbclients_monitors_aud_tbaudit" FOREIGN KEY ("audit_id") REFERENCES "audit" ("audit_id") ON UPDATE NO ACTION ON DELETE NO ACTION
 );
 

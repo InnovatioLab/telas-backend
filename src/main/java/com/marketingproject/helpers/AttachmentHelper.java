@@ -4,16 +4,14 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.marketingproject.dtos.request.AdvertisingAttachmentRequestDto;
 import com.marketingproject.dtos.request.AttachmentRequestDto;
 import com.marketingproject.dtos.request.RefusedAttachmentRequestDto;
-import com.marketingproject.entities.AdvertisingAttachment;
-import com.marketingproject.entities.Attachment;
-import com.marketingproject.entities.Client;
-import com.marketingproject.entities.RefusedAttachment;
+import com.marketingproject.entities.*;
 import com.marketingproject.enums.AttachmentValidationType;
 import com.marketingproject.enums.NotificationReference;
 import com.marketingproject.infra.exceptions.BusinessRuleException;
 import com.marketingproject.infra.exceptions.ResourceNotFoundException;
 import com.marketingproject.repositories.AdvertisingAttachmentRepository;
 import com.marketingproject.repositories.AttachmentRepository;
+import com.marketingproject.repositories.MonitorAdvertisingAttachmentRepository;
 import com.marketingproject.repositories.MonitorRepository;
 import com.marketingproject.services.BucketService;
 import com.marketingproject.services.NotificationService;
@@ -33,6 +31,7 @@ import java.util.*;
 public class AttachmentHelper {
     private final AttachmentRepository attachmentRepository;
     private final AdvertisingAttachmentRepository advertisingAttachmentRepository;
+    private final MonitorAdvertisingAttachmentRepository monitorAdvertisingAttachmentRepository;
     private final MonitorRepository monitorRepository;
     private final BucketService bucketService;
     private final NotificationService notificationService;
@@ -147,8 +146,16 @@ public class AttachmentHelper {
     }
 
     void removeAdvertisingAttachmentFromMonitors(AdvertisingAttachment advertisingAttachment) {
-        monitorRepository.findByAdvertisingAttachmentId(advertisingAttachment.getId())
-                .forEach(monitor -> monitor.getAdvertisingAttachments().remove(advertisingAttachment));
+        List<Monitor> monitors = monitorRepository.findByAdvertisingAttachmentId(advertisingAttachment.getId());
+
+        monitors.forEach(monitor ->
+                monitor.getMonitorAdvertisingAttachments()
+                        .removeIf(attachment -> attachment.getAdvertisingAttachment().equals(advertisingAttachment))
+        );
+
+        monitorAdvertisingAttachmentRepository.deleteAll(
+                monitorAdvertisingAttachmentRepository.findByAdvertisingAttachmentId(advertisingAttachment.getId())
+        );
     }
 
     @Transactional

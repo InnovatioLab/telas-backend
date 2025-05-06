@@ -15,10 +15,10 @@ import java.util.UUID;
 public interface MonitorRepository extends JpaRepository<Monitor, UUID> {
     @Override
     @NotNull
-    @Query("SELECT m FROM Monitor m LEFT JOIN FETCH m.advertisingAttachments WHERE m.id = :id")
+    @Query("SELECT m FROM Monitor m LEFT JOIN FETCH m.monitorAdvertisingAttachments WHERE m.id = :id")
     Optional<Monitor> findById(@NotNull UUID id);
 
-    @Query("SELECT m FROM Monitor m JOIN m.advertisingAttachments aa WHERE aa.id = :advertisingAttachmentId")
+    @Query("SELECT m FROM Monitor m LEFT JOIN m.monitorAdvertisingAttachments maa WHERE maa.id.advertisingAttachment.id = :advertisingAttachmentId")
     List<Monitor> findByAdvertisingAttachmentId(UUID advertisingAttachmentId);
 
     @Query(value = """

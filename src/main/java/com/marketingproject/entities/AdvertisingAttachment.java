@@ -18,6 +18,7 @@ import org.hibernate.envers.NotAudited;
 import java.io.Serial;
 import java.io.Serializable;
 import java.util.HashSet;
+import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
 
@@ -50,7 +51,7 @@ public class AdvertisingAttachment extends BaseAudit implements Serializable {
     @ManyToOne
     @JoinColumn(name = "client_id", referencedColumnName = "id", nullable = false)
     private Client client;
-
+    
     @OneToOne(cascade = CascadeType.ALL, mappedBy = "attachment")
     private RefusedAttachment refusedAttachment;
 
@@ -64,6 +65,10 @@ public class AdvertisingAttachment extends BaseAudit implements Serializable {
     )
     private Set<Attachment> attachments = new HashSet<>();
 
+    @JsonIgnore
+    @OneToMany(mappedBy = "id.advertisingAttachment")
+    private Set<MonitorAdvertisingAttachment> monitorAdvertisingAttachments = new HashSet<>();
+
     public AdvertisingAttachment(AdvertisingAttachmentRequestDto request, Client client) {
         name = request.getName();
         type = request.getType();
@@ -76,5 +81,19 @@ public class AdvertisingAttachment extends BaseAudit implements Serializable {
                 .configure(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS, false);
 
         return objectMapper.writeValueAsString(this);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hashCode(getId());
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (o == null || getClass() != o.getClass()) {
+            return false;
+        }
+        AdvertisingAttachment that = (AdvertisingAttachment) o;
+        return Objects.equals(getId(), that.getId());
     }
 }
