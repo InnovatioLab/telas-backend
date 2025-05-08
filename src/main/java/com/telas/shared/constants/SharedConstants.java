@@ -24,6 +24,7 @@ public final class SharedConstants {
     public static final String REGEX_PASSWORD = "^[a-zA-Z0-9!@#$%^&*()_+\\-=\\[\\]{};':\"\\\\|,.<>\\/?]+$";
     public static final String REGEX_ONLY_LETTERS = "^[a-zA-ZÀ-ÖØ-öø-ÿ\\s]*$";
     public static final String REGEX_ONLY_LETTERS_NUMBERS = "[\\p{L}0-9\\s-.,]+";
+    public static final String REGEX_ZIP_CODE = "\\d{5}";
 
     public static final String REGEX_ATTACHMENT_NAME = ".*\\.(jpg|jpeg|png|gif|svg|bmp|tiff)$";
     public static final String REGEX_ATTACHMENT_TYPE = "image/(jpg|jpeg|png|gif|svg|bmp|tiff)";

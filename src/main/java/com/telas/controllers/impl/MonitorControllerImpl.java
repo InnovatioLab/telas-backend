@@ -16,6 +16,7 @@ import org.springframework.web.bind.annotation.*;
 
 import java.math.BigDecimal;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 @RestController
@@ -54,11 +55,11 @@ public class MonitorControllerImpl implements MonitorController {
     @GetMapping("/nearest")
     @SecurityRequirement(name = "jwt")
     public ResponseEntity<?> findNearestActiveMonitors(
-            @RequestParam String zipCode,
+            @RequestParam String zipCodes,
             @RequestParam(required = false) BigDecimal size,
             @RequestParam(required = false) String type,
             @RequestParam(defaultValue = "3") int limit) {
-        List<MonitorMinResponseDto> monitors = service.findNearestActiveMonitors(zipCode, size, type, limit);
+        Map<String, List<MonitorMinResponseDto>> monitors = service.findNearestActiveMonitors(zipCodes, size, type, limit);
         String message = monitors.isEmpty() ? MessageCommonsConstants.FIND_FILTER_EMPTY_MESSAGE : MessageCommonsConstants.FIND_ALL_SUCCESS_MESSAGE;
         return ResponseEntity.status(HttpStatus.OK).body(ResponseDto.fromData(monitors, HttpStatus.OK, message));
     }

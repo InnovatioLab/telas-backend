@@ -7,6 +7,7 @@ import com.telas.dtos.response.MonitorResponseDto;
 
 import java.math.BigDecimal;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 public interface MonitorService {
@@ -14,5 +15,5 @@ public interface MonitorService {
 
     MonitorResponseDto findById(UUID monitorId);
 
-    List<MonitorMinResponseDto> findNearestActiveMonitors(String zipCode, BigDecimal sizeFilter, String typeFilter, int limit);
+    Map<String, List<MonitorMinResponseDto>> findNearestActiveMonitors(String zipCodes, BigDecimal sizeFilter, String typeFilter, int limit);
 }

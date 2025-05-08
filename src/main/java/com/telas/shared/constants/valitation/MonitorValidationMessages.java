@@ -16,4 +16,5 @@ public final class MonitorValidationMessages {
     public static final String SUM_BLOCK_TIME_INVALID = "Sum of block time exceeds the maximum allowed time";
     public static final String ADDRESS_ID_REQUIRED = "Address ID is required";
     public static final String BLOCK_TIME_MAX_VALUE = "Block time must be less than or equal to 60 seconds";
+    public static final String ZIP_CODE_LIST_EMPTY = "Zip code list cannot be empty";
 }

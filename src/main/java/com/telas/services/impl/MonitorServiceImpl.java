@@ -9,6 +9,7 @@ import com.telas.entities.*;
 import com.telas.enums.AdValidationType;
 import com.telas.enums.Role;
 import com.telas.helpers.MonitorRequestHelper;
+import com.telas.infra.exceptions.BusinessRuleException;
 import com.telas.infra.exceptions.ResourceNotFoundException;
 import com.telas.infra.security.model.AuthenticatedUser;
 import com.telas.infra.security.services.AuthenticatedUserService;
@@ -17,6 +18,8 @@ import com.telas.repositories.MonitorRepository;
 import com.telas.services.BucketService;
 import com.telas.services.MonitorService;
 import com.telas.shared.audit.CustomRevisionListener;
+import com.telas.shared.constants.SharedConstants;
+import com.telas.shared.constants.valitation.AddressValidationMessages;
 import com.telas.shared.constants.valitation.MonitorValidationMessages;
 import com.telas.shared.utils.AttachmentUtils;
 import com.telas.shared.utils.ValidateDataUtils;
@@ -25,10 +28,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-import java.util.UUID;
+import java.util.*;
 import java.util.stream.Collectors;
 
 @Service
@@ -82,27 +82,52 @@ public class MonitorServiceImpl implements MonitorService {
 
     @Override
     @Transactional(readOnly = true)
-    public List<MonitorMinResponseDto> findNearestActiveMonitors(String zipCode, BigDecimal sizeFilter, String typeFilter, int limit) {
+    public Map<String, List<MonitorMinResponseDto>> findNearestActiveMonitors(String zipCodes, BigDecimal sizeFilter, String typeFilter, int limit) {
         Client client = authenticatedUserService.getLoggedUser().client();
         String countryCode = client.getAddresses().stream()
                 .findFirst()
                 .map(Address::getCountry)
                 .orElse("US");
 
-        Map<String, Double> coordinates = helper.getCoordinatesFromZipCode(zipCode, countryCode);
-        double latitude = coordinates.get("latitude");
-        double longitude = coordinates.get("longitude");
+        List<String> zipCodeList = validateZipCodeList(zipCodes);
 
-        return repository.findNearestActiveMonitorsWithFilters(latitude, longitude, sizeFilter, typeFilter, limit)
-                .stream()
-                .map(result -> new MonitorMinResponseDto(
-                        result[0].toString(),
-                        Boolean.parseBoolean(result[1].toString()),
-                        result[2].toString(),
-                        Double.parseDouble(result[3].toString()),
-                        ((Number) result[6]).doubleValue()
-                ))
-                .toList();
+        Map<String, List<MonitorMinResponseDto>> result = new HashMap<>();
+
+        zipCodeList.forEach(zipCode -> {
+            Map<String, Double> coordinates = helper.getCoordinatesFromZipCode(zipCode, countryCode);
+            double latitude = coordinates.get("latitude");
+            double longitude = coordinates.get("longitude");
+
+            List<MonitorMinResponseDto> monitors = repository.findNearestActiveMonitorsWithFilters(latitude, longitude, sizeFilter, typeFilter, limit)
+                    .stream()
+                    .map(resultRow -> new MonitorMinResponseDto(
+                            resultRow[0].toString(),
+                            Boolean.parseBoolean(resultRow[1].toString()),
+                            resultRow[2].toString(),
+                            Double.parseDouble(resultRow[3].toString()),
+                            ((Number) resultRow[6]).doubleValue()
+                    ))
+                    .toList();
+
+            result.put(zipCode, monitors);
+        });
+
+        return result;
+    }
+
+    private List<String> validateZipCodeList(String zipCodes) {
+        List<String> zipCodeList = Arrays.asList(zipCodes.split(","));
+
+        if (zipCodeList.isEmpty()) {
+            throw new BusinessRuleException(MonitorValidationMessages.ZIP_CODE_LIST_EMPTY);
+        }
+
+        zipCodeList.forEach(zipCode -> {
+            if (!zipCode.matches(SharedConstants.REGEX_ZIP_CODE)) {
+                throw new BusinessRuleException(AddressValidationMessages.ZIP_CODE_LIST_INVALID);
+            }
+        });
+        return zipCodeList;
     }
 
     private Monitor createNewMonitor(MonitorRequestDto request, AuthenticatedUser authenticatedUser, Client partner, Address address, Set<Client> clients, List<Ad> ads) {

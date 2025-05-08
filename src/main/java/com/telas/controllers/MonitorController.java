@@ -39,7 +39,7 @@ public interface MonitorController {
     })
     ResponseEntity<?> findById(UUID monitorId);
 
-    @Operation(summary = "Endpoint contract to get a list of the nearest active monitors from zipCode", responses = {
+    @Operation(summary = "Endpoint contract to get a list of the nearest active monitors from a list of zipCodes", responses = {
             @ApiResponse(responseCode = "200", description = "Monitors founded successfully.")
     })
     ResponseEntity<?> findNearestActiveMonitors(String zipCode, BigDecimal size, String type, int limit);
