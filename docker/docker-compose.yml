@@ -2,12 +2,12 @@ version: '3'
 
 services:
   postgres-db:
-    container_name: marketing-db
+    container_name: telas_db
     image: postgis/postgis:latest
     environment:
       POSTGRES_USER: "postgres"
       POSTGRES_PASSWORD: "postgres"
-      POSTGRES_DB: "db_marketing_project"
+      POSTGRES_DB: "db_telas"
     ports:
       - "5432:5432"
     networks:

@@ -12,7 +12,7 @@ import java.util.Objects;
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
-public class FilterPendingAttachmentRequestDto extends PaginationRequestDto {
+public class FilterPendingAdRequestDto extends PaginationRequestDto {
     private String genericFilter;
 
     public Sort setOrdering() {
