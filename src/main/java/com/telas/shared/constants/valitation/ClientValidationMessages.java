@@ -23,4 +23,5 @@ public final class ClientValidationMessages {
     public static final String CURRENT_EQUALS_NEW_PASSWORD = "Current password cannot be the same as the new password.";
     public static final String SOCIAL_MEDIA_REQUIRED = "At least one social media URL must be provided.";
     public static final String INVALID_ROLE = "Invalid role.";
+    public static final String AD_REQUEST_NOT_ACTIVE = "Ad request is not active.";
 }

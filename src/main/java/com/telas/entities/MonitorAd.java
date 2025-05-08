@@ -1,6 +1,6 @@
 package com.telas.entities;
 
-import com.telas.dtos.request.MonitorAdvertisingAttachmentRequestDto;
+import com.telas.dtos.request.MonitorAdRequestDto;
 import com.telas.enums.DisplayType;
 import com.telas.shared.audit.BaseAudit;
 import jakarta.persistence.*;
@@ -17,14 +17,14 @@ import java.util.Objects;
 @Setter
 @NoArgsConstructor
 @Entity
-@Table(name = "monitors_advertising_attachments")
-@AuditTable("monitors_advertising_attachments_aud")
-public class MonitorAdvertisingAttachment extends BaseAudit implements Serializable {
+@Table(name = "monitors_ads")
+@AuditTable("monitors_ads_aud")
+public class MonitorAd extends BaseAudit implements Serializable {
     @Serial
     private static final long serialVersionUID = 4636281925583628366L;
 
     @EmbeddedId
-    private MonitorAdvertisingAttachmentPK id = new MonitorAdvertisingAttachmentPK();
+    private MonitorAdPK id = new MonitorAdPK();
 
     @Column(name = "display_type", nullable = false)
     @Enumerated(EnumType.STRING)
@@ -36,9 +36,9 @@ public class MonitorAdvertisingAttachment extends BaseAudit implements Serializa
     @Column(name = "order_index", nullable = false)
     private Integer orderIndex;
 
-    public MonitorAdvertisingAttachment(MonitorAdvertisingAttachmentRequestDto request, Monitor monitor, AdvertisingAttachment advertisingAttachment) {
+    public MonitorAd(MonitorAdRequestDto request, Monitor monitor, Ad ad) {
         id.setMonitor(monitor);
-        id.setAdvertisingAttachment(advertisingAttachment);
+        id.setAd(ad);
         displayType = request.getDisplayType();
         blockTime = request.getBlockTime();
         orderIndex = request.getOrderIndex();
@@ -52,12 +52,12 @@ public class MonitorAdvertisingAttachment extends BaseAudit implements Serializa
         id.setMonitor(monitor);
     }
 
-    public AdvertisingAttachment getAdvertisingAttachment() {
-        return id.getAdvertisingAttachment();
+    public Ad getAd() {
+        return id.getAd();
     }
 
-    public void setAdvertisingAttachment(AdvertisingAttachment advertisingAttachment) {
-        id.setAdvertisingAttachment(advertisingAttachment);
+    public void setAd(Ad ad) {
+        id.setAd(ad);
     }
 
     @Override
@@ -74,7 +74,7 @@ public class MonitorAdvertisingAttachment extends BaseAudit implements Serializa
             return false;
         }
 
-        MonitorAdvertisingAttachment monitorAdvertisingAttachment = (MonitorAdvertisingAttachment) o;
-        return Objects.equals(id, monitorAdvertisingAttachment.id);
+        MonitorAd monitorAd = (MonitorAd) o;
+        return Objects.equals(id, monitorAd.id);
     }
 }

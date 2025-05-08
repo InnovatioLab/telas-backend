@@ -3,6 +3,7 @@ package com.telas.infra.security.services.impl;
 import com.telas.entities.Client;
 import com.telas.enums.CodeType;
 import com.telas.infra.exceptions.BusinessRuleException;
+import com.telas.infra.exceptions.UnauthorizedException;
 import com.telas.infra.security.model.AuthenticatedUser;
 import com.telas.infra.security.model.LoginRequestDto;
 import com.telas.infra.security.model.PasswordRequestDto;
@@ -15,6 +16,7 @@ import com.telas.shared.constants.valitation.AuthValidationMessageConstants;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -31,20 +33,20 @@ public class AuthServiceImpl implements AuthService {
     @Override
     @Transactional(readOnly = true)
     public String login(LoginRequestDto requestDto) {
-        AuthenticatedUser authenticatedUser = (AuthenticatedUser) userDetailsService.loadUserByUsername(requestDto.getUsername());
+        try {
+            AuthenticatedUser authenticatedUser = (AuthenticatedUser) userDetailsService.loadUserByUsername(requestDto.getUsername());
 
-        if (authenticatedUser == null) {
-            throw new BusinessRuleException(AuthValidationMessageConstants.INVALID_CREDENTIALS);
+            if (!passwordEncoder.matches(requestDto.getPassword(), authenticatedUser.getPassword())) {
+                throw new BusinessRuleException(AuthValidationMessageConstants.INVALID_CREDENTIALS);
+            }
+
+            UsernamePasswordAuthenticationToken authentication = new UsernamePasswordAuthenticationToken(authenticatedUser, null, authenticatedUser.getAuthorities());
+            SecurityContextHolder.getContext().setAuthentication(authentication);
+
+            return tokenService.generateToken(authenticatedUser.client());
+        } catch (UsernameNotFoundException e) {
+            throw new UnauthorizedException(AuthValidationMessageConstants.INVALID_CREDENTIALS);
         }
-
-        if (!passwordEncoder.matches(requestDto.getPassword(), authenticatedUser.getPassword())) {
-            throw new BusinessRuleException(AuthValidationMessageConstants.INVALID_CREDENTIALS);
-        }
-
-        UsernamePasswordAuthenticationToken authentication = new UsernamePasswordAuthenticationToken(authenticatedUser, null, authenticatedUser.getAuthorities());
-        SecurityContextHolder.getContext().setAuthentication(authentication);
-
-        return tokenService.generateToken(authenticatedUser.client());
     }
 
     @Transactional

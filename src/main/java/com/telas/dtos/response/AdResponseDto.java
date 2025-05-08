@@ -13,15 +13,11 @@ import java.time.temporal.ChronoUnit;
 import java.util.UUID;
 
 @Getter
-public final class AdPendingResponseDto implements Serializable {
+public final class AdResponseDto implements Serializable {
     @Serial
     private static final long serialVersionUID = 5288515525105234502L;
 
     private final UUID id;
-
-    private final String name;
-
-    private final String businessName;
 
     private final LocalDate submissionDate;
 
@@ -31,13 +27,11 @@ public final class AdPendingResponseDto implements Serializable {
 
     private final long waitingDays;
 
-    public AdPendingResponseDto(Ad attachment, String link) {
-        id = attachment.getId();
-        name = attachment.getName();
-        businessName = attachment.getClient().getBusinessName();
-        submissionDate = attachment.getCreatedAt().atZone(ZoneId.systemDefault()).toLocalDate();
+    public AdResponseDto(Ad ad, String link) {
+        id = ad.getId();
+        submissionDate = ad.getCreatedAt().atZone(ZoneId.systemDefault()).toLocalDate();
         this.link = link;
-        validation = attachment.getValidation();
-        waitingDays = ChronoUnit.DAYS.between(attachment.getCreatedAt(), Instant.now());
+        validation = ad.getValidation();
+        waitingDays = ChronoUnit.DAYS.between(ad.getCreatedAt(), Instant.now());
     }
 }

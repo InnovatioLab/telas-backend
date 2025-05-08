@@ -173,37 +173,37 @@ CREATE TABLE "clients_aud"
 
 CREATE TABLE "plans"
 (
-  "id"                      UUID PRIMARY KEY,
-  "name"                    VARCHAR(100)             NOT NULL unique,
-  "description"             VARCHAR(255)                      DEFAULT NULL,
-  "monthly_price"           NUMERIC(10, 2),
-  "quarterly_price"         NUMERIC(10, 2),
-  "semi_annual_price"       NUMERIC(10, 2),
-  "yearly_price"            NUMERIC(10, 2),
-  "status"                  VARCHAR(15)              NOT NULL,
-  "monitors_quantity"       INTEGER                  NOT NULL,
-  "advertising_attachments" INTEGER                  NOT NULL,
-  "username_create"         VARCHAR(255)             NULL     DEFAULT NULL,
-  "username_update"         VARCHAR(255)             NULL     DEFAULT NULL,
-  "created_at"              TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT (now()),
-  "updated_at"              TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT (now()),
-  "inactivated_at"          TIMESTAMP WITH TIME ZONE
+  "id"                UUID PRIMARY KEY,
+  "name"              VARCHAR(100)             NOT NULL unique,
+  "description"       VARCHAR(255)                      DEFAULT NULL,
+  "monthly_price"     NUMERIC(10, 2),
+  "quarterly_price"   NUMERIC(10, 2),
+  "semi_annual_price" NUMERIC(10, 2),
+  "yearly_price"      NUMERIC(10, 2),
+  "status"            VARCHAR(15)              NOT NULL,
+  "monitors_quantity" INTEGER                  NOT NULL,
+  "ads"               INTEGER                  NOT NULL,
+  "username_create"   VARCHAR(255)             NULL     DEFAULT NULL,
+  "username_update"   VARCHAR(255)             NULL     DEFAULT NULL,
+  "created_at"        TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT (now()),
+  "updated_at"        TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT (now()),
+  "inactivated_at"    TIMESTAMP WITH TIME ZONE
 );
 
 CREATE TABLE "plans_aud"
 (
-  "id"                      UUID     NOT NULL,
-  "name"                    VARCHAR(100),
-  "description"             VARCHAR(255),
-  "monthly_price"           NUMERIC(10, 2),
-  "quarterly_price"         NUMERIC(10, 2),
-  "semi_annual_price"       NUMERIC(10, 2),
-  "yearly_price"            NUMERIC(10, 2),
-  "status"                  VARCHAR(15),
-  "monitors_quantity"       INTEGER,
-  "advertising_attachments" INTEGER,
-  "audit_id"                BIGINT   NOT NULL,
-  "audit_type"              SMALLINT NULL DEFAULT NULL,
+  "id"                UUID     NOT NULL,
+  "name"              VARCHAR(100),
+  "description"       VARCHAR(255),
+  "monthly_price"     NUMERIC(10, 2),
+  "quarterly_price"   NUMERIC(10, 2),
+  "semi_annual_price" NUMERIC(10, 2),
+  "yearly_price"      NUMERIC(10, 2),
+  "status"            VARCHAR(15),
+  "monitors_quantity" INTEGER,
+  "ads"               INTEGER,
+  "audit_id"          BIGINT   NOT NULL,
+  "audit_type"        SMALLINT NULL DEFAULT NULL,
   CONSTRAINT "pk_tbplans_aud" PRIMARY KEY ("id", "audit_id"),
   CONSTRAINT "fk_tbplans_aud_tbaudit" FOREIGN KEY ("audit_id") REFERENCES "audit" ("audit_id") ON UPDATE NO ACTION ON DELETE NO ACTION
 );
@@ -273,6 +273,8 @@ CREATE TABLE "addresses"
   "state"           VARCHAR(2)               NOT NULL,
   "country"         VARCHAR(100)             NOT NULL DEFAULT 'US',
   "complement"      VARCHAR(100),
+  "latitude"        DOUBLE PRECISION,
+  "longitude"       DOUBLE PRECISION,
   "client_id"       UUID                     NULL     DEFAULT NULL,
   "username_create" VARCHAR(255)             NULL     DEFAULT NULL,
   "username_update" VARCHAR(255)             NULL     DEFAULT NULL,
@@ -291,6 +293,8 @@ CREATE TABLE "addresses_aud"
   "state"      VARCHAR(2),
   "country"    VARCHAR(100),
   "complement" VARCHAR(100),
+  "latitude"   DOUBLE PRECISION,
+  "longitude"  DOUBLE PRECISION,
   "client_id"  UUID,
   "audit_id"   BIGINT   NOT NULL,
   "audit_type" SMALLINT NULL DEFAULT NULL,
@@ -303,11 +307,9 @@ CREATE TABLE "monitors"
   "id"                   UUID PRIMARY KEY,
   "fl_active"            BOOLEAN                           DEFAULT TRUE,
   "type"                 VARCHAR(50)              NOT NULL DEFAULT 'BASIC',
-  "max_blocks"           INTEGER                  NOT NULL,
+  "max_blocks"           INTEGER                  NOT NULL DEFAULT 12,
   "location_description" VARCHAR(255)             NULL     DEFAULT NULL,
   "size_in_inches"       NUMERIC(5, 2)            NOT NULL DEFAULT 0.00,
-  "latitude"             DOUBLE PRECISION         NOT NULL,
-  "longitude"            DOUBLE PRECISION         NOT NULL,
   "address_id"           UUID                     NOT NULL,
   "partner_id"           UUID                     NULL     DEFAULT NULL,
   "username_create"      VARCHAR(255)             NULL     DEFAULT NULL,
@@ -328,8 +330,6 @@ CREATE TABLE "monitors_aud"
   "location_description" VARCHAR(255),
   "type"                 VARCHAR(50),
   "size_in_inches"       NUMERIC(5, 2),
-  "latitude"             DOUBLE PRECISION,
-  "longitude"            DOUBLE PRECISION,
   "audit_id"             BIGINT   NOT NULL,
   "audit_type"           SMALLINT NULL DEFAULT NULL,
   CONSTRAINT "pk_tbmonitors_aud" PRIMARY KEY ("id", "audit_id"),
@@ -361,7 +361,7 @@ CREATE TABLE "attachments_aud"
   CONSTRAINT "fk_tbattachments_aud_tbaudit" FOREIGN KEY ("audit_id") REFERENCES "audit" ("audit_id") ON UPDATE NO ACTION ON DELETE NO ACTION
 );
 
-CREATE TABLE "advertising_attachments"
+CREATE TABLE "ads"
 (
   "id"              UUID PRIMARY KEY,
   "name"            VARCHAR(255)             NOT NULL,
@@ -372,10 +372,10 @@ CREATE TABLE "advertising_attachments"
   "username_update" VARCHAR(255)             NULL     DEFAULT NULL,
   "created_at"      TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT (now()),
   "updated_at"      TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT (now()),
-  CONSTRAINT "fk_advertising_attachment_client" FOREIGN KEY ("client_id") REFERENCES "clients" ("id") ON UPDATE NO ACTION ON DELETE CASCADE
+  CONSTRAINT "fk_ad_client" FOREIGN KEY ("client_id") REFERENCES "clients" ("id") ON UPDATE NO ACTION ON DELETE CASCADE
 );
 
-CREATE TABLE "advertising_attachments_aud"
+CREATE TABLE "ads_aud"
 (
   "id"         UUID     NOT NULL,
   "name"       VARCHAR(255),
@@ -384,83 +384,114 @@ CREATE TABLE "advertising_attachments_aud"
   "validation" VARCHAR(15),
   "audit_id"   BIGINT   NOT NULL,
   "audit_type" SMALLINT NULL DEFAULT NULL,
-  CONSTRAINT "pk_tbadvertising_attachments_aud" PRIMARY KEY ("id", "audit_id"),
-  CONSTRAINT "fk_tbadvertising_attachments_aud_tbaudit" FOREIGN KEY ("audit_id") REFERENCES "audit" ("audit_id") ON UPDATE NO ACTION ON DELETE NO ACTION
+  CONSTRAINT "pk_tbads_aud" PRIMARY KEY ("id", "audit_id"),
+  CONSTRAINT "fk_tbads_aud_tbaudit" FOREIGN KEY ("audit_id") REFERENCES "audit" ("audit_id") ON UPDATE NO ACTION ON DELETE NO ACTION
 );
 
-CREATE TABLE "refused_attachments"
+CREATE TABLE "refused_ads"
 (
   "id"              UUID PRIMARY KEY,
   "justification"   VARCHAR(100)             NOT NULL,
   "description"     VARCHAR(255)             NULL     DEFAULT NULL,
-  "attachment_id"   UUID                     NOT NULL,
+  "ad_id"           UUID                     NOT NULL,
   "validator_id"    UUID                     NOT NULL,
   "username_create" VARCHAR(255)             NULL     DEFAULT NULL,
   "username_update" VARCHAR(255)             NULL     DEFAULT NULL,
   "created_at"      TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT (now()),
   "updated_at"      TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT (now()),
-  CONSTRAINT "fk_refused_attachment_advertising_attachment" FOREIGN KEY ("attachment_id") REFERENCES "advertising_attachments" ("id") ON UPDATE NO ACTION ON DELETE NO ACTION,
-  CONSTRAINT "fk_refused_attachment_validator" FOREIGN KEY ("validator_id") REFERENCES "clients" ("id") ON UPDATE NO ACTION ON DELETE NO ACTION
+  CONSTRAINT "fk_refused_ads" FOREIGN KEY ("ad_id") REFERENCES "ads" ("id") ON UPDATE NO ACTION ON DELETE NO ACTION,
+  CONSTRAINT "fk_refused_ads_validator" FOREIGN KEY ("validator_id") REFERENCES "clients" ("id") ON UPDATE NO ACTION ON DELETE NO ACTION
 );
 
-CREATE TABLE "refused_attachments_aud"
+CREATE TABLE "refused_ads_aud"
 (
   "id"            UUID     NOT NULL,
   "justification" VARCHAR(100),
   "description"   VARCHAR(255),
-  "attachment_id" UUID,
+  "ad_id"         UUID,
   "validator_id"  UUID,
   "audit_id"      BIGINT   NOT NULL,
   "audit_type"    SMALLINT NULL DEFAULT NULL,
-  CONSTRAINT "pk_tbarefused_attachments_aud" PRIMARY KEY ("id", "audit_id"),
-  CONSTRAINT "fk_tbarefused_attachments_aud_tbaudit" FOREIGN KEY ("audit_id") REFERENCES "audit" ("audit_id") ON UPDATE NO ACTION ON DELETE NO ACTION
+  CONSTRAINT "pk_tbarefused_ads_aud" PRIMARY KEY ("id", "audit_id"),
+  CONSTRAINT "fk_tbarefused_ads_aud_tbaudit" FOREIGN KEY ("audit_id") REFERENCES "audit" ("audit_id") ON UPDATE NO ACTION ON DELETE NO ACTION
 );
 
-CREATE TABLE "advertising_attachments_attachments"
+CREATE TABLE "ads_attachments"
 (
-  "advertising_attachment_id" UUID NOT NULL,
-  "attachment_id"             UUID NOT NULL,
-  PRIMARY KEY ("advertising_attachment_id", "attachment_id"),
-  CONSTRAINT "fk_advertising_attachment" FOREIGN KEY ("advertising_attachment_id") REFERENCES "advertising_attachments" ("id") ON UPDATE NO ACTION ON DELETE CASCADE,
+  "ad_id"         UUID NOT NULL,
+  "attachment_id" UUID NOT NULL,
+  PRIMARY KEY ("ad_id", "attachment_id"),
+  CONSTRAINT "fk_ad" FOREIGN KEY ("ad_id") REFERENCES "ads" ("id") ON UPDATE NO ACTION ON DELETE CASCADE,
   CONSTRAINT "fk_attachment" FOREIGN KEY ("attachment_id") REFERENCES "attachments" ("id") ON UPDATE NO ACTION ON DELETE CASCADE
 );
 
-CREATE TABLE "advertising_attachments_attachments_aud"
+CREATE TABLE "ads_attachments_aud"
 (
-  "advertising_attachment_id" UUID     NOT NULL,
-  "attachment_id"             UUID     NOT NULL,
-  "audit_id"                  BIGINT   NOT NULL,
-  "audit_type"                SMALLINT NULL DEFAULT NULL,
-  CONSTRAINT "fk_tbadvertising_attachments_attachments_aud_tbaudit" FOREIGN KEY ("audit_id") REFERENCES "audit" ("audit_id") ON UPDATE NO ACTION ON DELETE NO ACTION
+  "ad_id"         UUID     NOT NULL,
+  "attachment_id" UUID     NOT NULL,
+  "audit_id"      BIGINT   NOT NULL,
+  "audit_type"    SMALLINT NULL DEFAULT NULL,
+  CONSTRAINT "fk_tbads_attachments_aud_tbaudit" FOREIGN KEY ("audit_id") REFERENCES "audit" ("audit_id") ON UPDATE NO ACTION ON DELETE NO ACTION
 );
 
-CREATE TABLE "monitors_advertising_attachments"
+CREATE TABLE "ad_requests"
 (
-  "monitor_id"                UUID                     NOT NULL,
-  "advertising_attachment_id" UUID                     NOT NULL,
-  "display_type"              VARCHAR(50)              NOT NULL DEFAULT 'INTERLEAVED',
-  "block_time"                INTEGER                  NOT NULL,
-  "order_index"               INTEGER                  NOT NULL,
-  "username_create"           VARCHAR(255)             NULL     DEFAULT NULL,
-  "username_update"           VARCHAR(255)             NULL     DEFAULT NULL,
-  "created_at"                TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT (now()),
-  "updated_at"                TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT (now()),
-  PRIMARY KEY ("monitor_id", "advertising_attachment_id"),
-  CONSTRAINT "fk_monitor_advertising_attachment_monitor" FOREIGN KEY ("monitor_id") REFERENCES "monitors" ("id") ON UPDATE NO ACTION ON DELETE CASCADE,
-  CONSTRAINT "fk_monitor_advertising_attachment_advertising_attachment" FOREIGN KEY ("advertising_attachment_id") REFERENCES "advertising_attachments" ("id") ON UPDATE NO ACTION ON DELETE CASCADE
+  "id"              UUID PRIMARY KEY,
+  "client_id"       UUID                     NOT NULL,
+  "message"         TEXT                     NOT NULL,
+  "attachment_ids"  TEXT                     NOT NULL,
+  "active"          BOOLEAN                           DEFAULT TRUE,
+  "phone"           VARCHAR(11),
+  "email"           VARCHAR(255),
+  "username_create" VARCHAR(255)             NULL     DEFAULT NULL,
+  "username_update" VARCHAR(255)             NULL     DEFAULT NULL,
+  "created_at"      TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT (now()),
+  "updated_at"      TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT (now()),
+  CONSTRAINT "fk_ad_request_client" FOREIGN KEY ("client_id") REFERENCES "clients" ("id") ON DELETE CASCADE
 );
 
-CREATE TABLE "monitors_advertising_attachments_aud"
+CREATE TABLE "ad_requests_aud"
 (
-  "monitor_id"                UUID     NOT NULL,
-  "advertising_attachment_id" UUID     NOT NULL,
-  "display_type"              VARCHAR(50),
-  "block_time"                INTEGER,
-  "order_index"               INTEGER,
-  "audit_id"                  BIGINT   NOT NULL,
-  "audit_type"                SMALLINT NULL DEFAULT NULL,
-  CONSTRAINT "pk_tbmonitors_advertising_attachments_aud" PRIMARY KEY ("monitor_id", "advertising_attachment_id", "audit_id"),
-  CONSTRAINT "fk_tbmonitors_advertising_attachments_aud_tbaudit" FOREIGN KEY ("audit_id") REFERENCES "audit" ("audit_id") ON UPDATE NO ACTION ON DELETE NO ACTION
+  "id"             UUID     NOT NULL,
+  "client_id"      UUID     NOT NULL,
+  "message"        TEXT     NOT NULL,
+  "attachment_ids" TEXT     NOT NULL,
+  "phone"          VARCHAR(11),
+  "email"          VARCHAR(255),
+  "active"         BOOLEAN,
+  "audit_id"       BIGINT   NOT NULL,
+  "audit_type"     SMALLINT NULL DEFAULT NULL,
+  CONSTRAINT "pk_tbads_requests_aud" PRIMARY KEY ("id", "audit_id"),
+  CONSTRAINT "fk_tbads_requests_aud_tbaudit" FOREIGN KEY ("audit_id") REFERENCES "audit" ("audit_id") ON UPDATE NO ACTION ON DELETE NO ACTION
+);
+
+CREATE TABLE "monitors_ads"
+(
+  "monitor_id"      UUID                     NOT NULL,
+  "ad_id"           UUID                     NOT NULL,
+  "display_type"    VARCHAR(50)              NOT NULL DEFAULT 'INTERLEAVED',
+  "block_time"      INTEGER                  NOT NULL,
+  "order_index"     INTEGER                  NOT NULL,
+  "username_create" VARCHAR(255)             NULL     DEFAULT NULL,
+  "username_update" VARCHAR(255)             NULL     DEFAULT NULL,
+  "created_at"      TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT (now()),
+  "updated_at"      TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT (now()),
+  PRIMARY KEY ("monitor_id", "ad_id"),
+  CONSTRAINT "fk_monitorads_monitor" FOREIGN KEY ("monitor_id") REFERENCES "monitors" ("id") ON UPDATE NO ACTION ON DELETE CASCADE,
+  CONSTRAINT "fk_monitorads_ad" FOREIGN KEY ("ad_id") REFERENCES "ads" ("id") ON UPDATE NO ACTION ON DELETE CASCADE
+);
+
+CREATE TABLE "monitors_ads_aud"
+(
+  "monitor_id"   UUID     NOT NULL,
+  "ad_id"        UUID     NOT NULL,
+  "display_type" VARCHAR(50),
+  "block_time"   INTEGER,
+  "order_index"  INTEGER,
+  "audit_id"     BIGINT   NOT NULL,
+  "audit_type"   SMALLINT NULL DEFAULT NULL,
+  CONSTRAINT "pk_tbmonitors_ads_aud" PRIMARY KEY ("monitor_id", "ad_id", "audit_id"),
+  CONSTRAINT "fk_tbmonitors_ads_aud_tbaudit" FOREIGN KEY ("audit_id") REFERENCES "audit" ("audit_id") ON UPDATE NO ACTION ON DELETE NO ACTION
 );
 
 CREATE TABLE "clients_monitors"

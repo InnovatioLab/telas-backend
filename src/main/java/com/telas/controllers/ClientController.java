@@ -3,8 +3,8 @@ package com.telas.controllers;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.telas.dtos.request.*;
 import com.telas.dtos.request.filters.ClientFilterRequestDto;
-import com.telas.dtos.request.filters.FilterPendingAttachmentRequestDto;
-import com.telas.enums.AttachmentValidationType;
+import com.telas.dtos.request.filters.FilterAdRequestDto;
+import com.telas.enums.AdValidationType;
 import com.telas.infra.security.model.PasswordRequestDto;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
@@ -86,14 +86,22 @@ public interface ClientController {
     })
     ResponseEntity<?> uploadAttachments(@Valid List<AttachmentRequestDto> request, UUID clientId) throws JsonProcessingException;
 
-    @Operation(summary = "Endpoint contract to save or update AdvertisingAttachment of a client", responses = {
-            @ApiResponse(responseCode = "201", description = "AdvertisingAttachment created/updated successfully."),
+    @Operation(summary = "Endpoint contract to request ad creation to admin", responses = {
+            @ApiResponse(responseCode = "201", description = "Ad Request created successfully."),
+            @ApiResponse(responseCode = "400", description = "Request with invalid data."),
+            @ApiResponse(responseCode = "401", description = "Unauthorized."),
+            @ApiResponse(responseCode = "404", description = "Some attachment not found."),
+    })
+    ResponseEntity<?> requestAdCreation(@Valid ClientAdRequestToAdminDto request);
+
+    @Operation(summary = "Endpoint contract to save or update an ad of a client", responses = {
+            @ApiResponse(responseCode = "201", description = "Ad created/updated successfully."),
             @ApiResponse(responseCode = "400", description = "Request with invalid data."),
             @ApiResponse(responseCode = "401", description = "Unauthorized."),
             @ApiResponse(responseCode = "403", description = "Forbidden."),
             @ApiResponse(responseCode = "404", description = "Some data not found."),
     })
-    ResponseEntity<?> uploadAdvertisingAttachments(@Valid List<AdvertisingAttachmentRequestDto> request, UUID clientId) throws JsonProcessingException;
+    ResponseEntity<?> uploadAd(@Valid AdRequestDto request);
 
     @Operation(summary = "Endpoint contract to get paginated clients from filters", responses = {
             @ApiResponse(responseCode = "200", description = "Records found successfully."),
@@ -117,21 +125,29 @@ public interface ClientController {
     })
     ResponseEntity<?> changeRoleToPartner(UUID clientId) throws JsonProcessingException;
 
-    @Operation(summary = "Endpoint contract to filter and list pending advertising attachments", responses = {
-            @ApiResponse(responseCode = "200", description = "Attachments filtered successfully."),
-            @ApiResponse(responseCode = "400", description = "Erro while filtering pending attachments"),
+    @Operation(summary = "Endpoint contract to filter and list ads request", responses = {
+            @ApiResponse(responseCode = "200", description = "Ads requests filtered successfully."),
+            @ApiResponse(responseCode = "400", description = "Erro while filtering ads"),
             @ApiResponse(responseCode = "401", description = "Unauthorized."),
             @ApiResponse(responseCode = "403", description = "Forbidden."),
             @ApiResponse(responseCode = "404", description = "Some data not found."),
     })
-    ResponseEntity<?> findPendingAttachmentsByFilter(FilterPendingAttachmentRequestDto request);
+    ResponseEntity<?> findAdRequestsByFilter(FilterAdRequestDto request);
 
-    @Operation(summary = "Endpoint contract to validate an advertising attachment", responses = {
-            @ApiResponse(responseCode = "200", description = "Attachment validated successfully."),
+    @Operation(summary = "Endpoint contract find pending ads from logged user", responses = {
+            @ApiResponse(responseCode = "200", description = "Pending ads founded successfully."),
+            @ApiResponse(responseCode = "401", description = "Unauthorized."),
+            @ApiResponse(responseCode = "403", description = "Forbidden."),
+            @ApiResponse(responseCode = "404", description = "Some data not found."),
+    })
+    ResponseEntity<?> findPendingAds();
+
+    @Operation(summary = "Endpoint contract to validate an ad", responses = {
+            @ApiResponse(responseCode = "200", description = "Ad validated successfully."),
             @ApiResponse(responseCode = "400", description = "Request with invalid data. "),
             @ApiResponse(responseCode = "401", description = "Unauthorized."),
             @ApiResponse(responseCode = "403", description = "Forbidden."),
             @ApiResponse(responseCode = "404", description = "Some data not found."),
     })
-    ResponseEntity<?> validateAttachment(AttachmentValidationType validation, RefusedAttachmentRequestDto request, UUID attachmentId) throws JsonProcessingException;
+    ResponseEntity<?> validateAd(AdValidationType validation, RefusedAdRequestDto request, UUID attachmentId) throws JsonProcessingException;
 }

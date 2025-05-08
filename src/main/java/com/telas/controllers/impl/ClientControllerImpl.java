@@ -4,12 +4,9 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.telas.controllers.ClientController;
 import com.telas.dtos.request.*;
 import com.telas.dtos.request.filters.ClientFilterRequestDto;
-import com.telas.dtos.request.filters.FilterPendingAttachmentRequestDto;
-import com.telas.dtos.response.AttachmentPendingResponseDto;
-import com.telas.dtos.response.ClientMinResponseDto;
-import com.telas.dtos.response.PaginationResponseDto;
-import com.telas.dtos.response.ResponseDto;
-import com.telas.enums.AttachmentValidationType;
+import com.telas.dtos.request.filters.FilterAdRequestDto;
+import com.telas.dtos.response.*;
+import com.telas.enums.AdValidationType;
 import com.telas.infra.security.model.PasswordRequestDto;
 import com.telas.services.ClientService;
 import com.telas.shared.constants.MessageCommonsConstants;
@@ -104,10 +101,19 @@ public class ClientControllerImpl implements ClientController {
     }
 
     @Override
-    @PostMapping("/advertising-attachments/{id}")
+    @PostMapping("/request-ad")
     @SecurityRequirement(name = "jwt")
-    public ResponseEntity<?> uploadAdvertisingAttachments(@Valid @RequestBody List<AdvertisingAttachmentRequestDto> request, @PathVariable(name = "id") UUID clientId) throws JsonProcessingException {
-        service.uploadAdvertisingAttachments(request, clientId);
+    public ResponseEntity<?> requestAdCreation(@Valid @RequestBody ClientAdRequestToAdminDto request) {
+        service.requestAdCreation(request);
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(ResponseDto.fromData(null, HttpStatus.CREATED, MessageCommonsConstants.REQUEST_AD_SUCCESS_MESSAGE));
+    }
+
+    @Override
+    @PostMapping("/ads")
+    @SecurityRequirement(name = "jwt")
+    public ResponseEntity<?> uploadAd(@Valid @RequestBody AdRequestDto request) {
+        service.uploadAds(request);
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(ResponseDto.fromData(null, HttpStatus.CREATED, MessageCommonsConstants.UPLOAD_SUCCESS_MESSAGE));
     }
@@ -142,10 +148,10 @@ public class ClientControllerImpl implements ClientController {
     }
 
     @Override
-    @GetMapping("/pending-attachments")
+    @GetMapping("/ads-requests")
     @SecurityRequirement(name = "jwt")
-    public ResponseEntity<?> findPendingAttachmentsByFilter(FilterPendingAttachmentRequestDto request) {
-        PaginationResponseDto<List<AttachmentPendingResponseDto>> response = service.findPendingAttachmentsByFilter(request);
+    public ResponseEntity<?> findAdRequestsByFilter(FilterAdRequestDto request) {
+        PaginationResponseDto<List<AdRequestResponseDto>> response = service.findPendingAdRequest(request);
 
         String msg = response.getList().isEmpty() ? MessageCommonsConstants.FIND_FILTER_EMPTY_MESSAGE : MessageCommonsConstants.FIND_ALL_SUCCESS_MESSAGE;
 
@@ -153,14 +159,23 @@ public class ClientControllerImpl implements ClientController {
     }
 
     @Override
-    @PatchMapping("/validate-attachment/{id}")
+    @GetMapping("/pending-ads")
     @SecurityRequirement(name = "jwt")
-    public ResponseEntity<?> validateAttachment(
-            @RequestParam("validation") AttachmentValidationType validation,
-            @RequestBody(required = false) RefusedAttachmentRequestDto request,
-            @PathVariable(name = "id") UUID attachmentId) throws JsonProcessingException {
+    public ResponseEntity<?> findPendingAds() {
+        List<AdResponseDto> response = service.findPendingAds();
+        String msg = response.isEmpty() ? MessageCommonsConstants.FIND_FILTER_EMPTY_MESSAGE : MessageCommonsConstants.FIND_ALL_SUCCESS_MESSAGE;
+        return ResponseEntity.status(HttpStatus.OK).body(ResponseDto.fromData(response, HttpStatus.OK, msg));
+    }
 
-        service.validateAttachment(attachmentId, validation, request);
+    @Override
+    @PatchMapping("/validate-ad/{id}")
+    @SecurityRequirement(name = "jwt")
+    public ResponseEntity<?> validateAd(
+            @RequestParam("validation") AdValidationType validation,
+            @RequestBody(required = false) RefusedAdRequestDto request,
+            @PathVariable(name = "id") UUID adId) throws JsonProcessingException {
+
+        service.validateAd(adId, validation, request);
         return ResponseEntity.status(HttpStatus.OK).body(ResponseDto.fromData(null, HttpStatus.OK, MessageCommonsConstants.ATTACHMENT_VALIDATION_MESSAGE));
     }
 

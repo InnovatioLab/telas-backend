@@ -9,8 +9,8 @@ import org.springframework.data.jpa.repository.config.EnableJpaRepositories;
 @SpringBootApplication
 @EnableJpaAuditing
 @EnableJpaRepositories(basePackages = "com.telas", repositoryFactoryBeanClass = EnversRevisionRepositoryFactoryBean.class)
-public class MarketingprojectApplication {
+public class TelasApplication {
     public static void main(String[] args) {
-        SpringApplication.run(MarketingprojectApplication.class, args);
+        SpringApplication.run(TelasApplication.class, args);
     }
 }

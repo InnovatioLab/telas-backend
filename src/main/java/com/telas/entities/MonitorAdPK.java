@@ -15,7 +15,7 @@ import java.util.Objects;
 @Setter
 @NoArgsConstructor
 @Embeddable
-public class MonitorAdvertisingAttachmentPK implements Serializable {
+public class MonitorAdPK implements Serializable {
     @Serial
     private static final long serialVersionUID = -8798763358641899098L;
 
@@ -24,13 +24,13 @@ public class MonitorAdvertisingAttachmentPK implements Serializable {
     private Monitor monitor;
 
     @ManyToOne
-    @JoinColumn(name = "advertising_attachment_id", nullable = false)
-    private AdvertisingAttachment advertisingAttachment;
+    @JoinColumn(name = "ad_id", nullable = false)
+    private Ad ad;
 
     @Override
     public int hashCode() {
         int result = (monitor != null ? monitor.hashCode() : 0);
-        result = 31 * result + (advertisingAttachment != null ? advertisingAttachment.hashCode() : 0);
+        result = 31 * result + (ad != null ? ad.hashCode() : 0);
         return result;
     }
 
@@ -43,7 +43,7 @@ public class MonitorAdvertisingAttachmentPK implements Serializable {
             return false;
         }
 
-        MonitorAdvertisingAttachmentPK that = (MonitorAdvertisingAttachmentPK) o;
-        return Objects.equals(monitor, that.monitor) && Objects.equals(advertisingAttachment, that.advertisingAttachment);
+        MonitorAdPK that = (MonitorAdPK) o;
+        return Objects.equals(monitor, that.monitor) && Objects.equals(ad, that.ad);
     }
 }

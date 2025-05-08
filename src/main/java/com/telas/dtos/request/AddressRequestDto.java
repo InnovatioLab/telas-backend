@@ -15,6 +15,7 @@ import lombok.Setter;
 
 import java.io.Serial;
 import java.io.Serializable;
+import java.util.UUID;
 
 @Getter
 @Setter
@@ -23,6 +24,8 @@ import java.io.Serializable;
 public class AddressRequestDto implements Serializable {
     @Serial
     private static final long serialVersionUID = -3963846843873646628L;
+
+    private UUID id;
 
     @NotEmpty(message = AddressValidationMessages.STREET_REQUIRED)
     @Size(max = 100, message = AddressValidationMessages.STREET_SIZE)
@@ -62,13 +65,7 @@ public class AddressRequestDto implements Serializable {
     @JsonDeserialize(using = TrimStringDeserializer.class)
     private String complement;
 
-    public String getCoordinatesParams() {
-        StringBuilder addressParams = new StringBuilder();
-        addressParams.append(street).append(", ");
-        addressParams.append(number).append(", ");
-        addressParams.append(city).append(", ");
-        addressParams.append(state).append(", ");
-        addressParams.append(zipCode);
-        return addressParams.toString();
-    }
+    private Double latitude;
+
+    private Double longitude;
 }

@@ -3,13 +3,10 @@ package com.telas.services;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.telas.dtos.request.*;
 import com.telas.dtos.request.filters.ClientFilterRequestDto;
-import com.telas.dtos.request.filters.FilterPendingAttachmentRequestDto;
-import com.telas.dtos.response.AttachmentPendingResponseDto;
-import com.telas.dtos.response.ClientMinResponseDto;
-import com.telas.dtos.response.ClientResponseDto;
-import com.telas.dtos.response.PaginationResponseDto;
+import com.telas.dtos.request.filters.FilterAdRequestDto;
+import com.telas.dtos.response.*;
 import com.telas.entities.Client;
-import com.telas.enums.AttachmentValidationType;
+import com.telas.enums.AdValidationType;
 import com.telas.infra.security.model.AuthenticatedUser;
 import com.telas.infra.security.model.PasswordRequestDto;
 import com.telas.infra.security.model.PasswordUpdateRequestDto;
@@ -46,15 +43,19 @@ public interface ClientService {
 
     void uploadAttachments(List<AttachmentRequestDto> request, UUID clientId);
 
-    void uploadAdvertisingAttachments(List<AdvertisingAttachmentRequestDto> request, UUID clientId) throws JsonProcessingException;
+    void requestAdCreation(ClientAdRequestToAdminDto request);
+
+    void uploadAds(AdRequestDto request);
 
     void acceptTermsAndConditions();
 
     void changeRoleToPartner(UUID clientId) throws JsonProcessingException;
 
-    void validateAttachment(UUID attachmentId, AttachmentValidationType validation, RefusedAttachmentRequestDto request) throws JsonProcessingException;
+    List<AdResponseDto> findPendingAds();
+
+    void validateAd(UUID adId, AdValidationType validation, RefusedAdRequestDto request) throws JsonProcessingException;
 
     PaginationResponseDto<List<ClientMinResponseDto>> findAllFilters(ClientFilterRequestDto request);
 
-    PaginationResponseDto<List<AttachmentPendingResponseDto>> findPendingAttachmentsByFilter(FilterPendingAttachmentRequestDto request);
+    PaginationResponseDto<List<AdRequestResponseDto>> findPendingAdRequest(FilterAdRequestDto request);
 }

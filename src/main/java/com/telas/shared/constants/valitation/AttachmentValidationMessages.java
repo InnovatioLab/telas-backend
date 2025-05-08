@@ -19,4 +19,5 @@ public final class AttachmentValidationMessages {
     public static final String DESCRIPTION_LENGTH = "Description must be at most 255 characters";
     public static final String PENDING_VALIDATION_NOT_ACCEPTED = "Attachment with pending validation cannot be accepted";
     public static final String JUSTIFICATION_REQUIRED = "Justification is required";
+    public static final String ATTACHMENTS_NOT_FOUND = "Some attachments were not found";
 }

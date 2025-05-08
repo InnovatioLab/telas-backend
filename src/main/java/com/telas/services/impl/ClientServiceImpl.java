@@ -4,10 +4,10 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.telas.dtos.MessagingDataDto;
 import com.telas.dtos.request.*;
 import com.telas.dtos.request.filters.ClientFilterRequestDto;
-import com.telas.dtos.request.filters.FilterPendingAttachmentRequestDto;
+import com.telas.dtos.request.filters.FilterAdRequestDto;
 import com.telas.dtos.response.*;
 import com.telas.entities.*;
-import com.telas.enums.AttachmentValidationType;
+import com.telas.enums.AdValidationType;
 import com.telas.enums.CodeType;
 import com.telas.enums.DefaultStatus;
 import com.telas.enums.Role;
@@ -20,7 +20,7 @@ import com.telas.infra.security.model.AuthenticatedUser;
 import com.telas.infra.security.model.PasswordRequestDto;
 import com.telas.infra.security.model.PasswordUpdateRequestDto;
 import com.telas.infra.security.services.AuthenticatedUserService;
-import com.telas.repositories.AdvertisingAttachmentRepository;
+import com.telas.repositories.AdRequestRepository;
 import com.telas.repositories.ClientRepository;
 import com.telas.services.BucketService;
 import com.telas.services.ClientService;
@@ -60,7 +60,7 @@ public class ClientServiceImpl implements ClientService {
     private final AuthenticatedUserService authenticatedUserService;
     private final BucketService bucketService;
     private final TermConditionService termConditionService;
-    private final AdvertisingAttachmentRepository advertisingAttachmentRepository;
+    private final AdRequestRepository adRequestRepository;
 
     @Override
     @Transactional
@@ -232,6 +232,7 @@ public class ClientServiceImpl implements ClientService {
         CustomRevisionListener.setOldData(client.toStringMapper());
 
         client.update(request, authenticatedUser.client().getBusinessName());
+        helper.updateAddresses(request.getAddresses(), client);
         repository.save(client);
     }
 
@@ -244,33 +245,40 @@ public class ClientServiceImpl implements ClientService {
 
         Client client = findActiveEntityById(clientId);
 
+//        Validar se o client possui algum plano ativou ou se é um partner
+
         if (!client.getAttachments().isEmpty()) {
             CustomRevisionListener.setUsername(authenticatedUser.client().getBusinessName());
             client.setUsernameUpdate(authenticatedUser.client().getBusinessName());
         }
 
-        attachmentHelper.saveAttachments(request, client, false);
+        attachmentHelper.saveAttachments(request, client, null);
         repository.save(client);
     }
 
     @Transactional
     @Override
-    public void uploadAdvertisingAttachments(List<AdvertisingAttachmentRequestDto> request, UUID clientId) throws JsonProcessingException {
-        attachmentHelper.validate(request);
-        AuthenticatedUser authenticatedUser = authenticatedUserService.validateSelfOrAdmin(clientId);
+    public void requestAdCreation(ClientAdRequestToAdminDto request) {
+        //        Validar se o client possui algum plano ativou ou se é um partner
+        Client client = authenticatedUserService.getLoggedUser().client();
+        helper.createAdRequest(request, client);
+    }
 
-        Client client = findActiveEntityById(clientId);
+    @Transactional
+    @Override
+    public void uploadAds(AdRequestDto request) {
+        //        Validar se o client possui algum plano ativou ou se é um partner
+        request.validate();
 
-        if (!client.getAdvertisingAttachments().isEmpty()) {
-            CustomRevisionListener.setUsername(authenticatedUser.client().getBusinessName());
-            CustomRevisionListener.setOldData(client.toStringMapper());
+        authenticatedUserService.validateAdmin();
+        AdRequest adRequest = helper.getAdRequestById(request.getAdRequestId());
+        Client client = adRequest.getClient();
 
-            attachmentHelper.removeAttachmentsNotSent(request, client);
+        if (!adRequest.isActive()) {
+            throw new BusinessRuleException(ClientValidationMessages.AD_REQUEST_NOT_ACTIVE);
         }
 
-        boolean isAdmin = authenticatedUser.client().isAdmin();
-
-        attachmentHelper.saveAttachments(request, client, isAdmin);
+        attachmentHelper.saveAttachments(List.of(request), client, adRequest);
         repository.save(client);
     }
 
@@ -300,11 +308,21 @@ public class ClientServiceImpl implements ClientService {
         }
     }
 
+    @Override
+    @Transactional(readOnly = true)
+    public List<AdResponseDto> findPendingAds() {
+        return authenticatedUserService.getLoggedUser().client().getPendingAds().stream()
+                .map(ad -> new AdResponseDto(ad, attachmentHelper.getStringLinkFromAd(ad)))
+                .toList();
+    }
+
     @Transactional
     @Override
-    public void validateAttachment(UUID attachmentId, AttachmentValidationType validation, RefusedAttachmentRequestDto request) throws JsonProcessingException {
-        Client admin = authenticatedUserService.validateAdmin().client();
-        attachmentHelper.validateAttachment(attachmentId, validation, request, admin);
+    public void validateAd(UUID adId, AdValidationType validation, RefusedAdRequestDto request) throws JsonProcessingException {
+        Ad ad = helper.getAdById(adId);
+        Client client = authenticatedUserService.validateSelfOrAdmin(ad.getClient().getId()).client();
+
+        attachmentHelper.validateAd(ad, validation, request, client);
     }
 
     @Override
@@ -327,19 +345,19 @@ public class ClientServiceImpl implements ClientService {
 
     @Override
     @Transactional(readOnly = true)
-    public PaginationResponseDto<List<AttachmentPendingResponseDto>> findPendingAttachmentsByFilter(FilterPendingAttachmentRequestDto request) {
+    public PaginationResponseDto<List<AdRequestResponseDto>> findPendingAdRequest(FilterAdRequestDto request) {
         authenticatedUserService.validateAdmin();
         Sort order = request.setOrdering();
 
         Pageable pageable = PaginationFilterUtil.getPageable(request, order);
-        Specification<AdvertisingAttachment> filter = PaginationFilterUtil.addSpecificationFilter(
-                (root, query, criteriaBuilder) -> criteriaBuilder.equal(root.get("validation"), AttachmentValidationType.PENDING),
+        Specification<AdRequest> filter = PaginationFilterUtil.addSpecificationFilter(
+                (root, query, criteriaBuilder) -> criteriaBuilder.equal(root.get("isActive"), true),
                 request.getGenericFilter(),
-                this::filterAttachments
+                this::filterAdRequests
         );
 
-        Page<AdvertisingAttachment> page = advertisingAttachmentRepository.findAll(filter, pageable);
-        List<AttachmentPendingResponseDto> response = page.stream().map(attachment -> new AttachmentPendingResponseDto(attachment, bucketService.getLink(AttachmentUtils.format(attachment)))).toList();
+        Page<AdRequest> page = adRequestRepository.findAll(filter, pageable);
+        List<AdRequestResponseDto> response = page.stream().map(adRequest -> new AdRequestResponseDto(adRequest, attachmentHelper.getLinksResponseFromAdRequest(adRequest))).toList();
         return PaginationResponseDto.fromResult(response, (int) page.getTotalElements(), page.getTotalPages(), request.getPage());
     }
 
@@ -364,21 +382,25 @@ public class ClientServiceImpl implements ClientService {
         ));
     }
 
-    Specification<AdvertisingAttachment> filterAttachments(Specification<AdvertisingAttachment> specification, String genericFilter) {
+    Specification<AdRequest> filterAdRequests(Specification<AdRequest> specification, String genericFilter) {
         return specification.and((root, query, criteriaBuilder) -> {
             List<Predicate> predicates = new ArrayList<>();
 
-            predicates.add(criteriaBuilder.like(
-                    criteriaBuilder.lower(root.get("name")),
-                    "%" + genericFilter.toLowerCase() + "%"
-            ));
             predicates.add(criteriaBuilder.like(
                     criteriaBuilder.lower(root.get("client").get("businessName")),
                     "%" + genericFilter.toLowerCase() + "%"
             ));
             predicates.add(criteriaBuilder.equal(
-                    root.get("client").get("identificationNumber"),
-                    genericFilter
+                    root.get("client").get("identificationNumber"), genericFilter
+            ));
+            predicates.add(criteriaBuilder.equal(
+                    root.get("client").get("contact").get("email"), genericFilter
+            ));
+            predicates.add(criteriaBuilder.equal(
+                    root.get("client").get("contact").get("phone"), genericFilter
+            ));
+            predicates.add(criteriaBuilder.equal(
+                    root.get("client").get("role"), genericFilter
             ));
 
             try {
@@ -399,7 +421,7 @@ public class ClientServiceImpl implements ClientService {
                 .map(attachment -> new LinkResponseDto(attachment.getId(), bucketService.getLink(AttachmentUtils.format(attachment))))
                 .toList();
 
-        List<LinkResponseDto> advertisingAttachmentLinks = client.getAdvertisingAttachments().stream()
+        List<LinkResponseDto> advertisingAttachmentLinks = client.getAds().stream()
                 .map(attachment -> new LinkResponseDto(attachment.getId(), bucketService.getLink(AttachmentUtils.format(attachment))))
                 .toList();
 

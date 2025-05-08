@@ -18,4 +18,5 @@ public final class AddressValidationMessages {
     public static final String CITY_REGEX = "City must contain only letters and numbers";
     public static final String STATE_REGEX = "State must contain only letters";
     public static final String COUNTRY_REGEX = "Country must contain only letters";
+    public static final String ADDRESS_NOT_FOUND = "Address not found";
 }

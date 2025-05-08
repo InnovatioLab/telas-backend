@@ -1,21 +1,20 @@
 package com.telas.helpers;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
-import com.telas.dtos.request.AdvertisingAttachmentRequestDto;
+import com.telas.dtos.request.AdRequestDto;
 import com.telas.dtos.request.AttachmentRequestDto;
-import com.telas.dtos.request.RefusedAttachmentRequestDto;
+import com.telas.dtos.request.RefusedAdRequestDto;
+import com.telas.dtos.response.LinkResponseDto;
 import com.telas.entities.*;
-import com.telas.enums.AttachmentValidationType;
+import com.telas.enums.AdValidationType;
 import com.telas.enums.NotificationReference;
 import com.telas.infra.exceptions.BusinessRuleException;
 import com.telas.infra.exceptions.ResourceNotFoundException;
-import com.telas.repositories.AdvertisingAttachmentRepository;
-import com.telas.repositories.AttachmentRepository;
-import com.telas.repositories.MonitorAdvertisingAttachmentRepository;
-import com.telas.repositories.MonitorRepository;
+import com.telas.repositories.*;
 import com.telas.services.BucketService;
 import com.telas.services.NotificationService;
 import com.telas.shared.audit.CustomRevisionListener;
+import com.telas.shared.constants.valitation.AdValidationMessages;
 import com.telas.shared.constants.valitation.AttachmentValidationMessages;
 import com.telas.shared.utils.AttachmentUtils;
 import com.telas.shared.utils.ValidateDataUtils;
@@ -30,11 +29,13 @@ import java.util.*;
 @RequiredArgsConstructor
 public class AttachmentHelper {
     private final AttachmentRepository attachmentRepository;
-    private final AdvertisingAttachmentRepository advertisingAttachmentRepository;
-    private final MonitorAdvertisingAttachmentRepository monitorAdvertisingAttachmentRepository;
+    private final AdRepository adRepository;
+    private final MonitorAdRepository monitorAdRepository;
     private final MonitorRepository monitorRepository;
     private final BucketService bucketService;
     private final NotificationService notificationService;
+    private final AdRequestRepository adRequestRepository;
+    private final ClientRepository clientRepository;
 
     @Transactional
     public <T extends AttachmentRequestDto> void validate(List<T> requestList) {
@@ -49,27 +50,47 @@ public class AttachmentHelper {
         return attachmentRepository.findByIdIn(attachmentsIds).orElseThrow(() -> new BusinessRuleException(AttachmentValidationMessages.ATTACHMENT_NOT_FOUND));
     }
 
+    @Transactional(readOnly = true)
+    public List<LinkResponseDto> getLinksResponseFromAdRequest(AdRequest adRequestEntity) {
+        List<Attachment> attachments = getAttachmentsFromAdRequest(adRequestEntity);
+        return attachments.stream()
+                .map(attachment -> new LinkResponseDto(attachment.getId(), bucketService.getLink(AttachmentUtils.format(attachment))))
+                .toList();
+    }
+
+    @Transactional(readOnly = true)
+    public String getStringLinkFromAd(Ad adEntity) {
+        return bucketService.getLink(AttachmentUtils.format(adEntity));
+    }
+
+
+    public List<Attachment> getAttachmentsFromAdRequest(AdRequest adRequestEntity) {
+        List<UUID> attachmentIds = Arrays.stream(adRequestEntity.getAttachmentIds().split(","))
+                .map(UUID::fromString)
+                .toList();
+
+        return getAttachmentsByIds(attachmentIds);
+    }
+
     @Transactional
-    public <T extends AttachmentRequestDto> void saveAttachments(List<T> requestList, Client client, boolean isAdmin) {
+    public <T extends AttachmentRequestDto> void saveAttachments(List<T> requestList, Client client, AdRequest adRequestEntity) {
         requestList.forEach(attachment -> {
             if (attachment.getId() == null) {
-                if (attachment instanceof AdvertisingAttachmentRequestDto advertisingAttachment) {
-                    List<Attachment> attachments = getAttachmentsByIds(advertisingAttachment.getAttachmentIds());
-                    AdvertisingAttachment newAttachment = new AdvertisingAttachment(advertisingAttachment, client);
+                if ((attachment instanceof AdRequestDto adRequest) && adRequestEntity != null) {
+                    List<Attachment> attachments = getAttachmentsFromAdRequest(adRequestEntity);
+                    Ad ad = new Ad(adRequest, client);
 
-                    if (isAdmin) {
-                        newAttachment.setValidation(AttachmentValidationType.APPROVED);
-                    }
+                    ad.getAttachments().addAll(attachments);
 
-                    newAttachment.getAttachments().addAll(attachments);
+                    Ad savedAd = adRepository.save(ad);
+                    client.getAds().add(savedAd);
 
-                    AdvertisingAttachment savedAttachment = advertisingAttachmentRepository.save(newAttachment);
-                    client.getAdvertisingAttachments().add(savedAttachment);
-
-                    String fileName = AttachmentUtils.format(savedAttachment);
+                    String fileName = AttachmentUtils.format(savedAd);
                     bucketService.upload(attachment.getBytes(), fileName, attachment.getType(), new ByteArrayInputStream(attachment.getBytes()));
 
-                } else {
+                    adRequestEntity.closeRequest();
+                    adRequestRepository.save(adRequestEntity);
+                } else if (!(attachment instanceof AdRequestDto) && adRequestEntity == null) {
                     Attachment newAttachment = new Attachment(attachment, client);
                     Attachment savedAttachment = attachmentRepository.save(newAttachment);
                     client.getAttachments().add(savedAttachment);
@@ -78,7 +99,7 @@ public class AttachmentHelper {
                     bucketService.upload(attachment.getBytes(), fileName, attachment.getType(), new ByteArrayInputStream(attachment.getBytes()));
                 }
             } else {
-                if (!(attachment instanceof AdvertisingAttachmentRequestDto)) {
+                if (!(attachment instanceof AdRequestDto)) {
                     Attachment entity = attachmentRepository.findById(attachment.getId()).orElseThrow(() -> new ResourceNotFoundException(AttachmentValidationMessages.ATTACHMENT_NOT_FOUND));
                     bucketService.deleteAttachment(AttachmentUtils.format(entity));
                     entity.setName(attachment.getName());
@@ -100,98 +121,81 @@ public class AttachmentHelper {
                 .filter(Objects::nonNull)
                 .toList();
 
-        boolean isAdvertisingAttachment = requestList.stream().allMatch(AdvertisingAttachmentRequestDto.class::isInstance);
+        boolean isAd = requestList.stream().allMatch(AdRequestDto.class::isInstance);
 
-        if (isAdvertisingAttachment) {
-            List<AdvertisingAttachment> advertisingAttachmentsToDelete = client.getAdvertisingAttachments().stream()
+        if (isAd) {
+            List<Ad> adsToDelete = client.getAds().stream()
                     .filter(attachment -> !attachmentIds.contains(attachment.getId()))
                     .toList();
 
-            removeAdvertisingAttachments(advertisingAttachmentsToDelete, client);
+            removeAds(adsToDelete, client);
         }
     }
 
-//    void removeAttachment(List<Attachment> attachmentsToDelete, Client client) {
-//        attachmentsToDelete.forEach(attachment -> {
-//            List<AdvertisingAttachment> toRemove = new ArrayList<>();
-//
-//            client.getAdvertisingAttachments().forEach(advertisingAttachment -> {
-//                advertisingAttachment.getAttachments().remove(attachment);
-//
-//                if (advertisingAttachment.getAttachments().isEmpty()) {
-//                    removeAdvertisingAttachmentFromMonitors(advertisingAttachment);
-//                    toRemove.add(advertisingAttachment);
-//                }
-//            });
-//
-//            toRemove.forEach(client.getAdvertisingAttachments()::remove);
-//            advertisingAttachmentRepository.deleteAll(toRemove);
-//
-//            bucketService.deleteAttachment(AttachmentUtils.format(attachment));
-//        });
-//
-//        attachmentsToDelete.forEach(client.getAttachments()::remove);
-//        attachmentRepository.deleteAll(attachmentsToDelete);
-//    }
-
-    void removeAdvertisingAttachments(List<AdvertisingAttachment> advertisingAttachmentsToDelete, Client client) {
-        advertisingAttachmentsToDelete.forEach(advertisingAttachment -> {
-            client.getAdvertisingAttachments().remove(advertisingAttachment);
-            advertisingAttachment.getAttachments().clear();
-            removeAdvertisingAttachmentFromMonitors(advertisingAttachment);
-            bucketService.deleteAttachment(AttachmentUtils.format(advertisingAttachment));
+    void removeAds(List<Ad> adsToDelete, Client client) {
+        adsToDelete.forEach(ad -> {
+            client.getAds().remove(ad);
+            ad.getAttachments().clear();
+            removeAdsFromMonitors(ad);
+            bucketService.deleteAttachment(AttachmentUtils.format(ad));
         });
 
-        advertisingAttachmentRepository.deleteAll(advertisingAttachmentsToDelete);
+        adRepository.deleteAll(adsToDelete);
     }
 
-    void removeAdvertisingAttachmentFromMonitors(AdvertisingAttachment advertisingAttachment) {
-        List<Monitor> monitors = monitorRepository.findByAdvertisingAttachmentId(advertisingAttachment.getId());
+    void removeAdsFromMonitors(Ad ad) {
+        List<Monitor> monitors = monitorRepository.findByAdId(ad.getId());
 
         monitors.forEach(monitor ->
-                monitor.getMonitorAdvertisingAttachments()
-                        .removeIf(attachment -> attachment.getAdvertisingAttachment().equals(advertisingAttachment))
+                monitor.getMonitorAds()
+                        .removeIf(attachment -> attachment.getAd().equals(ad))
         );
 
-        monitorAdvertisingAttachmentRepository.deleteAll(
-                monitorAdvertisingAttachmentRepository.findByAdvertisingAttachmentId(advertisingAttachment.getId())
+        monitorAdRepository.deleteAll(
+                monitorAdRepository.findByAdId(ad.getId())
         );
     }
 
     @Transactional
-    public void validateAttachment(UUID attachmentId, AttachmentValidationType validation, RefusedAttachmentRequestDto request, Client admin) throws JsonProcessingException {
-        if (AttachmentValidationType.PENDING.equals(validation)) {
-            throw new BusinessRuleException(AttachmentValidationMessages.PENDING_VALIDATION_NOT_ACCEPTED);
+    public void validateAd(Ad entity, AdValidationType validation, RefusedAdRequestDto request, Client client) throws JsonProcessingException {
+        if (AdValidationType.PENDING.equals(validation)) {
+            throw new BusinessRuleException(AdValidationMessages.PENDING_VALIDATION_NOT_ACCEPTED);
         }
 
-        AdvertisingAttachment entity = advertisingAttachmentRepository.findById(attachmentId).orElseThrow(() -> new ResourceNotFoundException(AttachmentValidationMessages.ATTACHMENT_NOT_FOUND));
-        CustomRevisionListener.setUsername(admin.getBusinessName());
+        if (!AdValidationType.PENDING.equals(entity.getValidation())) {
+            throw new BusinessRuleException(AdValidationMessages.AD_NOT_PENDING_VALIDATION);
+        }
+
+        CustomRevisionListener.setUsername(client.getBusinessName());
         CustomRevisionListener.setOldData(entity.toStringMapper());
         entity.setValidation(validation);
 
-        if (AttachmentValidationType.REJECTED.equals(validation)) {
+        if (AdValidationType.REJECTED.equals(validation)) {
             if (request == null) {
                 throw new BusinessRuleException(AttachmentValidationMessages.JUSTIFICATION_REQUIRED);
             }
-            createRefusedAttachment(request, entity, admin);
-            removeAdvertisingAttachmentFromMonitors(entity);
+            createRefusedAd(request, entity, client);
+            removeAdsFromMonitors(entity);
         }
 
-        advertisingAttachmentRepository.save(entity);
+        adRepository.save(entity);
 
-        sendNotification(entity, validation, request);
+        if (AdValidationType.REJECTED.equals(validation)) {
+            clientRepository.findAllAdmins().forEach(admin ->
+                    sendNotification(entity, admin, validation, request)
+            );
+        }
     }
 
-    private void sendNotification(AdvertisingAttachment entity, AttachmentValidationType validation, RefusedAttachmentRequestDto request) {
-        Client client = entity.getClient();
+    private void sendNotification(Ad entity, Client admin, AdValidationType validation, RefusedAdRequestDto request) {
         Map<String, String> params = new HashMap<>();
 
         String link = "";
         params.put("link", link);
         params.put("attachmentName", entity.getName());
-        params.put("recipient", client.getBusinessName());
+        params.put("recipient", admin.getBusinessName());
 
-        if (AttachmentValidationType.REJECTED.equals(validation)) {
+        if (AdValidationType.REJECTED.equals(validation)) {
             params.put("justification", request.getJustification());
             params.put("description", Optional.ofNullable(request.getDescription()).orElse(""));
         } else {
@@ -199,15 +203,15 @@ public class AttachmentHelper {
             params.put("description", "");
         }
 
-        NotificationReference notificationReference = AttachmentValidationType.APPROVED.equals(validation) ? NotificationReference.ATTACHMENT_APPROVED : NotificationReference.ATTACHMENT_REFUSED;
-        notificationService.save(notificationReference, client, params);
-        notificationService.notify(notificationReference, client, params);
+//        NotificationReference notificationReference = AdValidationType.APPROVED.equals(validation) ? NotificationReference.ATTACHMENT_APPROVED : NotificationReference.ATTACHMENT_REFUSED;
+        notificationService.save(NotificationReference.ATTACHMENT_REFUSED, admin, params);
+//        notificationService.notify(notificationReference, client, params);
     }
 
-    private void createRefusedAttachment(RefusedAttachmentRequestDto request, AdvertisingAttachment entity, Client admin) {
-        RefusedAttachment refusedAttachment = new RefusedAttachment(request, entity, admin);
-        refusedAttachment.setUsernameCreate(admin.getBusinessName());
-        entity.setRefusedAttachment(refusedAttachment);
+    private void createRefusedAd(RefusedAdRequestDto request, Ad entity, Client admin) {
+        RefusedAd refusedAd = new RefusedAd(request, entity, admin);
+        refusedAd.setUsernameCreate(admin.getBusinessName());
+        entity.setRefusedAd(refusedAd);
         entity.setUsernameUpdate(admin.getBusinessName());
     }
 }

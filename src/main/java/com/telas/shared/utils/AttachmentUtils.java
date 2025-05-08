@@ -1,7 +1,7 @@
 package com.telas.shared.utils;
 
 import com.telas.dtos.request.AttachmentRequestDto;
-import com.telas.entities.AdvertisingAttachment;
+import com.telas.entities.Ad;
 import com.telas.entities.Attachment;
 
 public class AttachmentUtils {
@@ -14,7 +14,7 @@ public class AttachmentUtils {
         return attachment.getId().toString() + DOT + getType(attachment.getName());
     }
 
-    public static String format(AdvertisingAttachment attachment) {
+    public static String format(Ad attachment) {
         return attachment.getId().toString() + DOT + getType(attachment.getName());
     }
 

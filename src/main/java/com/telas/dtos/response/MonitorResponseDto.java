@@ -23,16 +23,16 @@ public final class MonitorResponseDto implements Serializable {
     private final Double latitude;
     private final Double longitude;
     private final Address address;
-    private final List<MonitorAdvertisingAttachmentResponseDto> advertisingAttachments;
+    private final List<MonitorAdResponseDto> adLinks;
 
-    public MonitorResponseDto(Monitor entity, List<MonitorAdvertisingAttachmentResponseDto> advertisingAttachmentsLinks) {
+    public MonitorResponseDto(Monitor entity, List<MonitorAdResponseDto> adLinks) {
         id = entity.getId();
         active = entity.isActive();
         type = entity.getType();
         size = entity.getSize();
-        latitude = entity.getLatitude();
-        longitude = entity.getLongitude();
+        latitude = entity.getAddress().getLatitude();
+        longitude = entity.getAddress().getLongitude();
         address = entity.getAddress();
-        advertisingAttachments = advertisingAttachmentsLinks;
+        this.adLinks = adLinks;
     }
 }

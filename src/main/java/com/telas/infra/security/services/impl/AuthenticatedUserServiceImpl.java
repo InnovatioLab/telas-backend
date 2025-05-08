@@ -5,6 +5,7 @@ import com.telas.infra.exceptions.ForbiddenException;
 import com.telas.infra.exceptions.UnauthorizedException;
 import com.telas.infra.security.model.AuthenticatedUser;
 import com.telas.infra.security.services.AuthenticatedUserService;
+import com.telas.repositories.ClientRepository;
 import com.telas.shared.constants.valitation.AuthValidationMessageConstants;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.Authentication;
@@ -18,6 +19,8 @@ import java.util.UUID;
 @Service
 @RequiredArgsConstructor
 public class AuthenticatedUserServiceImpl implements AuthenticatedUserService {
+    private final ClientRepository clientRepository;
+
     @Transactional(readOnly = true)
     @Override
     public AuthenticatedUser getLoggedUser() {
@@ -27,7 +30,12 @@ public class AuthenticatedUserServiceImpl implements AuthenticatedUserService {
             throw new UnauthorizedException(AuthValidationMessageConstants.ERROR_NO_AUTHENTICATION);
         }
 
-        return (AuthenticatedUser) authentication.getPrincipal();
+        AuthenticatedUser authenticatedUser = (AuthenticatedUser) authentication.getPrincipal();
+
+        Client client = clientRepository.findActiveById(authenticatedUser.client().getId())
+                .orElseThrow(() -> new UnauthorizedException(AuthValidationMessageConstants.ERROR_NO_AUTHENTICATION));
+
+        return new AuthenticatedUser(client);
     }
 
     @Transactional(readOnly = true)

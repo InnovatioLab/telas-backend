@@ -37,7 +37,9 @@ public class MonitorRequestDto implements Serializable {
     @Digits(integer = 3, fraction = 2, message = MonitorValidationMessages.SIZE_INVALID)
     private BigDecimal size;
 
-    @NotNull(message = MonitorValidationMessages.MAX_BLOCKS_REQUIRED)
+    @NotNull(message = MonitorValidationMessages.ADDRESS_ID_REQUIRED)
+    private UUID addressId;
+
     @Positive(message = MonitorValidationMessages.MAX_BLOCKS_INVALID)
     private Integer maxBlocks;
 
@@ -49,37 +51,50 @@ public class MonitorRequestDto implements Serializable {
 
     private Boolean active;
 
-    private Double latitude;
+    private @Valid List<MonitorAdRequestDto> ads;
 
-    private Double longitude;
+    public void validate() {
+        validadeAdsOrderIndex();
+        validateMaxDisplayTime();
+    }
 
-    @NotNull(message = MonitorValidationMessages.ADDRESS_REQUIRED)
-    private @Valid AddressRequestDto address;
+    private void validateMaxDisplayTime() {
+        if (ValidateDataUtils.isNullOrEmpty(ads)) {
+            return;
+        }
 
-    private @Valid List<MonitorAdvertisingAttachmentRequestDto> advertisingAttachments;
+        int sumDisplayTimeInSeconds = ads.stream()
+                .mapToInt(MonitorAdRequestDto::getBlockTime)
+                .sum();
 
-    @NotNull(message = MonitorValidationMessages.PARTNER_ID_REQUIRED)
-    private UUID partnerId;
+        int maxAllowedTime = (maxBlocks == null)
+                ? SharedConstants.MAX_MONITOR_DISPLAY_TIME
+                : SharedConstants.MONITOR_ADS_TIME_IN_SECONDS * maxBlocks;
 
-    public void validadeAdvertisingAttachmentsOrderIndex() {
-        if (!ValidateDataUtils.isNullOrEmpty(advertisingAttachments)) {
-            boolean hasDuplicates = advertisingAttachments.stream()
-                                            .map(MonitorAdvertisingAttachmentRequestDto::getOrderIndex)
-                                            .distinct()
-                                            .count() < advertisingAttachments.size();
-
-            if (hasDuplicates) {
-                throw new BusinessRuleException(MonitorValidationMessages.ADVERTISING_ATTACHMENT_ORDER_INDEX_DUPLICATED);
-            }
-
-            adjustAdvertisingAttachmentsOrder();
+        if (sumDisplayTimeInSeconds > maxAllowedTime) {
+            throw new BusinessRuleException(MonitorValidationMessages.SUM_BLOCK_TIME_INVALID);
         }
     }
 
-    private void adjustAdvertisingAttachmentsOrder() {
-        advertisingAttachments.sort(Comparator.comparing(MonitorAdvertisingAttachmentRequestDto::getOrderIndex));
+    private void validadeAdsOrderIndex() {
+        if (!ValidateDataUtils.isNullOrEmpty(ads)) {
+            boolean hasDuplicates = ads.stream()
+                                            .map(MonitorAdRequestDto::getOrderIndex)
+                                            .distinct()
+                                            .count() < ads.size();
+
+            if (hasDuplicates) {
+                throw new BusinessRuleException(MonitorValidationMessages.ADS_ORDER_INDEX_DUPLICATED);
+            }
+
+            adjustAdsOrder();
+        }
+    }
+
+    private void adjustAdsOrder() {
+        ads.sort(Comparator.comparing(MonitorAdRequestDto::getOrderIndex));
 
         AtomicInteger sequence = new AtomicInteger(1);
-        advertisingAttachments.forEach(attachment -> attachment.setOrderIndex(sequence.getAndIncrement()));
+        ads.forEach(attachment -> attachment.setOrderIndex(sequence.getAndIncrement()));
     }
 }

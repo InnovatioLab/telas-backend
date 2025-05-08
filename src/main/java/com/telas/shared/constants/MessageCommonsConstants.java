@@ -20,6 +20,7 @@ public class MessageCommonsConstants {
     public static final String START_PAGE_ERROR_MESSAGE = "Pagination must start from page 1.";
     public static final String ACCEPT_TERMS_CONDITIONS_SUCCESS_MESSAGE = "Terms and conditions accepted successfully!";
     public static final String ATTACHMENT_VALIDATION_MESSAGE = "Attachment successfully validated!";
+    public static final String REQUEST_AD_SUCCESS_MESSAGE = "Ad creation request successfully sent!";
 
     private MessageCommonsConstants() {
     }

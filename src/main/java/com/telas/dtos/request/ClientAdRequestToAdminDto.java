@@ -1,15 +1,17 @@
 package com.telas.dtos.request;
 
 
+import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
+import com.telas.shared.constants.SharedConstants;
 import com.telas.shared.constants.valitation.AdValidationMessages;
-import jakarta.validation.constraints.NotEmpty;
-import jakarta.validation.constraints.NotNull;
+import com.telas.shared.constants.valitation.ContactValidationMessages;
+import com.telas.shared.utils.TrimStringDeserializer;
+import jakarta.validation.constraints.*;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
-import java.io.Serial;
 import java.io.Serializable;
 import java.util.List;
 import java.util.UUID;
@@ -18,11 +20,22 @@ import java.util.UUID;
 @Setter
 @AllArgsConstructor
 @NoArgsConstructor
-public class AdRequestDto extends AttachmentRequestDto implements Serializable {
-    @Serial
-    private static final long serialVersionUID = 4107068995329945486L;
+public class ClientAdRequestToAdminDto implements Serializable {
 
-    @NotNull(message = AdValidationMessages.ID_REQUIRED)
-    @NotEmpty(message = AdValidationMessages.ID_REQUIRED)
-    List<UUID> adIds;
+    @NotNull(message = AdValidationMessages.ATTACHMENT_IDS_REQUIRED)
+    @NotEmpty(message = AdValidationMessages.ATTACHMENT_IDS_REQUIRED)
+    private List<UUID> attachmentIds;
+
+    @NotEmpty(message = AdValidationMessages.MESSAGE_REQUIRED)
+    @JsonDeserialize(using = TrimStringDeserializer.class)
+    private String message;
+
+    @Pattern(regexp = SharedConstants.REGEX_ONLY_NUMBERS, message = ContactValidationMessages.PHONE_ONLY_NUMBERS)
+    @Size(min = 10, max = 11, message = ContactValidationMessages.PHONE_SIZE)
+    @JsonDeserialize(using = TrimStringDeserializer.class)
+    private String phone;
+
+    @Email(message = ContactValidationMessages.EMAIL_INVALID)
+    @JsonDeserialize(using = TrimStringDeserializer.class)
+    private String email;
 }

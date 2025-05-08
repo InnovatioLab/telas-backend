@@ -1,6 +1,6 @@
 package com.telas.dtos.response;
 
-import com.telas.entities.MonitorAdvertisingAttachment;
+import com.telas.entities.MonitorAd;
 import com.telas.enums.DisplayType;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -13,14 +13,13 @@ import java.util.UUID;
 @Getter
 @Setter
 @NoArgsConstructor
-public final class MonitorAdvertisingAttachmentResponseDto implements Serializable {
+public final class MonitorAdResponseDto implements Serializable {
     @Serial
     private static final long serialVersionUID = -7144327643566339527L;
 
+    private UUID adId;
 
-    private UUID attachmentId;
-
-    private String attachmentLink;
+    private String adLink;
 
     private DisplayType displayType;
 
@@ -28,11 +27,11 @@ public final class MonitorAdvertisingAttachmentResponseDto implements Serializab
 
     private Integer orderIndex;
 
-    public MonitorAdvertisingAttachmentResponseDto(MonitorAdvertisingAttachment entity, String attachmentLink) {
-        attachmentId = entity.getAdvertisingAttachment().getId();
+    public MonitorAdResponseDto(MonitorAd entity, String adLink) {
+        adId = entity.getAd().getId();
         displayType = entity.getDisplayType();
         blockTime = entity.getBlockTime();
         orderIndex = entity.getOrderIndex();
-        this.attachmentLink = attachmentLink;
+        this.adLink = adLink;
     }
 }

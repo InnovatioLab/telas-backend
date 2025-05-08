@@ -6,6 +6,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import com.telas.dtos.request.ClientRequestDto;
+import com.telas.enums.AdValidationType;
 import com.telas.enums.DefaultStatus;
 import com.telas.enums.Role;
 import com.telas.shared.audit.BaseAudit;
@@ -96,7 +97,7 @@ public class Client extends BaseAudit implements Serializable {
     private Set<Attachment> attachments = new HashSet<>();
 
     @OneToMany(mappedBy = "client", cascade = CascadeType.ALL)
-    private Set<AdvertisingAttachment> advertisingAttachments = new HashSet<>();
+    private Set<Ad> ads = new HashSet<>();
 
     @NotAudited
     @OneToMany(mappedBy = "client", cascade = CascadeType.ALL, fetch = FetchType.EAGER)
@@ -129,16 +130,9 @@ public class Client extends BaseAudit implements Serializable {
         identificationNumber = request.getIdentificationNumber();
         businessField = request.getBusinessField();
         websiteUrl = request.getWebsiteUrl();
-        status = request.getStatus();
         contact.update(request.getContact());
         owner.update(request.getOwner());
         Optional.ofNullable(socialMedia).ifPresent(socialMedia -> socialMedia.update(request.getSocialMedia()));
-
-        addresses = request.getAddresses().stream()
-                .map(address -> new Address(address, this))
-                .peek(address -> address.setUsernameUpdate(updatedBy))
-                .collect(Collectors.toSet());
-
         setUsernameUpdateForRelatedEntities(updatedBy);
     }
 
@@ -175,4 +169,11 @@ public class Client extends BaseAudit implements Serializable {
     public boolean isTermsAccepted() {
         return termAcceptedAt != null;
     }
+
+    public List<Ad> getPendingAds() {
+        return ads.stream()
+                .filter(ad -> AdValidationType.PENDING.equals(ad.getValidation()))
+                .collect(Collectors.toList());
+    }
+
 }

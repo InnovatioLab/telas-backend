@@ -1,11 +1,6 @@
 package com.telas.entities;
 
-import com.fasterxml.jackson.annotation.JsonIgnore;
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.SerializationFeature;
-import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
-import com.telas.dtos.request.AttachmentRequestDto;
+import com.telas.dtos.request.ClientAdRequestToAdminDto;
 import com.telas.shared.audit.BaseAudit;
 import jakarta.persistence.*;
 import lombok.Getter;
@@ -15,15 +10,16 @@ import org.hibernate.envers.AuditTable;
 
 import java.io.Serial;
 import java.io.Serializable;
+import java.util.List;
 import java.util.UUID;
 
 @Getter
 @Setter
 @Entity
-@Table(name = "attachments")
-@AuditTable("attachments_aud")
+@Table(name = "ad_requests")
+@AuditTable("ad_requests_aud")
 @NoArgsConstructor
-public class Attachment extends BaseAudit implements Serializable {
+public class AdRequest extends BaseAudit implements Serializable {
     @Serial
     private static final long serialVersionUID = 1084934057135367842L;
 
@@ -32,30 +28,34 @@ public class Attachment extends BaseAudit implements Serializable {
     @Column(name = "id")
     private UUID id;
 
-    @Column(name = "name", nullable = false)
-    private String name;
+    @Column(name = "message", nullable = false)
+    private String message;
 
-    @Column(name = "mime_type", nullable = false, length = 5)
-    private String type;
+    @Column(name = "attachment_ids", nullable = false)
+    private String attachmentIds;
 
-    @JsonIgnore
+    @Column(name = "phone")
+    private String phone;
+
+    @Column(name = "email")
+    private String email;
+
+    @Column(name = "active")
+    private boolean isActive = true;
+
     @ManyToOne
-    @JoinColumn(name = "client_id", referencedColumnName = "id", nullable = false)
+    @JoinColumn(name = "client_id", nullable = false)
     private Client client;
 
-    public Attachment(AttachmentRequestDto request, Client client) {
-        name = request.getName();
-        type = request.getType();
+    public AdRequest(ClientAdRequestToAdminDto request, Client client, List<Attachment> attachmentList) {
         this.client = client;
+        this.message = request.getMessage();
+        this.phone = request.getPhone();
+        this.email = request.getEmail();
+        this.attachmentIds = attachmentList.stream().map(Attachment::getId).map(UUID::toString).reduce((a, b) -> a + "," + b).orElse("");
     }
 
-    public String toStringMapper() throws JsonProcessingException {
-        ObjectMapper objectMapper = new ObjectMapper();
-        objectMapper.registerModule(new JavaTimeModule())
-                .configure(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS, false);
-
-        return objectMapper.writeValueAsString(this);
+    public void closeRequest() {
+        this.isActive = false;
     }
-
-
 }

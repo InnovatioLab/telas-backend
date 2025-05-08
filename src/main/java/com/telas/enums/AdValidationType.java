@@ -1,6 +1,6 @@
 package com.telas.enums;
 
-public enum AttachmentValidationType {
+public enum AdValidationType {
     PENDING,
     APPROVED,
     REJECTED,

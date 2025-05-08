@@ -1,8 +1,8 @@
 package com.telas.services.impl;
 
-import com.telas.dtos.request.MonitorRequestDto;
 import com.telas.dtos.response.GeolocalizationApiResponse;
 import com.telas.dtos.response.GeolocalizationResponseDto;
+import com.telas.entities.Address;
 import com.telas.infra.exceptions.BusinessRuleException;
 import com.telas.services.GeolocationService;
 import com.telas.shared.utils.HttpClientUtil;
@@ -32,11 +32,10 @@ public class GeolocationServiceImpl implements GeolocationService {
 
     @Override
     @Transactional
-    public void getMonitorCoordinates(MonitorRequestDto request) {
-        GeolocalizationResponseDto response = geolocationRequest(request);
+    public void getAddressCoordinates(Address address) {
+        GeolocalizationResponseDto response = geolocationRequest(address);
         validateResponse(response);
-        request.setLatitude(response.getLat());
-        request.setLongitude(response.getLng());
+        address.setLocation(response.getLat(), response.getLng());
     }
 
     @Override
@@ -54,8 +53,8 @@ public class GeolocationServiceImpl implements GeolocationService {
         }
     }
 
-    GeolocalizationResponseDto geolocationRequest(MonitorRequestDto request) {
-        return fetchGeolocationData(request.getAddress().getCoordinatesParams());
+    GeolocalizationResponseDto geolocationRequest(Address address) {
+        return fetchGeolocationData(address.getCoordinatesParams());
     }
 
     GeolocalizationResponseDto geolocationRequest(String zipCode, String countryCode) {

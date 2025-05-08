@@ -49,17 +49,11 @@ public class Monitor extends BaseAudit implements Serializable {
     @Column(name = "size_in_inches", precision = 5, scale = 2, nullable = false)
     private BigDecimal size = BigDecimal.valueOf(0.00);
 
-    @Column(name = "max_blocks", nullable = false)
-    private Integer maxBlocks;
+    @Column(name = "max_blocks")
+    private Integer maxBlocks = 12;
 
-    @Column(name = "latitude", nullable = false)
-    private Double latitude;
-
-    @Column(name = "longitude", nullable = false)
-    private Double longitude;
-
-    @OneToOne(cascade = CascadeType.ALL)
-    @JoinColumn(name = "address_id", referencedColumnName = "id")
+    @ManyToOne
+    @JoinColumn(name = "address_id", referencedColumnName = "id", nullable = false)
     private Address address;
 
     @OneToOne
@@ -68,7 +62,7 @@ public class Monitor extends BaseAudit implements Serializable {
 
     @JsonIgnore
     @OneToMany(mappedBy = "id.monitor")
-    private Set<MonitorAdvertisingAttachment> monitorAdvertisingAttachments = new HashSet<>();
+    private Set<MonitorAd> monitorAds = new HashSet<>();
 
     @ManyToMany
     @JoinTable(
@@ -78,25 +72,23 @@ public class Monitor extends BaseAudit implements Serializable {
     )
     private Set<Client> clients = new HashSet<Client>();
 
-    public Monitor(MonitorRequestDto request, Client partner) {
-        this(request, partner, Set.of(), List.of());
+    public Monitor(MonitorRequestDto request, Client partner, Address address) {
+        this(request, partner, address, Set.of(), List.of());
     }
 
-    public Monitor(MonitorRequestDto request, Client partner, Set<Client> clients, List<AdvertisingAttachment> advertisingAttachmentsList) {
+    public Monitor(MonitorRequestDto request, Client partner, Address address, Set<Client> clients, List<Ad> advertisingAttachmentsList) {
         type = request.getType();
         size = request.getSize();
         locationDescription = request.getLocationDescription();
         maxBlocks = request.getMaxBlocks();
-        latitude = request.getLatitude();
-        longitude = request.getLongitude();
-        address = new Address(request.getAddress());
+        this.address = address;
         this.partner = partner;
 
-        if (!ValidateDataUtils.isNullOrEmpty(request.getAdvertisingAttachments())) {
+        if (!ValidateDataUtils.isNullOrEmpty(request.getAds())) {
             IntStream.range(0, advertisingAttachmentsList.size()).forEach(index -> {
-                AdvertisingAttachment advertisingAttachment = advertisingAttachmentsList.get(index);
-                MonitorAdvertisingAttachment monitorAdvertisingAttachment = new MonitorAdvertisingAttachment(request.getAdvertisingAttachments().get(index), this, advertisingAttachment);
-                monitorAdvertisingAttachments.add(monitorAdvertisingAttachment);
+                Ad ad = advertisingAttachmentsList.get(index);
+                MonitorAd monitorAd = new MonitorAd(request.getAds().get(index), this, ad);
+                monitorAds.add(monitorAd);
             });
         }
 
@@ -117,9 +109,9 @@ public class Monitor extends BaseAudit implements Serializable {
         return Objects.equals(getId(), monitor.getId());
     }
 
-    public List<AdvertisingAttachment> getAdvertisingAttachments() {
-        return monitorAdvertisingAttachments.stream()
-                .map(MonitorAdvertisingAttachment::getAdvertisingAttachment)
+    public List<Ad> getAdvertisingAttachments() {
+        return monitorAds.stream()
+                .map(MonitorAd::getAd)
                 .toList();
     }
 

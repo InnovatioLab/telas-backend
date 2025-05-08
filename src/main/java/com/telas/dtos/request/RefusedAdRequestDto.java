@@ -17,7 +17,7 @@ import java.io.Serializable;
 @Setter
 @AllArgsConstructor
 @NoArgsConstructor
-public class RefusedAttachmentRequestDto implements Serializable {
+public class RefusedAdRequestDto implements Serializable {
 
     @Serial
     private static final long serialVersionUID = 3742070221704178674L;

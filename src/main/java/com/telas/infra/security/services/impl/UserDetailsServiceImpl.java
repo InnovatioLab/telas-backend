@@ -21,6 +21,7 @@ public class UserDetailsServiceImpl implements UserDetailsService {
         return clientRepository.findActiveByIdentificationNumber(identificationNumber)
                 .map(AuthenticatedUser::new)
                 .orElseThrow(() -> new UsernameNotFoundException(ClientValidationMessages.USER_NOT_FOUND));
+
     }
 
 }

@@ -5,8 +5,8 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
-import com.telas.dtos.request.AdvertisingAttachmentRequestDto;
-import com.telas.enums.AttachmentValidationType;
+import com.telas.dtos.request.AdRequestDto;
+import com.telas.enums.AdValidationType;
 import com.telas.shared.audit.BaseAudit;
 import jakarta.persistence.*;
 import lombok.Getter;
@@ -25,10 +25,10 @@ import java.util.UUID;
 @Getter
 @Setter
 @Entity
-@Table(name = "advertising_attachments")
-@AuditTable("advertising_attachments_aud")
+@Table(name = "ads")
+@AuditTable("ads_aud")
 @NoArgsConstructor
-public class AdvertisingAttachment extends BaseAudit implements Serializable {
+public class Ad extends BaseAudit implements Serializable {
     @Serial
     private static final long serialVersionUID = 1084934057135367842L;
 
@@ -45,31 +45,31 @@ public class AdvertisingAttachment extends BaseAudit implements Serializable {
 
     @Column(name = "validation", nullable = false)
     @Enumerated(EnumType.STRING)
-    private AttachmentValidationType validation = AttachmentValidationType.PENDING;
+    private AdValidationType validation = AdValidationType.PENDING;
 
     @JsonIgnore
     @ManyToOne
     @JoinColumn(name = "client_id", referencedColumnName = "id", nullable = false)
     private Client client;
 
-    @OneToOne(cascade = CascadeType.ALL, mappedBy = "attachment")
-    private RefusedAttachment refusedAttachment;
+    @OneToOne(cascade = CascadeType.ALL, mappedBy = "ad")
+    private RefusedAd refusedAd;
 
     @JsonIgnore
     @NotAudited
     @ManyToMany(fetch = FetchType.LAZY)
     @JoinTable(
-            name = "advertising_attachments_attachments",
-            joinColumns = @JoinColumn(name = "advertising_attachment_id"),
+            name = "ads_attachments",
+            joinColumns = @JoinColumn(name = "ad_id"),
             inverseJoinColumns = @JoinColumn(name = "attachment_id")
     )
     private Set<Attachment> attachments = new HashSet<>();
 
     @JsonIgnore
-    @OneToMany(mappedBy = "id.advertisingAttachment")
-    private Set<MonitorAdvertisingAttachment> monitorAdvertisingAttachments = new HashSet<>();
+    @OneToMany(mappedBy = "id.ad")
+    private Set<MonitorAd> monitorAds = new HashSet<>();
 
-    public AdvertisingAttachment(AdvertisingAttachmentRequestDto request, Client client) {
+    public Ad(AdRequestDto request, Client client) {
         name = request.getName();
         type = request.getType();
         this.client = client;
@@ -93,7 +93,7 @@ public class AdvertisingAttachment extends BaseAudit implements Serializable {
         if (o == null || getClass() != o.getClass()) {
             return false;
         }
-        AdvertisingAttachment that = (AdvertisingAttachment) o;
+        Ad that = (Ad) o;
         return Objects.equals(getId(), that.getId());
     }
 }

@@ -11,7 +11,7 @@ import java.util.Optional;
 import java.util.UUID;
 
 @Repository
-public interface AdvertisingAttachmentRepository extends JpaRepository<Ad, UUID>, JpaSpecificationExecutor<Ad> {
+public interface AdRepository extends JpaRepository<Ad, UUID>, JpaSpecificationExecutor<Ad> {
     @Query("SELECT a FROM Ad a WHERE a.id IN :ids")
     Optional<List<Ad>> findAllById(List<UUID> ids);
 }

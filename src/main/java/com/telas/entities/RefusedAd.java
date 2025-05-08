@@ -1,7 +1,7 @@
 package com.telas.entities;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
-import com.telas.dtos.request.RefusedAttachmentRequestDto;
+import com.telas.dtos.request.RefusedAdRequestDto;
 import com.telas.shared.audit.BaseAudit;
 import jakarta.persistence.*;
 import lombok.Getter;
@@ -16,10 +16,10 @@ import java.util.UUID;
 @Getter
 @Setter
 @Entity
-@Table(name = "refused_attachments")
-@AuditTable("refused_attachments_aud")
+@Table(name = "refused_ads")
+@AuditTable("refused_ads_aud")
 @NoArgsConstructor
-public class RefusedAttachment extends BaseAudit implements Serializable {
+public class RefusedAd extends BaseAudit implements Serializable {
     @Serial
     private static final long serialVersionUID = 7994322371461512045L;
 
@@ -36,18 +36,18 @@ public class RefusedAttachment extends BaseAudit implements Serializable {
 
     @JsonIgnore
     @OneToOne
-    @JoinColumn(name = "attachment_id", referencedColumnName = "id", nullable = false)
-    private AdvertisingAttachment attachment;
+    @JoinColumn(name = "ad_id", referencedColumnName = "id", nullable = false)
+    private Ad ad;
 
     @JsonIgnore
     @ManyToOne
     @JoinColumn(name = "validator_id", referencedColumnName = "id", nullable = false)
     private Client validator;
 
-    public RefusedAttachment(RefusedAttachmentRequestDto request, AdvertisingAttachment attachment, Client validator) {
+    public RefusedAd(RefusedAdRequestDto request, Ad ad, Client validator) {
         justification = request.getJustification();
         description = request.getDescription();
-        this.attachment = attachment;
+        this.ad = ad;
         this.validator = validator;
 
     }

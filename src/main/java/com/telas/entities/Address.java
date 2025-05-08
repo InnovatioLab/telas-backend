@@ -2,6 +2,7 @@ package com.telas.entities;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.telas.dtos.request.AddressRequestDto;
+import com.telas.enums.Role;
 import com.telas.shared.audit.BaseAudit;
 import jakarta.persistence.*;
 import lombok.Getter;
@@ -11,6 +12,8 @@ import org.hibernate.envers.AuditTable;
 
 import java.io.Serial;
 import java.io.Serializable;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.UUID;
 
 @Getter
@@ -49,10 +52,20 @@ public class Address extends BaseAudit implements Serializable {
     @Column(name = "complement")
     private String complement;
 
+    @Column(name = "latitude")
+    private Double latitude;
+
+    @Column(name = "longitude")
+    private Double longitude;
+
     @JsonIgnore
     @ManyToOne
     @JoinColumn(name = "client_id", referencedColumnName = "id")
     private Client client;
+
+    @JsonIgnore
+    @OneToMany(mappedBy = "address")
+    private List<Monitor> monitors = new ArrayList<>();
 
     public Address(AddressRequestDto request, Client client) {
         this(request);
@@ -67,17 +80,8 @@ public class Address extends BaseAudit implements Serializable {
         state = request.getState();
         country = request.getCountry();
         complement = request.getComplement();
-    }
-
-    public void update(AddressRequestDto request) {
-        street = request.getStreet();
-        number = request.getNumber();
-        zipCode = request.getZipCode();
-        city = request.getCity();
-        state = request.getState();
-        country = request.getCountry();
-        complement = request.getComplement();
-        client = null;
+        latitude = request.getLatitude();
+        longitude = request.getLongitude();
     }
 
     public boolean hasChanged(AddressRequestDto address) {
@@ -87,6 +91,25 @@ public class Address extends BaseAudit implements Serializable {
                || !city.equals(address.getCity())
                || !state.equals(address.getState())
                || (address.getCountry() != null && !country.equals(address.getCountry()))
-               || (address.getComplement() != null && !complement.equals(address.getComplement()));
+               || (address.getComplement() != null && !complement.equals(address.getComplement()))
+               || (address.getLatitude() != null && !latitude.equals(address.getLatitude()))
+               || (address.getLongitude() != null && !longitude.equals(address.getLongitude()));
+    }
+
+    public boolean hasLocation() {
+        return latitude != null && longitude != null;
+    }
+
+    public boolean isPartnerAddress() {
+        return client != null && Role.PARTNER.equals(client.getRole());
+    }
+
+    public void setLocation(Double latitude, Double longitude) {
+        this.latitude = latitude;
+        this.longitude = longitude;
+    }
+
+    public String getCoordinatesParams() {
+        return String.join(", ", street, number, city, state, zipCode);
     }
 }

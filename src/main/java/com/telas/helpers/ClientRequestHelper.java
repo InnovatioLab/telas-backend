@@ -1,17 +1,26 @@
 package com.telas.helpers;
 
+import com.telas.dtos.request.AddressRequestDto;
+import com.telas.dtos.request.ClientAdRequestToAdminDto;
 import com.telas.dtos.request.ClientRequestDto;
-import com.telas.entities.Client;
+import com.telas.entities.*;
 import com.telas.infra.exceptions.BusinessRuleException;
-import com.telas.repositories.ClientRepository;
-import com.telas.repositories.ContactRepository;
-import com.telas.repositories.OwnerRepository;
+import com.telas.repositories.*;
+import com.telas.services.AddressService;
+import com.telas.services.GeolocationService;
+import com.telas.shared.constants.valitation.AdValidationMessages;
+import com.telas.shared.constants.valitation.AttachmentValidationMessages;
 import com.telas.shared.constants.valitation.ClientValidationMessages;
 import com.telas.shared.constants.valitation.OwnerValidationMessages;
 import com.telas.shared.utils.ValidateDataUtils;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.BeanUtils;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
+
+import java.lang.module.ResolutionException;
+import java.util.List;
+import java.util.UUID;
 
 @Component
 @RequiredArgsConstructor
@@ -19,6 +28,11 @@ public class ClientRequestHelper {
     private final OwnerRepository ownerRepository;
     private final ClientRepository clientRepository;
     private final ContactRepository contactRepository;
+    private final AttachmentRepository attachmentRepository;
+    private final AdRepository adRepository;
+    private final AdRequestRepository adRequestRepository;
+    private final AddressService addressService;
+    private final GeolocationService geolocationService;
 
     @Transactional(readOnly = true)
     public void validateClientRequest(ClientRequestDto request, Client client) {
@@ -55,6 +69,24 @@ public class ClientRequestHelper {
         if (identification.length() != 9) {
             throw new BusinessRuleException(OwnerValidationMessages.IDENTIFICATION_NUMBER_SIZE);
         }
+    }
+
+    @Transactional
+    public void createAdRequest(ClientAdRequestToAdminDto request, Client client) {
+        List<Attachment> attachments = getAttachmentsByIds(request.getAttachmentIds());
+        AdRequest adRequest = new AdRequest(request, client, attachments);
+        adRequestRepository.save(adRequest);
+    }
+
+    @Transactional(readOnly = true)
+    public AdRequest getAdRequestById(UUID adRequestId) {
+        return adRequestRepository.findById(adRequestId)
+                .orElseThrow(() -> new ResolutionException(AdValidationMessages.AD_REQUEST_NOT_FOUND));
+    }
+
+
+    List<Attachment> getAttachmentsByIds(List<UUID> attachmentsIds) {
+        return attachmentRepository.findByIdIn(attachmentsIds).orElseThrow(() -> new ResolutionException(AttachmentValidationMessages.ATTACHMENTS_NOT_FOUND));
     }
 
     void verifyUniqueEmail(ClientRequestDto request, Client client) {
@@ -105,5 +137,42 @@ public class ClientRequestHelper {
 
     private boolean isIdNumberChanged(String currentId, String newId) {
         return !currentId.equals(newId);
+    }
+
+    @Transactional(readOnly = true)
+    public Ad getAdById(UUID adId) {
+        return adRepository.findById(adId).orElseThrow(() -> new ResolutionException(AdValidationMessages.AD_NOT_FOUND));
+    }
+
+    @Transactional
+    public void updateAddresses(List<AddressRequestDto> requestList, Client client) {
+        for (AddressRequestDto addressRequest : requestList) {
+            Address address = addressRequest.getId() == null
+                    ? createNewAddress(addressRequest, client)
+                    : updateExistingAddress(addressRequest, client);
+
+            addressService.save(address);
+        }
+    }
+
+    private Address createNewAddress(AddressRequestDto addressRequest, Client client) {
+        Address address = new Address(addressRequest, client);
+        address.setUsernameCreate(client.getBusinessName());
+        client.getAddresses().add(address);
+        return address;
+    }
+
+    private Address updateExistingAddress(AddressRequestDto addressRequest, Client client) {
+        Address address = addressService.findById(addressRequest.getId());
+
+        if (address.hasChanged(addressRequest)) {
+            BeanUtils.copyProperties(addressRequest, address, "latitude", "longitude", "client", "monitors");
+            address.setUsernameUpdate(client.getBusinessName());
+
+            if (address.isPartnerAddress()) {
+                geolocationService.getAddressCoordinates(address);
+            }
+        }
+        return address;
     }
 }

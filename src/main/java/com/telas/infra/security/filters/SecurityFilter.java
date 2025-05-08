@@ -68,6 +68,7 @@ public class SecurityFilter extends OncePerRequestFilter {
             logger.error("Exception: " + errorMessage);
             handleException(response, HttpStatus.BAD_REQUEST, errorMessage);
         }
+
     }
 
     private void handleException(HttpServletResponse response, HttpStatus status, String message) throws IOException {

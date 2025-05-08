@@ -11,7 +11,7 @@ import java.util.List;
 import java.util.UUID;
 
 @Repository
-public interface MonitorAdvertisingAttachmentRepository extends JpaRepository<MonitorAd, MonitorAdPK>, JpaSpecificationExecutor<MonitorAd> {
-    @Query("SELECT maa FROM MonitorAd maa WHERE maa.id.advertisingAttachment.id = :advertisingAttachmentId")
-    List<MonitorAd> findByAdvertisingAttachmentId(UUID advertisingAttachmentId);
+public interface MonitorAdRepository extends JpaRepository<MonitorAd, MonitorAdPK>, JpaSpecificationExecutor<MonitorAd> {
+    @Query("SELECT ma FROM MonitorAd ma WHERE ma.id.ad.id = :adId")
+    List<MonitorAd> findByAdId(UUID adId);
 }

@@ -7,6 +7,7 @@ import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.stereotype.Repository;
 
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -19,10 +20,10 @@ public interface ClientRepository extends JpaRepository<Client, UUID>, JpaSpecif
 
     @NotNull
     @Override
-    @Query("SELECT c FROM Client c JOIN FETCH c.addresses LEFT JOIN FETCH c.attachments LEFT JOIN FETCH c.advertisingAttachments WHERE c.id = :id")
+    @Query("SELECT c FROM Client c JOIN FETCH c.addresses LEFT JOIN FETCH c.attachments LEFT JOIN FETCH c.ads WHERE c.id = :id")
     Optional<Client> findById(@NotNull UUID id);
 
-    @Query("SELECT c FROM Client c JOIN FETCH c.addresses LEFT JOIN FETCH c.attachments LEFT JOIN FETCH c.advertisingAttachments WHERE c.id = :id AND c.status = 'ACTIVE'")
+    @Query("SELECT c FROM Client c JOIN FETCH c.addresses LEFT JOIN FETCH c.attachments LEFT JOIN FETCH c.ads WHERE c.id = :id AND c.status = 'ACTIVE'")
     Optional<Client> findActiveById(UUID id);
 
     @Query(value = """
@@ -30,7 +31,7 @@ public interface ClientRepository extends JpaRepository<Client, UUID>, JpaSpecif
             FROM clients c 
             INNER JOIN addresses ad ON c.id = ad.client_id 
             LEFT JOIN attachments a ON c.id = a.client_id 
-            LEFT JOIN advertising_attachments aa ON c.id = aa.client_id 
+            LEFT JOIN ads ads ON c.id = ads.client_id 
             WHERE c.identification_number = :identificationNumber AND c.status = 'ACTIVE'
             """, nativeQuery = true)
     Optional<Client> findActiveByIdentificationNumber(String identificationNumber);
@@ -41,8 +42,11 @@ public interface ClientRepository extends JpaRepository<Client, UUID>, JpaSpecif
             FROM clients c 
             INNER JOIN addresses ad ON c.id = ad.client_id             
             LEFT JOIN attachments a ON c.id = a.client_id 
-            LEFT JOIN advertising_attachments aa ON c.id = aa.client_id 
+            LEFT JOIN ads ads ON c.id = ads.client_id 
             WHERE c.identification_number = :identificationNumber 
             """, nativeQuery = true)
     Optional<Client> findByIdentificationNumber(String identificationNumber);
+
+    @Query("SELECT c FROM Client c WHERE c.role = 'ADMIN'")
+    List<Client> findAllAdmins();
 }
