@@ -128,6 +128,7 @@ CREATE TABLE "owners_aud"
 CREATE TABLE "clients"
 (
   "id"                    UUID PRIMARY KEY,
+  "stripe_customer_id"    VARCHAR(255)             NULL     DEFAULT NULL,
   "business_name"         VARCHAR(255)             NOT NULL,
   "identification_number" VARCHAR(9)               NOT NULL UNIQUE,
   "website_url"           TEXT                     NULL     DEFAULT NULL,
@@ -208,26 +209,56 @@ CREATE TABLE "plans_aud"
   CONSTRAINT "fk_tbplans_aud_tbaudit" FOREIGN KEY ("audit_id") REFERENCES "audit" ("audit_id") ON UPDATE NO ACTION ON DELETE NO ACTION
 );
 
+-- CREATE TABLE "subscriptions"
+-- (
+--   "id"              UUID PRIMARY KEY,
+-- --   "plan_id"         UUID                     NOT NULL,
+--   "client_id"       UUID                     NOT NULL,
+--   "discount"        DECIMAL(5, 2)            NOT NULL DEFAULT 0.00,
+--   "status"          VARCHAR(15)              NOT NULL DEFAULT 'PENDING',
+--   "username_create" VARCHAR(255)             NULL     DEFAULT NULL,
+--   "username_update" VARCHAR(255)             NULL     DEFAULT NULL,
+--   "started_at"      TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT (now()),
+--   "ends_at"         TIMESTAMP WITH TIME ZONE NOT NULL,
+--   CONSTRAINT "fk_subscription_plan" FOREIGN KEY ("plan_id") REFERENCES "plans" ("id") ON UPDATE NO ACTION ON DELETE NO ACTION,
+--   CONSTRAINT "fk_subscription_client" FOREIGN KEY ("client_id") REFERENCES "clients" ("id") ON UPDATE NO ACTION ON DELETE NO ACTION
+-- );
+-- 
+-- CREATE TABLE "subscriptions_aud"
+-- (
+--   "id"         UUID     NOT NULL,
+--   "client_id"  UUID,
+--   "discount"   DECIMAL(5, 2),
+--   "status"     VARCHAR(15),
+--   "audit_id"   BIGINT   NOT NULL,
+--   "audit_type" SMALLINT NULL DEFAULT NULL,
+--   CONSTRAINT "pk_tbsubscriptions_aud" PRIMARY KEY ("id", "audit_id"),
+--   CONSTRAINT "fk_tbsubscriptions_aud_tbaudit" FOREIGN KEY ("audit_id") REFERENCES "audit" ("audit_id") ON UPDATE NO ACTION ON DELETE NO ACTION
+-- );
+
 CREATE TABLE "subscriptions"
 (
   "id"              UUID PRIMARY KEY,
-  "plan_id"         UUID                     NOT NULL,
   "client_id"       UUID                     NOT NULL,
+  "amount"          NUMERIC(10, 2)           NOT NULL,
+  "recurrence"      VARCHAR(15)              NOT NULL CHECK ("recurrence" IN ('THIRTY_DAYS', 'SIXTY_DAYS', 'NINETY_DAYS', 'MONTHLY')),
+  "fl_bonus"        BOOLEAN                  NOT NULL DEFAULT FALSE,
   "discount"        DECIMAL(5, 2)            NOT NULL DEFAULT 0.00,
   "status"          VARCHAR(15)              NOT NULL DEFAULT 'PENDING',
   "username_create" VARCHAR(255)             NULL     DEFAULT NULL,
   "username_update" VARCHAR(255)             NULL     DEFAULT NULL,
   "started_at"      TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT (now()),
   "ends_at"         TIMESTAMP WITH TIME ZONE NOT NULL,
-  CONSTRAINT "fk_subscription_plan" FOREIGN KEY ("plan_id") REFERENCES "plans" ("id") ON UPDATE NO ACTION ON DELETE NO ACTION,
   CONSTRAINT "fk_subscription_client" FOREIGN KEY ("client_id") REFERENCES "clients" ("id") ON UPDATE NO ACTION ON DELETE NO ACTION
 );
 
 CREATE TABLE "subscriptions_aud"
 (
   "id"         UUID     NOT NULL,
-  "plan_id"    UUID,
   "client_id"  UUID,
+  "amount"     NUMERIC(10, 2),
+  "recurrence" VARCHAR(15),
+  "fl_bonus"   BOOLEAN,
   "discount"   DECIMAL(5, 2),
   "status"     VARCHAR(15),
   "audit_id"   BIGINT   NOT NULL,
@@ -238,29 +269,62 @@ CREATE TABLE "subscriptions_aud"
 
 CREATE TABLE "payments"
 (
-  "id"              UUID PRIMARY KEY,
-  "subscription_id" UUID                     NOT NULL,
-  "payment_method"  VARCHAR(50)              NOT NULL,
-  "amount"          NUMERIC(10, 2)           NOT NULL,
-  "status"          VARCHAR(15)              NOT NULL DEFAULT 'PENDING',
-  "username_create" VARCHAR(255)             NULL     DEFAULT NULL,
-  "username_update" VARCHAR(255)             NULL     DEFAULT NULL,
-  "created_at"      TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT (now()),
-  "updated_at"      TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT (now()),
+  "id"                UUID PRIMARY KEY,
+  "subscription_id"   UUID                     NOT NULL,
+  "payment_method"    VARCHAR(50)              NOT NULL,
+  "currency"          VARCHAR(3)               NOT NULL DEFAULT 'USD',
+  "stripe_payment_id" VARCHAR(255)             NULL     DEFAULT NULL,
+  "amount"            NUMERIC(10, 2)           NOT NULL,
+  "status"            VARCHAR(50)              NOT NULL DEFAULT 'PENDING',
+  "username_create"   VARCHAR(255)             NULL     DEFAULT NULL,
+  "username_update"   VARCHAR(255)             NULL     DEFAULT NULL,
+  "created_at"        TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT (now()),
+  "updated_at"        TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT (now()),
   CONSTRAINT "fk_transaction_subscription" FOREIGN KEY ("subscription_id") REFERENCES "subscriptions" ("id") ON UPDATE NO ACTION ON DELETE NO ACTION
 );
 
 CREATE TABLE "payments_aud"
 (
-  "id"              UUID     NOT NULL,
-  "subscription_id" UUID,
-  "payment_method"  VARCHAR(50),
-  "amount"          NUMERIC(10, 2),
-  "status"          VARCHAR(15),
-  "audit_id"        BIGINT   NOT NULL,
-  "audit_type"      SMALLINT NULL DEFAULT NULL,
+  "id"                UUID     NOT NULL,
+  "subscription_id"   UUID,
+  "payment_method"    VARCHAR(50),
+  "currency"          VARCHAR(3),
+  "stripe_payment_id" VARCHAR(255),
+  "amount"            NUMERIC(10, 2),
+  "status"            VARCHAR(15),
+  "audit_id"          BIGINT   NOT NULL,
+  "audit_type"        SMALLINT NULL DEFAULT NULL,
   CONSTRAINT "pk_tbpayments_aud" PRIMARY KEY ("id", "audit_id"),
   CONSTRAINT "fk_tbpayments_aud_tbaudit" FOREIGN KEY ("audit_id") REFERENCES "audit" ("audit_id") ON UPDATE NO ACTION ON DELETE NO ACTION
+);
+
+CREATE TABLE "subscription_monitors"
+(
+  "id"              UUID PRIMARY KEY,
+  "subscription_id" UUID                     NOT NULL,
+  "monitor_id"      UUID                     NOT NULL,
+  "block_quantity"  INTEGER                  NOT NULL CHECK ("block_quantity" BETWEEN 1 AND 3),
+  "amount"          NUMERIC(10, 2)           NOT NULL,
+  "username_create" VARCHAR(255)             NULL     DEFAULT NULL,
+  "username_update" VARCHAR(255)             NULL     DEFAULT NULL,
+  "created_at"      TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT (now()),
+  "updated_at"      TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT (now()),
+  CONSTRAINT "fk_subscription_monitor_subscription" FOREIGN KEY ("subscription_id") REFERENCES "subscriptions" ("id") ON UPDATE NO ACTION ON DELETE CASCADE,
+  CONSTRAINT "fk_subscription_monitor_monitor" FOREIGN KEY ("monitor_id") REFERENCES "monitors" ("id") ON UPDATE NO ACTION ON DELETE CASCADE
+);
+
+-- Criar tabela de auditoria para subscription_monitors
+CREATE TABLE "subscription_monitors_aud"
+(
+  "id"              UUID     NOT NULL,
+  "subscription_id" UUID,
+  "monitor_id"      UUID,
+  "block_quantity"  INTEGER,
+  "amount"          NUMERIC(10, 2),
+  "audit_id"        BIGINT   NOT NULL,
+  "audit_type"      SMALLINT NULL DEFAULT NULL,
+  CONSTRAINT "pk_tbsubscription_monitors_aud" PRIMARY KEY ("id", "audit_id"),
+  CONSTRAINT "fk_tbsubscription_monitors_aud_tbaudit" FOREIGN KEY ("audit_id") REFERENCES "audit" ("audit_id") ON UPDATE NO ACTION ON DELETE NO ACTION
 );
 
 CREATE TABLE "addresses"

@@ -1,5 +1,6 @@
 package com.telas.entities;
 
+import com.telas.enums.Recurrence;
 import com.telas.enums.SubscriptionStatus;
 import com.telas.shared.audit.BaseAudit;
 import jakarta.persistence.*;
@@ -29,14 +30,18 @@ public class Subscription extends BaseAudit implements Serializable {
     @Column(name = "id")
     private UUID id;
 
-    @Column(name = "name")
-    private String name;
-
-    @Column(name = "description")
-    private String description;
+    @Column(name = "amount", precision = 10, scale = 2, nullable = false)
+    private BigDecimal amount;
 
     @Column(name = "discount", precision = 5, scale = 2, nullable = false)
     private BigDecimal discount = BigDecimal.valueOf(0.00);
+
+    @Column(name = "recurrence", nullable = false)
+    @Enumerated(EnumType.STRING)
+    private Recurrence recurrence;
+
+    @Column(name = "fl_bonus")
+    private boolean bonus = false;
 
     @Column(name = "status", columnDefinition = "subscription_status")
     @Enumerated(EnumType.STRING)
@@ -49,15 +54,22 @@ public class Subscription extends BaseAudit implements Serializable {
     private Instant endsAt;
 
     @OneToOne
-    @JoinColumn(name = "plan_id", referencedColumnName = "id")
-    private Plan plan;
+    @JoinColumn(name = "client_id", referencedColumnName = "id")
+    private Client client;
 
     @OneToOne(cascade = CascadeType.ALL)
     private Payment payment;
 
-    @OneToOne
-    @JoinColumn(name = "client_id", referencedColumnName = "id", nullable = false)
-    private Client client;
+    public Subscription(BigDecimal amount, BigDecimal discount, Recurrence recurrence, boolean bonus, SubscriptionStatus status) {
+        this.amount = amount;
+        this.discount = discount;
+        this.recurrence = recurrence;
+        this.bonus = bonus;
+        this.status = status;
+    }
 
-
+    public void initialize() {
+        this.startedAt = Instant.now();
+        this.endsAt = recurrence.calculateEndsAt(this.startedAt);
+    }
 }

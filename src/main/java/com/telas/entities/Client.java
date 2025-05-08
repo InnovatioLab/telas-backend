@@ -38,6 +38,10 @@ public class Client extends BaseAudit implements Serializable {
     @Column(name = "id")
     private UUID id;
 
+    @NotAudited
+    @Column(name = "stripe_customer_id")
+    private String stripeCustomerId;
+
     @Column(name = "business_name")
     private String businessName;
 

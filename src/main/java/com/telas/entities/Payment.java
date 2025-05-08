@@ -1,5 +1,6 @@
 package com.telas.entities;
 
+import com.telas.enums.Currency;
 import com.telas.enums.PaymentStatus;
 import com.telas.shared.audit.BaseAudit;
 import jakarta.persistence.*;
@@ -33,6 +34,12 @@ public class Payment extends BaseAudit implements Serializable {
 
     @Column(name = "payment_method", nullable = false)
     private String paymentMethod;
+
+    @Column(name = "currency")
+    private Currency currency = Currency.USD;
+
+    @Column(name = "stripe_payment_id")
+    private String stripePaymentId;
 
     @Column(name = "status", columnDefinition = "payment_status", nullable = false)
     @Enumerated(EnumType.STRING)
