@@ -236,6 +236,79 @@ CREATE TABLE "plans_aud"
 --   CONSTRAINT "fk_tbsubscriptions_aud_tbaudit" FOREIGN KEY ("audit_id") REFERENCES "audit" ("audit_id") ON UPDATE NO ACTION ON DELETE NO ACTION
 -- );
 
+CREATE TABLE "addresses"
+(
+  "id"              UUID PRIMARY KEY,
+  "street"          VARCHAR(100)             NOT NULL,
+  "number"          VARCHAR(10)              NOT NULL,
+  "zip_code"        VARCHAR(10)              NOT NULL,
+  "city"            VARCHAR(50)              NOT NULL,
+  "state"           VARCHAR(2)               NOT NULL,
+  "country"         VARCHAR(100)             NOT NULL DEFAULT 'US',
+  "complement"      VARCHAR(100),
+  "latitude"        DOUBLE PRECISION,
+  "longitude"       DOUBLE PRECISION,
+  "client_id"       UUID                     NULL     DEFAULT NULL,
+  "username_create" VARCHAR(255)             NULL     DEFAULT NULL,
+  "username_update" VARCHAR(255)             NULL     DEFAULT NULL,
+  "created_at"      TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT (now()),
+  "updated_at"      TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT (now()),
+  CONSTRAINT "client_address" FOREIGN KEY ("client_id") REFERENCES "clients" ("id") ON UPDATE NO ACTION ON DELETE NO ACTION
+);
+
+CREATE TABLE "addresses_aud"
+(
+  "id"         UUID     NOT NULL,
+  "street"     VARCHAR(100),
+  "number"     VARCHAR(10),
+  "zip_code"   VARCHAR(10),
+  "city"       VARCHAR(50),
+  "state"      VARCHAR(2),
+  "country"    VARCHAR(100),
+  "complement" VARCHAR(100),
+  "latitude"   DOUBLE PRECISION,
+  "longitude"  DOUBLE PRECISION,
+  "client_id"  UUID,
+  "audit_id"   BIGINT   NOT NULL,
+  "audit_type" SMALLINT NULL DEFAULT NULL,
+  CONSTRAINT "pk_tbaddresses_aud" PRIMARY KEY ("id", "audit_id"),
+  CONSTRAINT "fk_tbaddresses_aud_tbaudit" FOREIGN KEY ("audit_id") REFERENCES "audit" ("audit_id") ON UPDATE NO ACTION ON DELETE NO ACTION
+);
+
+CREATE TABLE "monitors"
+(
+  "id"                   UUID PRIMARY KEY,
+  "fl_active"            BOOLEAN                           DEFAULT TRUE,
+  "type"                 VARCHAR(50)              NOT NULL DEFAULT 'BASIC',
+  "max_blocks"           INTEGER                  NOT NULL DEFAULT 12,
+  "location_description" VARCHAR(255)             NULL     DEFAULT NULL,
+  "size_in_inches"       NUMERIC(5, 2)            NOT NULL DEFAULT 0.00,
+  "address_id"           UUID                     NOT NULL,
+  "partner_id"           UUID                     NULL     DEFAULT NULL,
+  "username_create"      VARCHAR(255)             NULL     DEFAULT NULL,
+  "username_update"      VARCHAR(255)             NULL     DEFAULT NULL,
+  "created_at"           TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT (now()),
+  "updated_at"           TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT (now()),
+  CONSTRAINT "fk_monitor_address" FOREIGN KEY ("address_id") REFERENCES "addresses" ("id") ON UPDATE NO ACTION ON DELETE CASCADE,
+  CONSTRAINT "fk_monitor_partner" FOREIGN KEY ("partner_id") REFERENCES "clients" ("id") ON UPDATE NO ACTION ON DELETE NO ACTION
+);
+
+CREATE TABLE "monitors_aud"
+(
+  "id"                   UUID     NOT NULL,
+  "fl_active"            BOOLEAN,
+  "address_id"           UUID,
+  "partner_id"           UUID,
+  "max_blocks"           INTEGER,
+  "location_description" VARCHAR(255),
+  "type"                 VARCHAR(50),
+  "size_in_inches"       NUMERIC(5, 2),
+  "audit_id"             BIGINT   NOT NULL,
+  "audit_type"           SMALLINT NULL DEFAULT NULL,
+  CONSTRAINT "pk_tbmonitors_aud" PRIMARY KEY ("id", "audit_id"),
+  CONSTRAINT "fk_tbmonitors_aud_tbaudit" FOREIGN KEY ("audit_id") REFERENCES "audit" ("audit_id") ON UPDATE NO ACTION ON DELETE NO ACTION
+);
+
 CREATE TABLE "subscriptions"
 (
   "id"              UUID PRIMARY KEY,
@@ -325,79 +398,6 @@ CREATE TABLE "subscription_monitors_aud"
   "audit_type"      SMALLINT NULL DEFAULT NULL,
   CONSTRAINT "pk_tbsubscription_monitors_aud" PRIMARY KEY ("id", "audit_id"),
   CONSTRAINT "fk_tbsubscription_monitors_aud_tbaudit" FOREIGN KEY ("audit_id") REFERENCES "audit" ("audit_id") ON UPDATE NO ACTION ON DELETE NO ACTION
-);
-
-CREATE TABLE "addresses"
-(
-  "id"              UUID PRIMARY KEY,
-  "street"          VARCHAR(100)             NOT NULL,
-  "number"          VARCHAR(10)              NOT NULL,
-  "zip_code"        VARCHAR(10)              NOT NULL,
-  "city"            VARCHAR(50)              NOT NULL,
-  "state"           VARCHAR(2)               NOT NULL,
-  "country"         VARCHAR(100)             NOT NULL DEFAULT 'US',
-  "complement"      VARCHAR(100),
-  "latitude"        DOUBLE PRECISION,
-  "longitude"       DOUBLE PRECISION,
-  "client_id"       UUID                     NULL     DEFAULT NULL,
-  "username_create" VARCHAR(255)             NULL     DEFAULT NULL,
-  "username_update" VARCHAR(255)             NULL     DEFAULT NULL,
-  "created_at"      TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT (now()),
-  "updated_at"      TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT (now()),
-  CONSTRAINT "client_address" FOREIGN KEY ("client_id") REFERENCES "clients" ("id") ON UPDATE NO ACTION ON DELETE NO ACTION
-);
-
-CREATE TABLE "addresses_aud"
-(
-  "id"         UUID     NOT NULL,
-  "street"     VARCHAR(100),
-  "number"     VARCHAR(10),
-  "zip_code"   VARCHAR(10),
-  "city"       VARCHAR(50),
-  "state"      VARCHAR(2),
-  "country"    VARCHAR(100),
-  "complement" VARCHAR(100),
-  "latitude"   DOUBLE PRECISION,
-  "longitude"  DOUBLE PRECISION,
-  "client_id"  UUID,
-  "audit_id"   BIGINT   NOT NULL,
-  "audit_type" SMALLINT NULL DEFAULT NULL,
-  CONSTRAINT "pk_tbaddresses_aud" PRIMARY KEY ("id", "audit_id"),
-  CONSTRAINT "fk_tbaddresses_aud_tbaudit" FOREIGN KEY ("audit_id") REFERENCES "audit" ("audit_id") ON UPDATE NO ACTION ON DELETE NO ACTION
-);
-
-CREATE TABLE "monitors"
-(
-  "id"                   UUID PRIMARY KEY,
-  "fl_active"            BOOLEAN                           DEFAULT TRUE,
-  "type"                 VARCHAR(50)              NOT NULL DEFAULT 'BASIC',
-  "max_blocks"           INTEGER                  NOT NULL DEFAULT 12,
-  "location_description" VARCHAR(255)             NULL     DEFAULT NULL,
-  "size_in_inches"       NUMERIC(5, 2)            NOT NULL DEFAULT 0.00,
-  "address_id"           UUID                     NOT NULL,
-  "partner_id"           UUID                     NULL     DEFAULT NULL,
-  "username_create"      VARCHAR(255)             NULL     DEFAULT NULL,
-  "username_update"      VARCHAR(255)             NULL     DEFAULT NULL,
-  "created_at"           TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT (now()),
-  "updated_at"           TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT (now()),
-  CONSTRAINT "fk_monitor_address" FOREIGN KEY ("address_id") REFERENCES "addresses" ("id") ON UPDATE NO ACTION ON DELETE CASCADE,
-  CONSTRAINT "fk_monitor_partner" FOREIGN KEY ("partner_id") REFERENCES "clients" ("id") ON UPDATE NO ACTION ON DELETE NO ACTION
-);
-
-CREATE TABLE "monitors_aud"
-(
-  "id"                   UUID     NOT NULL,
-  "fl_active"            BOOLEAN,
-  "address_id"           UUID,
-  "partner_id"           UUID,
-  "max_blocks"           INTEGER,
-  "location_description" VARCHAR(255),
-  "type"                 VARCHAR(50),
-  "size_in_inches"       NUMERIC(5, 2),
-  "audit_id"             BIGINT   NOT NULL,
-  "audit_type"           SMALLINT NULL DEFAULT NULL,
-  CONSTRAINT "pk_tbmonitors_aud" PRIMARY KEY ("id", "audit_id"),
-  CONSTRAINT "fk_tbmonitors_aud_tbaudit" FOREIGN KEY ("audit_id") REFERENCES "audit" ("audit_id") ON UPDATE NO ACTION ON DELETE NO ACTION
 );
 
 CREATE TABLE "attachments"
