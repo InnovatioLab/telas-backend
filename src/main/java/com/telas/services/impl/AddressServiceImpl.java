@@ -33,7 +33,7 @@ public class AddressServiceImpl implements AddressService {
                 .filter(Address::hasLocation)
                 .findFirst()
                 .map(AddressFromZipCodeResponseDto::new)
-                .orElse(new AddressFromZipCodeResponseDto(addresses.get(0)));
+                .orElseGet(() -> addresses.isEmpty() ? null : new AddressFromZipCodeResponseDto(addresses.get(0)));
     }
 
     @Override
