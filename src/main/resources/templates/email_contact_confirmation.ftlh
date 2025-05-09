@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="pt-br">
 <head>
-    <title>Marketing Project</title>
+    <title>Telas</title>
     <meta charset="UTF-8"/>
     <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
     <meta http-equiv="X-UA-Compatible" content="ie=edge"/>
@@ -93,36 +93,42 @@
     <div class="content">
         <table role="presentation" style="width: 100%; border-collapse: collapse;">
             <tr class="header">
-                <td style="padding-bottom: 30px; padding-top: 20px;"><h1></h1></td>
-            </tr>
-            <tr>
-                <td style="padding-bottom: 10px;">Hello!<strong style="font-weight: 500;"> ${name}</strong></td>
-            </tr>
-            <tr>
-                <td>Welcome to X!</td>
-            </tr>
-            <tr>
-                <td style="padding-bottom: 30px;">
-                    To complete your registration and start exploring our features, enter the code <br> below on
-                    system validation screen:
+                <td style="padding:20px 0 30px;">
+                    <h1 style="margin:0;font-size:24px;color:#333;">Verify Your Contact</h1>
                 </td>
             </tr>
             <tr>
-                <td style="text-align:center;background-color:#ffffff;line-height:50px;color: #00763B;">
-                    <h3 style="font-size:26px; font-weight:700;color: #00763B;">Your validation code is:
-                        <br> ${verificationCode}
+                <td style="padding-bottom:10px;font-size:16px;color:#555;">
+                    Hi<strong style="font-weight:500;"> ${name}</strong>,
+                </td>
+            </tr>
+            <tr>
+                <td style="padding-bottom:20px;font-size:16px;color:#555;">
+                    Welcome to Telas! We’re excited to have you on board.
+                </td>
+            </tr>
+            <tr>
+                <td style="padding-bottom:30px;font-size:16px;color:#555;">
+                    To complete your registration and explore our features, enter the verification code below on the
+                    validation screen—or click the button for a quick confirm.
+                </td>
+            </tr>
+            <tr>
+                <td style="text-align:center;background-color:#f9f9f9;line-height:60px;color:#00763B;border-radius:4px;">
+                    <h3 style="margin:0;font-size:28px;font-weight:700;color:#00763B;">
+                        ${verificationCode}
                     </h3>
                 </td>
             </tr>
             <tr>
-                <td style="padding-top: 30px;">
-                    <strong>This code is valid for 15 minutes.</strong> If it expires, you can request a new one in the
-                    system.
+                <td style="padding-bottom:20px;font-size:14px;color:#555;">
+                    <strong>This code expires in 15 minutes.</strong> If it’s no longer valid, you can request a new one
+                    in our system.
                 </td>
             </tr>
             <tr>
-                <td>
-                    If you have not registered, please ignore this email.
+                <td style="padding-bottom:20px;font-size:14px;color:#555;">
+                    If you didn’t sign up for an Tela's account, simply ignore this email, no action is needed.
                 </td>
             </tr>
             <tr>
@@ -132,9 +138,11 @@
             </tr>
         </table>
     </div>
-    <div class="footer">
-        <p>Graciously,<br></p>
-        <p>Contact: <a href="mailto:test@gmail.com" style="color: #131518;">test@gmail.com</a>
+    <div class="footer" style="margin-top: 40px; border-top: 1px solid #e0e0e0; padding-top: 20px;">
+        <p style="margin:0;">Best regards,</p>
+        <p style="margin:0;"><strong>The Tela's Team</strong></p>
+        <p style="margin:5px 0 0;">Contact us at
+            <a href="mailto:support@telas.com" style="color: #131518;">support@telas.com</a>
         </p>
     </div>
 </div>

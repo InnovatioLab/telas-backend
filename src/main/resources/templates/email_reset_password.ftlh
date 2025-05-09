@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="pt-br">
 <head>
-    <title>Marketing Project</title>
+    <title>Telas</title>
     <meta charset="UTF-8"/>
     <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
     <meta http-equiv="X-UA-Compatible" content="ie=edge"/>
@@ -93,35 +93,42 @@
     <div class="content">
         <table role="presentation" style="width: 100%; border-collapse: collapse;">
             <tr class="header">
-                <td style="padding-bottom: 30px; padding-top: 20px;"><h1></h1></td>
+                <td style="padding-bottom: 30px; padding-top: 20px;">
+                    <h1 style="margin: 0; font-size: 24px;">Reset Your Password in Just a Few Clicks</h1>
+                </td>
             </tr>
             <tr>
-                <td style="padding-bottom: 10px;">Hello<strong style="font-weight: 500;"> ${name}</strong></td>
+                <td style="padding-bottom: 10px;">
+                    Hi<strong style="font-weight: 500;"> ${name}</strong>,
+                </td>
             </tr>
             <tr>
-                <td>Good to have you back with us at X!</td>
+                <td style="padding-bottom: 20px;">
+                    We received a request to reset the password for your Telas's account.
+                    If you made this request, please use the code below to verify your identity.
+                </td>
             </tr>
             <tr>
                 <td style="padding-bottom: 30px;">
-                    To recover your password and access our features, enter the code below on the system validation
-                    screen:
+                    To complete your password reset, enter this code on the password reset page:
                 </td>
             </tr>
             <tr>
-                <td style="text-align:center;background-color:#ffffff;line-height:50px;color: #00763B;">
-                    <h3 style="font-size:26px; font-weight:700;color: #00763B;">Your password recovery code is:
-                        <br> ${verificationCode}</h3>
+                <td style="text-align:center; background-color:#ffffff; line-height:50px; color:#00763B;">
+                    <h3 style="font-size:26px; font-weight:700; margin:0;">
+                        ${verificationCode}
+                    </h3>
                 </td>
             </tr>
             <tr>
-                <td style="padding-top: 30px;">
-                    <strong>This code is valid for 15 minutes.</strong> If it expires, you can request a new one in the
-                    system.
+                <td style="padding-top: 30px; padding-bottom: 20px;">
+                    <strong>This code will expire in 15 minutes.</strong>
+                    If it expires, you can request a new one on our site.
                 </td>
             </tr>
             <tr>
-                <td>
-                    If you did not request password recovery, please ignore this email.
+                <td style="padding-bottom: 20px;">
+                    If you did not request a password reset, please ignore this email.
                 </td>
             </tr>
             <tr>
@@ -131,9 +138,11 @@
             </tr>
         </table>
     </div>
-    <div class="footer">
-        <p>Graciously,<br></p>
-        <p>Contact: <a href="mailto:test@gmail.com" style="color: #131518;">test@gmail.com</a>
+    <div class="footer" style="margin-top: 40px; border-top: 1px solid #e0e0e0; padding-top: 20px;">
+        <p style="margin:0;">Best regards,</p>
+        <p style="margin:0;"><strong>The Tela's Team</strong></p>
+        <p style="margin:5px 0 0;">Contact us at
+            <a href="mailto:support@telas.com" style="color: #131518;">support@telas.com</a>
         </p>
     </div>
 </div>

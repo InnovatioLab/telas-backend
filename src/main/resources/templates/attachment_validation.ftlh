@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="pt-br">
 <head>
-    <title>Marketing Project</title>
+    <title>Telas</title>
     <meta charset="UTF-8"/>
     <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
     <meta http-equiv="X-UA-Compatible" content="ie=edge"/>
@@ -100,7 +100,7 @@
     <div class="content">
         <table role="presentation" style="width: 100%; border-collapse: collapse;">
             <tr class="header">
-                <td style="padding-bottom: 30px; padding-top: 20px;"><h1>Marketing Project</h1></td>
+                <td style="padding-bottom: 30px; padding-top: 20px;"><h1>Telas</h1></td>
             </tr>
             <tr>
                 <td style="padding-bottom: 20px;">
@@ -146,9 +146,11 @@
             </tr>
         </table>
     </div>
-    <div class="footer">
-        <p>Graciously,<br></p>
-        <p>Contact: <a href="mailto:test@gmail.com" style="color: #131518;">test@gmail.com</a>
+    <div class="footer" style="margin-top: 40px; border-top: 1px solid #e0e0e0; padding-top: 20px;">
+        <p style="margin:0;">Best regards,</p>
+        <p style="margin:0;"><strong>The Tela's Team</strong></p>
+        <p style="margin:5px 0 0;">Contact us at
+            <a href="mailto:support@telas.com" style="color: #131518;">support@telas.com</a>
         </p>
     </div>
 </div>
