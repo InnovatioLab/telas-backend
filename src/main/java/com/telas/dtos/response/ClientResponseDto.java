@@ -38,12 +38,12 @@ public final class ClientResponseDto implements Serializable {
 
     private final List<LinkResponseDto> attachments;
 
-    private final List<LinkResponseDto> advertisingAttachments;
+    private final List<LinkResponseDto> ads;
 
     private final List<Notification> notifications;
 
 
-    public ClientResponseDto(Client entity, List<LinkResponseDto> attachmentUrls, List<LinkResponseDto> advertisingAttachmentUrls) {
+    public ClientResponseDto(Client entity, List<LinkResponseDto> attachmentUrls, List<LinkResponseDto> adsUrls) {
         id = entity.getId();
         businessName = entity.getBusinessName();
         identificationNumber = entity.getIdentificationNumber();
@@ -55,7 +55,7 @@ public final class ClientResponseDto implements Serializable {
         socialMedia = entity.getSocialMedia();
         addresses = entity.getAddresses();
         attachments = attachmentUrls;
-        advertisingAttachments = advertisingAttachmentUrls;
+        ads = adsUrls;
         notifications = entity.getNotifications();
     }
 }

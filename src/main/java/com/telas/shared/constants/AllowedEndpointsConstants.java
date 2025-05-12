@@ -11,7 +11,7 @@ public class AllowedEndpointsConstants {
 
     static {
         ALLOWED_ENDPOINTS.put(HttpMethod.GET, List.of(
-                "/clients/{identificationNumber}",
+                "/clients/identification/{identificationNumber}",
                 "/clients/{id}",
                 "/addresses/{zipCode}",
                 "/swagger-ui/**",

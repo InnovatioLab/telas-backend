@@ -86,6 +86,14 @@ public class ClientServiceImpl implements ClientService {
 
     @Override
     @Transactional(readOnly = true)
+    public ClientResponseDto findByIdentificationNumber(String identification) {
+        return repository.findByIdentificationNumber(identification)
+                .map(this::buildClientResponse)
+                .orElseThrow(() -> new ResourceNotFoundException(ClientValidationMessages.USER_NOT_FOUND));
+    }
+
+    @Override
+    @Transactional(readOnly = true)
     public Client findActiveEntityById(UUID id) {
         return repository.findActiveById(id).orElseThrow(() -> new ResourceNotFoundException(ClientValidationMessages.USER_NOT_FOUND));
     }

@@ -75,6 +75,13 @@ public class ClientControllerImpl implements ClientController {
     }
 
     @Override
+    @GetMapping("/identification/{identification}")
+    public ResponseEntity<?> findByIdentificationNumber(@PathVariable(name = "identification") String identificationNumber) {
+        return ResponseEntity.status(HttpStatus.OK)
+                .body(ResponseDto.fromData(service.findByIdentificationNumber(identificationNumber), HttpStatus.OK, MessageCommonsConstants.FIND_ID_SUCCESS_MESSAGE));
+    }
+
+    @Override
     @GetMapping("/authenticated")
     @SecurityRequirement(name = "jwt")
     public ResponseEntity<?> getDataFromToken() {

@@ -19,6 +19,8 @@ public interface ClientService {
 
     ClientResponseDto findById(UUID id);
 
+    ClientResponseDto findByIdentificationNumber(String identification);
+
     Client findActiveEntityById(UUID id);
 
     Client findEntityById(UUID id);

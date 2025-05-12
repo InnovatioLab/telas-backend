@@ -61,6 +61,12 @@ public interface ClientController {
     })
     ResponseEntity<?> findById(UUID clientId);
 
+    @Operation(summary = "Endpoint contract to find a client data by identification number", responses = {
+            @ApiResponse(responseCode = "200", description = "Client founded with successfully."),
+            @ApiResponse(responseCode = "404", description = "Client not found."),
+    })
+    ResponseEntity<?> findByIdentificationNumber(String identificationNumber);
+
     @Operation(summary = "Endpoint contract to get client data from the token", responses = {
             @ApiResponse(responseCode = "200", description = "Client founded with successfully."),
             @ApiResponse(responseCode = "401", description = "Unauthorized."),
