@@ -51,7 +51,7 @@ public class SecurityFilter extends OncePerRequestFilter {
 
         try {
             if (idToken != null) {
-                String identificationNumber = tokenService.validateToken(idToken);
+                String identificationNumber = String.valueOf(tokenService.validateToken(idToken));
                 UserDetails user = userDetailsService.loadUserByUsername(identificationNumber);
 
                 Authentication authentication = new UsernamePasswordAuthenticationToken(user, null, user.getAuthorities());
