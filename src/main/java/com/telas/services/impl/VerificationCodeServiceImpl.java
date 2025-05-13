@@ -44,9 +44,9 @@ public class VerificationCodeServiceImpl implements VerificationCodeService {
         boolean invalidCode = !client.getVerificationCode().getCode().equals(code);
         boolean expiredCode = !actualDate.isBefore(expiryDate);
 
-//        if (invalidCode || expiredCode) {
-//            throw new BusinessRuleException(ClientValidationMessages.INVALID_OR_EXPIRED_CODE);
-//        }
+        if (invalidCode || expiredCode) {
+            throw new BusinessRuleException(ClientValidationMessages.INVALID_OR_EXPIRED_CODE);
+        }
 
         client.getVerificationCode().setValidated(true);
     }
