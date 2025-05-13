@@ -42,6 +42,8 @@ public final class ClientResponseDto implements Serializable {
 
     private final List<Notification> notifications;
 
+    private final Boolean termAccepted;
+
 
     public ClientResponseDto(Client entity, List<LinkResponseDto> attachmentUrls, List<LinkResponseDto> adsUrls) {
         id = entity.getId();
@@ -57,5 +59,6 @@ public final class ClientResponseDto implements Serializable {
         attachments = attachmentUrls;
         ads = adsUrls;
         notifications = entity.getNotifications();
+        termAccepted = entity.isTermsAccepted();
     }
 }
