@@ -6,6 +6,7 @@ import com.auth0.jwt.exceptions.JWTCreationException;
 import com.auth0.jwt.exceptions.JWTVerificationException;
 import com.telas.entities.Client;
 import com.telas.infra.security.model.AuthenticatedUser;
+import com.telas.infra.security.model.TokenData;
 import com.telas.infra.security.services.TokenService;
 import com.telas.shared.constants.SharedConstants;
 import com.telas.shared.constants.valitation.AuthValidationMessageConstants;
@@ -41,6 +42,7 @@ public class TokenServiceImpl implements TokenService {
 
             Map<String, Object> payload = Map.of(
                     SharedConstants.PERMISSIONS, new ArrayList<>(getPermissions(user)),
+                    "id", client.getId(),
                     "businessName", client.getBusinessName(),
                     "identificationNumber", client.getIdentificationNumber()
             );
@@ -48,7 +50,10 @@ public class TokenServiceImpl implements TokenService {
             return JWT.create()
                     .withIssuer(SharedConstants.PROJECT_NAME)
                     .withSubject(client.getId().toString())
-                    .withPayload(payload)
+                    .withClaim("permissions", new ArrayList<>(getPermissions(user)))
+                    .withClaim("id", client.getId().toString())
+                    .withClaim("businessName", client.getBusinessName())
+                    .withClaim("identificationNumber", client.getIdentificationNumber())
                     .withExpiresAt(genExpirationDate())
                     .sign(algorithm);
         } catch (JWTCreationException ex) {
@@ -59,18 +64,21 @@ public class TokenServiceImpl implements TokenService {
 
     @Override
     @Transactional
-    public String validateToken(String token) {
+    public TokenData validateToken(String token) {
         try {
             Algorithm algorithm = Algorithm.HMAC256(secret);
-            return JWT.require(algorithm)
+            var decodedJWT = JWT.require(algorithm)
                     .withIssuer(SharedConstants.PROJECT_NAME)
                     .build()
-                    .verify(token)
-                    .getClaim("identificationNumber")
-                    .asString();
+                    .verify(token);
+
+            Long id = decodedJWT.getClaim("id").asLong();
+            String identificationNumber = decodedJWT.getClaim("identificationNumber").asString();
+
+            return new TokenData(id, identificationNumber);
         } catch (JWTVerificationException ex) {
             log.error("Error while verifying JWT token, message: {}", ex.getMessage());
-            return "";
+            return null;
         }
     }
 
