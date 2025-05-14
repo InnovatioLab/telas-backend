@@ -37,9 +37,8 @@ public final class SharedConstants {
     public static final int MINUTE_IN_SECONDS = 60;
 
     public static final int MONITOR_ADS_TIME_IN_SECONDS = 5;
-    public static final int QUANTIDADE_MINIMA_PRODUTO = 1;
-    public static final int TAMANHO_MAXIMO_DIGITOS_PRECO = 8;
-    public static final int TAMANHO_MAXIMO_FRACTION_PRECO = 2;
+    public static final int MIN_QUANTITY_MONITOR_BLOCK = 1;
+    public static final int MAX_QUANTITY_MONITOR_BLOCK = 3;
 
     public static final int TAMANHO_NOME_ANEXO = 255;
 }

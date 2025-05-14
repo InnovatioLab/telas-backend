@@ -4,6 +4,7 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.telas.dtos.request.MonitorRequestDto;
 import com.telas.dtos.response.MonitorMinResponseDto;
 import com.telas.dtos.response.MonitorResponseDto;
+import com.telas.entities.Monitor;
 
 import java.math.BigDecimal;
 import java.util.List;
@@ -14,6 +15,8 @@ public interface MonitorService {
     void save(MonitorRequestDto requestDto, UUID monitorId) throws JsonProcessingException;
 
     MonitorResponseDto findById(UUID monitorId);
+
+    Monitor findEntityById(UUID monitorId);
 
     Map<String, List<MonitorMinResponseDto>> findNearestActiveMonitors(String zipCodes, BigDecimal sizeFilter, String typeFilter, int limit);
 }

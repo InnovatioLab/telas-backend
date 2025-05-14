@@ -592,6 +592,55 @@ CREATE TABLE "notifications"
   CONSTRAINT "fk_notification_client" FOREIGN KEY ("client_id") REFERENCES "clients" ("id") ON UPDATE NO ACTION ON DELETE CASCADE
 );
 
+CREATE TABLE "carts"
+(
+  "id"              UUID PRIMARY KEY,
+  "client_id"       UUID                     NOT NULL,
+  "fl_active"       BOOLEAN                  NOT NULL DEFAULT TRUE,
+  "username_create" VARCHAR(255)             NULL     DEFAULT NULL,
+  "username_update" VARCHAR(255)             NULL     DEFAULT NULL,
+  "created_at"      TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT (now()),
+  "updated_at"      TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT (now()),
+  CONSTRAINT "fk_cart_client" FOREIGN KEY ("client_id") REFERENCES "clients" ("id") ON UPDATE NO ACTION ON DELETE CASCADE
+);
+
+CREATE TABLE "carts_aud"
+(
+  "id"         UUID     NOT NULL,
+  "client_id"  UUID     NOT NULL,
+  "fl_active"  BOOLEAN,
+  "audit_id"   BIGINT   NOT NULL,
+  "audit_type" SMALLINT NULL DEFAULT NULL,
+  CONSTRAINT "pk_tbcarts_aud" PRIMARY KEY ("id", "audit_id"),
+  CONSTRAINT "fk_tbcarts_aud_tbaudit" FOREIGN KEY ("audit_id") REFERENCES "audit" ("audit_id") ON UPDATE NO ACTION ON DELETE NO ACTION
+);
+
+CREATE TABLE "carts_items"
+(
+  "id"              UUID PRIMARY KEY,
+  "cart_id"         UUID                     NOT NULL,
+  "monitor_id"      UUID                     NOT NULL,
+  "block_quantity"  INTEGER                  NOT NULL DEFAULT 1,
+  "username_create" VARCHAR(255)             NULL     DEFAULT NULL,
+  "username_update" VARCHAR(255)             NULL     DEFAULT NULL,
+  "created_at"      TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT (now()),
+  "updated_at"      TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT (now()),
+  CONSTRAINT "fk_cart_item_cart" FOREIGN KEY ("cart_id") REFERENCES "carts" ("id") ON UPDATE NO ACTION ON DELETE CASCADE,
+  CONSTRAINT "fk_cart_item_monitor" FOREIGN KEY ("monitor_id") REFERENCES "monitors" ("id") ON UPDATE NO ACTION ON DELETE CASCADE
+);
+
+CREATE TABLE "carts_items_aud"
+(
+  "id"             UUID     NOT NULL,
+  "cart_id"        UUID     NOT NULL,
+  "monitor_id"     UUID     NOT NULL,
+  "block_quantity" INTEGER,
+  "audit_id"       BIGINT   NOT NULL,
+  "audit_type"     SMALLINT NULL DEFAULT NULL,
+  CONSTRAINT "pk_tbcarts_items_aud" PRIMARY KEY ("id", "audit_id"),
+  CONSTRAINT "fk_tbcarts_items_aud_tbaudit" FOREIGN KEY ("audit_id") REFERENCES "audit" ("audit_id") ON UPDATE NO ACTION ON DELETE NO ACTION
+);
+
 INSERT INTO "terms_conditions" (id, version, content, created_at, updated_at, username_create, username_update)
 VALUES ('eb1f62bf-9d16-45c1-be45-bd52f97dffb2',
         '0.0.1',

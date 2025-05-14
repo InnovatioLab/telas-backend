@@ -60,16 +60,15 @@ public class Subscription extends BaseAudit implements Serializable {
     @OneToOne(cascade = CascadeType.ALL)
     private Payment payment;
 
-    public Subscription(BigDecimal amount, BigDecimal discount, Recurrence recurrence, boolean bonus, SubscriptionStatus status) {
+    public Subscription(BigDecimal amount, BigDecimal discount, Recurrence recurrence, boolean bonus) {
         this.amount = amount;
         this.discount = discount;
         this.recurrence = recurrence;
         this.bonus = bonus;
-        this.status = status;
     }
 
     public void initialize() {
-        this.startedAt = Instant.now();
-        this.endsAt = recurrence.calculateEndsAt(this.startedAt);
+        startedAt = Instant.now();
+        endsAt = recurrence.calculateEndsAt(startedAt);
     }
 }

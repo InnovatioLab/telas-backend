@@ -81,6 +81,12 @@ public class MonitorServiceImpl implements MonitorService {
     }
 
     @Override
+    @Transactional
+    public Monitor findEntityById(UUID monitorId) {
+        return repository.findById(monitorId).orElseThrow(() -> new ResourceNotFoundException(MonitorValidationMessages.MONITOR_NOT_FOUND));
+    }
+
+    @Override
     @Transactional(readOnly = true)
     public Map<String, List<MonitorMinResponseDto>> findNearestActiveMonitors(String zipCodes, BigDecimal sizeFilter, String typeFilter, int limit) {
         Client client = authenticatedUserService.getLoggedUser().client();
@@ -186,10 +192,5 @@ public class MonitorServiceImpl implements MonitorService {
         return ads.isEmpty() ? Set.of() : ads.stream()
                 .map(Ad::getClient)
                 .collect(Collectors.toSet());
-    }
-
-    private Monitor findEntityById(UUID monitorId) {
-        authenticatedUserService.validateAdmin();
-        return repository.findById(monitorId).orElseThrow(() -> new ResourceNotFoundException(MonitorValidationMessages.MONITOR_NOT_FOUND));
     }
 }
