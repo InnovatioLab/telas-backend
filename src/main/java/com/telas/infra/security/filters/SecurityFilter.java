@@ -2,6 +2,7 @@ package com.telas.infra.security.filters;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.telas.dtos.response.ResponseDto;
+import com.telas.infra.security.model.TokenData;
 import com.telas.infra.security.services.AuthenticatedUserService;
 import com.telas.infra.security.services.TokenService;
 import com.telas.shared.constants.AllowedEndpointsConstants;
@@ -51,8 +52,8 @@ public class SecurityFilter extends OncePerRequestFilter {
 
         try {
             if (idToken != null) {
-                String identificationNumber = String.valueOf(tokenService.validateToken(idToken));
-                UserDetails user = userDetailsService.loadUserByUsername(identificationNumber);
+                TokenData tokenData = tokenService.validateToken(idToken);
+                UserDetails user = userDetailsService.loadUserByUsername(tokenData.getIdentificationNumber());
 
                 Authentication authentication = new UsernamePasswordAuthenticationToken(user, null, user.getAuthorities());
                 SecurityContextHolder.getContext().setAuthentication(authentication);
