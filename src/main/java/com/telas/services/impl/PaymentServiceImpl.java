@@ -36,7 +36,11 @@ public class PaymentServiceImpl implements PaymentService {
     @Override
     @Transactional
     public String process(Subscription subscription) throws StripeException {
+        //        StripeRequest vai precisar: productName, amount, quantity, currency.
+//        Vai retornar: sessionId, sessionUrl, status, message.
         Stripe.apiKey = key;
+
+        // Criar customer aqui
 
         Payment payment = new Payment();
         payment.setAmount(subscription.getAmount());
@@ -52,7 +56,7 @@ public class PaymentServiceImpl implements PaymentService {
         }
 
         PaymentIntentCreateParams params = PaymentIntentCreateParams.builder()
-                .setAmount(subscription.getAmount().multiply(BigDecimal.valueOf(100)).longValue()) // Valor em centavos
+                .setAmount(subscription.getAmount().multiply(BigDecimal.valueOf(1)).longValue()) // Valor em centavos
                 .setCurrency(subscription.getPayment().getCurrency().name().toLowerCase())
                 .setCustomer(subscription.getClient().getStripeCustomerId())
                 .setDescription("Telas Payment")
@@ -92,7 +96,7 @@ public class PaymentServiceImpl implements PaymentService {
         Customer customer = Customer.create(customerParams);
 
         // Criar uma assinatura para o cliente
-        com.stripe.param.SubscriptionCreateParams subscriptionParams = SubscriptionCreateParams.builder()
+        SubscriptionCreateParams subscriptionParams = SubscriptionCreateParams.builder()
                 .setCustomer(customer.getId())
                 .addItem(
                         SubscriptionCreateParams.Item.builder()
@@ -103,6 +107,7 @@ public class PaymentServiceImpl implements PaymentService {
                 .build();
 
         com.stripe.model.Subscription subscription = com.stripe.model.Subscription.create(subscriptionParams);
+//        Stripe irá responder com: customerId, subscriptionId, paymentMethod
 
         // Retorne o status da assinatura
         String subscriptionStatus = subscription.getStatus();

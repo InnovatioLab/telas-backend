@@ -36,7 +36,7 @@ public class Payment extends BaseAudit implements Serializable {
     private String paymentMethod;
 
     @Column(name = "currency")
-    private Currency currency = Currency.USD;
+    private Currency currency = Currency.BRL;
 
     @Column(name = "stripe_payment_id")
     private String stripePaymentId;
