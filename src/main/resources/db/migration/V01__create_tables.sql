@@ -36,24 +36,22 @@ CREATE TABLE "verification_codes"
 
 CREATE TABLE "contacts"
 (
-  "id"                 UUID PRIMARY KEY,
-  "contact_preference" VARCHAR(10)              NOT NULL,
-  "email"              VARCHAR(255) UNIQUE      NOT NULL,
-  "phone"              VARCHAR(11),
-  "username_create"    VARCHAR(255)             NULL     DEFAULT NULL,
-  "username_update"    VARCHAR(255)             NULL     DEFAULT NULL,
-  "created_at"         TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT (now()),
-  "updated_at"         TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT (now())
+  "id"              UUID PRIMARY KEY,
+  "email"           VARCHAR(255) UNIQUE      NOT NULL,
+  "phone"           VARCHAR(11)              NOT NULL,
+  "username_create" VARCHAR(255)             NULL     DEFAULT NULL,
+  "username_update" VARCHAR(255)             NULL     DEFAULT NULL,
+  "created_at"      TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT (now()),
+  "updated_at"      TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT (now())
 );
 
 CREATE TABLE "contacts_aud"
 (
-  "id"                 UUID     NOT NULL,
-  "contact_preference" VARCHAR(15),
-  "email"              VARCHAR(255),
-  "phone"              VARCHAR(11),
-  "audit_id"           BIGINT   NOT NULL,
-  "audit_type"         SMALLINT NULL DEFAULT NULL,
+  "id"         UUID     NOT NULL,
+  "email"      VARCHAR(255),
+  "phone"      VARCHAR(11),
+  "audit_id"   BIGINT   NOT NULL,
+  "audit_type" SMALLINT NULL DEFAULT NULL,
   CONSTRAINT "pk_tbcontacts_aud" PRIMARY KEY ("id", "audit_id"),
   CONSTRAINT "fk_tbcontacts_aud_tbaudit" FOREIGN KEY ("audit_id") REFERENCES "audit" ("audit_id") ON UPDATE NO ACTION ON DELETE NO ACTION
 );
@@ -104,7 +102,7 @@ CREATE TABLE "owners"
   "last_name"             VARCHAR(150)             NULL     DEFAULT NULL,
   "email"                 VARCHAR(255) UNIQUE      NOT NULL,
   "identification_number" VARCHAR(15)              NOT NULL UNIQUE,
-  "phone"                 VARCHAR(11),
+  "phone"                 VARCHAR(11)              NOT NULL,
   "username_create"       VARCHAR(255)             NULL     DEFAULT NULL,
   "username_update"       VARCHAR(255)             NULL     DEFAULT NULL,
   "created_at"            TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT (now()),
@@ -134,7 +132,7 @@ CREATE TABLE "clients"
   "website_url"           TEXT                     NULL     DEFAULT NULL,
   "password"              TEXT,
   "role"                  VARCHAR(20)              NOT NULL DEFAULT 'CLIENT',
-  "business_field"        VARCHAR(50)              NOT NULL,
+  "industry"              VARCHAR(50)              NOT NULL,
   "status"                VARCHAR(15)              NOT NULL,
   "verification_code_id"  UUID                     NOT NULL,
   "contact_id"            UUID                     NOT NULL,
@@ -161,7 +159,7 @@ CREATE TABLE "clients_aud"
   "business_name"         VARCHAR(255),
   "identification_number" VARCHAR(9),
   "role"                  VARCHAR(20),
-  "business_field"        VARCHAR(50),
+  "industry"              VARCHAR(50),
   "status"                VARCHAR(15),
   "contact_id"            UUID,
   "owner_id"              UUID,
@@ -240,7 +238,6 @@ CREATE TABLE "addresses"
 (
   "id"              UUID PRIMARY KEY,
   "street"          VARCHAR(100)             NOT NULL,
-  "number"          VARCHAR(10)              NOT NULL,
   "zip_code"        VARCHAR(10)              NOT NULL,
   "city"            VARCHAR(50)              NOT NULL,
   "state"           VARCHAR(2)               NOT NULL,
@@ -260,7 +257,6 @@ CREATE TABLE "addresses_aud"
 (
   "id"         UUID     NOT NULL,
   "street"     VARCHAR(100),
-  "number"     VARCHAR(10),
   "zip_code"   VARCHAR(10),
   "city"       VARCHAR(50),
   "state"      VARCHAR(2),

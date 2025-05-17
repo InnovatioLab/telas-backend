@@ -15,49 +15,47 @@ import java.util.List;
 import java.util.UUID;
 
 public interface ClientService {
-    void save(ClientRequestDto request);
+  void save(ClientRequestDto request);
 
-    ClientResponseDto findById(UUID id);
+  ClientResponseDto findById(UUID id);
 
-    ClientResponseDto findByIdentificationNumber(String identification);
+  ClientResponseDto findByIdentificationNumber(String identification);
 
-    Client findActiveEntityById(UUID id);
+  Client findActiveEntityById(UUID id);
 
-    Client findEntityById(UUID id);
+  Client findEntityById(UUID id);
 
-    ClientResponseDto getDataFromToken();
+  ClientResponseDto getDataFromToken();
 
-    void validateCode(String identification, String codigo);
+  void validateCode(String identification, String codigo);
 
-    void resendCode(String identification);
+  void resendCode(String identification);
 
-    void updateContact(String identification, ContactRequestDto request) throws JsonProcessingException;
+  void createPassword(String identification, PasswordRequestDto request);
 
-    void createPassword(String identification, PasswordRequestDto request);
+  void sendResetPasswordCode(String identification);
 
-    void sendResetPasswordCode(String identification);
+  void resetPassword(String identificationNumber, PasswordRequestDto request);
 
-    void resetPassword(String identificationNumber, PasswordRequestDto request);
+  void updatePassword(PasswordUpdateRequestDto request, AuthenticatedUser authClient);
 
-    void updatePassword(PasswordUpdateRequestDto request, AuthenticatedUser authClient);
+  void update(ClientRequestDto request, UUID id) throws JsonProcessingException;
 
-    void update(ClientRequestDto request, UUID id) throws JsonProcessingException;
+  void uploadAttachments(List<AttachmentRequestDto> request, UUID clientId);
 
-    void uploadAttachments(List<AttachmentRequestDto> request, UUID clientId);
+  void requestAdCreation(ClientAdRequestToAdminDto request);
 
-    void requestAdCreation(ClientAdRequestToAdminDto request);
+  void uploadAds(AdRequestDto request);
 
-    void uploadAds(AdRequestDto request);
+  void acceptTermsAndConditions();
 
-    void acceptTermsAndConditions();
+  void changeRoleToPartner(UUID clientId) throws JsonProcessingException;
 
-    void changeRoleToPartner(UUID clientId) throws JsonProcessingException;
+  List<AdResponseDto> findPendingAds();
 
-    List<AdResponseDto> findPendingAds();
+  void validateAd(UUID adId, AdValidationType validation, RefusedAdRequestDto request) throws JsonProcessingException;
 
-    void validateAd(UUID adId, AdValidationType validation, RefusedAdRequestDto request) throws JsonProcessingException;
+  PaginationResponseDto<List<ClientMinResponseDto>> findAllFilters(ClientFilterRequestDto request);
 
-    PaginationResponseDto<List<ClientMinResponseDto>> findAllFilters(ClientFilterRequestDto request);
-
-    PaginationResponseDto<List<AdRequestResponseDto>> findPendingAdRequest(FilterAdRequestDto request);
+  PaginationResponseDto<List<AdRequestResponseDto>> findPendingAdRequest(FilterAdRequestDto request);
 }
