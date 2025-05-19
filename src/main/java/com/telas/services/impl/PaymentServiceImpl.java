@@ -22,6 +22,7 @@ import com.telas.infra.exceptions.ResourceNotFoundException;
 import com.telas.infra.security.services.AuthenticatedUserService;
 import com.telas.repositories.ClientRepository;
 import com.telas.repositories.PaymentRepository;
+import com.telas.repositories.SubscriptionFlowRepository;
 import com.telas.repositories.SubscriptionRepository;
 import com.telas.services.PaymentService;
 import com.telas.shared.constants.valitation.PaymentValidationMessages;
@@ -40,6 +41,7 @@ public class PaymentServiceImpl implements PaymentService {
   private final Logger log = LoggerFactory.getLogger(PaymentServiceImpl.class);
   private final PaymentRepository repository;
   private final SubscriptionRepository subscriptionRepository;
+  private final SubscriptionFlowRepository subscriptionFlowRepository;
   private final ClientRepository clientRepository;
   private final AuthenticatedUserService authenticatedUserService;
   private final SubscriptionHelper subscriptionHelper;
@@ -86,7 +88,7 @@ public class PaymentServiceImpl implements PaymentService {
       handleFailedPayment(payment);
     }
 
-    finalizePayment(payment, client);
+    finalizePayment(payment);
   }
 
   private void handleSuccessfulPayment(Payment payment) {
@@ -97,6 +99,11 @@ public class PaymentServiceImpl implements PaymentService {
     log.info("Initializing subscription id: {}", subscription.getId());
     subscription.setStatus(SubscriptionStatus.ACTIVE);
     subscription.initialize();
+
+    Cart cart = payment.getSubscription().getClient().getCart();
+    subscriptionHelper.inactivateCart(cart);
+
+    subscriptionFlowRepository.delete(subscription.getClient().getSubscriptionFlow());
   }
 
   private void handleFailedPayment(Payment payment) {
@@ -104,13 +111,10 @@ public class PaymentServiceImpl implements PaymentService {
     payment.setStatus(PaymentStatus.FAILED);
   }
 
-  private void finalizePayment(Payment payment, Client client) {
+  private void finalizePayment(Payment payment) {
     repository.save(payment);
     Subscription subscription = payment.getSubscription();
     subscriptionRepository.save(subscription);
-
-    Cart cart = subscriptionHelper.getActiveCart(client);
-    subscriptionHelper.inactivateCart(cart);
   }
 
   private void verifyClientOwnership(Payment payment, Client client) {

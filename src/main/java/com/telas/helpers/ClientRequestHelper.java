@@ -3,6 +3,7 @@ package com.telas.helpers;
 import com.telas.dtos.request.AddressRequestDto;
 import com.telas.dtos.request.ClientAdRequestToAdminDto;
 import com.telas.dtos.request.ClientRequestDto;
+import com.telas.dtos.response.ClientResponseDto;
 import com.telas.entities.*;
 import com.telas.infra.exceptions.BusinessRuleException;
 import com.telas.repositories.*;
@@ -33,6 +34,7 @@ public class ClientRequestHelper {
   private final AdRequestRepository adRequestRepository;
   private final AddressService addressService;
   private final GeolocationService geolocationService;
+  private final CartHelper cartHelper;
 
   @Transactional(readOnly = true)
   public void validateClientRequest(ClientRequestDto request, Client client) {
@@ -82,6 +84,11 @@ public class ClientRequestHelper {
   public AdRequest getAdRequestById(UUID adRequestId) {
     return adRequestRepository.findById(adRequestId)
             .orElseThrow(() -> new ResolutionException(AdValidationMessages.AD_REQUEST_NOT_FOUND));
+  }
+
+  @Transactional
+  public void setCartResponse(ClientResponseDto response) {
+    cartHelper.setCartResponseTotalPrice(response.getCart());
   }
 
 

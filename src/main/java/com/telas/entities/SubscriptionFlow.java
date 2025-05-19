@@ -1,5 +1,6 @@
 package com.telas.entities;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -24,8 +25,9 @@ public class SubscriptionFlow implements Serializable {
   private UUID id;
 
   @Column(name = "step")
-  private int step = 1;
+  private int step = 0;
 
+  @JsonIgnore
   @OneToOne
   @JoinColumn(name = "client_id", referencedColumnName = "id")
   private Client client;
@@ -35,7 +37,7 @@ public class SubscriptionFlow implements Serializable {
   }
 
   public void nextStep() {
-    if (step < 3) {
+    if (step < 2) {
       step++;
     }
   }

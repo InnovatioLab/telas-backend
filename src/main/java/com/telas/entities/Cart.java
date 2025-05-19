@@ -44,7 +44,7 @@ public class Cart extends BaseAudit implements Serializable {
   @JoinColumn(name = "client_id", referencedColumnName = "id", nullable = false)
   private Client client;
 
-  @OneToMany(mappedBy = "cart", cascade = CascadeType.ALL)
+  @OneToMany(mappedBy = "cart", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
   private List<CartItem> items = new ArrayList<>();
 
   public Cart(Client client) {

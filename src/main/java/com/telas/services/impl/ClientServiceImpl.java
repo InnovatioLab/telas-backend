@@ -294,13 +294,21 @@ public class ClientServiceImpl implements ClientService {
             .toList();
   }
 
-  @Transactional
   @Override
+  @Transactional
   public void validateAd(UUID adId, AdValidationType validation, RefusedAdRequestDto request) throws JsonProcessingException {
     Ad ad = helper.getAdById(adId);
     Client client = authenticatedUserService.validateSelfOrAdmin(ad.getClient().getId()).client();
 
     attachmentHelper.validateAd(ad, validation, request, client);
+  }
+
+  @Override
+  @Transactional
+  public void incrementSubscriptionFlow() {
+    Client client = authenticatedUserService.getLoggedUser().client();
+    client.getSubscriptionFlow().nextStep();
+    repository.save(client);
   }
 
   @Override
@@ -403,7 +411,9 @@ public class ClientServiceImpl implements ClientService {
             .map(attachment -> new LinkResponseDto(attachment.getId(), bucketService.getLink(AttachmentUtils.format(attachment))))
             .toList();
 
-    return new ClientResponseDto(client, attachmentLinks, advertisingAttachmentLinks);
+    ClientResponseDto response = new ClientResponseDto(client, attachmentLinks, advertisingAttachmentLinks);
+    helper.setCartResponse(response);
+    return response;
   }
 
   protected Client findActiveByIdentification(String identification) {

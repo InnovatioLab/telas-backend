@@ -83,8 +83,7 @@ public class Client extends BaseAudit implements Serializable {
   private VerificationCode verificationCode;
 
   @NotAudited
-  @JsonIgnore
-  @OneToOne(mappedBy = "client")
+  @OneToOne(mappedBy = "client", cascade = CascadeType.ALL)
   private SubscriptionFlow subscriptionFlow;
 
   @OneToOne(cascade = CascadeType.ALL)
@@ -98,6 +97,10 @@ public class Client extends BaseAudit implements Serializable {
   @OneToOne(cascade = CascadeType.ALL)
   @JoinColumn(name = "social_media_id", referencedColumnName = "id")
   private SocialMedia socialMedia;
+
+  @JsonIgnore
+  @OneToOne(mappedBy = "client")
+  private Cart cart;
 
   @OneToMany(mappedBy = "client", cascade = CascadeType.ALL, fetch = FetchType.EAGER)
   private Set<Address> addresses = new HashSet<>();

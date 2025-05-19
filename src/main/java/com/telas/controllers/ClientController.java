@@ -148,4 +148,10 @@ public interface ClientController {
           @ApiResponse(responseCode = "404", description = "Some data not found."),
   })
   ResponseEntity<?> validateAd(AdValidationType validation, RefusedAdRequestDto request, UUID attachmentId) throws JsonProcessingException;
+
+  @Operation(summary = "Endpoint contract to increment logged client subscription flow", responses = {
+          @ApiResponse(responseCode = "200", description = "Subscription flow incremented successfully."),
+          @ApiResponse(responseCode = "401", description = "Unauthorized."),
+  })
+  ResponseEntity<?> incrementSubscriptionFlow();
 }

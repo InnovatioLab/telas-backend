@@ -178,5 +178,13 @@ public class ClientControllerImpl implements ClientController {
     return ResponseEntity.status(HttpStatus.OK).body(ResponseDto.fromData(null, HttpStatus.OK, MessageCommonsConstants.ATTACHMENT_VALIDATION_MESSAGE));
   }
 
+  @Override
+  @PatchMapping("/increment-subscription-flow")
+  @SecurityRequirement(name = "jwt")
+  public ResponseEntity<?> incrementSubscriptionFlow() {
+    service.incrementSubscriptionFlow();
+    return ResponseEntity.status(HttpStatus.OK).body(ResponseDto.fromData(null, HttpStatus.OK, "Subscription flow incremented successfully!"));
+  }
+
 
 }

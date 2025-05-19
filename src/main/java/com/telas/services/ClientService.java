@@ -55,6 +55,8 @@ public interface ClientService {
 
   void validateAd(UUID adId, AdValidationType validation, RefusedAdRequestDto request) throws JsonProcessingException;
 
+  void incrementSubscriptionFlow();
+
   PaginationResponseDto<List<ClientMinResponseDto>> findAllFilters(ClientFilterRequestDto request);
 
   PaginationResponseDto<List<AdRequestResponseDto>> findPendingAdRequest(FilterAdRequestDto request);

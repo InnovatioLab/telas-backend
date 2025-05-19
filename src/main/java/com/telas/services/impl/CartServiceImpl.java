@@ -3,14 +3,15 @@ package com.telas.services.impl;
 
 import com.telas.dtos.request.CartItemRequestDto;
 import com.telas.dtos.request.CartRequestDto;
-import com.telas.entities.Cart;
-import com.telas.entities.CartItem;
-import com.telas.entities.Client;
-import com.telas.entities.Monitor;
+import com.telas.dtos.response.CartItemResponseDto;
+import com.telas.dtos.response.CartResponseDto;
+import com.telas.entities.*;
+import com.telas.helpers.CartHelper;
 import com.telas.infra.exceptions.ResourceNotFoundException;
 import com.telas.infra.security.services.AuthenticatedUserService;
 import com.telas.repositories.CartItemRepository;
 import com.telas.repositories.CartRepository;
+import com.telas.repositories.SubscriptionFlowRepository;
 import com.telas.services.CartService;
 import com.telas.services.MonitorService;
 import com.telas.shared.constants.SharedConstants;
@@ -28,12 +29,14 @@ import java.util.stream.Collectors;
 public class CartServiceImpl implements CartService {
   private final CartRepository repository;
   private final CartItemRepository cartItemRepository;
+  private final SubscriptionFlowRepository subscriptionFlowRepository;
   private final AuthenticatedUserService authenticatedUserService;
   private final MonitorService monitorService;
+  private final CartHelper helper;
 
   @Override
   @Transactional
-  public void save(CartRequestDto request, UUID cartId) {
+  public CartResponseDto save(CartRequestDto request, UUID cartId) {
     Client client = authenticatedUserService.getLoggedUser().client();
 
     Cart cart = (cartId != null) ? findEntityById(cartId) : null;
@@ -46,11 +49,16 @@ public class CartServiceImpl implements CartService {
       cart = new Cart(client);
       cart.setRecurrence(request.getRecurrence());
       repository.save(cart);
+
+      if (client.getSubscriptionFlow() == null) {
+        subscriptionFlowRepository.save(new SubscriptionFlow(client));
+      }
     }
 
-    saveCartItems(request, cart);
     cart.setRecurrence(request.getRecurrence());
+    List<CartItemResponseDto> itemsResponse = saveCartItems(request, cart);
     repository.save(cart);
+    return getCartResponse(cart, itemsResponse);
   }
 
   @Override
@@ -66,11 +74,32 @@ public class CartServiceImpl implements CartService {
     return repository.findByClientIdWithItens(id).orElseThrow(() -> new ResourceNotFoundException(CartValidationMessages.CART_NOT_FOUND));
   }
 
-  private void saveCartItems(CartRequestDto request, Cart cart) {
+  @Override
+  @Transactional
+  public CartResponseDto findById(UUID id) {
+    Cart cart = findEntityById(id);
+    return getCartResponse(cart, null);
+  }
+
+  private CartResponseDto getCartResponse(Cart cart, List<CartItemResponseDto> itemsResponse) {
+    CartResponseDto response = new CartResponseDto(cart);
+
+    if (!ValidateDataUtils.isNullOrEmpty(itemsResponse)) {
+      response.setItems(itemsResponse);
+    }
+
+    helper.setCartResponseTotalPrice(response);
+    return response;
+  }
+
+  private List<CartItemResponseDto> saveCartItems(CartRequestDto request, Cart cart) {
     Map<UUID, CartItem> actualItems = mapExistingCartItems(cart);
-    Set<UUID> itemsReceivedIds = processReceivedItems(request, cart, actualItems);
+    List<CartItemResponseDto> itemsResponse = new ArrayList<>();
+
+    Set<UUID> itemsReceivedIds = processReceivedItems(request, cart, actualItems, itemsResponse);
     removeUnreceivedItems(cart, actualItems, itemsReceivedIds);
     deleteCartIfEmpty(cart);
+    return itemsResponse;
   }
 
   private Map<UUID, CartItem> mapExistingCartItems(Cart cart) {
@@ -78,7 +107,7 @@ public class CartServiceImpl implements CartService {
     return cartItems.stream().collect(Collectors.toMap(item -> item.getMonitor().getId(), item -> item));
   }
 
-  private Set<UUID> processReceivedItems(CartRequestDto request, Cart cart, Map<UUID, CartItem> actualItems) {
+  private Set<UUID> processReceivedItems(CartRequestDto request, Cart cart, Map<UUID, CartItem> actualItems, List<CartItemResponseDto> itemsResponse) {
     Set<UUID> itemsReceivedIds = new HashSet<>();
 
     for (CartItemRequestDto itemDto : request.getItems()) {
@@ -89,19 +118,26 @@ public class CartServiceImpl implements CartService {
       cartItem.setBlockQuantity(itemDto.getBlockQuantity());
       cartItemRepository.save(cartItem);
 
+      itemsResponse.add(new CartItemResponseDto(cartItem));
+
       itemsReceivedIds.add(monitorId);
     }
+
     return itemsReceivedIds;
   }
 
   private void removeUnreceivedItems(Cart cart, Map<UUID, CartItem> actualItems, Set<UUID> itemsReceivedIds) {
-    List<CartItem> itemsToRemove = cart.getItems().stream()
+    List<CartItem> itemsToRemove = actualItems.values().stream()
             .filter(item -> !itemsReceivedIds.contains(item.getMonitor().getId()))
             .toList();
 
     if (!itemsToRemove.isEmpty()) {
       cartItemRepository.deleteAll(itemsToRemove);
-      cart.getItems().removeAll(itemsToRemove);
+      cartItemRepository.flush();
+
+      if (cart.getItems() != null && !cart.getItems().isEmpty()) {
+        cart.getItems().removeAll(itemsToRemove);
+      }
     }
   }
 
