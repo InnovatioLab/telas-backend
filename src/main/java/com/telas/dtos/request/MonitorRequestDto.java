@@ -31,70 +31,70 @@ import java.util.concurrent.atomic.AtomicInteger;
 @AllArgsConstructor
 @NoArgsConstructor
 public class MonitorRequestDto implements Serializable {
-    @Serial
-    private static final long serialVersionUID = -3963846843873646628L;
+  @Serial
+  private static final long serialVersionUID = -3963846843873646628L;
 
-    @Digits(integer = 3, fraction = 2, message = MonitorValidationMessages.SIZE_INVALID)
-    private BigDecimal size;
+  @Digits(integer = 3, fraction = 2, message = MonitorValidationMessages.SIZE_INVALID)
+  private BigDecimal size;
 
-    @NotNull(message = MonitorValidationMessages.ADDRESS_ID_REQUIRED)
-    private UUID addressId;
+  @NotNull(message = MonitorValidationMessages.ADDRESS_ID_REQUIRED)
+  private UUID addressId;
 
-    @Positive(message = MonitorValidationMessages.MAX_BLOCKS_INVALID)
-    private Integer maxBlocks;
+  @Positive(message = MonitorValidationMessages.MAX_BLOCKS_INVALID)
+  private Integer maxBlocks;
 
-    @Size(max = SharedConstants.TAMANHO_NOME_ANEXO, message = MonitorValidationMessages.LOCATION_DESCRIPTION_SIZE)
-    @JsonDeserialize(using = TrimStringDeserializer.class)
-    private String locationDescription;
+  @Size(max = SharedConstants.TAMANHO_NOME_ANEXO, message = MonitorValidationMessages.LOCATION_DESCRIPTION_SIZE)
+  @JsonDeserialize(using = TrimStringDeserializer.class)
+  private String locationDescription;
 
-    private MonitorType type = MonitorType.BASIC;
+  private MonitorType type = MonitorType.BASIC;
 
-    private Boolean active;
+  private Boolean active;
 
-    private @Valid List<MonitorAdRequestDto> ads;
+  private @Valid List<MonitorAdRequestDto> ads;
 
-    public void validate() {
-        validadeAdsOrderIndex();
-        validateMaxDisplayTime();
+  public void validate() {
+    validadeAdsOrderIndex();
+//        validateMaxDisplayTime();
+  }
+
+//    private void validateMaxDisplayTime() {
+//        if (ValidateDataUtils.isNullOrEmpty(ads)) {
+//            return;
+//        }
+//
+//        int sumDisplayTimeInSeconds = ads.stream()
+//                .mapToInt(MonitorAdRequestDto::getBlockTime)
+//                .sum();
+//
+//        int maxAllowedTime = (maxBlocks == null)
+//                ? SharedConstants.MAX_MONITOR_DISPLAY_TIME
+//                : SharedConstants.MONITOR_ADS_TIME_IN_SECONDS * maxBlocks;
+//
+//        if (sumDisplayTimeInSeconds > maxAllowedTime) {
+//            throw new BusinessRuleException(MonitorValidationMessages.SUM_BLOCK_TIME_INVALID);
+//        }
+//    }
+
+  private void validadeAdsOrderIndex() {
+    if (!ValidateDataUtils.isNullOrEmpty(ads)) {
+      boolean hasDuplicates = ads.stream()
+                                      .map(MonitorAdRequestDto::getOrderIndex)
+                                      .distinct()
+                                      .count() < ads.size();
+
+      if (hasDuplicates) {
+        throw new BusinessRuleException(MonitorValidationMessages.ADS_ORDER_INDEX_DUPLICATED);
+      }
+
+      adjustAdsOrder();
     }
+  }
 
-    private void validateMaxDisplayTime() {
-        if (ValidateDataUtils.isNullOrEmpty(ads)) {
-            return;
-        }
+  private void adjustAdsOrder() {
+    ads.sort(Comparator.comparing(MonitorAdRequestDto::getOrderIndex));
 
-        int sumDisplayTimeInSeconds = ads.stream()
-                .mapToInt(MonitorAdRequestDto::getBlockTime)
-                .sum();
-
-        int maxAllowedTime = (maxBlocks == null)
-                ? SharedConstants.MAX_MONITOR_DISPLAY_TIME
-                : SharedConstants.MONITOR_ADS_TIME_IN_SECONDS * maxBlocks;
-
-        if (sumDisplayTimeInSeconds > maxAllowedTime) {
-            throw new BusinessRuleException(MonitorValidationMessages.SUM_BLOCK_TIME_INVALID);
-        }
-    }
-
-    private void validadeAdsOrderIndex() {
-        if (!ValidateDataUtils.isNullOrEmpty(ads)) {
-            boolean hasDuplicates = ads.stream()
-                                            .map(MonitorAdRequestDto::getOrderIndex)
-                                            .distinct()
-                                            .count() < ads.size();
-
-            if (hasDuplicates) {
-                throw new BusinessRuleException(MonitorValidationMessages.ADS_ORDER_INDEX_DUPLICATED);
-            }
-
-            adjustAdsOrder();
-        }
-    }
-
-    private void adjustAdsOrder() {
-        ads.sort(Comparator.comparing(MonitorAdRequestDto::getOrderIndex));
-
-        AtomicInteger sequence = new AtomicInteger(1);
-        ads.forEach(attachment -> attachment.setOrderIndex(sequence.getAndIncrement()));
-    }
+    AtomicInteger sequence = new AtomicInteger(1);
+    ads.forEach(attachment -> attachment.setOrderIndex(sequence.getAndIncrement()));
+  }
 }

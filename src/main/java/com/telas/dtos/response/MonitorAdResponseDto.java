@@ -14,24 +14,24 @@ import java.util.UUID;
 @Setter
 @NoArgsConstructor
 public final class MonitorAdResponseDto implements Serializable {
-    @Serial
-    private static final long serialVersionUID = -7144327643566339527L;
+  @Serial
+  private static final long serialVersionUID = -7144327643566339527L;
 
-    private UUID adId;
+  private UUID adId;
 
-    private String adLink;
+  private String adLink;
 
-    private DisplayType displayType;
+  private DisplayType displayType;
 
-    private Integer blockTime;
+//    private Integer blockTime;
 
-    private Integer orderIndex;
+  private Integer orderIndex;
 
-    public MonitorAdResponseDto(MonitorAd entity, String adLink) {
-        adId = entity.getAd().getId();
-        displayType = entity.getDisplayType();
-        blockTime = entity.getBlockTime();
-        orderIndex = entity.getOrderIndex();
-        this.adLink = adLink;
-    }
+  public MonitorAdResponseDto(MonitorAd entity, String adLink) {
+    adId = entity.getAd().getId();
+    displayType = entity.getDisplayType();
+//        blockTime = entity.getBlockTime();
+    orderIndex = entity.getOrderIndex();
+    this.adLink = adLink;
+  }
 }

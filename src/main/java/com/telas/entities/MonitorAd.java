@@ -20,61 +20,61 @@ import java.util.Objects;
 @Table(name = "monitors_ads")
 @AuditTable("monitors_ads_aud")
 public class MonitorAd extends BaseAudit implements Serializable {
-    @Serial
-    private static final long serialVersionUID = 4636281925583628366L;
+  @Serial
+  private static final long serialVersionUID = 4636281925583628366L;
 
-    @EmbeddedId
-    private MonitorAdPK id = new MonitorAdPK();
+  @EmbeddedId
+  private MonitorAdPK id = new MonitorAdPK();
 
-    @Column(name = "display_type", nullable = false)
-    @Enumerated(EnumType.STRING)
-    private DisplayType displayType = DisplayType.INTERLEAVED;
+  @Column(name = "display_type", nullable = false)
+  @Enumerated(EnumType.STRING)
+  private DisplayType displayType = DisplayType.INTERLEAVED;
 
-    @Column(name = "block_time", nullable = false)
-    private Integer blockTime;
+  @Column(name = "block_quantity", nullable = false)
+  private Integer blockQuantity = 1;
 
-    @Column(name = "order_index", nullable = false)
-    private Integer orderIndex;
+  @Column(name = "order_index", nullable = false)
+  private Integer orderIndex;
 
-    public MonitorAd(MonitorAdRequestDto request, Monitor monitor, Ad ad) {
-        id.setMonitor(monitor);
-        id.setAd(ad);
-        displayType = request.getDisplayType();
-        blockTime = request.getBlockTime();
-        orderIndex = request.getOrderIndex();
+  public MonitorAd(MonitorAdRequestDto request, Monitor monitor, Ad ad) {
+    id.setMonitor(monitor);
+    id.setAd(ad);
+    displayType = request.getDisplayType();
+//        blockTime = request.getBlockTime();
+    orderIndex = request.getOrderIndex();
+  }
+
+  public Monitor getMonitor() {
+    return id.getMonitor();
+  }
+
+  public void setMonitor(Monitor monitor) {
+    id.setMonitor(monitor);
+  }
+
+  public Ad getAd() {
+    return id.getAd();
+  }
+
+  public void setAd(Ad ad) {
+    id.setAd(ad);
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hashCode(id);
+  }
+
+  @Override
+  public boolean equals(Object o) {
+    if (this == o) {
+      return true;
+    }
+    if (o == null || getClass() != o.getClass()) {
+      return false;
     }
 
-    public Monitor getMonitor() {
-        return id.getMonitor();
-    }
-
-    public void setMonitor(Monitor monitor) {
-        id.setMonitor(monitor);
-    }
-
-    public Ad getAd() {
-        return id.getAd();
-    }
-
-    public void setAd(Ad ad) {
-        id.setAd(ad);
-    }
-
-    @Override
-    public int hashCode() {
-        return Objects.hashCode(id);
-    }
-
-    @Override
-    public boolean equals(Object o) {
-        if (this == o) {
-            return true;
-        }
-        if (o == null || getClass() != o.getClass()) {
-            return false;
-        }
-
-        MonitorAd monitorAd = (MonitorAd) o;
-        return Objects.equals(id, monitorAd.id);
-    }
+    MonitorAd monitorAd = (MonitorAd) o;
+    return Objects.equals(id, monitorAd.id);
+  }
 }

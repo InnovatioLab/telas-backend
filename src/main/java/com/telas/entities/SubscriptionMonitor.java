@@ -1,7 +1,6 @@
 package com.telas.entities;
 
-import com.telas.enums.Recurrence;
-import com.telas.enums.SubscriptionStatus;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.telas.shared.audit.BaseAudit;
 import jakarta.persistence.*;
 import lombok.Getter;
@@ -11,64 +10,38 @@ import org.hibernate.envers.AuditTable;
 
 import java.io.Serial;
 import java.io.Serializable;
-import java.math.BigDecimal;
-import java.time.Instant;
 import java.util.UUID;
 
 @Getter
 @Setter
-@Entity
-@Table(name = "subscriptions")
-@AuditTable("subscriptions_aud")
 @NoArgsConstructor
-public class Subscription extends BaseAudit implements Serializable {
-    @Serial
-    private static final long serialVersionUID = 1084934057135367842L;
+@Entity
+@Table(name = "subscription_monitors")
+@AuditTable("subscription_monitors_aud")
+public class SubscriptionMonitor extends BaseAudit implements Serializable {
+  @Serial
+  private static final long serialVersionUID = 1L;
 
-    @Id
-    @GeneratedValue
-    @Column(name = "id")
-    private UUID id;
+  @Id
+  @GeneratedValue
+  @Column(name = "id", nullable = false)
+  private UUID id;
 
-    @Column(name = "amount", precision = 10, scale = 2, nullable = false)
-    private BigDecimal amount;
+  @JsonIgnore
+  @ManyToOne
+  @JoinColumn(name = "subscription_id", nullable = false)
+  private Subscription subscription;
 
-    @Column(name = "discount", precision = 5, scale = 2, nullable = false)
-    private BigDecimal discount = BigDecimal.valueOf(0.00);
+  @ManyToOne
+  @JoinColumn(name = "monitor_id", nullable = false)
+  private Monitor monitor;
 
-    @Column(name = "recurrence", nullable = false)
-    @Enumerated(EnumType.STRING)
-    private Recurrence recurrence;
+  @Column(name = "block_quantity", nullable = false)
+  private Integer blockQuantity;
 
-    @Column(name = "fl_bonus")
-    private boolean bonus = false;
-
-    @Column(name = "status", columnDefinition = "subscription_status")
-    @Enumerated(EnumType.STRING)
-    private SubscriptionStatus status = SubscriptionStatus.PENDING;
-
-    @Column(name = "started_at", columnDefinition = "TIMESTAMP WITHOUT TIME ZONE")
-    private Instant startedAt;
-
-    @Column(name = "ends_at", columnDefinition = "TIMESTAMP WITHOUT TIME ZONE")
-    private Instant endsAt;
-
-    @OneToOne
-    @JoinColumn(name = "client_id", referencedColumnName = "id")
-    private Client client;
-
-    @OneToOne(cascade = CascadeType.ALL)
-    private Payment payment;
-
-    public Subscription(BigDecimal amount, BigDecimal discount, Recurrence recurrence, boolean bonus) {
-        this.amount = amount;
-        this.discount = discount;
-        this.recurrence = recurrence;
-        this.bonus = bonus;
-    }
-
-    public void initialize() {
-        startedAt = Instant.now();
-        endsAt = recurrence.calculateEndsAt(startedAt);
-    }
+  public SubscriptionMonitor(Subscription subscription, CartItem cartItem) {
+    this.subscription = subscription;
+    monitor = cartItem.getMonitor();
+    blockQuantity = cartItem.getBlockQuantity();
+  }
 }

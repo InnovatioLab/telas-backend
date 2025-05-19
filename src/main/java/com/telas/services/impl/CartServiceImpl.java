@@ -44,10 +44,12 @@ public class CartServiceImpl implements CartService {
       }
 
       cart = new Cart(client);
+      cart.setRecurrence(request.getRecurrence());
       repository.save(cart);
     }
 
     saveCartItems(request, cart);
+    cart.setRecurrence(request.getRecurrence());
     repository.save(cart);
   }
 
@@ -56,6 +58,12 @@ public class CartServiceImpl implements CartService {
   public void inactivateCart(Cart cart) {
     cart.inactivate();
     repository.save(cart);
+  }
+
+  @Override
+  @Transactional
+  public Cart findByClientIdWithItens(UUID id) {
+    return repository.findByClientIdWithItens(id).orElseThrow(() -> new ResourceNotFoundException(CartValidationMessages.CART_NOT_FOUND));
   }
 
   private void saveCartItems(CartRequestDto request, Cart cart) {

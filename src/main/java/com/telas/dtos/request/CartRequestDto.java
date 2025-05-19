@@ -20,11 +20,11 @@ import java.util.List;
 @AllArgsConstructor
 @NoArgsConstructor
 public class CartRequestDto implements Serializable {
-    @Serial
-    private static final long serialVersionUID = -3963846843873646628L;
+  @Serial
+  private static final long serialVersionUID = -3963846843873646628L;
 
-    @NotEmpty(message = CartValidationMessages.ITEMS_REQUIRED)
-    private @Valid List<CartItemRequestDto> items = new ArrayList<>();
+  @NotEmpty(message = CartValidationMessages.ITEMS_REQUIRED)
+  private @Valid List<CartItemRequestDto> items = new ArrayList<>();
 
-    private Recurrence recurrence = Recurrence.MONTHLY;
+  private Recurrence recurrence = Recurrence.THIRTY_DAYS;
 }

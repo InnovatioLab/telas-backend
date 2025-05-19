@@ -1,29 +1,49 @@
 package com.telas.services.impl;
 
-import com.stripe.exception.StripeException;
-import com.stripe.model.Customer;
-import com.stripe.param.CustomerCreateParams;
+import com.telas.dtos.response.PaymentInfoResponseDto;
+import com.telas.entities.Cart;
 import com.telas.entities.Client;
+import com.telas.entities.Subscription;
+import com.telas.helpers.SubscriptionHelper;
+import com.telas.infra.security.services.AuthenticatedUserService;
 import com.telas.repositories.ClientRepository;
 import com.telas.repositories.SubscriptionRepository;
+import com.telas.services.PaymentService;
 import com.telas.services.SubscriptionService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
+import java.util.UUID;
+
 @Service
 @RequiredArgsConstructor
 public class SubscriptionServiceImpl implements SubscriptionService {
-    private final SubscriptionRepository repository;
-    private final ClientRepository clientRepository;
+  private final SubscriptionRepository repository;
+  private final ClientRepository clientRepository;
+  private final AuthenticatedUserService authenticatedUserService;
+  private final PaymentService paymentService;
+  private final SubscriptionHelper helper;
 
-    private void createStripeCustomer(Client client) throws StripeException {
-        CustomerCreateParams params = CustomerCreateParams.builder()
-                .setEmail(client.getContact().getEmail())
-                .setName(client.getBusinessName())
-                .build();
 
-        Customer customer = Customer.create(params);
-        client.setStripeCustomerId(customer.getId());
-        clientRepository.save(client);
+  @Override
+  public PaymentInfoResponseDto save() {
+    Client client = authenticatedUserService.getLoggedUser().client();
+    Cart cart = helper.getActiveCart(client);
+    Subscription subscription = new Subscription(client, cart);
+
+    if (subscription.isBonus()) {
+      subscription.initialize();
+      repository.save(subscription);
+      return null;
     }
+
+    subscription.setAmount(helper.calculateTotalPrice(cart.getItems()));
+    repository.save(subscription);
+    return paymentService.process(subscription);
+  }
+
+  @Override
+  public Subscription findById(UUID subscriptionId) {
+    return null;
+  }
 }

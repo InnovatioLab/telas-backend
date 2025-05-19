@@ -307,17 +307,15 @@ CREATE TABLE "monitors_aud"
 
 CREATE TABLE "subscriptions"
 (
-  "id"              UUID PRIMARY KEY,
-  "client_id"       UUID                     NOT NULL,
-  "amount"          NUMERIC(10, 2)           NOT NULL,
-  "recurrence"      VARCHAR(15)              NOT NULL CHECK ("recurrence" IN ('THIRTY_DAYS', 'SIXTY_DAYS', 'NINETY_DAYS', 'MONTHLY')),
-  "fl_bonus"        BOOLEAN                  NOT NULL DEFAULT FALSE,
-  "discount"        DECIMAL(5, 2)            NOT NULL DEFAULT 0.00,
-  "status"          VARCHAR(15)              NOT NULL DEFAULT 'PENDING',
-  "username_create" VARCHAR(255)             NULL     DEFAULT NULL,
-  "username_update" VARCHAR(255)             NULL     DEFAULT NULL,
-  "started_at"      TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT (now()),
-  "ends_at"         TIMESTAMP WITH TIME ZONE NOT NULL,
+  "id"         UUID PRIMARY KEY,
+  "client_id"  UUID           NOT NULL,
+  "amount"     NUMERIC(10, 2) NOT NULL,
+  "recurrence" VARCHAR(15)    NOT NULL CHECK ("recurrence" IN ('THIRTY_DAYS', 'SIXTY_DAYS', 'NINETY_DAYS', 'MONTHLY')),
+  "fl_bonus"   BOOLEAN        NOT NULL DEFAULT FALSE,
+  "discount"   DECIMAL(5, 2)  NOT NULL DEFAULT 0.00,
+  "status"     VARCHAR(15)    NOT NULL DEFAULT 'PENDING',
+  "started_at" TIMESTAMP WITH TIME ZONE,
+  "ends_at"    TIMESTAMP WITH TIME ZONE,
   CONSTRAINT "fk_subscription_client" FOREIGN KEY ("client_id") REFERENCES "clients" ("id") ON UPDATE NO ACTION ON DELETE NO ACTION
 );
 
@@ -373,7 +371,6 @@ CREATE TABLE "subscription_monitors"
   "subscription_id" UUID                     NOT NULL,
   "monitor_id"      UUID                     NOT NULL,
   "block_quantity"  INTEGER                  NOT NULL CHECK ("block_quantity" BETWEEN 1 AND 3),
-  "amount"          NUMERIC(10, 2)           NOT NULL,
   "username_create" VARCHAR(255)             NULL     DEFAULT NULL,
   "username_update" VARCHAR(255)             NULL     DEFAULT NULL,
   "created_at"      TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT (now()),
@@ -382,14 +379,12 @@ CREATE TABLE "subscription_monitors"
   CONSTRAINT "fk_subscription_monitor_monitor" FOREIGN KEY ("monitor_id") REFERENCES "monitors" ("id") ON UPDATE NO ACTION ON DELETE CASCADE
 );
 
--- Criar tabela de auditoria para subscription_monitors
 CREATE TABLE "subscription_monitors_aud"
 (
   "id"              UUID     NOT NULL,
   "subscription_id" UUID,
   "monitor_id"      UUID,
   "block_quantity"  INTEGER,
-  "amount"          NUMERIC(10, 2),
   "audit_id"        BIGINT   NOT NULL,
   "audit_type"      SMALLINT NULL DEFAULT NULL,
   CONSTRAINT "pk_tbsubscription_monitors_aud" PRIMARY KEY ("id", "audit_id"),
@@ -531,6 +526,7 @@ CREATE TABLE "monitors_ads"
   "ad_id"           UUID                     NOT NULL,
   "display_type"    VARCHAR(50)              NOT NULL DEFAULT 'INTERLEAVED',
   "block_time"      INTEGER                  NOT NULL,
+  "block_quantity"  INTEGER                  NOT NULL DEFAULT 1,
   "order_index"     INTEGER                  NOT NULL,
   "username_create" VARCHAR(255)             NULL     DEFAULT NULL,
   "username_update" VARCHAR(255)             NULL     DEFAULT NULL,
@@ -543,13 +539,14 @@ CREATE TABLE "monitors_ads"
 
 CREATE TABLE "monitors_ads_aud"
 (
-  "monitor_id"   UUID     NOT NULL,
-  "ad_id"        UUID     NOT NULL,
-  "display_type" VARCHAR(50),
-  "block_time"   INTEGER,
-  "order_index"  INTEGER,
-  "audit_id"     BIGINT   NOT NULL,
-  "audit_type"   SMALLINT NULL DEFAULT NULL,
+  "monitor_id"     UUID     NOT NULL,
+  "ad_id"          UUID     NOT NULL,
+  "display_type"   VARCHAR(50),
+  "block_time"     INTEGER,
+  "block_quantity" INTEGER,
+  "order_index"    INTEGER,
+  "audit_id"       BIGINT   NOT NULL,
+  "audit_type"     SMALLINT NULL DEFAULT NULL,
   CONSTRAINT "pk_tbmonitors_ads_aud" PRIMARY KEY ("monitor_id", "ad_id", "audit_id"),
   CONSTRAINT "fk_tbmonitors_ads_aud_tbaudit" FOREIGN KEY ("audit_id") REFERENCES "audit" ("audit_id") ON UPDATE NO ACTION ON DELETE NO ACTION
 );
@@ -593,6 +590,7 @@ CREATE TABLE "carts"
   "id"              UUID PRIMARY KEY,
   "client_id"       UUID                     NOT NULL,
   "fl_active"       BOOLEAN                  NOT NULL DEFAULT TRUE,
+  "recurrence"      VARCHAR(15)              NOT NULL CHECK ("recurrence" IN ('THIRTY_DAYS', 'SIXTY_DAYS', 'NINETY_DAYS', 'MONTHLY')),
   "username_create" VARCHAR(255)             NULL     DEFAULT NULL,
   "username_update" VARCHAR(255)             NULL     DEFAULT NULL,
   "created_at"      TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT (now()),
@@ -605,6 +603,7 @@ CREATE TABLE "carts_aud"
   "id"         UUID     NOT NULL,
   "client_id"  UUID     NOT NULL,
   "fl_active"  BOOLEAN,
+  "recurrence" VARCHAR(15),
   "audit_id"   BIGINT   NOT NULL,
   "audit_type" SMALLINT NULL DEFAULT NULL,
   CONSTRAINT "pk_tbcarts_aud" PRIMARY KEY ("id", "audit_id"),
@@ -635,6 +634,28 @@ CREATE TABLE "carts_items_aud"
   "audit_type"     SMALLINT NULL DEFAULT NULL,
   CONSTRAINT "pk_tbcarts_items_aud" PRIMARY KEY ("id", "audit_id"),
   CONSTRAINT "fk_tbcarts_items_aud_tbaudit" FOREIGN KEY ("audit_id") REFERENCES "audit" ("audit_id") ON UPDATE NO ACTION ON DELETE NO ACTION
+);
+
+-- Ultima tela, clica para gerar o pedido
+-- Inativar o carrinho, setar subscriptions_flows como FINALIZADA, gerar a subscription e o pagamento.
+-- AdRequest,
+
+-- Step 0: Selecionar as telas e quantidade de blocos por tela
+-- Step 1: Vai ter um resumo das telas selecionadas, da quantidade de blocos por tela, Seleciona a Recorrência e vê o valor total
+-- Step 2: Concluir a Subscription e faz o pagamento na stripe
+
+-- Continuando o fluxo pós compra
+-- Se o pagamento foi sucedido, client faz o upload das artes e cria um AdRequest para o Admin
+-- Receber o Ad para poder valida-lo ou não
+-- Se o Ad for validado, o monitor é atualizado recebendo o Ad
+
+CREATE TABLE "subscriptions_flows"
+(
+  "id"        UUID PRIMARY KEY,
+  "status"    VARCHAR(50) NOT NULL DEFAULT 'STARTED',
+  "step"      INT                  DEFAULT 1,
+  "client_id" UUID        NOT NULL,
+  CONSTRAINT "fk_subscriptions_flows_client" FOREIGN KEY ("client_id") REFERENCES "clients" ("id") ON UPDATE NO ACTION ON DELETE CASCADE
 );
 
 INSERT INTO "terms_conditions" (id, version, content, created_at, updated_at, username_create, username_update)

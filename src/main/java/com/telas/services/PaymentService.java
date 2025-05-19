@@ -1,8 +1,11 @@
 package com.telas.services;
 
-import com.stripe.exception.StripeException;
+import com.telas.dtos.request.UpdatePaymentStatusRequestDto;
+import com.telas.dtos.response.PaymentInfoResponseDto;
 import com.telas.entities.Subscription;
 
 public interface PaymentService {
-    String process(Subscription subscription) throws StripeException;
+  PaymentInfoResponseDto process(Subscription subscription);
+
+  void updatePaymentStatus(UpdatePaymentStatusRequestDto request);
 }

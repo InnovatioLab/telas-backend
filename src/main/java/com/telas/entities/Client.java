@@ -82,6 +82,11 @@ public class Client extends BaseAudit implements Serializable {
   @JoinColumn(name = "verification_code_id", referencedColumnName = "id", nullable = false)
   private VerificationCode verificationCode;
 
+  @NotAudited
+  @JsonIgnore
+  @OneToOne(mappedBy = "client")
+  private SubscriptionFlow subscriptionFlow;
+
   @OneToOne(cascade = CascadeType.ALL)
   @JoinColumn(name = "contact_id", referencedColumnName = "id", nullable = false)
   private Contact contact;

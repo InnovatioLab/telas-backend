@@ -1,5 +1,6 @@
 package com.telas.entities;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.telas.enums.Currency;
 import com.telas.enums.PaymentStatus;
 import com.telas.shared.audit.BaseAudit;
@@ -21,33 +22,37 @@ import java.util.UUID;
 @AuditTable("payments_aud")
 @NoArgsConstructor
 public class Payment extends BaseAudit implements Serializable {
-    @Serial
-    private static final long serialVersionUID = 1084934057135367842L;
+  @Serial
+  private static final long serialVersionUID = 1084934057135367842L;
 
-    @Id
-    @GeneratedValue
-    @Column(name = "id")
-    private UUID id;
+  @Id
+  @GeneratedValue
+  @Column(name = "id")
+  private UUID id;
 
-    @Column(name = "amount", precision = 10, scale = 2, nullable = false)
-    private BigDecimal amount;
+  @Column(name = "amount", precision = 10, scale = 2, nullable = false)
+  private BigDecimal amount;
 
-    @Column(name = "payment_method", nullable = false)
-    private String paymentMethod;
+  @Column(name = "payment_method", nullable = false)
+  private String paymentMethod = "card";
 
-    @Column(name = "currency")
-    private Currency currency = Currency.BRL;
+  @Column(name = "currency")
+  private Currency currency = Currency.USD;
 
-    @Column(name = "stripe_payment_id")
-    private String stripePaymentId;
+  @Column(name = "stripe_payment_id")
+  private String stripePaymentId;
 
-    @Column(name = "status", columnDefinition = "payment_status", nullable = false)
-    @Enumerated(EnumType.STRING)
-    private PaymentStatus status = PaymentStatus.PENDING;
+  @Column(name = "status", columnDefinition = "payment_status", nullable = false)
+  @Enumerated(EnumType.STRING)
+  private PaymentStatus status = PaymentStatus.PENDING;
 
-    @OneToOne(cascade = CascadeType.ALL, mappedBy = "payment")
-    @JoinColumn(name = "subscription_id", referencedColumnName = "id")
-    private Subscription subscription;
+  @JsonIgnore
+  @OneToOne
+  @JoinColumn(name = "subscription_id", referencedColumnName = "id")
+  private Subscription subscription;
 
-
+  public Payment(Subscription subscription) {
+    this.subscription = subscription;
+    amount = subscription.getAmount();
+  }
 }

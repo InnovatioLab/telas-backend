@@ -23,36 +23,36 @@ import java.util.UUID;
 @AuditTable("carts_items_aud")
 @NoArgsConstructor
 public class CartItem extends BaseAudit implements Serializable {
-    @Serial
-    private static final long serialVersionUID = 1084934057135367842L;
+  @Serial
+  private static final long serialVersionUID = 1084934057135367842L;
 
-    @Id
-    @GeneratedValue
-    @Column(name = "id")
-    private UUID id;
+  @Id
+  @GeneratedValue
+  @Column(name = "id")
+  private UUID id;
 
-    @ManyToOne
-    @JoinColumn(name = "cart_id", referencedColumnName = "id", nullable = false)
-    private Cart cart;
+  @ManyToOne
+  @JoinColumn(name = "cart_id", referencedColumnName = "id", nullable = false)
+  private Cart cart;
 
-    @ManyToOne
-    @JoinColumn(name = "monitor_id", referencedColumnName = "id", nullable = false)
-    private Monitor monitor;
+  @ManyToOne
+  @JoinColumn(name = "monitor_id", referencedColumnName = "id", nullable = false)
+  private Monitor monitor;
 
-    @Column(name = "block_quantity", nullable = false)
-    private Integer blockQuantity = 1;
+  @Column(name = "block_quantity", nullable = false)
+  private Integer blockQuantity = 1;
 
-    public CartItem(Cart cart, Monitor monitor, CartItemRequestDto request) {
-        this.cart = cart;
-        this.monitor = monitor;
-        blockQuantity = request.getBlockQuantity();
-    }
+  public CartItem(Cart cart, Monitor monitor, CartItemRequestDto request) {
+    this.cart = cart;
+    this.monitor = monitor;
+    blockQuantity = request.getBlockQuantity();
+  }
 
-    public String toStringMapper() throws JsonProcessingException {
-        ObjectMapper objectMapper = new ObjectMapper();
-        objectMapper.registerModule(new JavaTimeModule())
-                .configure(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS, false);
+  public String toStringMapper() throws JsonProcessingException {
+    ObjectMapper objectMapper = new ObjectMapper();
+    objectMapper.registerModule(new JavaTimeModule())
+            .configure(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS, false);
 
-        return objectMapper.writeValueAsString(this);
-    }
+    return objectMapper.writeValueAsString(this);
+  }
 }

@@ -4,6 +4,7 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
+import com.telas.enums.Recurrence;
 import com.telas.shared.audit.BaseAudit;
 import jakarta.persistence.*;
 import lombok.Getter;
@@ -24,37 +25,41 @@ import java.util.UUID;
 @AuditTable("carts_aud")
 @NoArgsConstructor
 public class Cart extends BaseAudit implements Serializable {
-    @Serial
-    private static final long serialVersionUID = 1084934057135367842L;
+  @Serial
+  private static final long serialVersionUID = 1084934057135367842L;
 
-    @Id
-    @GeneratedValue
-    @Column(name = "id")
-    private UUID id;
+  @Id
+  @GeneratedValue
+  @Column(name = "id")
+  private UUID id;
 
-    @Column(name = "fl_active", nullable = false)
-    private boolean active = true;
+  @Column(name = "fl_active", nullable = false)
+  private boolean active = true;
 
-    @OneToOne
-    @JoinColumn(name = "client_id", referencedColumnName = "id", nullable = false)
-    private Client client;
+  @Column(name = "recurrence", nullable = false)
+  @Enumerated(EnumType.STRING)
+  private Recurrence recurrence;
 
-    @OneToMany(mappedBy = "cart", cascade = CascadeType.ALL)
-    private List<CartItem> items = new ArrayList<>();
+  @OneToOne
+  @JoinColumn(name = "client_id", referencedColumnName = "id", nullable = false)
+  private Client client;
 
-    public Cart(Client client) {
-        this.client = client;
-    }
+  @OneToMany(mappedBy = "cart", cascade = CascadeType.ALL)
+  private List<CartItem> items = new ArrayList<>();
 
-    public void inactivate() {
-        active = false;
-    }
+  public Cart(Client client) {
+    this.client = client;
+  }
 
-    public String toStringMapper() throws JsonProcessingException {
-        ObjectMapper objectMapper = new ObjectMapper();
-        objectMapper.registerModule(new JavaTimeModule())
-                .configure(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS, false);
+  public void inactivate() {
+    active = false;
+  }
 
-        return objectMapper.writeValueAsString(this);
-    }
+  public String toStringMapper() throws JsonProcessingException {
+    ObjectMapper objectMapper = new ObjectMapper();
+    objectMapper.registerModule(new JavaTimeModule())
+            .configure(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS, false);
+
+    return objectMapper.writeValueAsString(this);
+  }
 }
