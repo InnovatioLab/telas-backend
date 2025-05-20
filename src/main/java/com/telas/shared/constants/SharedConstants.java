@@ -33,6 +33,7 @@ public final class SharedConstants {
   public static final int MAX_ATTACHMENT_SIZE = 10 * 1024 * 1024;
 
   public static final int MAX_MONITOR_ADS = 12;
+  public static final int MAX_ADS_VALIDATION = 3;
   public static final int MAX_MONITOR_DISPLAY_TIME = 60;
   public static final int MINUTE_IN_SECONDS = 60;
 

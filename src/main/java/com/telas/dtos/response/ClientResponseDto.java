@@ -46,8 +46,6 @@ public final class ClientResponseDto implements Serializable {
 
   private final int currentSubscriptionFlowStep;
 
-  private final CartResponseDto cart;
-
   public ClientResponseDto(Client entity, List<LinkResponseDto> attachmentUrls, List<LinkResponseDto> adsUrls) {
     id = entity.getId();
     businessName = entity.getBusinessName();
@@ -57,7 +55,6 @@ public final class ClientResponseDto implements Serializable {
     status = entity.getStatus();
     contact = entity.getContact();
     owner = entity.getOwner();
-    cart = new CartResponseDto(entity.getCart());
     socialMedia = entity.getSocialMedia();
     addresses = entity.getAddresses();
     attachments = attachmentUrls;

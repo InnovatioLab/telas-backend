@@ -3,9 +3,9 @@ package com.telas.helpers;
 import com.telas.dtos.request.AddressRequestDto;
 import com.telas.dtos.request.ClientAdRequestToAdminDto;
 import com.telas.dtos.request.ClientRequestDto;
-import com.telas.dtos.response.ClientResponseDto;
 import com.telas.entities.*;
 import com.telas.infra.exceptions.BusinessRuleException;
+import com.telas.infra.exceptions.ResourceNotFoundException;
 import com.telas.repositories.*;
 import com.telas.services.AddressService;
 import com.telas.services.GeolocationService;
@@ -19,7 +19,6 @@ import org.springframework.beans.BeanUtils;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.lang.module.ResolutionException;
 import java.util.List;
 import java.util.UUID;
 
@@ -34,7 +33,6 @@ public class ClientRequestHelper {
   private final AdRequestRepository adRequestRepository;
   private final AddressService addressService;
   private final GeolocationService geolocationService;
-  private final CartHelper cartHelper;
 
   @Transactional(readOnly = true)
   public void validateClientRequest(ClientRequestDto request, Client client) {
@@ -83,17 +81,12 @@ public class ClientRequestHelper {
   @Transactional(readOnly = true)
   public AdRequest getAdRequestById(UUID adRequestId) {
     return adRequestRepository.findById(adRequestId)
-            .orElseThrow(() -> new ResolutionException(AdValidationMessages.AD_REQUEST_NOT_FOUND));
-  }
-
-  @Transactional
-  public void setCartResponse(ClientResponseDto response) {
-    cartHelper.setCartResponseTotalPrice(response.getCart());
+            .orElseThrow(() -> new ResourceNotFoundException(AdValidationMessages.AD_REQUEST_NOT_FOUND));
   }
 
 
   List<Attachment> getAttachmentsByIds(List<UUID> attachmentsIds) {
-    return attachmentRepository.findByIdIn(attachmentsIds).orElseThrow(() -> new ResolutionException(AttachmentValidationMessages.ATTACHMENTS_NOT_FOUND));
+    return attachmentRepository.findByIdIn(attachmentsIds).orElseThrow(() -> new ResourceNotFoundException(AttachmentValidationMessages.ATTACHMENTS_NOT_FOUND));
   }
 
   void verifyUniqueEmail(ClientRequestDto request, Client client) {
@@ -132,7 +125,7 @@ public class ClientRequestHelper {
 
   @Transactional(readOnly = true)
   public Ad getAdById(UUID adId) {
-    return adRepository.findById(adId).orElseThrow(() -> new ResolutionException(AdValidationMessages.AD_NOT_FOUND));
+    return adRepository.findById(adId).orElseThrow(() -> new ResourceNotFoundException(AdValidationMessages.AD_NOT_FOUND));
   }
 
   @Transactional

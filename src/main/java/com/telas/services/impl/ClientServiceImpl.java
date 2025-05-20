@@ -411,9 +411,7 @@ public class ClientServiceImpl implements ClientService {
             .map(attachment -> new LinkResponseDto(attachment.getId(), bucketService.getLink(AttachmentUtils.format(attachment))))
             .toList();
 
-    ClientResponseDto response = new ClientResponseDto(client, attachmentLinks, advertisingAttachmentLinks);
-    helper.setCartResponse(response);
-    return response;
+    return new ClientResponseDto(client, attachmentLinks, advertisingAttachmentLinks);
   }
 
   protected Client findActiveByIdentification(String identification) {

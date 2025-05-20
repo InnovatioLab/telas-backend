@@ -6,7 +6,6 @@ import com.telas.entities.Client;
 import com.telas.entities.Subscription;
 import com.telas.helpers.SubscriptionHelper;
 import com.telas.infra.security.services.AuthenticatedUserService;
-import com.telas.repositories.ClientRepository;
 import com.telas.repositories.SubscriptionRepository;
 import com.telas.services.PaymentService;
 import com.telas.services.SubscriptionService;
@@ -19,11 +18,9 @@ import java.util.UUID;
 @RequiredArgsConstructor
 public class SubscriptionServiceImpl implements SubscriptionService {
   private final SubscriptionRepository repository;
-  private final ClientRepository clientRepository;
   private final AuthenticatedUserService authenticatedUserService;
   private final PaymentService paymentService;
   private final SubscriptionHelper helper;
-
 
   @Override
   public PaymentInfoResponseDto save() {
