@@ -416,18 +416,53 @@ CREATE TABLE "attachments_aud"
   CONSTRAINT "fk_tbattachments_aud_tbaudit" FOREIGN KEY ("audit_id") REFERENCES "audit" ("audit_id") ON UPDATE NO ACTION ON DELETE NO ACTION
 );
 
+CREATE TABLE "ad_requests"
+(
+  "id"              UUID PRIMARY KEY,
+  "client_id"       UUID                     NOT NULL,
+  "message"         TEXT                     NOT NULL,
+  "attachment_ids"  TEXT                     NOT NULL,
+  "active"          BOOLEAN                           DEFAULT TRUE,
+  "phone"           VARCHAR(11),
+  "email"           VARCHAR(255),
+  "refusal_count"   INT                               DEFAULT 0,
+  "username_create" VARCHAR(255)             NULL     DEFAULT NULL,
+  "username_update" VARCHAR(255)             NULL     DEFAULT NULL,
+  "created_at"      TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT (now()),
+  "updated_at"      TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT (now()),
+  CONSTRAINT "fk_ad_request_client" FOREIGN KEY ("client_id") REFERENCES "clients" ("id") ON DELETE CASCADE
+);
+
+CREATE TABLE "ad_requests_aud"
+(
+  "id"             UUID     NOT NULL,
+  "client_id"      UUID     NOT NULL,
+  "message"        TEXT     NOT NULL,
+  "attachment_ids" TEXT     NOT NULL,
+  "phone"          VARCHAR(11),
+  "email"          VARCHAR(255),
+  "active"         BOOLEAN,
+  "refusal_count"  INT,
+  "audit_id"       BIGINT   NOT NULL,
+  "audit_type"     SMALLINT NULL DEFAULT NULL,
+  CONSTRAINT "pk_tbads_requests_aud" PRIMARY KEY ("id", "audit_id"),
+  CONSTRAINT "fk_tbads_requests_aud_tbaudit" FOREIGN KEY ("audit_id") REFERENCES "audit" ("audit_id") ON UPDATE NO ACTION ON DELETE NO ACTION
+);
+
 CREATE TABLE "ads"
 (
   "id"              UUID PRIMARY KEY,
   "name"            VARCHAR(255)             NOT NULL,
   "mime_type"       VARCHAR(15)              NOT NULL,
   "client_id"       UUID                     NOT NULL,
+  "ad_request_id"   UUID                     NOT NULL,
   "validation"      VARCHAR(15)              NOT NULL DEFAULT 'PENDING',
   "username_create" VARCHAR(255)             NULL     DEFAULT NULL,
   "username_update" VARCHAR(255)             NULL     DEFAULT NULL,
   "created_at"      TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT (now()),
   "updated_at"      TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT (now()),
-  CONSTRAINT "fk_ad_client" FOREIGN KEY ("client_id") REFERENCES "clients" ("id") ON UPDATE NO ACTION ON DELETE CASCADE
+  CONSTRAINT "fk_ad_client" FOREIGN KEY ("client_id") REFERENCES "clients" ("id") ON UPDATE NO ACTION ON DELETE CASCADE,
+  CONSTRAINT "fk_ad_request" FOREIGN KEY ("ad_request_id") REFERENCES "ad_requests" ("id") ON UPDATE NO ACTION ON DELETE NO ACTION
 );
 
 CREATE TABLE "ads_aud"
@@ -448,14 +483,14 @@ CREATE TABLE "refused_ads"
   "id"              UUID PRIMARY KEY,
   "justification"   VARCHAR(100)             NOT NULL,
   "description"     VARCHAR(255)             NULL     DEFAULT NULL,
-  "ad_id"           UUID                     NOT NULL,
   "validator_id"    UUID                     NOT NULL,
+  "ad_request_id"   UUID                     NOT NULL,
   "username_create" VARCHAR(255)             NULL     DEFAULT NULL,
   "username_update" VARCHAR(255)             NULL     DEFAULT NULL,
   "created_at"      TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT (now()),
   "updated_at"      TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT (now()),
-  CONSTRAINT "fk_refused_ads" FOREIGN KEY ("ad_id") REFERENCES "ads" ("id") ON UPDATE NO ACTION ON DELETE NO ACTION,
-  CONSTRAINT "fk_refused_ads_validator" FOREIGN KEY ("validator_id") REFERENCES "clients" ("id") ON UPDATE NO ACTION ON DELETE NO ACTION
+  CONSTRAINT "fk_refused_ads_validator" FOREIGN KEY ("validator_id") REFERENCES "clients" ("id") ON UPDATE NO ACTION ON DELETE NO ACTION,
+  CONSTRAINT "fk_refused_ads_ad_request" FOREIGN KEY ("ad_request_id") REFERENCES "ad_requests" ("id") ON UPDATE NO ACTION ON DELETE NO ACTION
 );
 
 CREATE TABLE "refused_ads_aud"
@@ -463,8 +498,8 @@ CREATE TABLE "refused_ads_aud"
   "id"            UUID     NOT NULL,
   "justification" VARCHAR(100),
   "description"   VARCHAR(255),
-  "ad_id"         UUID,
   "validator_id"  UUID,
+  "ad_request_id" UUID,
   "audit_id"      BIGINT   NOT NULL,
   "audit_type"    SMALLINT NULL DEFAULT NULL,
   CONSTRAINT "pk_tbarefused_ads_aud" PRIMARY KEY ("id", "audit_id"),
@@ -487,37 +522,6 @@ CREATE TABLE "ads_attachments_aud"
   "audit_id"      BIGINT   NOT NULL,
   "audit_type"    SMALLINT NULL DEFAULT NULL,
   CONSTRAINT "fk_tbads_attachments_aud_tbaudit" FOREIGN KEY ("audit_id") REFERENCES "audit" ("audit_id") ON UPDATE NO ACTION ON DELETE NO ACTION
-);
-
-CREATE TABLE "ad_requests"
-(
-  "id"              UUID PRIMARY KEY,
-  "client_id"       UUID                     NOT NULL,
-  "message"         TEXT                     NOT NULL,
-  "attachment_ids"  TEXT                     NOT NULL,
-  "active"          BOOLEAN                           DEFAULT TRUE,
-  "phone"           VARCHAR(11),
-  "email"           VARCHAR(255),
-  "username_create" VARCHAR(255)             NULL     DEFAULT NULL,
-  "username_update" VARCHAR(255)             NULL     DEFAULT NULL,
-  "created_at"      TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT (now()),
-  "updated_at"      TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT (now()),
-  CONSTRAINT "fk_ad_request_client" FOREIGN KEY ("client_id") REFERENCES "clients" ("id") ON DELETE CASCADE
-);
-
-CREATE TABLE "ad_requests_aud"
-(
-  "id"             UUID     NOT NULL,
-  "client_id"      UUID     NOT NULL,
-  "message"        TEXT     NOT NULL,
-  "attachment_ids" TEXT     NOT NULL,
-  "phone"          VARCHAR(11),
-  "email"          VARCHAR(255),
-  "active"         BOOLEAN,
-  "audit_id"       BIGINT   NOT NULL,
-  "audit_type"     SMALLINT NULL DEFAULT NULL,
-  CONSTRAINT "pk_tbads_requests_aud" PRIMARY KEY ("id", "audit_id"),
-  CONSTRAINT "fk_tbads_requests_aud_tbaudit" FOREIGN KEY ("audit_id") REFERENCES "audit" ("audit_id") ON UPDATE NO ACTION ON DELETE NO ACTION
 );
 
 CREATE TABLE "monitors_ads"

@@ -29,7 +29,6 @@ import java.util.*;
 @RequiredArgsConstructor
 public class AttachmentHelper {
   private final AttachmentRepository attachmentRepository;
-  private final AdRepository adRepository;
   private final MonitorAdRepository monitorAdRepository;
   private final MonitorRepository monitorRepository;
   private final BucketService bucketService;
@@ -50,12 +49,29 @@ public class AttachmentHelper {
     return attachmentRepository.findByIdIn(attachmentsIds).orElseThrow(() -> new BusinessRuleException(AttachmentValidationMessages.ATTACHMENT_NOT_FOUND));
   }
 
-  @Transactional(readOnly = true)
-  public List<LinkResponseDto> getLinksResponseFromAdRequest(AdRequest adRequestEntity) {
+
+  private List<LinkResponseDto> getAttachmentsLinksResponseFromAdRequest(AdRequest adRequestEntity) {
     List<Attachment> attachments = getAttachmentsFromAdRequest(adRequestEntity);
     return attachments.stream()
             .map(attachment -> new LinkResponseDto(attachment.getId(), bucketService.getLink(AttachmentUtils.format(attachment))))
             .toList();
+  }
+
+
+  private LinkResponseDto getAdLinkResponseFromAdRequest(AdRequest adRequestEntity) {
+    if (adRequestEntity.getAd() == null) {
+      return null;
+    }
+    Ad ad = adRequestEntity.getAd();
+    return new LinkResponseDto(ad.getId(), bucketService.getLink(AttachmentUtils.format(ad)));
+  }
+
+  @Transactional(readOnly = true)
+  public Map<String, Object> getAdRequestData(AdRequest adRequest) {
+    Map<String, Object> response = new HashMap<>();
+    response.put("ad", getAdLinkResponseFromAdRequest(adRequest));
+    response.put("attachments", getAttachmentsLinksResponseFromAdRequest(adRequest));
+    return response;
   }
 
   @Transactional(readOnly = true)
@@ -78,18 +94,29 @@ public class AttachmentHelper {
       if (attachment.getId() == null) {
         if ((attachment instanceof AdRequestDto adRequest) && adRequestEntity != null) {
           List<Attachment> attachments = getAttachmentsFromAdRequest(adRequestEntity);
-          Ad ad = new Ad(adRequest, client);
 
-          ad.getAttachments().addAll(attachments);
+          Client adOwner = adRequestEntity.getClient();
 
-          Ad savedAd = adRepository.save(ad);
-          client.getAds().add(savedAd);
+          Ad ad = adRequestEntity.getAd() == null
+                  ? new Ad(adRequest, adOwner, adRequestEntity)
+                  : adRequestEntity.getAd();
 
-          String fileName = AttachmentUtils.format(savedAd);
-          bucketService.upload(attachment.getBytes(), fileName, attachment.getType(), new ByteArrayInputStream(attachment.getBytes()));
+          if (adRequestEntity.getAd() == null) {
+            ad.getAttachments().addAll(attachments);
+            adOwner.getAds().add(ad);
+          } else {
+            bucketService.deleteAttachment(AttachmentUtils.format(ad));
+            ad.setName(attachment.getName());
+            ad.setType(attachment.getType());
+            ad.setValidation(AdValidationType.PENDING);
+          }
 
           adRequestEntity.closeRequest();
           adRequestRepository.save(adRequestEntity);
+
+          Ad savedAd = adRequestEntity.getAd();
+          String fileName = AttachmentUtils.format(savedAd);
+          bucketService.upload(attachment.getBytes(), fileName, attachment.getType(), new ByteArrayInputStream(attachment.getBytes()));
         } else if (!(attachment instanceof AdRequestDto) && adRequestEntity == null) {
           Attachment newAttachment = new Attachment(attachment, client);
           Attachment savedAttachment = attachmentRepository.save(newAttachment);
@@ -114,47 +141,47 @@ public class AttachmentHelper {
     });
   }
 
-  @Transactional
-  public <T extends AttachmentRequestDto> void removeAttachmentsNotSent(List<T> requestList, Client client) {
-    List<UUID> attachmentIds = requestList.stream()
-            .map(AttachmentRequestDto::getId)
-            .filter(Objects::nonNull)
-            .toList();
+//  @Transactional
+//  public <T extends AttachmentRequestDto> void removeAttachmentsNotSent(List<T> requestList, Client client) {
+//    List<UUID> attachmentIds = requestList.stream()
+//            .map(AttachmentRequestDto::getId)
+//            .filter(Objects::nonNull)
+//            .toList();
+//
+//    boolean isAd = requestList.stream().allMatch(AdRequestDto.class::isInstance);
+//
+//    if (isAd) {
+//      List<Ad> adsToDelete = client.getAds().stream()
+//              .filter(attachment -> !attachmentIds.contains(attachment.getId()))
+//              .toList();
+//
+//      removeAds(adsToDelete, client);
+//    }
+//  }
 
-    boolean isAd = requestList.stream().allMatch(AdRequestDto.class::isInstance);
+//  void removeAds(List<Ad> adsToDelete, Client client) {
+//    adsToDelete.forEach(ad -> {
+//      client.getAds().remove(ad);
+//      ad.getAttachments().clear();
+//      removeAdsFromMonitors(ad);
+//      bucketService.deleteAttachment(AttachmentUtils.format(ad));
+//    });
+//
+//    adRepository.deleteAll(adsToDelete);
+//  }
 
-    if (isAd) {
-      List<Ad> adsToDelete = client.getAds().stream()
-              .filter(attachment -> !attachmentIds.contains(attachment.getId()))
-              .toList();
-
-      removeAds(adsToDelete, client);
-    }
-  }
-
-  void removeAds(List<Ad> adsToDelete, Client client) {
-    adsToDelete.forEach(ad -> {
-      client.getAds().remove(ad);
-      ad.getAttachments().clear();
-      removeAdsFromMonitors(ad);
-      bucketService.deleteAttachment(AttachmentUtils.format(ad));
-    });
-
-    adRepository.deleteAll(adsToDelete);
-  }
-
-  void removeAdsFromMonitors(Ad ad) {
-    List<Monitor> monitors = monitorRepository.findByAdId(ad.getId());
-
-    monitors.forEach(monitor ->
-            monitor.getMonitorAds()
-                    .removeIf(attachment -> attachment.getAd().equals(ad))
-    );
-
-    monitorAdRepository.deleteAll(
-            monitorAdRepository.findByAdId(ad.getId())
-    );
-  }
+//  void removeAdsFromMonitors(Ad ad) {
+//    List<Monitor> monitors = monitorRepository.findByAdId(ad.getId());
+//
+//    monitors.forEach(monitor ->
+//            monitor.getMonitorAds()
+//                    .removeIf(attachment -> attachment.getAd().equals(ad))
+//    );
+//
+//    monitorAdRepository.deleteAll(
+//            monitorAdRepository.findByAdId(ad.getId())
+//    );
+//  }
 
   @Transactional
   public void validateAd(Ad entity, AdValidationType validation, RefusedAdRequestDto request, Client client) throws JsonProcessingException {
@@ -166,7 +193,7 @@ public class AttachmentHelper {
       return;
     }
 
-    if (!entity.isAbleToValidate()) {
+    if (!entity.getAdRequest().canBeRefused() && AdValidationType.REJECTED.equals(validation)) {
       throw new BusinessRuleException(AdValidationMessages.AD_EXCEEDS_MAX_VALIDATION);
     }
 
@@ -179,10 +206,10 @@ public class AttachmentHelper {
         throw new BusinessRuleException(AttachmentValidationMessages.JUSTIFICATION_REQUIRED);
       }
       createRefusedAd(request, entity, client);
-      removeAdsFromMonitors(entity);
+//      removeAdsFromMonitors(entity);
     }
 
-    adRepository.save(entity);
+    adRequestRepository.save(entity.getAdRequest());
 
     if (AdValidationType.REJECTED.equals(validation)) {
       clientRepository.findAllAdmins().forEach(admin ->
@@ -215,7 +242,10 @@ public class AttachmentHelper {
   private void createRefusedAd(RefusedAdRequestDto request, Ad entity, Client admin) {
     RefusedAd refusedAd = new RefusedAd(request, entity, admin);
     refusedAd.setUsernameCreate(admin.getBusinessName());
-    entity.getRefusedAds().add(refusedAd);
     entity.setUsernameUpdate(admin.getBusinessName());
+
+    AdRequest adRequest = entity.getAdRequest();
+    adRequest.getRefusedAds().add(refusedAd);
+    adRequest.incrementRefusalCount();
   }
 }

@@ -337,13 +337,16 @@ public class ClientServiceImpl implements ClientService {
 
     Pageable pageable = PaginationFilterUtil.getPageable(request, order);
     Specification<AdRequest> filter = PaginationFilterUtil.addSpecificationFilter(
-            (root, query, criteriaBuilder) -> criteriaBuilder.equal(root.get("isActive"), true),
+            (root, query, criteriaBuilder) -> criteriaBuilder.and(
+                    criteriaBuilder.equal(root.get("isActive"), true),
+                    criteriaBuilder.lessThan(root.get("refusalCount"), 3)
+            ),
             request.getGenericFilter(),
             this::filterAdRequests
     );
 
     Page<AdRequest> page = adRequestRepository.findAll(filter, pageable);
-    List<AdRequestResponseDto> response = page.stream().map(adRequest -> new AdRequestResponseDto(adRequest, attachmentHelper.getLinksResponseFromAdRequest(adRequest))).toList();
+    List<AdRequestResponseDto> response = page.stream().map(adRequest -> new AdRequestResponseDto(adRequest, attachmentHelper.getAdRequestData(adRequest))).toList();
     return PaginationResponseDto.fromResult(response, (int) page.getTotalElements(), page.getTotalPages(), request.getPage());
   }
 

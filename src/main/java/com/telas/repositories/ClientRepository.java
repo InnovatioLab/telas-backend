@@ -20,19 +20,18 @@ public interface ClientRepository extends JpaRepository<Client, UUID>, JpaSpecif
 
   @NotNull
   @Override
-  @Query("SELECT c FROM Client c JOIN FETCH c.addresses JOIN FETCH c.cart ca LEFT JOIN FETCH ca.items LEFT JOIN FETCH c.attachments LEFT JOIN FETCH c.ads WHERE c.id = :id")
+  @Query("SELECT c FROM Client c JOIN FETCH c.addresses LEFT JOIN FETCH c.cart ca LEFT JOIN FETCH c.attachments LEFT JOIN FETCH c.ads  WHERE c.id = :id")
   Optional<Client> findById(@NotNull UUID id);
 
-  @Query("SELECT c FROM Client c JOIN FETCH c.addresses JOIN FETCH c.cart ca LEFT JOIN FETCH ca.items LEFT JOIN FETCH c.attachments LEFT JOIN FETCH c.ads WHERE c.id = :id AND c.status = 'ACTIVE'")
+  @Query("SELECT c FROM Client c JOIN FETCH c.addresses LEFT JOIN FETCH c.cart ca LEFT JOIN FETCH c.attachments LEFT JOIN FETCH c.ads WHERE c.id = :id AND c.status = 'ACTIVE'")
   Optional<Client> findActiveById(UUID id);
 
   @Query(value = """
           SELECT c.* 
           FROM clients c 
           INNER JOIN addresses ad ON c.id = ad.client_id 
-          LEFT JOIN carts ca ON c.id = ca.client_id 
-          LEFT JOIN carts_items ci ON ca.id = ci.cart_id 
           LEFT JOIN attachments a ON c.id = a.client_id 
+          LEFT JOIN ad_requests ar ON c.id = ar.client_id 
           LEFT JOIN ads ads ON c.id = ads.client_id 
           WHERE c.identification_number = :identificationNumber AND c.status = 'ACTIVE'
           """, nativeQuery = true)
@@ -43,9 +42,8 @@ public interface ClientRepository extends JpaRepository<Client, UUID>, JpaSpecif
           SELECT c.* 
           FROM clients c 
           INNER JOIN addresses ad ON c.id = ad.client_id 
-          LEFT JOIN carts ca ON c.id = ca.client_id 
-          LEFT JOIN carts_items ci ON ca.id = ci.cart_id 
           LEFT JOIN attachments a ON c.id = a.client_id 
+          LEFT JOIN ad_requests ar ON c.id = ar.client_id 
           LEFT JOIN ads ads ON c.id = ads.client_id 
           WHERE c.identification_number = :identificationNumber 
           """, nativeQuery = true)

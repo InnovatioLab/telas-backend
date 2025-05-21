@@ -11,16 +11,15 @@ import org.springframework.data.domain.Sort;
 @NoArgsConstructor
 @AllArgsConstructor
 public class FilterAdRequestDto extends PaginationRequestDto {
-    private String genericFilter;
+  private String genericFilter;
 
-    public Sort setOrdering() {
-        return switch (getSortBy()) {
-            case "identificationNumber" -> Sort.by(Sort.Order.by("client.identificationNumber"));
-            case "clientName" -> Sort.by(Sort.Order.by("client.businessName").ignoreCase());
-            case "role" -> Sort.by(Sort.Order.by("client.role").ignoreCase());
-            default -> Sort.by(Sort.Order.desc("createdAt"));
-        };
-    }
+  public Sort setOrdering() {
+    return switch (getSortBy()) {
+      case "identificationNumber" -> Sort.by(Sort.Order.by("client.identificationNumber"));
+      case "clientName" -> Sort.by(Sort.Order.by("client.businessName").ignoreCase());
+      case "role" -> Sort.by(Sort.Order.by("client.role").ignoreCase());
+      case "refusalCount" -> Sort.by(Sort.Order.desc("refusalCount"));
+      default -> Sort.by(Sort.Order.desc("createdAt"));
+    };
+  }
 }
-
-

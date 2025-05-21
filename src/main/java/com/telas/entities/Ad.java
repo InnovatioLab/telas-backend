@@ -8,7 +8,6 @@ import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import com.telas.dtos.request.AdRequestDto;
 import com.telas.enums.AdValidationType;
 import com.telas.shared.audit.BaseAudit;
-import com.telas.shared.constants.SharedConstants;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -18,7 +17,10 @@ import org.hibernate.envers.NotAudited;
 
 import java.io.Serial;
 import java.io.Serializable;
-import java.util.*;
+import java.util.HashSet;
+import java.util.Objects;
+import java.util.Set;
+import java.util.UUID;
 
 @Getter
 @Setter
@@ -50,8 +52,11 @@ public class Ad extends BaseAudit implements Serializable {
   @JoinColumn(name = "client_id", referencedColumnName = "id", nullable = false)
   private Client client;
 
-  @OneToMany(cascade = CascadeType.ALL, mappedBy = "ad")
-  private List<RefusedAd> refusedAds = new ArrayList<>();
+  @JsonIgnore
+  @NotAudited
+  @OneToOne
+  @JoinColumn(name = "ad_request_id", referencedColumnName = "id", nullable = false)
+  private AdRequest adRequest;
 
   @JsonIgnore
   @NotAudited
@@ -67,14 +72,11 @@ public class Ad extends BaseAudit implements Serializable {
   @OneToMany(mappedBy = "id.ad")
   private Set<MonitorAd> monitorAds = new HashSet<>();
 
-  public Ad(AdRequestDto request, Client client) {
+  public Ad(AdRequestDto request, Client client, AdRequest adRequest) {
     name = request.getName();
     type = request.getType();
     this.client = client;
-  }
-
-  public boolean isAbleToValidate() {
-    return refusedAds.size() < SharedConstants.MAX_ADS_VALIDATION;
+    this.adRequest = adRequest;
   }
 
   public String toStringMapper() throws JsonProcessingException {
