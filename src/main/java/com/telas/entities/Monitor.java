@@ -49,6 +49,9 @@ public class Monitor extends BaseAudit implements Serializable {
   @Column(name = "size_in_inches", precision = 5, scale = 2, nullable = false)
   private BigDecimal size = BigDecimal.valueOf(0.00);
 
+  @Column(name = "block_price", precision = 10, scale = 2, nullable = false)
+  private BigDecimal blockPrice;
+
   @Column(name = "max_blocks")
   private Integer maxBlocks = 12;
 
@@ -81,6 +84,7 @@ public class Monitor extends BaseAudit implements Serializable {
     size = request.getSize();
     locationDescription = request.getLocationDescription();
     maxBlocks = request.getMaxBlocks();
+    blockPrice = request.getBlockPrice();
     this.address = address;
     this.partner = partner;
 

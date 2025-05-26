@@ -6,7 +6,6 @@ import com.telas.dtos.request.CartRequestDto;
 import com.telas.dtos.response.CartItemResponseDto;
 import com.telas.dtos.response.CartResponseDto;
 import com.telas.entities.*;
-import com.telas.helpers.CartHelper;
 import com.telas.infra.exceptions.ResourceNotFoundException;
 import com.telas.infra.security.services.AuthenticatedUserService;
 import com.telas.repositories.CartItemRepository;
@@ -21,6 +20,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -32,7 +32,6 @@ public class CartServiceImpl implements CartService {
   private final SubscriptionFlowRepository subscriptionFlowRepository;
   private final AuthenticatedUserService authenticatedUserService;
   private final MonitorService monitorService;
-  private final CartHelper helper;
 
   @Override
   @Transactional
@@ -88,7 +87,7 @@ public class CartServiceImpl implements CartService {
       response.setItems(itemsResponse);
     }
 
-    helper.setCartResponseTotalPrice(response);
+    setCartResponseTotalPrice(response);
     return response;
   }
 
@@ -150,5 +149,21 @@ public class CartServiceImpl implements CartService {
   private Cart findEntityById(UUID cartId) {
     return repository.findByIdWithItens(cartId)
             .orElseThrow(() -> new ResourceNotFoundException(CartValidationMessages.CART_NOT_FOUND));
+  }
+
+  private void setCartResponseTotalPrice(CartResponseDto cartResponse) {
+    List<CartItemResponseDto> items = cartResponse.getItems();
+
+    if (items.isEmpty()) {
+      cartResponse.setTotalPrice(BigDecimal.ZERO);
+      return;
+    }
+
+    cartResponse.setTotalPrice(
+            items.stream()
+                    .map(CartItemResponseDto::getPrice)
+                    .reduce(BigDecimal.ZERO, BigDecimal::add)
+    );
+
   }
 }

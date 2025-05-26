@@ -112,7 +112,9 @@ public class MonitorServiceImpl implements MonitorService {
                       Boolean.parseBoolean(resultRow[1].toString()),
                       resultRow[2].toString(),
                       Double.parseDouble(resultRow[3].toString()),
-                      ((Number) resultRow[6]).doubleValue()
+                      ((Number) resultRow[6]).doubleValue(),
+                      Double.parseDouble(resultRow[4].toString()),
+                      Double.parseDouble(resultRow[5].toString())
               ))
               .toList();
 
@@ -120,6 +122,12 @@ public class MonitorServiceImpl implements MonitorService {
     });
 
     return result;
+  }
+
+  @Override
+  @Transactional
+  public List<Monitor> findAllByIds(List<UUID> monitorIds) {
+    return repository.findAllByIdIn(monitorIds);
   }
 
   private List<String> validateZipCodeList(String zipCodes) {

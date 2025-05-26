@@ -1,6 +1,5 @@
 package com.telas.services.impl;
 
-import com.telas.dtos.response.PaymentInfoResponseDto;
 import com.telas.entities.Cart;
 import com.telas.entities.Client;
 import com.telas.entities.Subscription;
@@ -11,6 +10,7 @@ import com.telas.services.PaymentService;
 import com.telas.services.SubscriptionService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.UUID;
 
@@ -23,7 +23,7 @@ public class SubscriptionServiceImpl implements SubscriptionService {
   private final SubscriptionHelper helper;
 
   @Override
-  public PaymentInfoResponseDto save() {
+  public String save() {
     Client client = authenticatedUserService.getLoggedUser().client();
     Cart cart = helper.getActiveCart(client);
     Subscription subscription = new Subscription(client, cart);
@@ -42,5 +42,11 @@ public class SubscriptionServiceImpl implements SubscriptionService {
   @Override
   public Subscription findById(UUID subscriptionId) {
     return null;
+  }
+
+  @Override
+  @Transactional
+  public void cancelSubscription(com.stripe.model.Subscription subscription) {
+
   }
 }

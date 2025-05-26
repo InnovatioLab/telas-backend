@@ -12,11 +12,13 @@ import java.util.Map;
 import java.util.UUID;
 
 public interface MonitorService {
-    void save(MonitorRequestDto requestDto, UUID monitorId) throws JsonProcessingException;
+  void save(MonitorRequestDto requestDto, UUID monitorId) throws JsonProcessingException;
 
-    MonitorResponseDto findById(UUID monitorId);
+  MonitorResponseDto findById(UUID monitorId);
 
-    Monitor findEntityById(UUID monitorId);
+  Monitor findEntityById(UUID monitorId);
 
-    Map<String, List<MonitorMinResponseDto>> findNearestActiveMonitors(String zipCodes, BigDecimal sizeFilter, String typeFilter, int limit);
+  Map<String, List<MonitorMinResponseDto>> findNearestActiveMonitors(String zipCodes, BigDecimal sizeFilter, String typeFilter, int limit);
+
+  List<Monitor> findAllByIds(List<UUID> monitorIds);
 }

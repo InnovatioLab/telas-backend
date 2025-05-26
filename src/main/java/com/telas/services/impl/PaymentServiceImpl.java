@@ -3,12 +3,10 @@ package com.telas.services.impl;
 import com.stripe.Stripe;
 import com.stripe.exception.StripeException;
 import com.stripe.model.Customer;
+import com.stripe.model.CustomerSearchResult;
 import com.stripe.model.PaymentIntent;
-import com.stripe.param.CustomerCreateParams;
-import com.stripe.param.PaymentIntentCreateParams;
-import com.stripe.param.SubscriptionCreateParams;
-import com.telas.dtos.request.UpdatePaymentStatusRequestDto;
-import com.telas.dtos.response.PaymentInfoResponseDto;
+import com.stripe.model.Price;
+import com.stripe.param.*;
 import com.telas.entities.Cart;
 import com.telas.entities.Client;
 import com.telas.entities.Payment;
@@ -19,7 +17,6 @@ import com.telas.enums.SubscriptionStatus;
 import com.telas.helpers.SubscriptionHelper;
 import com.telas.infra.exceptions.BusinessRuleException;
 import com.telas.infra.exceptions.ResourceNotFoundException;
-import com.telas.infra.security.services.AuthenticatedUserService;
 import com.telas.repositories.ClientRepository;
 import com.telas.repositories.PaymentRepository;
 import com.telas.repositories.SubscriptionFlowRepository;
@@ -35,6 +32,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
+import java.math.BigDecimal;
+
 @Service
 @RequiredArgsConstructor
 public class PaymentServiceImpl implements PaymentService {
@@ -43,7 +42,6 @@ public class PaymentServiceImpl implements PaymentService {
   private final SubscriptionRepository subscriptionRepository;
   private final SubscriptionFlowRepository subscriptionFlowRepository;
   private final ClientRepository clientRepository;
-  private final AuthenticatedUserService authenticatedUserService;
   private final SubscriptionHelper subscriptionHelper;
 
   @Value("${PAYMENT_GATEWAY_API_KEY}")
@@ -51,17 +49,16 @@ public class PaymentServiceImpl implements PaymentService {
 
   @Override
   @Transactional
-  public PaymentInfoResponseDto process(Subscription subscription) {
+  public String process(Subscription subscription) {
     Stripe.apiKey = key;
 
     Customer customer = getOrCreateCustomer(subscription);
-
     Payment payment = new Payment(subscription);
     subscription.setPayment(payment);
 
     if (Recurrence.MONTHLY.equals(subscription.getRecurrence())) {
       repository.save(payment);
-      return generateRecurringPayment(subscription, customer);
+      return generateRecurringPayment(subscription, customer, payment);
     }
 
     PaymentIntent paymentIntent = generatePaymentIntent(subscription, customer);
@@ -70,17 +67,16 @@ public class PaymentServiceImpl implements PaymentService {
     repository.save(payment);
     subscriptionRepository.save(subscription);
 
-    return new PaymentInfoResponseDto(paymentIntent);
+    return paymentIntent.getClientSecret();
   }
 
   @Override
   @Transactional
-  public void updatePaymentStatus(UpdatePaymentStatusRequestDto request) {
-    Payment payment = findPaymentByStripeId(request.getId());
-    Client client = authenticatedUserService.getLoggedUser().client();
-    PaymentStatus paymentStatus = PaymentStatus.fromStripeStatus(request.getStatus());
+  public void updatePaymentStatus(PaymentIntent paymentIntent) {
+    Payment payment = findPaymentByStripeId(paymentIntent.getId());
+    verifyClientOwnership(paymentIntent.getCustomer(), payment);
 
-    verifyClientOwnership(payment, client);
+    PaymentStatus paymentStatus = PaymentStatus.fromStripeStatus(paymentIntent.getStatus());
 
     if (PaymentStatus.COMPLETED.equals(paymentStatus)) {
       handleSuccessfulPayment(payment);
@@ -89,6 +85,11 @@ public class PaymentServiceImpl implements PaymentService {
     }
 
     finalizePayment(payment);
+  }
+
+  @Override
+  public void updatePaymentStatus(com.stripe.model.Subscription subscription) {
+    
   }
 
   private void handleSuccessfulPayment(Payment payment) {
@@ -117,30 +118,39 @@ public class PaymentServiceImpl implements PaymentService {
     subscriptionRepository.save(subscription);
   }
 
-  private void verifyClientOwnership(Payment payment, Client client) {
+  private void verifyClientOwnership(String stripeCustomerId, Payment payment) {
+    Client client = findClientByStripeCustomerId(stripeCustomerId);
+
+    // Verifica se o pagamento pertence ao cliente
     if (!payment.getSubscription().getClient().getId().equals(client.getId())) {
-      throw new BusinessRuleException(PaymentValidationMessages.PAYMENT_NOT_BELONG_TO_CLIENT);
+      throw new BusinessRuleException("O pagamento não pertence ao cliente especificado.");
     }
   }
 
   private Customer getOrCreateCustomer(Subscription subscription) {
     Client client = subscription.getClient();
-    Customer customer;
 
     try {
       if (client.getStripeCustomerId() != null) {
-        customer = Customer.retrieve(client.getStripeCustomerId());
-      } else {
-        CustomerCreateParams customerParams = CustomerCreateParams.builder()
-                .setEmail(client.getContact().getEmail())
-                .setName(client.getBusinessName())
-                .build();
-
-        customer = Customer.create(customerParams);
-
-        client.setStripeCustomerId(customer.getId());
-        clientRepository.save(client);
+        return Customer.retrieve(client.getStripeCustomerId());
       }
+
+      String email = client.getContact().getEmail();
+      CustomerSearchResult result = Customer.search(
+              CustomerSearchParams.builder()
+                      .setQuery("email:'" + email + "'")
+                      .build()
+      );
+
+      Customer customer = result.getData().isEmpty()
+              ? Customer.create(CustomerCreateParams.builder()
+              .setEmail(email)
+              .setName(client.getBusinessName())
+              .build())
+              : result.getData().get(0);
+
+      client.setStripeCustomerId(customer.getId());
+      clientRepository.save(client);
 
       return customer;
     } catch (StripeException e) {
@@ -149,41 +159,58 @@ public class PaymentServiceImpl implements PaymentService {
     }
   }
 
-  private PaymentInfoResponseDto generateRecurringPayment(Subscription subscriptionEntity, Customer customer) {
-
+  private String generateRecurringPayment(Subscription subscriptionEntity, Customer customer, Payment payment) {
     try {
+
+      PriceCreateParams priceParams = PriceCreateParams.builder()
+              .setUnitAmount(subscriptionEntity.getAmount().multiply(BigDecimal.valueOf(100)).longValue()) // Valor em centavos
+              .setCurrency("usd")
+              .setRecurring(
+                      PriceCreateParams.Recurring.builder()
+                              .setInterval(PriceCreateParams.Recurring.Interval.MONTH)
+                              .build()
+              )
+              .setProduct("prod_SM3FkDpPVvQpGn") // ID do produto configurado no Stripe
+              .build();
+
+      Price price = Price.create(priceParams);
+
       // Criar uma assinatura para o cliente
       SubscriptionCreateParams subscriptionParams = SubscriptionCreateParams.builder()
               .setCustomer(customer.getId())
               .addItem(
                       SubscriptionCreateParams.Item.builder()
-                              .setPrice("price_12345") // ID do preço configurado no Stripe
+                              .setPrice(price.getId())
                               .build()
               )
               .setPaymentBehavior(SubscriptionCreateParams.PaymentBehavior.DEFAULT_INCOMPLETE)
               .build();
 
       com.stripe.model.Subscription subscription = com.stripe.model.Subscription.create(subscriptionParams);
-//        Stripe irá responder com: customerId, subscriptionId, paymentMethod
 
-      // Retorne o status da assinatura
-      String subscriptionStatus = subscription.getStatus();
-      log.info("Subscription status: {}", subscriptionStatus);
-//    return subscriptionStatus;
-      return null;
+      PaymentIntent paymentIntent = subscription.getLatestInvoiceObject().getPaymentIntentObject();
+      payment.setStripePaymentId(paymentIntent.getId());
+
+      return paymentIntent.getClientSecret();
     } catch (StripeException e) {
       log.error("Error creating stripe subscription: {}", e.getMessage());
       throw new BusinessRuleException(PaymentValidationMessages.SUBSCRIPTION_ERROR);
     }
   }
 
-  public PaymentIntent generatePaymentIntent(Subscription subscription, Customer customer) {
+  private PaymentIntent generatePaymentIntent(Subscription subscription, Customer customer) {
     PaymentIntentCreateParams params = PaymentIntentCreateParams.builder()
             // Valor em centavos
 //            .setAmount(subscription.getAmount().multiply(BigDecimal.valueOf(1)).longValue()) 
             .setAmount(100L)
             .setCurrency(subscription.getPayment().getCurrency().name().toLowerCase())
             .setCustomer(customer.getId())
+            .setAutomaticPaymentMethods(
+                    PaymentIntentCreateParams.AutomaticPaymentMethods
+                            .builder()
+                            .setEnabled(true)
+                            .build()
+            )
             .setDescription("Telas Payment")
             .build();
 
@@ -197,5 +224,10 @@ public class PaymentServiceImpl implements PaymentService {
 
   private Payment findPaymentByStripeId(String stripeId) {
     return repository.findByStripePaymentId(stripeId).orElseThrow(() -> new ResourceNotFoundException(PaymentValidationMessages.PAYMENT_NOT_FOUND));
+  }
+
+  private Client findClientByStripeCustomerId(String stripeCustomerId) {
+    return clientRepository.findByStripeCustomerId(stripeCustomerId)
+            .orElseThrow(() -> new ResourceNotFoundException("Cliente não encontrado para o stripeCustomerId: " + stripeCustomerId));
   }
 }

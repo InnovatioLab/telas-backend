@@ -51,4 +51,7 @@ public interface ClientRepository extends JpaRepository<Client, UUID>, JpaSpecif
 
   @Query("SELECT c FROM Client c WHERE c.role = 'ADMIN'")
   List<Client> findAllAdmins();
+
+  @Query("SELECT c FROM Client c WHERE c.stripeCustomerId = :stripeCustomerId")
+  Optional<Client> findByStripeCustomerId(String stripeCustomerId);
 }

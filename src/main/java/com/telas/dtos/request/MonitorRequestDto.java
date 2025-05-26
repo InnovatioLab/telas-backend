@@ -37,6 +37,9 @@ public class MonitorRequestDto implements Serializable {
   @Digits(integer = 3, fraction = 2, message = MonitorValidationMessages.SIZE_INVALID)
   private BigDecimal size;
 
+  @Digits(integer = 8, fraction = 2, message = MonitorValidationMessages.BLOCK_PRICE_INVALID)
+  private BigDecimal blockPrice;
+
   @NotNull(message = MonitorValidationMessages.ADDRESS_ID_REQUIRED)
   private UUID addressId;
 
