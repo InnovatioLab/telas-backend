@@ -1,5 +1,7 @@
 package com.telas.enums;
 
+import com.telas.entities.Payment;
+
 import java.util.Map;
 
 public enum PaymentStatus {
@@ -9,27 +11,25 @@ public enum PaymentStatus {
   FAILED;
 
   private static final Map<String, PaymentStatus> STRIPE_STATUS_MAPPING = Map.of(
-          // PaymentIntent statuses
           "succeeded", COMPLETED,
-          "requires_payment_method", FAILED,
-          "processing", PENDING,
-          "canceled", CANCELLED,
-
-          // Subscription statuses
           "active", COMPLETED,
+          "processing", PENDING,
           "incomplete", PENDING,
-          "incomplete_expired", FAILED,
-          "past_due", PENDING,
           "canceled", CANCELLED,
-          "unpaid", FAILED
-//          "paused", PAUSED
+          "incomplete_expired", FAILED,
+          "unpaid", FAILED,
+          "requires_payment_method", FAILED
   );
 
-  public static PaymentStatus fromStripeStatus(String stripeStatus) {
-    if (stripeStatus == "paused") {
-      return;
+  public static PaymentStatus fromStripeStatus(String stripePaymentStatus, String stripeSubscriptionStatus, Payment payment) {
+    if (stripeSubscriptionStatus != null) {
+      return STRIPE_STATUS_MAPPING.getOrDefault(stripeSubscriptionStatus, payment.getStatus());
     }
-    return STRIPE_STATUS_MAPPING.getOrDefault(stripeStatus, FAILED);
-  }
 
+    if (stripePaymentStatus != null) {
+      return STRIPE_STATUS_MAPPING.getOrDefault(stripePaymentStatus, payment.getStatus());
+    }
+
+    return payment.getStatus();
+  }
 }

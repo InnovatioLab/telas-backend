@@ -46,15 +46,13 @@ public class PaymentGatewayWebhookController {
         case "payment_intent.payment_failed":
           handlePaymentIntent(event);
           break;
-        case "customer.subscription.created":
 //        case "customer.subscription.updated":
         case "customer.subscription.deleted":
-        case "customer.subscription.paused":
-        case "customer.subscription.resumed":
           handleSubscriptionEvent(event);
           break;
         case "invoice.payment_failed":
-          handleInvoicePaymentFailed(event);
+        case "invoice.payment_succeeded":
+          handleInvoicePayment(event);
           break;
         default:
           break;
@@ -76,19 +74,18 @@ public class PaymentGatewayWebhookController {
     }
   }
 
+  private void handleInvoicePayment(Event event) {
+    Invoice invoice = (Invoice) event.getDataObjectDeserializer().getObject().orElse(null);
+    if (invoice != null) {
+      paymentService.updatePaymentStatus(invoice);
+    }
+  }
+
   private void handleSubscriptionEvent(Event event) {
     Subscription subscription = (Subscription) event.getDataObjectDeserializer().getObject().orElse(null);
 
     if (subscription != null) {
-      paymentService.updatePaymentStatus(subscription);
-    }
-  }
-
-  private void handleInvoicePaymentFailed(Event event) {
-    Invoice invoice = (Invoice) event.getDataObjectDeserializer().getObject().orElse(null);
-    if (invoice != null) {
-      // Lógica para processar falha no pagamento
-      System.out.println("Pagamento falhou para invoice: " + invoice.getId());
+//      paymentService.updatePaymentStatus(subscription);
     }
   }
 }

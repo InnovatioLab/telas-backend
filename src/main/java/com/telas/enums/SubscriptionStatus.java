@@ -1,28 +1,30 @@
 package com.telas.enums;
 
-import java.util.Map;
-
 public enum SubscriptionStatus {
   PENDING,
   ACTIVE,
   EXPIRED,
-  CANCELLED,
-  FAILED,
-  PAUSED;
+  CANCELLED;
 
+  public static SubscriptionStatus fromStripeStatus(String stripePaymentStatus, String stripeSubscriptionStatus) {
+    if (stripeSubscriptionStatus != null) {
+      return switch (stripeSubscriptionStatus) {
+        case "active" -> ACTIVE;
+        case "canceled" -> CANCELLED;
+        case "past_due", "unpaid", "incomplete_expired" -> EXPIRED;
+        default -> PENDING;
+      };
+    }
 
-  private static final Map<String, SubscriptionStatus> STRIPE_STATUS_MAPPING = Map.of(
-          "past_due", PENDING,
-          "incomplete", PENDING,
-          "active", ACTIVE,
-          "incomplete_expired", EXPIRED,
-          "canceled", CANCELLED,
-          "unpaid", FAILED,
-          "paused", PAUSED
-  );
+    if (stripePaymentStatus != null) {
+      return switch (stripePaymentStatus) {
+        case "succeeded" -> ACTIVE;
+        case "canceled" -> CANCELLED;
+        case "requires_payment_method", "unpaid", "incomplete_expired" -> EXPIRED;
+        default -> PENDING;
+      };
+    }
 
-  public static SubscriptionStatus fromStripeStatus(String stripeStatus) {
-    return STRIPE_STATUS_MAPPING.getOrDefault(stripeStatus, FAILED);
+    return PENDING;
   }
-
 }

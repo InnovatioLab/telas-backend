@@ -1,5 +1,6 @@
 package com.telas.services;
 
+import com.stripe.model.Invoice;
 import com.stripe.model.PaymentIntent;
 import com.telas.entities.Subscription;
 
@@ -8,5 +9,5 @@ public interface PaymentService {
 
   void updatePaymentStatus(PaymentIntent paymentIntent);
 
-  void updatePaymentStatus(com.stripe.model.Subscription subscription);
+  void updatePaymentStatus(Invoice invoice);
 }

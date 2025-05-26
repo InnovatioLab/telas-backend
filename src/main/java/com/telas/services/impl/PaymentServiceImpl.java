@@ -2,10 +2,7 @@ package com.telas.services.impl;
 
 import com.stripe.Stripe;
 import com.stripe.exception.StripeException;
-import com.stripe.model.Customer;
-import com.stripe.model.CustomerSearchResult;
-import com.stripe.model.PaymentIntent;
-import com.stripe.model.Price;
+import com.stripe.model.*;
 import com.stripe.param.*;
 import com.telas.entities.Cart;
 import com.telas.entities.Client;
@@ -33,6 +30,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.math.BigDecimal;
+import java.time.Instant;
 
 @Service
 @RequiredArgsConstructor
@@ -46,6 +44,11 @@ public class PaymentServiceImpl implements PaymentService {
 
   @Value("${PAYMENT_GATEWAY_API_KEY}")
   private String key;
+
+  private static void setPaymentMethod(PaymentIntent paymentIntent, Payment payment) {
+    PaymentMethod paymentMethod = paymentIntent.getPaymentMethodObject();
+    payment.setPaymentMethod(paymentMethod != null ? paymentMethod.getType().toLowerCase() : "unknown");
+  }
 
   @Override
   @Transactional
@@ -76,10 +79,16 @@ public class PaymentServiceImpl implements PaymentService {
     Payment payment = findPaymentByStripeId(paymentIntent.getId());
     verifyClientOwnership(paymentIntent.getCustomer(), payment);
 
-    PaymentStatus paymentStatus = PaymentStatus.fromStripeStatus(paymentIntent.getStatus());
+    PaymentStatus paymentStatus = PaymentStatus.fromStripeStatus(paymentIntent.getStatus(), null, payment);
+    setPaymentMethod(paymentIntent, payment);
+    payment.setStatus(paymentStatus);
+
+    Subscription subscription = payment.getSubscription();
+    SubscriptionStatus subscriptionStatus = SubscriptionStatus.fromStripeStatus(paymentIntent.getStatus(), null);
+    subscription.setStatus(subscriptionStatus);
 
     if (PaymentStatus.COMPLETED.equals(paymentStatus)) {
-      handleSuccessfulPayment(payment);
+      handleSuccessfulPayment(payment, false);
     } else if (PaymentStatus.FAILED.equals(paymentStatus)) {
       handleFailedPayment(payment);
     }
@@ -88,28 +97,56 @@ public class PaymentServiceImpl implements PaymentService {
   }
 
   @Override
-  public void updatePaymentStatus(com.stripe.model.Subscription subscription) {
-    
-  }
+  @Transactional
+  public void updatePaymentStatus(Invoice invoice) {
+    PaymentIntent paymentIntent = invoice.getPaymentIntentObject();
 
-  private void handleSuccessfulPayment(Payment payment) {
-    log.info("Payment succeeded id: {}", payment.getId());
-    payment.setStatus(PaymentStatus.COMPLETED);
+    Payment payment = findPaymentByStripeId(paymentIntent.getId());
+    verifyClientOwnership(paymentIntent.getCustomer(), payment);
+
+    PaymentStatus paymentStatus = PaymentStatus.fromStripeStatus(paymentIntent.getStatus(), invoice.getSubscriptionObject().getStatus(), payment);
+    payment.setStatus(paymentStatus);
+    setPaymentMethod(paymentIntent, payment);
 
     Subscription subscription = payment.getSubscription();
-    log.info("Initializing subscription id: {}", subscription.getId());
-    subscription.setStatus(SubscriptionStatus.ACTIVE);
-    subscription.initialize();
+    updateSubscriptionPeriod(invoice, subscription);
+
+    SubscriptionStatus subscriptionStatus = SubscriptionStatus.fromStripeStatus(paymentIntent.getStatus(), invoice.getSubscriptionObject().getStatus());
+    subscription.setStatus(subscriptionStatus);
+
+    boolean isRecurringPayment = invoice.getBillingReason() != null && invoice.getBillingReason().equals("subscription_cycle");
+
+    if (PaymentStatus.COMPLETED.equals(paymentStatus)) {
+      handleSuccessfulPayment(payment, isRecurringPayment);
+    } else if (PaymentStatus.FAILED.equals(paymentStatus)) {
+      handleFailedPayment(payment);
+    }
+
+    finalizePayment(payment);
+  }
+
+  private void updateSubscriptionPeriod(Invoice invoice, Subscription subscription) {
+    if (invoice.getPeriodStart() != null && invoice.getPeriodEnd() != null) {
+      subscription.setStartedAt(Instant.ofEpochSecond(invoice.getPeriodStart()));
+      subscription.setEndsAt(Instant.ofEpochSecond(invoice.getPeriodEnd()));
+    }
+  }
+
+  private void handleSuccessfulPayment(Payment payment, boolean isRecurringPayment) {
+    log.info("Payment succeeded id: {}", payment.getId());
+    Subscription subscription = payment.getSubscription();
+
+    if (isRecurringPayment) {
+      return;
+    }
 
     Cart cart = payment.getSubscription().getClient().getCart();
     subscriptionHelper.inactivateCart(cart);
-
     subscriptionFlowRepository.delete(subscription.getClient().getSubscriptionFlow());
   }
 
   private void handleFailedPayment(Payment payment) {
     log.error("Payment failed id: {}", payment.getId());
-    payment.setStatus(PaymentStatus.FAILED);
   }
 
   private void finalizePayment(Payment payment) {
@@ -184,6 +221,7 @@ public class PaymentServiceImpl implements PaymentService {
                               .build()
               )
               .setPaymentBehavior(SubscriptionCreateParams.PaymentBehavior.DEFAULT_INCOMPLETE)
+              .setCancelAtPeriodEnd(true)
               .build();
 
       com.stripe.model.Subscription subscription = com.stripe.model.Subscription.create(subscriptionParams);

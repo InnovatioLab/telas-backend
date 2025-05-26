@@ -63,8 +63,10 @@ public class CartServiceImpl implements CartService {
   @Override
   @Transactional
   public void inactivateCart(Cart cart) {
-    cart.inactivate();
-    repository.save(cart);
+    if (cart.isActive()) {
+      cart.inactivate();
+      repository.save(cart);
+    }
   }
 
   @Override
