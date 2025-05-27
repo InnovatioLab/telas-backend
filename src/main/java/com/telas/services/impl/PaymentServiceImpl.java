@@ -17,7 +17,6 @@ import com.telas.infra.exceptions.ResourceNotFoundException;
 import com.telas.repositories.ClientRepository;
 import com.telas.repositories.PaymentRepository;
 import com.telas.repositories.SubscriptionFlowRepository;
-import com.telas.repositories.SubscriptionRepository;
 import com.telas.services.PaymentService;
 import com.telas.shared.constants.valitation.PaymentValidationMessages;
 import lombok.RequiredArgsConstructor;
@@ -37,7 +36,6 @@ import java.time.Instant;
 public class PaymentServiceImpl implements PaymentService {
   private final Logger log = LoggerFactory.getLogger(PaymentServiceImpl.class);
   private final PaymentRepository repository;
-  private final SubscriptionRepository subscriptionRepository;
   private final SubscriptionFlowRepository subscriptionFlowRepository;
   private final ClientRepository clientRepository;
   private final SubscriptionHelper subscriptionHelper;
@@ -68,7 +66,6 @@ public class PaymentServiceImpl implements PaymentService {
     payment.setStripePaymentId(paymentIntent.getId());
 
     repository.save(payment);
-    subscriptionRepository.save(subscription);
 
     return paymentIntent.getClientSecret();
   }
@@ -93,7 +90,7 @@ public class PaymentServiceImpl implements PaymentService {
       handleFailedPayment(payment);
     }
 
-    finalizePayment(payment);
+    repository.save(payment);
   }
 
   @Override
@@ -122,7 +119,7 @@ public class PaymentServiceImpl implements PaymentService {
       handleFailedPayment(payment);
     }
 
-    finalizePayment(payment);
+    repository.save(payment);
   }
 
   private void updateSubscriptionPeriod(Invoice invoice, Subscription subscription) {
@@ -147,12 +144,6 @@ public class PaymentServiceImpl implements PaymentService {
 
   private void handleFailedPayment(Payment payment) {
     log.error("Payment failed id: {}", payment.getId());
-  }
-
-  private void finalizePayment(Payment payment) {
-    repository.save(payment);
-    Subscription subscription = payment.getSubscription();
-    subscriptionRepository.save(subscription);
   }
 
   private void verifyClientOwnership(String stripeCustomerId, Payment payment) {

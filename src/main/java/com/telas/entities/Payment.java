@@ -47,7 +47,7 @@ public class Payment extends BaseAudit implements Serializable {
   private PaymentStatus status = PaymentStatus.PENDING;
 
   @JsonIgnore
-  @OneToOne
+  @OneToOne(cascade = CascadeType.ALL)
   @JoinColumn(name = "subscription_id", referencedColumnName = "id")
   private Subscription subscription;
 
