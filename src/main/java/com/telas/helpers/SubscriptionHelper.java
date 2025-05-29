@@ -9,6 +9,7 @@ import com.telas.services.CartService;
 import com.telas.services.MonitorService;
 import com.telas.shared.constants.valitation.CartValidationMessages;
 import com.telas.shared.constants.valitation.MonitorValidationMessages;
+import com.telas.shared.utils.MoneyUtils;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
@@ -26,10 +27,12 @@ public class SubscriptionHelper {
   private final MonitorService monitorService;
 
   @Transactional
-  public BigDecimal calculateTotalPrice(List<CartItem> items) {
-    return items.stream()
-            .map(item -> item.getMonitor().getBlockPrice().multiply(BigDecimal.valueOf(item.getBlockQuantity())))
-            .reduce(BigDecimal.ZERO, BigDecimal::add);
+  public BigDecimal calculateTotalPrice(List<CartItem> items, BigDecimal multiplier) {
+    BigDecimal monthlyAmount = items.stream()
+            .map(item -> MoneyUtils.multiply(item.getMonitor().getBlockPrice(), BigDecimal.valueOf(item.getBlockQuantity())))
+            .reduce(BigDecimal.ZERO, MoneyUtils::add);
+
+    return MoneyUtils.multiply(monthlyAmount, multiplier);
   }
 
   @Transactional

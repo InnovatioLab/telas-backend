@@ -35,7 +35,7 @@ public class SubscriptionServiceImpl implements SubscriptionService {
       return null;
     }
 
-    subscription.setAmount(helper.calculateTotalPrice(cart.getItems()));
+    subscription.setAmount(helper.calculateTotalPrice(cart.getItems(), cart.getRecurrence().getMultiplier()));
     repository.save(subscription);
     return paymentService.process(subscription);
   }

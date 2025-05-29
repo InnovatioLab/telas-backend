@@ -18,6 +18,7 @@ import com.telas.repositories.PaymentRepository;
 import com.telas.repositories.SubscriptionFlowRepository;
 import com.telas.services.PaymentService;
 import com.telas.shared.constants.valitation.PaymentValidationMessages;
+import com.telas.shared.utils.MoneyUtils;
 import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -95,30 +96,30 @@ public class PaymentServiceImpl implements PaymentService {
   @Override
   @Transactional
   public void updatePaymentStatus(Invoice invoice) {
-    PaymentIntent paymentIntent = invoice.getPaymentIntentObject();
-
-    Payment payment = findPaymentByStripeId(invoice.getId());
-    verifyClientOwnership(invoice.getCustomer(), payment);
-
-    PaymentStatus paymentStatus = PaymentStatus.fromStripeStatus(paymentIntent.getStatus(), invoice.getSubscriptionObject().getStatus(), payment);
-    payment.setStatus(paymentStatus);
-    setPaymentMethod(paymentIntent, payment);
-
-    Subscription subscription = payment.getSubscription();
-    updateSubscriptionPeriod(invoice, subscription);
-
-    SubscriptionStatus subscriptionStatus = SubscriptionStatus.fromStripeStatus(paymentIntent.getStatus(), invoice.getSubscriptionObject().getStatus());
-    subscription.setStatus(subscriptionStatus);
-
-    boolean isRecurringPayment = invoice.getBillingReason() != null && invoice.getBillingReason().equals("subscription_cycle");
-
-    if (PaymentStatus.COMPLETED.equals(paymentStatus)) {
-      handleSuccessfulPayment(payment, isRecurringPayment);
-    } else if (PaymentStatus.FAILED.equals(paymentStatus)) {
-      handleFailedPayment(payment);
-    }
-
-    repository.save(payment);
+//    PaymentIntent paymentIntent = invoice.getPaymentIntentObject();
+//
+//    Payment payment = findPaymentByStripeId(invoice.getId());
+//    verifyClientOwnership(invoice.getCustomer(), payment);
+//
+//    PaymentStatus paymentStatus = PaymentStatus.fromStripeStatus(paymentIntent.getStatus(), invoice.getSubscriptionObject().getStatus(), payment);
+//    payment.setStatus(paymentStatus);
+//    setPaymentMethod(paymentIntent, payment);
+//
+//    Subscription subscription = payment.getSubscription();
+//    updateSubscriptionPeriod(invoice, subscription);
+//
+//    SubscriptionStatus subscriptionStatus = SubscriptionStatus.fromStripeStatus(paymentIntent.getStatus(), invoice.getSubscriptionObject().getStatus());
+//    subscription.setStatus(subscriptionStatus);
+//
+//    boolean isRecurringPayment = invoice.getBillingReason() != null && invoice.getBillingReason().equals("subscription_cycle");
+//
+//    if (PaymentStatus.COMPLETED.equals(paymentStatus)) {
+//      handleSuccessfulPayment(payment, isRecurringPayment);
+//    } else if (PaymentStatus.FAILED.equals(paymentStatus)) {
+//      handleFailedPayment(payment);
+//    }
+//
+//    repository.save(payment);
   }
 
   private void updateSubscriptionPeriod(Invoice invoice, Subscription subscription) {
@@ -238,11 +239,10 @@ public class PaymentServiceImpl implements PaymentService {
   }
 
   private PaymentIntent generatePaymentIntent(Subscription subscription, Customer customer) {
+    long amount = calculateAmount(subscription);
     PaymentIntentCreateParams params = PaymentIntentCreateParams.builder()
-            // Valor em centavos
-//            .setAmount(subscription.getAmount().multiply(BigDecimal.valueOf(1)).longValue()) 
-            .setAmount(100L)
-            .setCurrency(subscription.getPayment().getCurrency().name().toLowerCase())
+            .setAmount(amount)
+            .setCurrency("usd")
             .setCustomer(customer.getId())
             .setAutomaticPaymentMethods(
                     PaymentIntentCreateParams.AutomaticPaymentMethods
@@ -251,6 +251,7 @@ public class PaymentServiceImpl implements PaymentService {
                             .build()
             )
             .setDescription("Telas Payment")
+            .setReceiptEmail(customer.getEmail())
             .build();
 
     try {
@@ -259,6 +260,16 @@ public class PaymentServiceImpl implements PaymentService {
       log.error("Error creating payment intent: {}", e.getMessage());
       throw new BusinessRuleException(PaymentValidationMessages.PAYMENT_INTENT_ERROR);
     }
+  }
+
+  private long calculateAmount(Subscription subscription) {
+    BigDecimal amount = MoneyUtils.subtract(subscription.getAmount(), subscription.getDiscount());
+
+    if (amount.compareTo(BigDecimal.ZERO) < 0) {
+      throw new BusinessRuleException(PaymentValidationMessages.PAYMENT_AMOUNT_NEGATIVE);
+    }
+
+    return amount.multiply(BigDecimal.valueOf(100)).longValue();
   }
 
   private Payment findPaymentByStripeId(String stripeId) {
