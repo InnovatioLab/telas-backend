@@ -4,9 +4,8 @@ import com.stripe.Stripe;
 import com.stripe.exception.StripeException;
 import com.stripe.model.*;
 import com.stripe.param.*;
-import com.telas.entities.Cart;
-import com.telas.entities.Client;
-import com.telas.entities.Payment;
+import com.telas.entities.*;
+import com.telas.entities.Address;
 import com.telas.entities.Subscription;
 import com.telas.enums.PaymentStatus;
 import com.telas.enums.Recurrence;
@@ -98,8 +97,8 @@ public class PaymentServiceImpl implements PaymentService {
   public void updatePaymentStatus(Invoice invoice) {
     PaymentIntent paymentIntent = invoice.getPaymentIntentObject();
 
-    Payment payment = findPaymentByStripeId(paymentIntent.getId());
-    verifyClientOwnership(paymentIntent.getCustomer(), payment);
+    Payment payment = findPaymentByStripeId(invoice.getId());
+    verifyClientOwnership(invoice.getCustomer(), payment);
 
     PaymentStatus paymentStatus = PaymentStatus.fromStripeStatus(paymentIntent.getStatus(), invoice.getSubscriptionObject().getStatus(), payment);
     payment.setStatus(paymentStatus);
@@ -170,10 +169,21 @@ public class PaymentServiceImpl implements PaymentService {
                       .build()
       );
 
+      Address clientAddress = client.getAddresses().stream().findFirst().orElse(null);
+
       Customer customer = result.getData().isEmpty()
               ? Customer.create(CustomerCreateParams.builder()
               .setEmail(email)
               .setName(client.getBusinessName())
+              .setPhone(client.getContact().getPhone())
+              .setAddress(CustomerCreateParams.Address.builder()
+                      .setLine1(clientAddress != null ? clientAddress.getStreet() : null)
+                      .setLine2(clientAddress != null ? clientAddress.getComplement() : null)
+                      .setCity(clientAddress != null ? clientAddress.getCity() : null)
+                      .setState(clientAddress != null ? clientAddress.getState() : null)
+                      .setPostalCode(clientAddress != null ? clientAddress.getZipCode() : null)
+                      .setCountry(clientAddress != null ? clientAddress.getCountry() : null)
+                      .build())
               .build())
               : result.getData().get(0);
 
@@ -212,15 +222,15 @@ public class PaymentServiceImpl implements PaymentService {
                               .build()
               )
               .setPaymentBehavior(SubscriptionCreateParams.PaymentBehavior.DEFAULT_INCOMPLETE)
-              .setCancelAtPeriodEnd(true)
+              .setAutomaticTax(SubscriptionCreateParams.AutomaticTax.builder().setEnabled(true).build())
               .build();
 
       com.stripe.model.Subscription subscription = com.stripe.model.Subscription.create(subscriptionParams);
 
-      PaymentIntent paymentIntent = subscription.getLatestInvoiceObject().getPaymentIntentObject();
-      payment.setStripePaymentId(paymentIntent.getId());
+      Invoice invoice = Invoice.retrieve(subscription.getLatestInvoice());
+      payment.setStripePaymentId(subscription.getId());
 
-      return paymentIntent.getClientSecret();
+      return invoice.getConfirmationSecret().getClientSecret();
     } catch (StripeException e) {
       log.error("Error creating stripe subscription: {}", e.getMessage());
       throw new BusinessRuleException(PaymentValidationMessages.SUBSCRIPTION_ERROR);

@@ -23,6 +23,7 @@ public class SubscriptionServiceImpl implements SubscriptionService {
   private final SubscriptionHelper helper;
 
   @Override
+  @Transactional
   public String save() {
     Client client = authenticatedUserService.getLoggedUser().client();
     Cart cart = helper.getActiveCart(client);

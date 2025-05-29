@@ -2,10 +2,7 @@ package com.telas.controllers.impl;
 
 import com.stripe.Stripe;
 import com.stripe.exception.SignatureVerificationException;
-import com.stripe.model.Event;
-import com.stripe.model.Invoice;
-import com.stripe.model.PaymentIntent;
-import com.stripe.model.Subscription;
+import com.stripe.model.*;
 import com.stripe.net.Webhook;
 import com.telas.services.PaymentService;
 import com.telas.shared.utils.ValidateDataUtils;
@@ -37,7 +34,6 @@ public class PaymentGatewayWebhookController {
     Stripe.apiKey = key;
 
     try {
-      // Verificar a assinatura do webhook
       Event event = Webhook.constructEvent(payload, sigHeader, webhookSecret);
 
       switch (event.getType()) {
@@ -46,10 +42,8 @@ public class PaymentGatewayWebhookController {
         case "payment_intent.payment_failed":
           handlePaymentIntent(event);
           break;
-//        case "customer.subscription.updated":
-        case "customer.subscription.deleted":
-          handleSubscriptionEvent(event);
-          break;
+//        customer.subscription.deleted
+//        invoice.marked_uncollectible
         case "invoice.payment_failed":
         case "invoice.payment_succeeded":
           handleInvoicePayment(event);
@@ -67,25 +61,26 @@ public class PaymentGatewayWebhookController {
   }
 
   private void handlePaymentIntent(Event event) {
-    PaymentIntent paymentIntent = (PaymentIntent) event.getDataObjectDeserializer().getObject().orElse(null);
+    EventDataObjectDeserializer dataObjectDeserializer = event.getDataObjectDeserializer();
 
-    if (paymentIntent != null) {
-      paymentService.updatePaymentStatus(paymentIntent);
+    if (dataObjectDeserializer.getObject().isPresent()) {
+      StripeObject stripeObject = dataObjectDeserializer.getObject().get();
+
+      if (stripeObject instanceof PaymentIntent paymentIntent) {
+        paymentService.updatePaymentStatus(paymentIntent);
+      }
     }
   }
 
   private void handleInvoicePayment(Event event) {
-    Invoice invoice = (Invoice) event.getDataObjectDeserializer().getObject().orElse(null);
-    if (invoice != null) {
-      paymentService.updatePaymentStatus(invoice);
-    }
-  }
+    EventDataObjectDeserializer dataObjectDeserializer = event.getDataObjectDeserializer();
 
-  private void handleSubscriptionEvent(Event event) {
-    Subscription subscription = (Subscription) event.getDataObjectDeserializer().getObject().orElse(null);
+    if (dataObjectDeserializer.getObject().isPresent()) {
+      StripeObject stripeObject = dataObjectDeserializer.getObject().get();
 
-    if (subscription != null) {
-//      paymentService.updatePaymentStatus(subscription);
+      if (stripeObject instanceof Invoice invoice) {
+        paymentService.updatePaymentStatus(invoice);
+      }
     }
   }
 }
