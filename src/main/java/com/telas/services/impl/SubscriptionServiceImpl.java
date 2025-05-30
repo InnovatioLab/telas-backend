@@ -23,6 +23,7 @@ public class SubscriptionServiceImpl implements SubscriptionService {
   private final SubscriptionHelper helper;
 
   @Override
+  @Transactional
   public String save() {
     Client client = authenticatedUserService.getLoggedUser().client();
     Cart cart = helper.getActiveCart(client);
@@ -34,7 +35,7 @@ public class SubscriptionServiceImpl implements SubscriptionService {
       return null;
     }
 
-    subscription.setAmount(helper.calculateTotalPrice(cart.getItems()));
+    subscription.setAmount(helper.calculateTotalPrice(cart.getItems(), cart.getRecurrence().getMultiplier()));
     repository.save(subscription);
     return paymentService.process(subscription);
   }

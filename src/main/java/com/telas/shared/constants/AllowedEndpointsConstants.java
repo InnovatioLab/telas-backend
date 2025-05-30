@@ -24,6 +24,7 @@ public class AllowedEndpointsConstants {
     ALLOWED_ENDPOINTS.put(HttpMethod.POST, List.of(
             "/clients",
             "/clients/resend-code/{identification}",
+            "/webhook",
             "/auth/login",
             "/auth/recovery-password/{identificationNumber}"
     ));
