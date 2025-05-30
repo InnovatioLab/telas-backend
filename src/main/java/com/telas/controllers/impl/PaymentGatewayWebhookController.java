@@ -1,7 +1,7 @@
 package com.telas.controllers.impl;
 
-import com.stripe.Stripe;
 import com.stripe.exception.SignatureVerificationException;
+import com.stripe.exception.StripeException;
 import com.stripe.model.*;
 import com.stripe.net.Webhook;
 import com.telas.services.PaymentService;
@@ -21,9 +21,6 @@ public class PaymentGatewayWebhookController {
   @Value("${STRIPE_WEBHOOK_SECRET}")
   private String webhookSecret;
 
-  @Value("${PAYMENT_GATEWAY_API_KEY}")
-  private String key;
-
   @PostMapping
   public ResponseEntity<String> handleStripeWebhook(@RequestBody String payload, @RequestHeader("Stripe-Signature") String sigHeader) {
 
@@ -31,12 +28,14 @@ public class PaymentGatewayWebhookController {
       ResponseEntity.status(HttpStatus.BAD_REQUEST).body("Webhook secret ou cabeçalho de assinatura não configurados");
     }
 
-    Stripe.apiKey = key;
-
     try {
       Event event = Webhook.constructEvent(payload, sigHeader, webhookSecret);
 
       switch (event.getType()) {
+        case "invoice.payment_failed":
+        case "invoice.payment_succeeded":
+          handleInvoicePayment(event);
+          break;
         case "payment_intent.succeeded":
         case "payment_intent.canceled":
         case "payment_intent.payment_failed":
@@ -44,10 +43,6 @@ public class PaymentGatewayWebhookController {
           break;
 //        customer.subscription.deleted
 //        invoice.marked_uncollectible
-        case "invoice.payment_failed":
-        case "invoice.payment_succeeded":
-          handleInvoicePayment(event);
-          break;
         default:
           break;
       }
@@ -60,7 +55,7 @@ public class PaymentGatewayWebhookController {
     }
   }
 
-  private void handlePaymentIntent(Event event) {
+  private void handlePaymentIntent(Event event) throws StripeException {
     EventDataObjectDeserializer dataObjectDeserializer = event.getDataObjectDeserializer();
 
     if (dataObjectDeserializer.getObject().isPresent()) {

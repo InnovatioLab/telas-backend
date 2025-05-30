@@ -277,17 +277,16 @@ CREATE TABLE "monitors"
   "fl_active"            BOOLEAN                           DEFAULT TRUE,
   "type"                 VARCHAR(50)              NOT NULL DEFAULT 'BASIC',
   "max_blocks"           INTEGER                  NOT NULL DEFAULT 12,
-  "block_price"          NUMERIC(10, 2)           NOT NULL,
+  "product_id"           VARCHAR(255)             NOT NULL,
+--   "block_price"          NUMERIC(10, 2)           NOT NULL,
   "location_description" VARCHAR(255)             NULL     DEFAULT NULL,
   "size_in_inches"       NUMERIC(5, 2)            NOT NULL DEFAULT 0.00,
   "address_id"           UUID                     NOT NULL,
-  "partner_id"           UUID                     NULL     DEFAULT NULL,
   "username_create"      VARCHAR(255)             NULL     DEFAULT NULL,
   "username_update"      VARCHAR(255)             NULL     DEFAULT NULL,
   "created_at"           TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT (now()),
   "updated_at"           TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT (now()),
-  CONSTRAINT "fk_monitor_address" FOREIGN KEY ("address_id") REFERENCES "addresses" ("id") ON UPDATE NO ACTION ON DELETE CASCADE,
-  CONSTRAINT "fk_monitor_partner" FOREIGN KEY ("partner_id") REFERENCES "clients" ("id") ON UPDATE NO ACTION ON DELETE NO ACTION
+  CONSTRAINT "fk_monitor_address" FOREIGN KEY ("address_id") REFERENCES "addresses" ("id") ON UPDATE NO ACTION ON DELETE CASCADE
 );
 
 CREATE TABLE "monitors_aud"
@@ -295,9 +294,8 @@ CREATE TABLE "monitors_aud"
   "id"                   UUID     NOT NULL,
   "fl_active"            BOOLEAN,
   "address_id"           UUID,
-  "partner_id"           UUID,
   "max_blocks"           INTEGER,
-  "block_price"          NUMERIC(10, 2),
+  "product_id"           VARCHAR(255),
   "location_description" VARCHAR(255),
   "type"                 VARCHAR(50),
   "size_in_inches"       NUMERIC(5, 2),
@@ -314,7 +312,6 @@ CREATE TABLE "subscriptions"
   "amount"     NUMERIC(10, 2) NOT NULL,
   "recurrence" VARCHAR(15)    NOT NULL CHECK ("recurrence" IN ('THIRTY_DAYS', 'SIXTY_DAYS', 'NINETY_DAYS', 'MONTHLY')),
   "fl_bonus"   BOOLEAN        NOT NULL DEFAULT FALSE,
-  "discount"   DECIMAL(5, 2)  NOT NULL DEFAULT 0.00,
   "status"     VARCHAR(15)    NOT NULL DEFAULT 'PENDING',
   "started_at" TIMESTAMP WITH TIME ZONE,
   "ends_at"    TIMESTAMP WITH TIME ZONE,
@@ -328,7 +325,6 @@ CREATE TABLE "subscriptions_aud"
   "amount"     NUMERIC(10, 2),
   "recurrence" VARCHAR(15),
   "fl_bonus"   BOOLEAN,
-  "discount"   DECIMAL(5, 2),
   "status"     VARCHAR(15),
   "audit_id"   BIGINT   NOT NULL,
   "audit_type" SMALLINT NULL DEFAULT NULL,
@@ -336,12 +332,31 @@ CREATE TABLE "subscriptions_aud"
   CONSTRAINT "fk_tbsubscriptions_aud_tbaudit" FOREIGN KEY ("audit_id") REFERENCES "audit" ("audit_id") ON UPDATE NO ACTION ON DELETE NO ACTION
 );
 
+CREATE TABLE "subscriptions_monitors"
+(
+  "subscription_id" UUID NOT NULL,
+  "monitor_id"      UUID NOT NULL,
+  PRIMARY KEY ("subscription_id", "monitor_id"),
+  CONSTRAINT "fk_subscription_monitor" FOREIGN KEY ("subscription_id") REFERENCES "subscriptions" ("id") ON UPDATE NO ACTION ON DELETE CASCADE,
+  CONSTRAINT "fk_monitor_subscription" FOREIGN KEY ("monitor_id") REFERENCES "monitors" ("id") ON UPDATE NO ACTION ON DELETE CASCADE
+);
+
+CREATE TABLE "subscriptions_monitors_aud"
+(
+  "subscription_id" UUID     NOT NULL,
+  "monitor_id"      UUID     NOT NULL,
+  "audit_id"        BIGINT   NOT NULL,
+  "audit_type"      SMALLINT NULL DEFAULT NULL,
+  CONSTRAINT "pk_tbsubscriptions_monitors_aud" PRIMARY KEY ("subscription_id", "monitor_id", "audit_id"),
+  CONSTRAINT "fk_tbsubscriptions_monitors_aud_tbaudit" FOREIGN KEY ("audit_id") REFERENCES "audit" ("audit_id") ON UPDATE NO ACTION ON DELETE NO ACTION
+);
+
 CREATE TABLE "payments"
 (
   "id"                UUID PRIMARY KEY,
   "subscription_id"   UUID                     NOT NULL,
   "payment_method"    VARCHAR(50)              NOT NULL,
-  "currency"          VARCHAR(3)               NOT NULL DEFAULT 'USD',
+  "currency"          VARCHAR(3)               NOT NULL DEFAULT 'usd',
   "stripe_payment_id" VARCHAR(255)             NULL     DEFAULT NULL,
   "amount"            NUMERIC(10, 2)           NOT NULL,
   "status"            VARCHAR(50)              NOT NULL DEFAULT 'PENDING',
@@ -365,32 +380,6 @@ CREATE TABLE "payments_aud"
   "audit_type"        SMALLINT NULL DEFAULT NULL,
   CONSTRAINT "pk_tbpayments_aud" PRIMARY KEY ("id", "audit_id"),
   CONSTRAINT "fk_tbpayments_aud_tbaudit" FOREIGN KEY ("audit_id") REFERENCES "audit" ("audit_id") ON UPDATE NO ACTION ON DELETE NO ACTION
-);
-
-CREATE TABLE "subscription_monitors"
-(
-  "id"              UUID PRIMARY KEY,
-  "subscription_id" UUID                     NOT NULL,
-  "monitor_id"      UUID                     NOT NULL,
-  "block_quantity"  INTEGER                  NOT NULL CHECK ("block_quantity" BETWEEN 1 AND 3),
-  "username_create" VARCHAR(255)             NULL     DEFAULT NULL,
-  "username_update" VARCHAR(255)             NULL     DEFAULT NULL,
-  "created_at"      TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT (now()),
-  "updated_at"      TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT (now()),
-  CONSTRAINT "fk_subscription_monitor_subscription" FOREIGN KEY ("subscription_id") REFERENCES "subscriptions" ("id") ON UPDATE NO ACTION ON DELETE CASCADE,
-  CONSTRAINT "fk_subscription_monitor_monitor" FOREIGN KEY ("monitor_id") REFERENCES "monitors" ("id") ON UPDATE NO ACTION ON DELETE CASCADE
-);
-
-CREATE TABLE "subscription_monitors_aud"
-(
-  "id"              UUID     NOT NULL,
-  "subscription_id" UUID,
-  "monitor_id"      UUID,
-  "block_quantity"  INTEGER,
-  "audit_id"        BIGINT   NOT NULL,
-  "audit_type"      SMALLINT NULL DEFAULT NULL,
-  CONSTRAINT "pk_tbsubscription_monitors_aud" PRIMARY KEY ("id", "audit_id"),
-  CONSTRAINT "fk_tbsubscription_monitors_aud_tbaudit" FOREIGN KEY ("audit_id") REFERENCES "audit" ("audit_id") ON UPDATE NO ACTION ON DELETE NO ACTION
 );
 
 CREATE TABLE "attachments"

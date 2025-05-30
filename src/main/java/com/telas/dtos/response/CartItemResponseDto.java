@@ -6,7 +6,6 @@ import lombok.Setter;
 
 import java.io.Serial;
 import java.io.Serializable;
-import java.math.BigDecimal;
 import java.util.UUID;
 
 @Getter
@@ -21,15 +20,12 @@ public class CartItemResponseDto implements Serializable {
 
   private Integer blockQuantity;
 
-  private BigDecimal price;
-
   private AddressFromZipCodeResponseDto monitorAddress;
 
   public CartItemResponseDto(CartItem entity) {
     id = entity.getId();
     monitorId = entity.getMonitor().getId();
     blockQuantity = entity.getBlockQuantity();
-    price = entity.getMonitor().getBlockPrice().multiply(BigDecimal.valueOf(blockQuantity));
     monitorAddress = new AddressFromZipCodeResponseDto(entity.getMonitor().getAddress());
   }
 }

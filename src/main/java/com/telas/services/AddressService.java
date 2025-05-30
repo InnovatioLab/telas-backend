@@ -1,17 +1,20 @@
 package com.telas.services;
 
+import com.telas.dtos.request.AddressRequestDto;
 import com.telas.dtos.response.AddressFromZipCodeResponseDto;
 import com.telas.entities.Address;
 
 import java.util.UUID;
 
 public interface AddressService {
-    Address save(Address address);
+  Address save(Address address);
 
-    AddressFromZipCodeResponseDto findByZipCode(String zipCode);
+  Address save(AddressRequestDto request);
 
-    Address findById(UUID id);
+  AddressFromZipCodeResponseDto findByZipCode(String zipCode);
 
-    Address findAddressPartnerById(UUID id);
+  Address findById(UUID id);
+
+  Address findAddressPartnerById(UUID id);
 }
 

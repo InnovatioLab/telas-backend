@@ -49,8 +49,11 @@ public class Monitor extends BaseAudit implements Serializable {
   @Column(name = "size_in_inches", precision = 5, scale = 2, nullable = false)
   private BigDecimal size = BigDecimal.valueOf(0.00);
 
-  @Column(name = "block_price", precision = 10, scale = 2, nullable = false)
-  private BigDecimal blockPrice;
+  @Column(name = "product_id", nullable = false)
+  private String productId;
+
+//  @Column(name = "block_price", precision = 10, scale = 2, nullable = false)
+//  private BigDecimal blockPrice;
 
   @Column(name = "max_blocks")
   private Integer maxBlocks = 12;
@@ -58,10 +61,6 @@ public class Monitor extends BaseAudit implements Serializable {
   @ManyToOne
   @JoinColumn(name = "address_id", referencedColumnName = "id", nullable = false)
   private Address address;
-
-  @OneToOne
-  @JoinColumn(name = "partner_id", referencedColumnName = "id")
-  private Client partner;
 
   @JsonIgnore
   @OneToMany(mappedBy = "id.monitor")
@@ -75,18 +74,17 @@ public class Monitor extends BaseAudit implements Serializable {
   )
   private Set<Client> clients = new HashSet<Client>();
 
-  public Monitor(MonitorRequestDto request, Client partner, Address address) {
-    this(request, partner, address, Set.of(), List.of());
+  public Monitor(MonitorRequestDto request, Address address) {
+    this(request, address, Set.of(), List.of());
   }
 
-  public Monitor(MonitorRequestDto request, Client partner, Address address, Set<Client> clients, List<Ad> advertisingAttachmentsList) {
+  public Monitor(MonitorRequestDto request, Address address, Set<Client> clients, List<Ad> advertisingAttachmentsList) {
+    productId = request.getProductId();
     type = request.getType();
     size = request.getSize();
     locationDescription = request.getLocationDescription();
     maxBlocks = request.getMaxBlocks();
-    blockPrice = request.getBlockPrice();
     this.address = address;
-    this.partner = partner;
 
     if (!ValidateDataUtils.isNullOrEmpty(request.getAds())) {
       IntStream.range(0, advertisingAttachmentsList.size()).forEach(index -> {
@@ -125,10 +123,6 @@ public class Monitor extends BaseAudit implements Serializable {
             .sum();
 
     return (activeBlocks + blocksWanted) <= maxBlocks;
-  }
-
-  public String getPartnerBusinessName() {
-    return partner.getBusinessName();
   }
 
   public String toStringMapper() throws JsonProcessingException {

@@ -5,6 +5,7 @@ import com.telas.dtos.request.MonitorRequestDto;
 import com.telas.entities.Ad;
 import com.telas.entities.Address;
 import com.telas.enums.AdValidationType;
+import com.telas.enums.Role;
 import com.telas.infra.exceptions.BusinessRuleException;
 import com.telas.infra.exceptions.ResourceNotFoundException;
 import com.telas.repositories.AdRepository;
@@ -25,44 +26,52 @@ import java.util.UUID;
 @Component
 @RequiredArgsConstructor
 public class MonitorRequestHelper {
-    private final GeolocationService geolocationService;
-    private final AdRepository adRepository;
-    private final AddressService addressService;
+  private final GeolocationService geolocationService;
+  private final AdRepository adRepository;
+  private final AddressService addressService;
 
-    @Transactional
-    public List<Ad> getAds(MonitorRequestDto request) {
-        List<UUID> adsIds = request.getAds().stream()
-                .map(MonitorAdRequestDto::getId)
-                .toList();
+  @Transactional
+  public List<Ad> getAds(MonitorRequestDto request) {
+    List<UUID> adsIds = request.getAds().stream()
+            .map(MonitorAdRequestDto::getId)
+            .toList();
 
-        List<Ad> ads = adRepository.findAllById(
-                ValidateDataUtils.isNullOrEmpty(adsIds)
-                        ? List.of()
-                        : adsIds
-        ).orElseThrow(() -> new ResourceNotFoundException(AdValidationMessages.AD_NOT_FOUND));
+    List<Ad> ads = adRepository.findAllById(
+            ValidateDataUtils.isNullOrEmpty(adsIds)
+                    ? List.of()
+                    : adsIds
+    ).orElseThrow(() -> new ResourceNotFoundException(AdValidationMessages.AD_NOT_FOUND));
 
-        ads.removeIf(attachment -> !AdValidationType.APPROVED.equals(attachment.getValidation()));
+    ads.removeIf(attachment -> !AdValidationType.APPROVED.equals(attachment.getValidation()));
 
-        if (ads.size() > SharedConstants.MAX_MONITOR_ADS) {
-            throw new BusinessRuleException(MonitorValidationMessages.MAX_MONITOR_ADS);
-        }
-
-        return ads;
+    if (ads.size() > SharedConstants.MAX_MONITOR_ADS) {
+      throw new BusinessRuleException(MonitorValidationMessages.MAX_MONITOR_ADS);
     }
 
-    @Transactional
-    public void setAddressCoordinates(Address address) {
-        geolocationService.getAddressCoordinates(address);
-        addressService.save(address);
+    return ads;
+  }
+
+  @Transactional
+  public void setAddressCoordinates(Address address) {
+    geolocationService.getAddressCoordinates(address);
+    addressService.save(address);
+  }
+
+  @Transactional
+  public Map<String, Double> getCoordinatesFromZipCode(String zipCode, String countryCode) {
+    return geolocationService.getCoordinatesFromZipCode(zipCode, countryCode);
+  }
+
+  @Transactional
+  public Address getOrCreateAddress(MonitorRequestDto request) {
+    Address address = (request.getAddressId() != null)
+            ? addressService.findById(request.getAddressId())
+            : new Address(request.getAddress());
+
+    if (address.getClient() != null && !Role.PARTNER.equals(address.getClient().getRole())) {
+      throw new ResourceNotFoundException(MonitorValidationMessages.CLIENT_NOT_PARTNER);
     }
 
-    @Transactional(readOnly = true)
-    public Address getPartnerAddressById(MonitorRequestDto request) {
-        return addressService.findAddressPartnerById(request.getAddressId());
-    }
-
-    @Transactional
-    public Map<String, Double> getCoordinatesFromZipCode(String zipCode, String countryCode) {
-        return geolocationService.getCoordinatesFromZipCode(zipCode, countryCode);
-    }
+    return address;
+  }
 }
