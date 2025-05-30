@@ -11,4 +11,6 @@ public interface PaymentService {
   void updatePaymentStatus(PaymentIntent paymentIntent) throws StripeException;
 
   void updatePaymentStatus(Invoice invoice);
+
+  void handleSubscriptionDeleted(com.stripe.model.Subscription stripeSubscription);
 }

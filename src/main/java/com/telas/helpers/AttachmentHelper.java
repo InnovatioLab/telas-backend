@@ -10,7 +10,10 @@ import com.telas.enums.AdValidationType;
 import com.telas.enums.NotificationReference;
 import com.telas.infra.exceptions.BusinessRuleException;
 import com.telas.infra.exceptions.ResourceNotFoundException;
-import com.telas.repositories.*;
+import com.telas.repositories.AdRepository;
+import com.telas.repositories.AdRequestRepository;
+import com.telas.repositories.AttachmentRepository;
+import com.telas.repositories.ClientRepository;
 import com.telas.services.BucketService;
 import com.telas.services.NotificationService;
 import com.telas.shared.audit.CustomRevisionListener;
@@ -29,8 +32,7 @@ import java.util.*;
 @RequiredArgsConstructor
 public class AttachmentHelper {
   private final AttachmentRepository attachmentRepository;
-  private final MonitorAdRepository monitorAdRepository;
-  private final MonitorRepository monitorRepository;
+  private final AdRepository adRepository;
   private final BucketService bucketService;
   private final NotificationService notificationService;
   private final AdRequestRepository adRequestRepository;

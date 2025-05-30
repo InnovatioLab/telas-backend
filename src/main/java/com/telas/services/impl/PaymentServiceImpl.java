@@ -159,6 +159,26 @@ public class PaymentServiceImpl implements PaymentService {
     finalizePayment(payment);
   }
 
+  @Override
+  @Transactional
+  public void handleSubscriptionDeleted(com.stripe.model.Subscription stripeSubscription) {
+    UUID subscriptionId = UUID.fromString(stripeSubscription.getMetadata().get("subscriptionId"));
+    Subscription subscription = findSubscriptionById(subscriptionId);
+
+    if (SubscriptionStatus.CANCELLED.equals(subscription.getStatus()) || SubscriptionStatus.EXPIRED.equals(subscription.getStatus())) {
+      log.info("Subscription with id: {} is already cancelled or expired.", subscriptionId);
+      return;
+    }
+
+    log.info("Handling subscription deletion for id: {}", subscriptionId);
+    subscription.setStatus(SubscriptionStatus.CANCELLED);
+    subscription.setEndsAt(Instant.now());
+    subscriptionRepository.save(subscription);
+
+    // Remove monitors and ads associated with the subscription
+    subscriptionHelper.removeMonitorAdsFromSubscription(subscription);
+  }
+
   private Subscription findSubscriptionById(UUID subscriptionId) {
     return subscriptionRepository.findById(subscriptionId)
             .orElseThrow(() -> new ResourceNotFoundException(SubscriptionValidationMessages.SUBSCRIPTION_NOT_FOUND));
@@ -232,7 +252,9 @@ public class PaymentServiceImpl implements PaymentService {
     Long startPeriod = Collections.min(periods);
     Long endPeriod = Collections.max(periods);
 
-    subscription.setStartedAt(Instant.ofEpochSecond(startPeriod));
+    if (subscription.getStartedAt() == null) {
+      subscription.setStartedAt(Instant.ofEpochSecond(startPeriod));
+    }
 
     Instant endAt = startPeriod.equals(endPeriod)
             ? Recurrence.MONTHLY.calculateEndsAt(subscription.getStartedAt())

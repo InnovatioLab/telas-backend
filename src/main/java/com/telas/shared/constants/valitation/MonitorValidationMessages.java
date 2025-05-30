@@ -24,4 +24,5 @@ public final class MonitorValidationMessages {
   public static final String ADDRESS_REQUIRED = "Address is required";
   public static final String ADDRESS_ID_AND_ADDRESS_BOTH_PROVIDED = "Both address and address ID cannot be provided at the same time";
   public static final String PRODUCT_ID_REQUIRED = "Product ID is required";
+  public static final String MONITOR_ALREADY_ATTACHED_TO_CLIENT = "One or more screens already has ads linked to the client.";
 }

@@ -5,8 +5,10 @@ import com.telas.dtos.request.MonitorRequestDto;
 import com.telas.dtos.response.MonitorAdResponseDto;
 import com.telas.dtos.response.MonitorMinResponseDto;
 import com.telas.dtos.response.MonitorResponseDto;
+import com.telas.dtos.response.MonitorValidationResponseDto;
 import com.telas.entities.*;
 import com.telas.enums.AdValidationType;
+import com.telas.enums.SubscriptionStatus;
 import com.telas.helpers.MonitorRequestHelper;
 import com.telas.infra.exceptions.BusinessRuleException;
 import com.telas.infra.exceptions.ResourceNotFoundException;
@@ -125,6 +127,36 @@ public class MonitorServiceImpl implements MonitorService {
     return repository.findAllByIdIn(monitorIds);
   }
 
+  @Override
+  @Transactional
+  public List<MonitorValidationResponseDto> findInvalidMonitorsOrLinkedAds(List<UUID> monitorIds, UUID clientId) {
+    return repository.findInvalidMonitorsOrLinkedAds(monitorIds, clientId);
+  }
+
+  @Override
+  @Transactional
+  public void removeMonitorAdsFromSubscription(Subscription subscription) {
+    List<SubscriptionStatus> validStatuses = List.of(SubscriptionStatus.EXPIRED, SubscriptionStatus.CANCELLED);
+
+    if (validStatuses.contains(subscription.getStatus())) {
+      Client client = subscription.getClient();
+
+      // Itera sobre os monitores da subscription
+      subscription.getMonitors().forEach(monitor -> {
+        // Filtra os anúncios que pertencem ao cliente da subscription
+        Set<MonitorAd> adsToRemove = monitor.getMonitorAds().stream()
+                .filter(monitorAd -> monitorAd.getAd().getClient().equals(client))
+                .collect(Collectors.toSet());
+
+        // Remove os anúncios do monitor
+        monitor.getMonitorAds().removeAll(adsToRemove);
+
+        // Remove os anúncios do repositório
+        monitorAdRepository.deleteAll(adsToRemove);
+      });
+    }
+  }
+
   private List<String> validateZipCodeList(String zipCodes) {
     List<String> zipCodeList = Arrays.asList(zipCodes.split(","));
 
@@ -193,4 +225,6 @@ public class MonitorServiceImpl implements MonitorService {
             .map(Ad::getClient)
             .collect(Collectors.toSet());
   }
+
+
 }

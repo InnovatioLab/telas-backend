@@ -41,8 +41,8 @@ public class PaymentGatewayWebhookController {
         case "payment_intent.payment_failed":
           handlePaymentIntent(event);
           break;
-//        customer.subscription.deleted
-//        invoice.marked_uncollectible
+        case "customer.subscription.deleted":
+          handleSubscriptionDeleted(event);
         default:
           break;
       }
@@ -75,6 +75,18 @@ public class PaymentGatewayWebhookController {
 
       if (stripeObject instanceof Invoice invoice) {
         paymentService.updatePaymentStatus(invoice);
+      }
+    }
+  }
+
+  private void handleSubscriptionDeleted(Event event) {
+    EventDataObjectDeserializer dataObjectDeserializer = event.getDataObjectDeserializer();
+
+    if (dataObjectDeserializer.getObject().isPresent()) {
+      StripeObject stripeObject = dataObjectDeserializer.getObject().get();
+
+      if (stripeObject instanceof Subscription subscription) {
+        paymentService.handleSubscriptionDeleted(subscription);
       }
     }
   }

@@ -1,9 +1,11 @@
 package com.telas.repositories;
 
+import com.telas.dtos.response.MonitorValidationResponseDto;
 import com.telas.entities.Monitor;
 import org.jetbrains.annotations.NotNull;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.math.BigDecimal;
@@ -43,4 +45,20 @@ public interface MonitorRepository extends JpaRepository<Monitor, UUID> {
 
   @Query("SELECT m FROM Monitor m LEFT JOIN FETCH m.monitorAds ma WHERE m.id IN :monitorIds")
   List<Monitor> findAllByIdIn(List<UUID> monitorIds);
+
+  @Query("""
+              SELECT new com.telas.dtos.response.MonitorValidationResponseDto(
+                  m.id,
+                  (m.active = true AND m.maxBlocks >
+                      (SELECT COALESCE(SUM(ma.blockQuantity), 0) FROM MonitorAd ma WHERE ma.id.monitor.id = m.id)),
+                  CASE WHEN EXISTS (
+                      SELECT 1 FROM MonitorAd ma
+                      JOIN ma.id.ad a
+                      WHERE ma.id.monitor.id = m.id AND a.client.id = :clientId
+                  ) THEN true ELSE false END
+              )
+              FROM Monitor m
+              WHERE m.id IN :monitorIds
+          """)
+  List<MonitorValidationResponseDto> findInvalidMonitorsOrLinkedAds(@Param("monitorIds") List<UUID> monitorIds, @Param("clientId") UUID clientId);
 }
