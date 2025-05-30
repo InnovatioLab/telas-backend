@@ -7,7 +7,6 @@ import com.telas.dtos.response.MonitorMinResponseDto;
 import com.telas.dtos.response.MonitorResponseDto;
 import com.telas.entities.*;
 import com.telas.enums.AdValidationType;
-import com.telas.enums.Role;
 import com.telas.helpers.MonitorRequestHelper;
 import com.telas.infra.exceptions.BusinessRuleException;
 import com.telas.infra.exceptions.ResourceNotFoundException;
@@ -45,19 +44,15 @@ public class MonitorServiceImpl implements MonitorService {
   public void save(MonitorRequestDto request, UUID monitorId) throws JsonProcessingException {
     AuthenticatedUser authenticatedUser = authenticatedUserService.validateAdmin();
     request.validate();
-    Address address = helper.getPartnerAddressById(request);
-    Client partner = address.getClient();
 
-    if (!Role.PARTNER.equals(partner.getRole())) {
-      throw new ResourceNotFoundException(MonitorValidationMessages.CLIENT_NOT_PARTNER);
-    }
+    Address address = helper.getOrCreateAddress(request);
 
     List<Ad> ads = !ValidateDataUtils.isNullOrEmpty(request.getAds()) ? helper.getAds(request) : List.of();
 
     Set<Client> clients = getClients(ads);
 
-    Monitor monitor = (monitorId != null) ? updateExistingMonitor(request, monitorId, authenticatedUser, partner, address, clients, ads)
-            : createNewMonitor(request, authenticatedUser, partner, address, clients, ads);
+    Monitor monitor = (monitorId != null) ? updateExistingMonitor(request, monitorId, authenticatedUser, address, clients, ads)
+            : createNewMonitor(request, authenticatedUser, address, clients, ads);
 
     repository.save(monitor);
 
@@ -145,14 +140,14 @@ public class MonitorServiceImpl implements MonitorService {
     return zipCodeList;
   }
 
-  private Monitor createNewMonitor(MonitorRequestDto request, AuthenticatedUser authenticatedUser, Client partner, Address address, Set<Client> clients, List<Ad> ads) {
+  private Monitor createNewMonitor(MonitorRequestDto request, AuthenticatedUser authenticatedUser, Address address, Set<Client> clients, List<Ad> ads) {
     helper.setAddressCoordinates(address);
-    Monitor monitor = new Monitor(request, partner, address, clients, ads);
+    Monitor monitor = new Monitor(request, address, clients, ads);
     monitor.setUsernameCreate(authenticatedUser.client().getBusinessName());
     return monitor;
   }
 
-  private Monitor updateExistingMonitor(MonitorRequestDto request, UUID monitorId, AuthenticatedUser authenticatedUser, Client partner, Address address, Set<Client> clients, List<Ad> ads) throws JsonProcessingException {
+  private Monitor updateExistingMonitor(MonitorRequestDto request, UUID monitorId, AuthenticatedUser authenticatedUser, Address address, Set<Client> clients, List<Ad> ads) throws JsonProcessingException {
     Monitor monitor = findEntityById(monitorId);
 
     if (!monitor.getAddress().getId().equals(request.getAddressId())) {
@@ -166,13 +161,13 @@ public class MonitorServiceImpl implements MonitorService {
 
     CustomRevisionListener.setUsername(authenticatedUser.client().getBusinessName());
     CustomRevisionListener.setOldData(monitor.toStringMapper());
-    updateMonitorDetails(request, monitor, partner, clients, ads);
+    updateMonitorDetails(request, monitor, clients, ads);
     monitor.setUsernameUpdate(authenticatedUser.client().getBusinessName());
 
     return monitor;
   }
 
-  private void updateMonitorDetails(MonitorRequestDto request, Monitor monitor, Client partner, Set<Client> clients, List<Ad> ads) {
+  private void updateMonitorDetails(MonitorRequestDto request, Monitor monitor, Set<Client> clients, List<Ad> ads) {
     monitor.setType(request.getType());
     monitor.setLocationDescription(request.getLocationDescription());
     monitor.setMaxBlocks(request.getMaxBlocks());
@@ -191,10 +186,6 @@ public class MonitorServiceImpl implements MonitorService {
 
     monitor.getClients().clear();
     monitor.getClients().addAll(clients);
-
-    if (!monitor.getPartner().getId().equals(partner.getId())) {
-      monitor.setPartner(partner);
-    }
   }
 
   private Set<Client> getClients(List<Ad> ads) {

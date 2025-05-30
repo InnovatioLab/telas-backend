@@ -10,7 +10,7 @@ import com.telas.shared.utils.TrimStringDeserializer;
 import com.telas.shared.utils.ValidateDataUtils;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Digits;
-import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Positive;
 import jakarta.validation.constraints.Size;
 import lombok.AllArgsConstructor;
@@ -34,14 +34,16 @@ public class MonitorRequestDto implements Serializable {
   @Serial
   private static final long serialVersionUID = -3963846843873646628L;
 
+  @NotBlank(message = MonitorValidationMessages.PRODUCT_ID_REQUIRED)
+  @JsonDeserialize(using = TrimStringDeserializer.class)
+  private String productId;
+
   @Digits(integer = 3, fraction = 2, message = MonitorValidationMessages.SIZE_INVALID)
   private BigDecimal size;
 
-  @Digits(integer = 8, fraction = 2, message = MonitorValidationMessages.BLOCK_PRICE_INVALID)
-  private BigDecimal blockPrice;
-
-  @NotNull(message = MonitorValidationMessages.ADDRESS_ID_REQUIRED)
   private UUID addressId;
+
+  private AddressRequestDto address;
 
   @Positive(message = MonitorValidationMessages.MAX_BLOCKS_INVALID)
   private Integer maxBlocks;
@@ -57,8 +59,20 @@ public class MonitorRequestDto implements Serializable {
   private @Valid List<MonitorAdRequestDto> ads;
 
   public void validate() {
+    validateAddress();
     validadeAdsOrderIndex();
+
 //        validateMaxDisplayTime();
+  }
+
+  private void validateAddress() {
+    if (address == null && addressId == null) {
+      throw new BusinessRuleException(MonitorValidationMessages.ADDRESS_REQUIRED);
+    }
+
+    if (address != null && addressId != null) {
+      throw new BusinessRuleException(MonitorValidationMessages.ADDRESS_ID_AND_ADDRESS_BOTH_PROVIDED);
+    }
   }
 
 //    private void validateMaxDisplayTime() {

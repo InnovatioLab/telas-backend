@@ -8,4 +8,5 @@ public final class PaymentValidationMessages {
   public static final String ID_CANNOT_BE_EMPTY = "ID cannot be empty";
   public static final String STATUS_CANNOT_BE_EMPTY = "Status cannot be empty";
   public static final String PAYMENT_AMOUNT_NEGATIVE = "Payment amount cannot be negative";
+  public static final String PAYMENT_PROCESSING_ERROR = "Error processing payment, please try again later";
 }

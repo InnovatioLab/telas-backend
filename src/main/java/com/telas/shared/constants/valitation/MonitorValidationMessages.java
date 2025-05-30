@@ -21,4 +21,7 @@ public final class MonitorValidationMessages {
   public static final String MONITOR_BLOCKS_UNAVAILABLE = "Monitor does not have enough available blocks";
   public static final String MONITOR_INACTIVE_OR_BLOCKS_UNAVAILABLE = "Monitor is inactive or does not have enough available blocks";
   public static final String BLOCK_PRICE_INVALID = "Block price must be a positive number with up to two decimal places";
+  public static final String ADDRESS_REQUIRED = "Address is required";
+  public static final String ADDRESS_ID_AND_ADDRESS_BOTH_PROVIDED = "Both address and address ID cannot be provided at the same time";
+  public static final String PRODUCT_ID_REQUIRED = "Product ID is required";
 }

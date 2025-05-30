@@ -12,6 +12,13 @@ public final class MoneyUtils {
   private MoneyUtils() {
   }
 
+  public static BigDecimal divide(BigDecimal value1, BigDecimal value2) {
+    if (value1 == null || value2 == null) {
+      throw new BusinessRuleException("The amounts can't be null");
+    }
+    return value1.divide(value2, SCALE, ROUNDING_MODE);
+  }
+
   public static BigDecimal multiply(BigDecimal value1, BigDecimal value2) {
     if (value1 == null || value2 == null) {
       throw new BusinessRuleException("The amounts can't be null");

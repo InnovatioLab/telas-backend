@@ -1,7 +1,6 @@
 package com.telas.entities;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
-import com.telas.enums.Currency;
 import com.telas.enums.PaymentStatus;
 import com.telas.shared.audit.BaseAudit;
 import jakarta.persistence.*;
@@ -37,7 +36,7 @@ public class Payment extends BaseAudit implements Serializable {
   private String paymentMethod = "card";
 
   @Column(name = "currency")
-  private Currency currency = Currency.USD;
+  private String currency = "usd";
 
   @Column(name = "stripe_payment_id")
   private String stripePaymentId;
@@ -47,7 +46,7 @@ public class Payment extends BaseAudit implements Serializable {
   private PaymentStatus status = PaymentStatus.PENDING;
 
   @JsonIgnore
-  @OneToOne(cascade = CascadeType.ALL)
+  @ManyToOne
   @JoinColumn(name = "subscription_id", referencedColumnName = "id")
   private Subscription subscription;
 

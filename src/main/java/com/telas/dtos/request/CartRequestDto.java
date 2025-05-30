@@ -26,5 +26,5 @@ public class CartRequestDto implements Serializable {
   @NotEmpty(message = CartValidationMessages.ITEMS_REQUIRED)
   private @Valid List<CartItemRequestDto> items = new ArrayList<>();
 
-  private Recurrence recurrence = Recurrence.THIRTY_DAYS;
+  private Recurrence recurrence = Recurrence.MONTHLY;
 }

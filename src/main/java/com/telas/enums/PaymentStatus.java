@@ -10,24 +10,27 @@ public enum PaymentStatus {
   CANCELLED,
   FAILED;
 
-  private static final Map<String, PaymentStatus> STRIPE_STATUS_MAPPING = Map.of(
+  private static final Map<String, PaymentStatus> STRIPE_PAYMENT_INTENT_STATUS_MAPPING = Map.of(
           "succeeded", COMPLETED,
-          "active", COMPLETED,
           "processing", PENDING,
-          "incomplete", PENDING,
-          "canceled", CANCELLED,
-          "incomplete_expired", FAILED,
-          "unpaid", FAILED,
-          "requires_payment_method", FAILED
+          "requires_payment_method", FAILED,
+          "canceled", CANCELLED
   );
 
-  public static PaymentStatus fromStripeStatus(String stripePaymentStatus, String stripeSubscriptionStatus, Payment payment) {
-    if (stripeSubscriptionStatus != null) {
-      return STRIPE_STATUS_MAPPING.getOrDefault(stripeSubscriptionStatus, payment.getStatus());
+  private static final Map<String, PaymentStatus> STRIPE_INVOICE_STATUS_MAPPING = Map.of(
+          "paid", COMPLETED,
+          "open", FAILED,
+          "unpaid", FAILED,
+          "void", FAILED
+  );
+
+  public static PaymentStatus fromStripeStatus(String paymentIntentStatus, String invoiceStatus, Payment payment) {
+    if (invoiceStatus != null) {
+      return STRIPE_INVOICE_STATUS_MAPPING.getOrDefault(invoiceStatus, payment.getStatus());
     }
 
-    if (stripePaymentStatus != null) {
-      return STRIPE_STATUS_MAPPING.getOrDefault(stripePaymentStatus, payment.getStatus());
+    if (paymentIntentStatus != null) {
+      return STRIPE_PAYMENT_INTENT_STATUS_MAPPING.getOrDefault(paymentIntentStatus, payment.getStatus());
     }
 
     return payment.getStatus();

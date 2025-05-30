@@ -17,6 +17,7 @@ import java.time.Instant;
 import java.util.HashSet;
 import java.util.Set;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 @Getter
 @Setter
@@ -34,10 +35,10 @@ public class Subscription implements Serializable {
   private UUID id;
 
   @Column(name = "amount", precision = 10, scale = 2, nullable = false)
-  private BigDecimal amount;
+  private BigDecimal amount = BigDecimal.valueOf(0.00);
 
-  @Column(name = "discount", precision = 5, scale = 2, nullable = false)
-  private BigDecimal discount = BigDecimal.valueOf(0.00);
+//  @Column(name = "discount", precision = 5, scale = 2, nullable = false)
+//  private BigDecimal discount = BigDecimal.valueOf(0.00);
 
   @Column(name = "recurrence", nullable = false)
   @Enumerated(EnumType.STRING)
@@ -62,26 +63,45 @@ public class Subscription implements Serializable {
   @JoinColumn(name = "client_id", referencedColumnName = "id")
   private Client client;
 
-  @OneToOne(mappedBy = "subscription")
-  private Payment payment;
-
   @OneToMany(mappedBy = "subscription", cascade = CascadeType.ALL)
-  private Set<SubscriptionMonitor> subscriptionMonitors = new HashSet<>();
+  private Set<Payment> payments = new HashSet<>();
+
+  @ManyToMany
+  @JoinTable(
+          name = "subscriptions_monitors",
+          joinColumns = @JoinColumn(name = "subscription_id"),
+          inverseJoinColumns = @JoinColumn(name = "monitor_id")
+  )
+  private Set<Monitor> monitors = new HashSet<>();
 
   public Subscription(Client client, Cart cart) {
     this.client = client;
-    bonus = Role.PARTNER.equals(client.getRole());
+    bonus = isBonus();
     recurrence = cart.getRecurrence();
 
-    subscriptionMonitors.addAll(
-            cart.getItems().stream()
-                    .map(cartItem -> new SubscriptionMonitor(this, cartItem))
-                    .toList()
-    );
+    monitors.addAll(cart.getItems().stream()
+            .map(CartItem::getMonitor)
+            .toList());
   }
 
   public void initialize() {
     startedAt = Instant.now();
     endsAt = isBonus() ? null : recurrence.calculateEndsAt(startedAt);
+  }
+
+  public boolean isBonus() {
+    if (!Role.PARTNER.equals(client.getRole())) {
+      return false;
+    }
+
+    Set<UUID> clientAddressesIds = client.getAddresses().stream()
+            .map(Address::getId)
+            .collect(Collectors.toSet());
+
+    Set<UUID> monitorAddressesIds = monitors.stream()
+            .map(monitor -> monitor.getAddress().getId())
+            .collect(Collectors.toSet());
+
+    return clientAddressesIds.equals(monitorAddressesIds);
   }
 }
