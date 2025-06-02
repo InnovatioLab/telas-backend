@@ -14,5 +14,7 @@ public interface CartService {
   Cart findByClientIdWithItens(UUID id);
 
   CartResponseDto findById(UUID id);
+
+  void deleteCart(Cart cart);
 }
 

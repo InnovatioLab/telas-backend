@@ -40,7 +40,7 @@ public class CartServiceImpl implements CartService {
     Cart cart = (cartId != null) ? findEntityById(cartId) : null;
 
     if (cart == null) {
-      if (repository.findByClientIdWithItens(client.getId()).isPresent()) {
+      if (repository.findActiveByClientIdWithItens(client.getId()).isPresent()) {
         throw new ResourceNotFoundException(CartValidationMessages.CART_ALREADY_EXISTS);
       }
 
@@ -79,6 +79,21 @@ public class CartServiceImpl implements CartService {
   public CartResponseDto findById(UUID id) {
     Cart cart = findEntityById(id);
     return getCartResponse(cart, null);
+  }
+
+  @Override
+  @Transactional
+  public void deleteCart(Cart cart) {
+    if (cart == null) {
+      throw new ResourceNotFoundException(CartValidationMessages.CART_NOT_FOUND);
+    }
+
+    if (cart.isActive()) {
+      throw new ResourceNotFoundException(CartValidationMessages.CART_ACTIVE);
+    }
+
+    repository.delete(cart);
+
   }
 
   private CartResponseDto getCartResponse(Cart cart, List<CartItemResponseDto> itemsResponse) {

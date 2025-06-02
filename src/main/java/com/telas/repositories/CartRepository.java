@@ -11,9 +11,12 @@ import java.util.UUID;
 
 @Repository
 public interface CartRepository extends JpaRepository<Cart, UUID> {
-    @Query("SELECT c FROM Cart c LEFT JOIN FETCH c.items WHERE c.id = :id")
-    Optional<Cart> findByIdWithItens(@Param("id") UUID id);
+  @Query("SELECT c FROM Cart c LEFT JOIN FETCH c.items WHERE c.id = :id")
+  Optional<Cart> findByIdWithItens(@Param("id") UUID id);
 
-    @Query("SELECT c FROM Cart c LEFT JOIN FETCH c.items WHERE c.client.id = :clientId")
-    Optional<Cart> findByClientIdWithItens(@Param("clientId") UUID clientId);
+  @Query("SELECT c FROM Cart c LEFT JOIN FETCH c.items WHERE c.client.id = :clientId")
+  Optional<Cart> findByClientIdWithItens(@Param("clientId") UUID clientId);
+
+  @Query("SELECT c FROM Cart c LEFT JOIN FETCH c.items WHERE c.client.id = :clientId AND c.active = true")
+  Optional<Cart> findActiveByClientIdWithItens(@Param("clientId") UUID clientId);
 }

@@ -116,7 +116,7 @@ public class AttachmentHelper {
           adRequestEntity.closeRequest();
           adRequestRepository.save(adRequestEntity);
 
-          Ad savedAd = adRequestEntity.getAd();
+          Ad savedAd = adRepository.save(ad);
           String fileName = AttachmentUtils.format(savedAd);
           bucketService.upload(attachment.getBytes(), fileName, attachment.getType(), new ByteArrayInputStream(attachment.getBytes()));
         } else if (!(attachment instanceof AdRequestDto) && adRequestEntity == null) {

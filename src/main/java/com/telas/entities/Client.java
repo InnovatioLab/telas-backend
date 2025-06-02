@@ -9,6 +9,7 @@ import com.telas.dtos.request.ClientRequestDto;
 import com.telas.enums.AdValidationType;
 import com.telas.enums.DefaultStatus;
 import com.telas.enums.Role;
+import com.telas.enums.SubscriptionStatus;
 import com.telas.shared.audit.BaseAudit;
 import jakarta.persistence.*;
 import lombok.Getter;
@@ -102,6 +103,10 @@ public class Client extends BaseAudit implements Serializable {
   @OneToOne(mappedBy = "client")
   private Cart cart;
 
+  @JsonIgnore
+  @OneToMany(mappedBy = "client")
+  private Set<Subscription> subscriptions = new HashSet<>();
+
   @OneToMany(mappedBy = "client", cascade = CascadeType.ALL, fetch = FetchType.EAGER)
   private Set<Address> addresses = new HashSet<>();
 
@@ -166,6 +171,14 @@ public class Client extends BaseAudit implements Serializable {
 
   public boolean isAdmin() {
     return Role.ADMIN.equals(role);
+  }
+
+  public boolean hasActiveSubscription() {
+    if (isAdmin()) {
+      return true;
+    }
+
+    return subscriptions.stream().anyMatch(subscription -> SubscriptionStatus.ACTIVE.equals(subscription.getStatus()));
   }
 
   public String toStringMapper() throws JsonProcessingException {

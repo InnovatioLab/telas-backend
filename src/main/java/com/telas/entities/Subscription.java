@@ -59,7 +59,7 @@ public class Subscription implements Serializable {
   @Column(name = "ends_at", columnDefinition = "TIMESTAMP WITHOUT TIME ZONE")
   private Instant endsAt;
 
-  @OneToOne
+  @ManyToOne
   @JoinColumn(name = "client_id", referencedColumnName = "id")
   private Client client;
 

@@ -69,6 +69,12 @@ public class ClientServiceImpl implements ClientService {
     verificationCode.setValidated(true);
     client.setVerificationCode(verificationCode);
 
+    if (Objects.equals(client.getBusinessName(), "admin")) {
+      client.setRole(Role.ADMIN);
+    } else {
+      client.setRole(Role.CLIENT);
+    }
+
 //        MessagingDataDto messagingData = new MessagingDataDto(client, verificationCode, client.getContact().getContactPreference());
 //        verificationCodeService.send(messagingData, SharedConstants.TEMPLATE_EMAIL_CONTACT_VERIFICATION, SharedConstants.EMAIL_SUBJECT_CONTACT_VERIFICATION);
 
@@ -220,10 +226,9 @@ public class ClientServiceImpl implements ClientService {
     attachmentHelper.validate(request);
 
     AuthenticatedUser authenticatedUser = authenticatedUserService.validateSelfOrAdmin(clientId);
-
     Client client = findActiveEntityById(clientId);
 
-//        Validar se o client possui algum plano ativou ou se é um partner
+    helper.validateActiveSubscription(client);
 
     if (!client.getAttachments().isEmpty()) {
       CustomRevisionListener.setUsername(authenticatedUser.client().getBusinessName());
@@ -237,15 +242,14 @@ public class ClientServiceImpl implements ClientService {
   @Transactional
   @Override
   public void requestAdCreation(ClientAdRequestToAdminDto request) {
-    //        Validar se o client possui algum plano ativou ou se é um partner
-    Client client = authenticatedUserService.getLoggedUser().client();
+    Client client = authenticatedUserService.validateActiveSubscription().client();
+    helper.validateActiveSubscription(client);
     helper.createAdRequest(request, client);
   }
 
   @Transactional
   @Override
   public void uploadAds(AdRequestDto request) {
-    //        Validar se o client possui algum plano ativou ou se é um partner
     request.validate();
 
     authenticatedUserService.validateAdmin();

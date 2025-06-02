@@ -23,8 +23,14 @@ public interface MonitorRepository extends JpaRepository<Monitor, UUID> {
   @Query("SELECT m FROM Monitor m LEFT JOIN m.monitorAds ma WHERE ma.id.ad.id = :adId")
   List<Monitor> findByAdId(UUID adId);
 
+
   @Query(value = """
-              SELECT m.id, m.fl_active, m.type, m.size_in_inches, a.latitude, a.longitude,
+              SELECT m.id, 
+                     m.fl_active, 
+                     m.type, 
+                     m.size_in_inches, 
+                     a.latitude, 
+                     a.longitude,
                      ROUND(
                          CAST(
                              ST_Distance(
@@ -32,7 +38,20 @@ public interface MonitorRepository extends JpaRepository<Monitor, UUID> {
                                  ST_SetSRID(ST_MakePoint(a.longitude, a.latitude), 4326)::geography
                              ) / 1000 AS numeric
                          ), 2
-                     ) AS distance
+                     ) AS distance,
+                     CASE 
+                         WHEN (SELECT COUNT(*) FROM monitors_ads ma WHERE ma.monitor_id = m.id) < m.max_blocks 
+                         THEN true 
+                         ELSE false 
+                     END AS has_available_slots,
+                     (SELECT MIN(s.ends_at) 
+                      FROM subscriptions s 
+                      WHERE s.id IN (
+                          SELECT sm.subscription_id 
+                          FROM subscriptions_monitors sm 
+                          WHERE sm.monitor_id = m.id
+                      ) 
+                      AND s.recurrence != 'MONTHLY' AND s.status = 'ACTIVE') AS estimated_slot_release_date
               FROM monitors m
               JOIN addresses a ON m.address_id = a.id
               WHERE m.fl_active = TRUE
@@ -42,6 +61,7 @@ public interface MonitorRepository extends JpaRepository<Monitor, UUID> {
               LIMIT :limit
           """, nativeQuery = true)
   List<Object[]> findNearestActiveMonitorsWithFilters(double latitude, double longitude, BigDecimal size, String type, int limit);
+
 
   @Query("SELECT m FROM Monitor m LEFT JOIN FETCH m.monitorAds ma WHERE m.id IN :monitorIds")
   List<Monitor> findAllByIdIn(List<UUID> monitorIds);

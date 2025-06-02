@@ -29,6 +29,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.time.Instant;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -106,12 +107,14 @@ public class MonitorServiceImpl implements MonitorService {
               .stream()
               .map(resultRow -> new MonitorMinResponseDto(
                       resultRow[0].toString(),
-                      Boolean.parseBoolean(resultRow[1].toString()),
-                      resultRow[2].toString(),
-                      Double.parseDouble(resultRow[3].toString()),
-                      ((Number) resultRow[6]).doubleValue(),
-                      Double.parseDouble(resultRow[4].toString()),
-                      Double.parseDouble(resultRow[5].toString())
+                      Boolean.parseBoolean(resultRow[1].toString()), // Ativo
+                      resultRow[2].toString(), // Tipo
+                      Double.parseDouble(resultRow[3].toString()), // Tamanho
+                      Double.parseDouble(resultRow[6].toString()), // Distância
+                      Double.parseDouble(resultRow[4].toString()), // Latitude
+                      Double.parseDouble(resultRow[5].toString()), // Longitude
+                      Boolean.parseBoolean(resultRow[7].toString()), // hasAvailableSlots
+                      resultRow[8] != null ? Instant.parse(resultRow[8].toString()) : null // estimatedSlotReleaseDate
               ))
               .toList();
 
@@ -150,9 +153,11 @@ public class MonitorServiceImpl implements MonitorService {
 
         // Remove os anúncios do monitor
         monitor.getMonitorAds().removeAll(adsToRemove);
+        monitor.getClients().remove(client);
 
         // Remove os anúncios do repositório
         monitorAdRepository.deleteAll(adsToRemove);
+        repository.save(monitor);
       });
     }
   }

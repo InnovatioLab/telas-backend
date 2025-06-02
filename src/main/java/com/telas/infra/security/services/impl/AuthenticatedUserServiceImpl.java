@@ -19,59 +19,72 @@ import java.util.UUID;
 @Service
 @RequiredArgsConstructor
 public class AuthenticatedUserServiceImpl implements AuthenticatedUserService {
-    private final ClientRepository clientRepository;
+  private final ClientRepository clientRepository;
 
-    @Transactional(readOnly = true)
-    @Override
-    public AuthenticatedUser getLoggedUser() {
-        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+  @Transactional(readOnly = true)
+  @Override
+  public AuthenticatedUser getLoggedUser() {
+    Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
 
-        if (authentication == null) {
-            throw new UnauthorizedException(AuthValidationMessageConstants.ERROR_NO_AUTHENTICATION);
-        }
-
-        AuthenticatedUser authenticatedUser = (AuthenticatedUser) authentication.getPrincipal();
-
-        Client client = clientRepository.findActiveById(authenticatedUser.client().getId())
-                .orElseThrow(() -> new UnauthorizedException(AuthValidationMessageConstants.ERROR_NO_AUTHENTICATION));
-
-        return new AuthenticatedUser(client);
+    if (authentication == null) {
+      throw new UnauthorizedException(AuthValidationMessageConstants.ERROR_NO_AUTHENTICATION);
     }
 
-    @Transactional(readOnly = true)
-    @Override
-    public AuthenticatedUser validateSelfOrAdmin(UUID id) {
-        Client loggedClient = getLoggedUser().client();
-        AuthenticatedUser authenticatedUser = new AuthenticatedUser(loggedClient);
+    AuthenticatedUser authenticatedUser = (AuthenticatedUser) authentication.getPrincipal();
 
-        if (loggedClient.isAdmin() || loggedClient.getId().equals(id)) {
-            return authenticatedUser;
-        }
+    Client client = clientRepository.findActiveById(authenticatedUser.client().getId())
+            .orElseThrow(() -> new UnauthorizedException(AuthValidationMessageConstants.ERROR_NO_AUTHENTICATION));
 
-        throw new ForbiddenException(AuthValidationMessageConstants.ERROR_NO_PERMISSION);
+    return new AuthenticatedUser(client);
+  }
+
+  @Transactional(readOnly = true)
+  @Override
+  public AuthenticatedUser validateSelfOrAdmin(UUID id) {
+    Client loggedClient = getLoggedUser().client();
+    AuthenticatedUser authenticatedUser = new AuthenticatedUser(loggedClient);
+
+    if (loggedClient.isAdmin() || loggedClient.getId().equals(id)) {
+      return authenticatedUser;
     }
 
-    @Transactional(readOnly = true)
-    @Override
-    public AuthenticatedUser validateAdmin() {
-        Client loggedClient = getLoggedUser().client();
-        AuthenticatedUser authenticatedUser = new AuthenticatedUser(loggedClient);
+    throw new ForbiddenException(AuthValidationMessageConstants.ERROR_NO_PERMISSION);
+  }
 
-        if (loggedClient.isAdmin()) {
-            return authenticatedUser;
-        }
+  @Transactional(readOnly = true)
+  @Override
+  public AuthenticatedUser validateAdmin() {
+    Client loggedClient = getLoggedUser().client();
+    AuthenticatedUser authenticatedUser = new AuthenticatedUser(loggedClient);
 
-        throw new ForbiddenException(AuthValidationMessageConstants.ERROR_NO_PERMISSION);
-
+    if (loggedClient.isAdmin()) {
+      return authenticatedUser;
     }
 
-    @Override
-    @Transactional(readOnly = true)
-    public void verifyTermsAccepted(UserDetails user) {
-        AuthenticatedUser authenticatedUser = (AuthenticatedUser) user;
+    throw new ForbiddenException(AuthValidationMessageConstants.ERROR_NO_PERMISSION);
 
-        if (!authenticatedUser.isTermsAccepted()) {
-            throw new ForbiddenException(AuthValidationMessageConstants.ERROR_TERMS_NOT_ACCEPTED);
-        }
+  }
+
+  @Override
+  @Transactional(readOnly = true)
+  public AuthenticatedUser validateActiveSubscription() {
+    Client loggedClient = getLoggedUser().client();
+    AuthenticatedUser authenticatedUser = new AuthenticatedUser(loggedClient);
+
+    if (loggedClient.hasActiveSubscription()) {
+      return authenticatedUser;
     }
+    
+    throw new ForbiddenException(AuthValidationMessageConstants.ERROR_NO_ACTIVE_SUBSCRIPTION);
+  }
+
+  @Override
+  @Transactional(readOnly = true)
+  public void verifyTermsAccepted(UserDetails user) {
+    AuthenticatedUser authenticatedUser = (AuthenticatedUser) user;
+
+    if (!authenticatedUser.isTermsAccepted()) {
+      throw new ForbiddenException(AuthValidationMessageConstants.ERROR_TERMS_NOT_ACCEPTED);
+    }
+  }
 }

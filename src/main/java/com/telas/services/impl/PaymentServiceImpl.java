@@ -6,7 +6,6 @@ import com.stripe.model.*;
 import com.stripe.model.checkout.Session;
 import com.stripe.param.CustomerCreateParams;
 import com.stripe.param.CustomerSearchParams;
-import com.stripe.param.CustomerUpdateParams;
 import com.stripe.param.PriceListParams;
 import com.stripe.param.checkout.SessionCreateParams;
 import com.telas.entities.*;
@@ -24,7 +23,6 @@ import com.telas.repositories.SubscriptionFlowRepository;
 import com.telas.repositories.SubscriptionRepository;
 import com.telas.services.PaymentService;
 import com.telas.shared.constants.valitation.PaymentValidationMessages;
-import com.telas.shared.constants.valitation.SubscriptionValidationMessages;
 import com.telas.shared.utils.MoneyUtils;
 import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
@@ -36,12 +34,9 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.math.BigDecimal;
-import java.time.Instant;
-import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
-import java.util.stream.Stream;
 
 @Service
 @RequiredArgsConstructor
@@ -103,6 +98,7 @@ public class PaymentServiceImpl implements PaymentService {
 
     if (PaymentStatus.COMPLETED.equals(paymentStatus)) {
       subscription.setAmount(amountReceived);
+      subscription.initialize();
       handleSuccessfulPayment(payment, false);
     } else if (PaymentStatus.FAILED.equals(paymentStatus)) {
       handleFailedPayment(payment);
@@ -116,7 +112,7 @@ public class PaymentServiceImpl implements PaymentService {
   public void updatePaymentStatus(Invoice invoice) {
     boolean isRecurringPayment = invoice.getBillingReason() != null && invoice.getBillingReason().equals("subscription_cycle");
     UUID subscriptionId = UUID.fromString(invoice.getParent().getSubscriptionDetails().getMetadata().get("subscriptionId"));
-    Subscription subscription = findSubscriptionById(subscriptionId);
+    Subscription subscription = subscriptionHelper.findEntityById(subscriptionId);
 
     Payment payment;
     if (!isRecurringPayment) {
@@ -133,7 +129,7 @@ public class PaymentServiceImpl implements PaymentService {
 
     PaymentStatus paymentStatus = PaymentStatus.fromStripeStatus(null, invoice.getStatus(), payment);
     payment.setStatus(paymentStatus);
-    updateSubscriptionPeriod(invoice, subscription);
+    subscriptionHelper.updateSubscriptionPeriod(invoice, subscription);
 
     SubscriptionStatus subscriptionStatus = SubscriptionStatus.fromStripeStatus(null, invoice.getStatus(), subscription);
     subscription.setStatus(subscriptionStatus);
@@ -157,31 +153,6 @@ public class PaymentServiceImpl implements PaymentService {
     }
 
     finalizePayment(payment);
-  }
-
-  @Override
-  @Transactional
-  public void handleSubscriptionDeleted(com.stripe.model.Subscription stripeSubscription) {
-    UUID subscriptionId = UUID.fromString(stripeSubscription.getMetadata().get("subscriptionId"));
-    Subscription subscription = findSubscriptionById(subscriptionId);
-
-    if (SubscriptionStatus.CANCELLED.equals(subscription.getStatus()) || SubscriptionStatus.EXPIRED.equals(subscription.getStatus())) {
-      log.info("Subscription with id: {} is already cancelled or expired.", subscriptionId);
-      return;
-    }
-
-    log.info("Handling subscription deletion for id: {}", subscriptionId);
-    subscription.setStatus(SubscriptionStatus.CANCELLED);
-    subscription.setEndsAt(Instant.now());
-    subscriptionRepository.save(subscription);
-
-    // Remove monitors and ads associated with the subscription
-    subscriptionHelper.removeMonitorAdsFromSubscription(subscription);
-  }
-
-  private Subscription findSubscriptionById(UUID subscriptionId) {
-    return subscriptionRepository.findById(subscriptionId)
-            .orElseThrow(() -> new ResourceNotFoundException(SubscriptionValidationMessages.SUBSCRIPTION_NOT_FOUND));
   }
 
   private Payment findEntityById(UUID paymentId) {
@@ -240,29 +211,6 @@ public class PaymentServiceImpl implements PaymentService {
     return session.getUrl();
   }
 
-  private void updateSubscriptionPeriod(Invoice invoice, Subscription subscription) {
-    List<Long> periods = invoice.getLines().getData().stream()
-            .flatMap(line -> Stream.of(line.getPeriod().getStart(), line.getPeriod().getEnd()))
-            .toList();
-
-    if (periods.isEmpty()) {
-      return;
-    }
-
-    Long startPeriod = Collections.min(periods);
-    Long endPeriod = Collections.max(periods);
-
-    if (subscription.getStartedAt() == null) {
-      subscription.setStartedAt(Instant.ofEpochSecond(startPeriod));
-    }
-
-    Instant endAt = startPeriod.equals(endPeriod)
-            ? Recurrence.MONTHLY.calculateEndsAt(subscription.getStartedAt())
-            : Instant.ofEpochSecond(endPeriod);
-
-    subscription.setEndsAt(endAt);
-  }
-
   private void handleSuccessfulPayment(Payment payment, boolean isRecurringPayment) {
     log.info("Payment succeeded id: {}", payment.getId());
     Subscription subscription = payment.getSubscription();
@@ -272,7 +220,7 @@ public class PaymentServiceImpl implements PaymentService {
     }
 
     Cart cart = payment.getSubscription().getClient().getCart();
-    subscriptionHelper.inactivateCart(cart);
+    subscriptionHelper.deleteCart(cart);
     subscriptionFlowRepository.delete(subscription.getClient().getSubscriptionFlow());
   }
 
@@ -372,19 +320,16 @@ public class PaymentServiceImpl implements PaymentService {
     }
   }
 
-  private void setPaymentMethod(PaymentIntent paymentIntent, Payment payment) throws StripeException {
-    PaymentMethod paymentMethod = PaymentMethod.retrieve(paymentIntent.getPaymentMethod());
-    payment.setPaymentMethod(paymentMethod == null ? "unknown" : paymentMethod.getType().toLowerCase());
+  private void setPaymentMethod(PaymentIntent paymentIntent, Payment payment) {
+    PaymentMethod paymentMethod = null;
 
-    if (paymentMethod != null && "succeeded".equalsIgnoreCase(paymentIntent.getStatus())) {
-      Customer customer = Customer.retrieve(paymentIntent.getCustomer());
-      if (customer.getInvoiceSettings().getDefaultPaymentMethod() == null) {
-        customer.update(CustomerUpdateParams.builder()
-                .setInvoiceSettings(CustomerUpdateParams.InvoiceSettings.builder()
-                        .setDefaultPaymentMethod(paymentMethod.getId())
-                        .build())
-                .build());
-      }
+    try {
+      paymentMethod = PaymentMethod.retrieve(paymentIntent.getPaymentMethod());
+      payment.setPaymentMethod(paymentMethod == null ? "unknown" : paymentMethod.getType().toLowerCase());
+    } catch (StripeException e) {
+      log.error("Error retrieving payment method with id: {}, error message: {}", paymentIntent.getPaymentMethod(), e.getMessage());
+      throw new BusinessRuleException("Erro ao recuperar método de pagamento: " + e.getMessage());
     }
+
   }
 }

@@ -5,14 +5,12 @@ import com.telas.dtos.request.ClientAdRequestToAdminDto;
 import com.telas.dtos.request.ClientRequestDto;
 import com.telas.entities.*;
 import com.telas.infra.exceptions.BusinessRuleException;
+import com.telas.infra.exceptions.ForbiddenException;
 import com.telas.infra.exceptions.ResourceNotFoundException;
 import com.telas.repositories.*;
 import com.telas.services.AddressService;
 import com.telas.services.GeolocationService;
-import com.telas.shared.constants.valitation.AdValidationMessages;
-import com.telas.shared.constants.valitation.AttachmentValidationMessages;
-import com.telas.shared.constants.valitation.ClientValidationMessages;
-import com.telas.shared.constants.valitation.OwnerValidationMessages;
+import com.telas.shared.constants.valitation.*;
 import com.telas.shared.utils.ValidateDataUtils;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.BeanUtils;
@@ -39,14 +37,6 @@ public class ClientRequestHelper {
     request.validate();
     verifyUniqueIdentificationNumber(request, client);
     verifyUniqueEmail(request, client);
-  }
-
-
-  @Transactional(readOnly = true)
-  public void verifyUniqueEmail(String email) {
-    if (contactRepository.existsByEmail(email)) {
-      throw new BusinessRuleException(ClientValidationMessages.EMAIL_UNIQUE);
-    }
   }
 
   @Transactional
@@ -158,5 +148,12 @@ public class ClientRequestHelper {
       }
     }
     return address;
+  }
+
+  @Transactional(readOnly = true)
+  public void validateActiveSubscription(Client client) {
+    if (!client.hasActiveSubscription()) {
+      throw new ForbiddenException(AuthValidationMessageConstants.ERROR_NO_ACTIVE_SUBSCRIPTION);
+    }
   }
 }

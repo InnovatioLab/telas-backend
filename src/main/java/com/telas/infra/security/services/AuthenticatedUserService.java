@@ -6,11 +6,13 @@ import org.springframework.security.core.userdetails.UserDetails;
 import java.util.UUID;
 
 public interface AuthenticatedUserService {
-    AuthenticatedUser getLoggedUser();
+  AuthenticatedUser getLoggedUser();
 
-    AuthenticatedUser validateSelfOrAdmin(UUID id);
+  AuthenticatedUser validateSelfOrAdmin(UUID id);
 
-    AuthenticatedUser validateAdmin();
+  AuthenticatedUser validateAdmin();
 
-    void verifyTermsAccepted(UserDetails user);
+  AuthenticatedUser validateActiveSubscription();
+
+  void verifyTermsAccepted(UserDetails user);
 }

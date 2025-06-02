@@ -36,7 +36,7 @@ public class MonitorRequestDto implements Serializable {
 
   @NotBlank(message = MonitorValidationMessages.PRODUCT_ID_REQUIRED)
   @JsonDeserialize(using = TrimStringDeserializer.class)
-  private String productId;
+  private String productId = "prod_SP0KFP0uCSQrxt";
 
   @Digits(integer = 3, fraction = 2, message = MonitorValidationMessages.SIZE_INVALID)
   private BigDecimal size;

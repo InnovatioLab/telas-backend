@@ -5,6 +5,7 @@ import com.stripe.exception.StripeException;
 import com.stripe.model.*;
 import com.stripe.net.Webhook;
 import com.telas.services.PaymentService;
+import com.telas.services.SubscriptionService;
 import com.telas.shared.utils.ValidateDataUtils;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
@@ -17,6 +18,7 @@ import org.springframework.web.bind.annotation.*;
 @RequiredArgsConstructor
 public class PaymentGatewayWebhookController {
   private final PaymentService paymentService;
+  private final SubscriptionService subscriptionService;
 
   @Value("${STRIPE_WEBHOOK_SECRET}")
   private String webhookSecret;
@@ -86,7 +88,7 @@ public class PaymentGatewayWebhookController {
       StripeObject stripeObject = dataObjectDeserializer.getObject().get();
 
       if (stripeObject instanceof Subscription subscription) {
-        paymentService.handleSubscriptionDeleted(subscription);
+        subscriptionService.cancelSubscription(subscription);
       }
     }
   }

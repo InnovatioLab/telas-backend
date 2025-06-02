@@ -1,10 +1,10 @@
 package com.telas.dtos.response;
 
-import com.telas.entities.Monitor;
 import lombok.Getter;
 
 import java.io.Serial;
 import java.io.Serializable;
+import java.time.Instant;
 
 @Getter
 public final class MonitorMinResponseDto implements Serializable {
@@ -18,18 +18,10 @@ public final class MonitorMinResponseDto implements Serializable {
   private final double distanceInKm;
   private final double latitude;
   private final double longitude;
+  private final boolean hasAvailableSlots;
+  private final Instant estimatedSlotReleaseDate;
 
-  public MonitorMinResponseDto(Monitor monitor, double distance, double latitude, double longitude) {
-    id = monitor.getId().toString();
-    active = monitor.isActive();
-    type = monitor.getType().name();
-    size = monitor.getSize().doubleValue();
-    distanceInKm = distance;
-    this.latitude = latitude;
-    this.longitude = longitude;
-  }
-
-  public MonitorMinResponseDto(String id, boolean active, String type, double size, double distance, double latitude, double longitude) {
+  public MonitorMinResponseDto(String id, boolean active, String type, double size, double distance, double latitude, double longitude, boolean hasAvailableSlots, Instant estimatedSlotReleaseDate) {
     this.id = id;
     this.active = active;
     this.type = type;
@@ -37,5 +29,7 @@ public final class MonitorMinResponseDto implements Serializable {
     distanceInKm = distance;
     this.latitude = latitude;
     this.longitude = longitude;
+    this.hasAvailableSlots = hasAvailableSlots;
+    this.estimatedSlotReleaseDate = hasAvailableSlots ? null : estimatedSlotReleaseDate;
   }
 }
