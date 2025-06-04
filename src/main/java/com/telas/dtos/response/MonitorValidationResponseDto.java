@@ -17,5 +17,5 @@ public class MonitorValidationResponseDto implements Serializable {
 
   private UUID monitorId;
   private boolean isValidMonitor;
-  private boolean hasLinkedAd;
+  private boolean hasActiveSubscription;
 }

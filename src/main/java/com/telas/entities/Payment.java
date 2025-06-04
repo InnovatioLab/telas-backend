@@ -1,6 +1,10 @@
 package com.telas.entities;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.SerializationFeature;
+import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import com.telas.enums.PaymentStatus;
 import com.telas.shared.audit.BaseAudit;
 import jakarta.persistence.*;
@@ -32,14 +36,14 @@ public class Payment extends BaseAudit implements Serializable {
   @Column(name = "amount", precision = 10, scale = 2, nullable = false)
   private BigDecimal amount;
 
-  @Column(name = "payment_method", nullable = false)
-  private String paymentMethod = "card";
+  @Column(name = "payment_method")
+  private String paymentMethod;
 
   @Column(name = "currency")
   private String currency = "usd";
 
-  @Column(name = "stripe_payment_id")
-  private String stripePaymentId;
+  @Column(name = "stripe_id")
+  private String stripeId;
 
   @Column(name = "status", columnDefinition = "payment_status", nullable = false)
   @Enumerated(EnumType.STRING)
@@ -52,6 +56,15 @@ public class Payment extends BaseAudit implements Serializable {
 
   public Payment(Subscription subscription) {
     this.subscription = subscription;
+    setUsernameCreate(subscription.getClient().getBusinessName());
     amount = subscription.getAmount();
+  }
+
+  public String toStringMapper() throws JsonProcessingException {
+    ObjectMapper objectMapper = new ObjectMapper();
+    objectMapper.registerModule(new JavaTimeModule())
+            .configure(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS, false);
+
+    return objectMapper.writeValueAsString(this);
   }
 }

@@ -14,7 +14,6 @@ import com.telas.infra.exceptions.BusinessRuleException;
 import com.telas.infra.exceptions.ResourceNotFoundException;
 import com.telas.infra.security.model.AuthenticatedUser;
 import com.telas.infra.security.services.AuthenticatedUserService;
-import com.telas.repositories.MonitorAdRepository;
 import com.telas.repositories.MonitorRepository;
 import com.telas.services.BucketService;
 import com.telas.services.MonitorService;
@@ -38,7 +37,7 @@ import java.util.stream.Collectors;
 public class MonitorServiceImpl implements MonitorService {
   private final AuthenticatedUserService authenticatedUserService;
   private final MonitorRepository repository;
-  private final MonitorAdRepository monitorAdRepository;
+  //  private final MonitorAdRepository monitorAdRepository;
   private final BucketService bucketService;
   private final MonitorRequestHelper helper;
 
@@ -47,21 +46,19 @@ public class MonitorServiceImpl implements MonitorService {
   public void save(MonitorRequestDto request, UUID monitorId) throws JsonProcessingException {
     AuthenticatedUser authenticatedUser = authenticatedUserService.validateAdmin();
     request.validate();
-
     Address address = helper.getOrCreateAddress(request);
 
-    List<Ad> ads = !ValidateDataUtils.isNullOrEmpty(request.getAds()) ? helper.getAds(request) : List.of();
+    Monitor monitor;
 
-    Set<Client> clients = getClients(ads);
-
-    Monitor monitor = (monitorId != null) ? updateExistingMonitor(request, monitorId, authenticatedUser, address, clients, ads)
-            : createNewMonitor(request, authenticatedUser, address, clients, ads);
+    if (monitorId != null) {
+      List<Ad> ads = !ValidateDataUtils.isNullOrEmpty(request.getAds()) ? helper.getAds(request, monitorId) : List.of();
+      Set<Client> clients = getClients(ads);
+      monitor = updateExistingMonitor(request, monitorId, authenticatedUser, address, clients, ads);
+    } else {
+      monitor = createNewMonitor(request, authenticatedUser, address);
+    }
 
     repository.save(monitor);
-
-    if (monitorId == null) {
-      monitorAdRepository.saveAll(monitor.getMonitorAds());
-    }
   }
 
   @Override
@@ -132,8 +129,8 @@ public class MonitorServiceImpl implements MonitorService {
 
   @Override
   @Transactional
-  public List<MonitorValidationResponseDto> findInvalidMonitorsOrLinkedAds(List<UUID> monitorIds, UUID clientId) {
-    return repository.findInvalidMonitorsOrLinkedAds(monitorIds, clientId);
+  public List<MonitorValidationResponseDto> findInvalidMonitorsDuringCheckout(List<UUID> monitorIds, UUID clientId) {
+    return repository.findInvalidMonitors(monitorIds, clientId);
   }
 
   @Override
@@ -156,7 +153,7 @@ public class MonitorServiceImpl implements MonitorService {
         monitor.getClients().remove(client);
 
         // Remove os anúncios do repositório
-        monitorAdRepository.deleteAll(adsToRemove);
+//        monitorAdRepository.deleteAll(adsToRemove);
         repository.save(monitor);
       });
     }
@@ -177,9 +174,9 @@ public class MonitorServiceImpl implements MonitorService {
     return zipCodeList;
   }
 
-  private Monitor createNewMonitor(MonitorRequestDto request, AuthenticatedUser authenticatedUser, Address address, Set<Client> clients, List<Ad> ads) {
+  private Monitor createNewMonitor(MonitorRequestDto request, AuthenticatedUser authenticatedUser, Address address) {
     helper.setAddressCoordinates(address);
-    Monitor monitor = new Monitor(request, address, clients, ads);
+    Monitor monitor = new Monitor(request, address);
     monitor.setUsernameCreate(authenticatedUser.client().getBusinessName());
     return monitor;
   }
@@ -211,14 +208,14 @@ public class MonitorServiceImpl implements MonitorService {
     monitor.setSize(request.getSize());
 
     if (!ValidateDataUtils.isNullOrEmpty(ads)) {
-      monitorAdRepository.deleteAll(monitor.getMonitorAds());
+//      monitorAdRepository.deleteAll(monitor.getMonitorAds());
       monitor.getMonitorAds().clear();
 
       ads.forEach(attachment -> monitor.getMonitorAds().add(
               new MonitorAd(request.getAds().get(ads.indexOf(attachment)), monitor, attachment)
       ));
 
-      monitorAdRepository.saveAll(monitor.getMonitorAds());
+//      monitorAdRepository.saveAll(monitor.getMonitorAds());
     }
 
     monitor.getClients().clear();

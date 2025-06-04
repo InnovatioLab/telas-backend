@@ -175,7 +175,16 @@ public class ClientControllerImpl implements ClientController {
           @PathVariable(name = "id") UUID adId) throws JsonProcessingException {
 
     service.validateAd(adId, validation, request);
-    return ResponseEntity.status(HttpStatus.OK).body(ResponseDto.fromData(null, HttpStatus.OK, MessageCommonsConstants.ATTACHMENT_VALIDATION_MESSAGE));
+    return ResponseEntity.status(HttpStatus.OK).body(ResponseDto.fromData(null, HttpStatus.OK, MessageCommonsConstants.AD_VALIDATION_MESSAGE));
+  }
+
+  @Override
+  @PostMapping("/monitors")
+  @SecurityRequirement(name = "jwt")
+  public ResponseEntity<?> addAdToMonitor(@RequestParam(name = "monitorIds") List<UUID> monitorIds) {
+    service.addAdToMonitor(monitorIds);
+    return ResponseEntity.status(HttpStatus.CREATED)
+            .body(ResponseDto.fromData(null, HttpStatus.CREATED, MessageCommonsConstants.AD_ATTACHED_SUCCESS_MESSAGE));
   }
 
   @Override

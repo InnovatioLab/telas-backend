@@ -3,7 +3,8 @@ package com.telas.shared.constants;
 import java.util.List;
 
 public final class SharedConstants {
-  public static final String PHONE_PREFIX = "";
+  public static final String DAILY_CRON = "0 0 3 * * *";
+  public static final String ZONE_ID = "America/New_York";
   public static final String PROJECT_NAME = "Marketing-Project";
   public static final String DESTINATARIO = "Recipient";
   public static final String PERMISSIONS = "permissions";
@@ -31,6 +32,7 @@ public final class SharedConstants {
 
   public static final int ATTACHMENT_LINK_EXPIRY_TIME = 7 * 24 * 60 * 60;
   public static final int MAX_ATTACHMENT_SIZE = 10 * 1024 * 1024;
+  public static final int MAX_ATTACHMENT_PER_CLIENT = 10;
 
   public static final int MAX_MONITOR_ADS = 12;
   public static final int MAX_ADS_VALIDATION = 3;
@@ -42,4 +44,6 @@ public final class SharedConstants {
   public static final int MAX_QUANTITY_MONITOR_BLOCK = 3;
 
   public static final int TAMANHO_NOME_ANEXO = 255;
+  public static final int MAX_ADS_PER_CLIENT = 1;
+
 }

@@ -20,10 +20,6 @@ public interface MonitorRepository extends JpaRepository<Monitor, UUID> {
   @Query("SELECT m FROM Monitor m LEFT JOIN FETCH m.monitorAds WHERE m.id = :id")
   Optional<Monitor> findById(@NotNull UUID id);
 
-  @Query("SELECT m FROM Monitor m LEFT JOIN m.monitorAds ma WHERE ma.id.ad.id = :adId")
-  List<Monitor> findByAdId(UUID adId);
-
-
   @Query(value = """
               SELECT m.id, 
                      m.fl_active, 
@@ -72,13 +68,16 @@ public interface MonitorRepository extends JpaRepository<Monitor, UUID> {
                   (m.active = true AND m.maxBlocks >
                       (SELECT COALESCE(SUM(ma.blockQuantity), 0) FROM MonitorAd ma WHERE ma.id.monitor.id = m.id)),
                   CASE WHEN EXISTS (
-                      SELECT 1 FROM MonitorAd ma
-                      JOIN ma.id.ad a
-                      WHERE ma.id.monitor.id = m.id AND a.client.id = :clientId
+                      SELECT 1 FROM Subscription s
+                      JOIN s.monitors sm
+                      WHERE sm.id = m.id
+                        AND s.client.id = :clientId
+                        AND s.status = 'ACTIVE'
+                        AND (s.endsAt IS NULL OR s.endsAt > CURRENT_TIMESTAMP)
                   ) THEN true ELSE false END
               )
               FROM Monitor m
               WHERE m.id IN :monitorIds
           """)
-  List<MonitorValidationResponseDto> findInvalidMonitorsOrLinkedAds(@Param("monitorIds") List<UUID> monitorIds, @Param("clientId") UUID clientId);
+  List<MonitorValidationResponseDto> findInvalidMonitors(@Param("monitorIds") List<UUID> monitorIds, @Param("clientId") UUID clientId);
 }

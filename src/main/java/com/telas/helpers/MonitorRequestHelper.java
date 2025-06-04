@@ -12,9 +12,7 @@ import com.telas.repositories.AdRepository;
 import com.telas.services.AddressService;
 import com.telas.services.GeolocationService;
 import com.telas.shared.constants.SharedConstants;
-import com.telas.shared.constants.valitation.AdValidationMessages;
 import com.telas.shared.constants.valitation.MonitorValidationMessages;
-import com.telas.shared.utils.ValidateDataUtils;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
@@ -31,21 +29,25 @@ public class MonitorRequestHelper {
   private final AddressService addressService;
 
   @Transactional
-  public List<Ad> getAds(MonitorRequestDto request) {
+  public List<Ad> getAds(MonitorRequestDto request, UUID monitorId) {
     List<UUID> adsIds = request.getAds().stream()
             .map(MonitorAdRequestDto::getId)
             .toList();
 
-    List<Ad> ads = adRepository.findAllById(
-            ValidateDataUtils.isNullOrEmpty(adsIds)
-                    ? List.of()
-                    : adsIds
-    ).orElseThrow(() -> new ResourceNotFoundException(AdValidationMessages.AD_NOT_FOUND));
-
-    ads.removeIf(attachment -> !AdValidationType.APPROVED.equals(attachment.getValidation()));
-
-    if (ads.size() > SharedConstants.MAX_MONITOR_ADS) {
+    if (adsIds.size() > SharedConstants.MAX_MONITOR_ADS) {
       throw new BusinessRuleException(MonitorValidationMessages.MAX_MONITOR_ADS);
+    }
+
+    List<Ad> ads = adRepository.findAllValidAdsForMonitor(adsIds, AdValidationType.APPROVED, monitorId);
+
+    if (ads.isEmpty()) {
+      return List.of();
+    }
+
+    boolean hasInvalidAds = ads.stream().anyMatch(ad -> !adsIds.contains(ad.getId()));
+
+    if (hasInvalidAds) {
+      throw new ResourceNotFoundException(MonitorValidationMessages.AD_NOT_ABLE_TO_ASSIGN_TO_MONITOR);
     }
 
     return ads;

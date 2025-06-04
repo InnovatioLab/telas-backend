@@ -11,10 +11,8 @@ public interface CartService {
 
   void inactivateCart(Cart cart);
 
-  Cart findByClientIdWithItens(UUID id);
+  Cart findActiveByClientIdWithItens(UUID id);
 
   CartResponseDto findById(UUID id);
-
-  void deleteCart(Cart cart);
 }
 

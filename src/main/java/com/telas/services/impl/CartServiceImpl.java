@@ -46,16 +46,19 @@ public class CartServiceImpl implements CartService {
 
       cart = new Cart(client);
       cart.setRecurrence(request.getRecurrence());
-      repository.save(cart);
-
-      if (client.getSubscriptionFlow() == null) {
-        subscriptionFlowRepository.save(new SubscriptionFlow(client));
-      }
+      cart = repository.save(cart);
+    } else {
+      cart.setRecurrence(request.getRecurrence());
+      cart = repository.save(cart);
     }
 
-    cart.setRecurrence(request.getRecurrence());
+    if (client.getSubscriptionFlow() == null) {
+      subscriptionFlowRepository.save(new SubscriptionFlow(client));
+    }
+
+
     List<CartItemResponseDto> itemsResponse = saveCartItems(request, cart);
-    repository.save(cart);
+//    repository.save(cart);
     return getCartResponse(cart, itemsResponse);
   }
 
@@ -70,8 +73,8 @@ public class CartServiceImpl implements CartService {
 
   @Override
   @Transactional
-  public Cart findByClientIdWithItens(UUID id) {
-    return repository.findByClientIdWithItens(id).orElseThrow(() -> new ResourceNotFoundException(CartValidationMessages.CART_NOT_FOUND));
+  public Cart findActiveByClientIdWithItens(UUID id) {
+    return repository.findActiveByClientIdWithItens(id).orElseThrow(() -> new ResourceNotFoundException(CartValidationMessages.CART_NOT_FOUND));
   }
 
   @Override
@@ -79,21 +82,6 @@ public class CartServiceImpl implements CartService {
   public CartResponseDto findById(UUID id) {
     Cart cart = findEntityById(id);
     return getCartResponse(cart, null);
-  }
-
-  @Override
-  @Transactional
-  public void deleteCart(Cart cart) {
-    if (cart == null) {
-      throw new ResourceNotFoundException(CartValidationMessages.CART_NOT_FOUND);
-    }
-
-    if (cart.isActive()) {
-      throw new ResourceNotFoundException(CartValidationMessages.CART_ACTIVE);
-    }
-
-    repository.delete(cart);
-
   }
 
   private CartResponseDto getCartResponse(Cart cart, List<CartItemResponseDto> itemsResponse) {

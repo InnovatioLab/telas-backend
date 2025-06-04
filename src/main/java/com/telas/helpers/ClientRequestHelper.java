@@ -1,15 +1,19 @@
 package com.telas.helpers;
 
 import com.telas.dtos.request.AddressRequestDto;
+import com.telas.dtos.request.AttachmentRequestDto;
 import com.telas.dtos.request.ClientAdRequestToAdminDto;
 import com.telas.dtos.request.ClientRequestDto;
 import com.telas.entities.*;
+import com.telas.enums.AdValidationType;
 import com.telas.infra.exceptions.BusinessRuleException;
 import com.telas.infra.exceptions.ForbiddenException;
 import com.telas.infra.exceptions.ResourceNotFoundException;
 import com.telas.repositories.*;
 import com.telas.services.AddressService;
 import com.telas.services.GeolocationService;
+import com.telas.services.MonitorService;
+import com.telas.shared.constants.SharedConstants;
 import com.telas.shared.constants.valitation.*;
 import com.telas.shared.utils.ValidateDataUtils;
 import lombok.RequiredArgsConstructor;
@@ -25,6 +29,8 @@ import java.util.UUID;
 public class ClientRequestHelper {
   private final OwnerRepository ownerRepository;
   private final ClientRepository clientRepository;
+  private final MonitorRepository monitorRepository;
+  private final MonitorService monitorService;
   private final ContactRepository contactRepository;
   private final AttachmentRepository attachmentRepository;
   private final AdRepository adRepository;
@@ -154,6 +160,61 @@ public class ClientRequestHelper {
   public void validateActiveSubscription(Client client) {
     if (!client.hasActiveSubscription()) {
       throw new ForbiddenException(AuthValidationMessageConstants.ERROR_NO_ACTIVE_SUBSCRIPTION);
+    }
+  }
+
+  @Transactional
+  public void addAdToMonitor(Ad ad, List<UUID> monitorIds, Client client) {
+    validateAd(ad);
+
+    List<Monitor> monitors = monitorRepository.findAllById(monitorIds);
+
+    if (monitors.size() != monitorIds.size()) {
+      throw new BusinessRuleException(MonitorValidationMessages.MONITOR_NOT_FOUND);
+    }
+
+    monitors.forEach(monitor -> {
+      validateMonitorAccess(client, monitor);
+
+      MonitorAd monitorAd = new MonitorAd(monitor, ad);
+      monitor.getMonitorAds().add(monitorAd);
+      monitor.getClients().add(ad.getClient());
+    });
+
+    monitorRepository.saveAll(monitors);
+  }
+
+  private void validateAd(Ad ad) {
+    if (ad == null) {
+      throw new BusinessRuleException(AdValidationMessages.AD_NOT_FOUND);
+    }
+
+    if (!AdValidationType.APPROVED.equals(ad.getValidation())) {
+      throw new BusinessRuleException(ClientValidationMessages.AD_NOT_APPROVED);
+    }
+  }
+
+  private void validateMonitorAccess(Client client, Monitor monitor) {
+    if (!client.getMonitorsWithActiveSubscriptions().contains(monitor)) {
+      throw new ForbiddenException(ClientValidationMessages.MONITOR_WITHOUT_ACTIVE_SUBSCRIPTION);
+    }
+
+    if (monitor.clientAlreadyHasAd(client)) {
+      throw new BusinessRuleException(ClientValidationMessages.CLIENT_ALREADY_HAS_AD_IN_MONITOR);
+    }
+
+    if (!monitor.hasAvailableBlocks(1)) {
+      throw new BusinessRuleException(ClientValidationMessages.MONITOR_MAX_ADS_REACHED);
+    }
+  }
+
+  @Transactional(readOnly = true)
+  public void validateAttachmentsCount(Client client, List<AttachmentRequestDto> request) {
+    int attachmentToAdd = request.stream().filter(r -> r.getId() == null).toList().size();
+    int attachmentCount = client.getAttachments().size() + attachmentToAdd;
+
+    if (attachmentCount >= SharedConstants.MAX_ATTACHMENT_PER_CLIENT) {
+      throw new BusinessRuleException(AttachmentValidationMessages.MAX_ATTACHMENTS_REACHED);
     }
   }
 }

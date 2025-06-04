@@ -1,7 +1,6 @@
 package com.telas.shared.constants.valitation;
 
 public final class ClientValidationMessages {
-  public static final String INVALID_EIN = "Invalid identification number format. The correct format is XX-XXXXXXX, where X is a digit.";
   public static final String BUSINESS_NAME_REQUIRED = "Business name is required.";
   public static final String BUSINESS_NAME_SIZE = "Business name must be lass than 255 characters.";
   public static final String INDUSTRY_REQUIRED = "Industry is required.";
@@ -23,4 +22,10 @@ public final class ClientValidationMessages {
   public static final String CURRENT_EQUALS_NEW_PASSWORD = "Current password cannot be the same as the new password.";
   public static final String SOCIAL_MEDIA_REQUIRED = "At least one social media URL must be provided.";
   public static final String AD_REQUEST_NOT_ACTIVE = "Ad request is not active.";
+  public static final String MONITOR_MAX_ADS_REACHED = "Monitor has reached the maximum number of ads allowed.";
+  public static final String AD_NOT_APPROVED = "Ad is not approved.";
+  public static final String MONITOR_WITHOUT_ACTIVE_SUBSCRIPTION = "User doesn't have an active subscription for the selected monitor.";
+  public static final String CLIENT_ALREADY_HAS_AD_IN_MONITOR = "Client already has an ad in the selected monitor.";
+  public static final String CLIENT_CUSTOMER_NOT_FOUND = "Client not found with the provided customer id: ";
+  public static final String MAX_ADS_REACHED = "Client has reached the maximum number of ads allowed.";
 }

@@ -142,12 +142,21 @@ public interface ClientController {
 
   @Operation(summary = "Endpoint contract to validate an ad", responses = {
           @ApiResponse(responseCode = "200", description = "Ad validated successfully."),
-          @ApiResponse(responseCode = "400", description = "Request with invalid data. "),
+          @ApiResponse(responseCode = "400", description = "Request with invalid data."),
           @ApiResponse(responseCode = "401", description = "Unauthorized."),
           @ApiResponse(responseCode = "403", description = "Forbidden."),
           @ApiResponse(responseCode = "404", description = "Some data not found."),
   })
   ResponseEntity<?> validateAd(AdValidationType validation, RefusedAdRequestDto request, UUID attachmentId) throws JsonProcessingException;
+
+  @Operation(summary = "Endpoint contract to add a client approved ad to a list of monitors with an active subscription", responses = {
+          @ApiResponse(responseCode = "201", description = "Ad added to monitors successfully."),
+          @ApiResponse(responseCode = "400", description = "Request with invalid data."),
+          @ApiResponse(responseCode = "401", description = "Unauthorized."),
+          @ApiResponse(responseCode = "403", description = "Forbidden."),
+          @ApiResponse(responseCode = "404", description = "Some data not found."),
+  })
+  ResponseEntity<?> addAdToMonitor(List<UUID> monitorIds);
 
   @Operation(summary = "Endpoint contract to increment logged client subscription flow", responses = {
           @ApiResponse(responseCode = "200", description = "Subscription flow incremented successfully."),

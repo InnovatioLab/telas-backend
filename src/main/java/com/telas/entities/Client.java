@@ -100,10 +100,6 @@ public class Client extends BaseAudit implements Serializable {
   private SocialMedia socialMedia;
 
   @JsonIgnore
-  @OneToOne(mappedBy = "client")
-  private Cart cart;
-
-  @JsonIgnore
   @OneToMany(mappedBy = "client")
   private Set<Subscription> subscriptions = new HashSet<>();
 
@@ -150,6 +146,28 @@ public class Client extends BaseAudit implements Serializable {
     Optional.ofNullable(socialMedia).ifPresent(socialMedia -> socialMedia.update(request.getSocialMedia()));
     setUsernameUpdateForRelatedEntities(updatedBy);
   }
+
+  public List<Subscription> getActiveSubscriptions() {
+    Instant now = Instant.now();
+    return subscriptions.stream()
+            .filter(subscription -> SubscriptionStatus.ACTIVE.equals(subscription.getStatus())
+                                    && (subscription.getEndsAt() == null || subscription.getEndsAt().isAfter(now)))
+            .toList();
+  }
+
+  public List<Monitor> getMonitorsWithActiveSubscriptions() {
+    return getActiveSubscriptions().stream()
+            .flatMap(subscription -> subscription.getMonitors().stream())
+            .toList();
+  }
+
+  public Ad getApprovedAd() {
+    return ads.stream()
+            .filter(ad -> AdValidationType.APPROVED.equals(ad.getValidation()))
+            .findFirst()
+            .orElse(null);
+  }
+
 
   private void setUsernameCreateForRelatedEntities(String username) {
     setUsernameCreate(username);

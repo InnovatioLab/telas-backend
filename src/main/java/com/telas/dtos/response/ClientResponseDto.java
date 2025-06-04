@@ -44,8 +44,6 @@ public final class ClientResponseDto implements Serializable {
 
   private final Boolean termAccepted;
 
-  private final UUID cartId;
-
   private final int currentSubscriptionFlowStep;
 
   public ClientResponseDto(Client entity, List<LinkResponseDto> attachmentUrls, List<LinkResponseDto> adsUrls) {
@@ -64,6 +62,5 @@ public final class ClientResponseDto implements Serializable {
     notifications = entity.getNotifications();
     termAccepted = entity.isTermsAccepted();
     currentSubscriptionFlowStep = entity.getSubscriptionFlow() != null ? entity.getSubscriptionFlow().getStep() : 0;
-    cartId = entity.getCart() != null ? entity.getCart().getId() : null;
   }
 }

@@ -69,7 +69,7 @@ public class ClientServiceImpl implements ClientService {
     verificationCode.setValidated(true);
     client.setVerificationCode(verificationCode);
 
-    if (Objects.equals(client.getBusinessName(), "admin")) {
+    if (Objects.equals(client.getBusinessName(), "Admin")) {
       client.setRole(Role.ADMIN);
     } else {
       client.setRole(Role.CLIENT);
@@ -229,6 +229,7 @@ public class ClientServiceImpl implements ClientService {
     Client client = findActiveEntityById(clientId);
 
     helper.validateActiveSubscription(client);
+    helper.validateAttachmentsCount(client, request);
 
     if (!client.getAttachments().isEmpty()) {
       CustomRevisionListener.setUsername(authenticatedUser.client().getBusinessName());
@@ -243,6 +244,11 @@ public class ClientServiceImpl implements ClientService {
   @Override
   public void requestAdCreation(ClientAdRequestToAdminDto request) {
     Client client = authenticatedUserService.validateActiveSubscription().client();
+
+    if (client.getAds().size() >= SharedConstants.MAX_ADS_PER_CLIENT) {
+      throw new BusinessRuleException(ClientValidationMessages.MAX_ADS_REACHED);
+    }
+
     helper.validateActiveSubscription(client);
     helper.createAdRequest(request, client);
   }
@@ -261,6 +267,7 @@ public class ClientServiceImpl implements ClientService {
     }
 
     attachmentHelper.saveAttachments(List.of(request), client, adRequest);
+
     repository.save(client);
   }
 
@@ -304,7 +311,24 @@ public class ClientServiceImpl implements ClientService {
     Ad ad = helper.getAdById(adId);
     Client client = authenticatedUserService.validateSelfOrAdmin(ad.getClient().getId()).client();
 
+    helper.validateActiveSubscription(client);
     attachmentHelper.validateAd(ad, validation, request, client);
+
+    if (AdValidationType.APPROVED.equals(validation)) {
+      List<UUID> monitorIds = client.getActiveSubscriptions().stream()
+              .flatMap(subscription -> subscription.getMonitors().stream().map(Monitor::getId))
+              .toList();
+
+      helper.addAdToMonitor(ad, monitorIds, client);
+    }
+  }
+
+  @Override
+  @Transactional
+  public void addAdToMonitor(List<UUID> monitorIds) {
+    Client client = authenticatedUserService.validateActiveSubscription().client();
+    Ad ad = client.getApprovedAd();
+    helper.addAdToMonitor(ad, monitorIds, client);
   }
 
   @Override

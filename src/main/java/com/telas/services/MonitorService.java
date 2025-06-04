@@ -24,7 +24,7 @@ public interface MonitorService {
 
   List<Monitor> findAllByIds(List<UUID> monitorIds);
 
-  List<MonitorValidationResponseDto> findInvalidMonitorsOrLinkedAds(List<UUID> monitorIds, UUID clientId);
+  List<MonitorValidationResponseDto> findInvalidMonitorsDuringCheckout(List<UUID> monitorIds, UUID clientId);
 
   void removeMonitorAdsFromSubscription(Subscription subscription);
 }

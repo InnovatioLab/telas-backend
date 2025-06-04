@@ -75,24 +75,6 @@ public class MonitorRequestDto implements Serializable {
     }
   }
 
-//    private void validateMaxDisplayTime() {
-//        if (ValidateDataUtils.isNullOrEmpty(ads)) {
-//            return;
-//        }
-//
-//        int sumDisplayTimeInSeconds = ads.stream()
-//                .mapToInt(MonitorAdRequestDto::getBlockTime)
-//                .sum();
-//
-//        int maxAllowedTime = (maxBlocks == null)
-//                ? SharedConstants.MAX_MONITOR_DISPLAY_TIME
-//                : SharedConstants.MONITOR_ADS_TIME_IN_SECONDS * maxBlocks;
-//
-//        if (sumDisplayTimeInSeconds > maxAllowedTime) {
-//            throw new BusinessRuleException(MonitorValidationMessages.SUM_BLOCK_TIME_INVALID);
-//        }
-//    }
-
   private void validadeAdsOrderIndex() {
     if (!ValidateDataUtils.isNullOrEmpty(ads)) {
       boolean hasDuplicates = ads.stream()

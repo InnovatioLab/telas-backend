@@ -1,5 +1,6 @@
 package com.telas.controllers.impl;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.stripe.exception.SignatureVerificationException;
 import com.stripe.exception.StripeException;
 import com.stripe.model.*;
@@ -24,7 +25,7 @@ public class PaymentGatewayWebhookController {
   private String webhookSecret;
 
   @PostMapping
-  public ResponseEntity<String> handleStripeWebhook(@RequestBody String payload, @RequestHeader("Stripe-Signature") String sigHeader) {
+  public ResponseEntity<String> handleStripeWebhook(@RequestBody String payload, @RequestHeader("Stripe-Signature") String sigHeader) throws StripeException, JsonProcessingException {
 
     if (ValidateDataUtils.isNullOrEmptyString(webhookSecret) || ValidateDataUtils.isNullOrEmptyString(sigHeader)) {
       ResponseEntity.status(HttpStatus.BAD_REQUEST).body("Webhook secret ou cabeçalho de assinatura não configurados");
@@ -52,12 +53,10 @@ public class PaymentGatewayWebhookController {
       return ResponseEntity.ok("Evento processado com sucesso");
     } catch (SignatureVerificationException e) {
       return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("Assinatura inválida");
-    } catch (Exception e) {
-      return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Erro ao processar o evento");
     }
   }
 
-  private void handlePaymentIntent(Event event) throws StripeException {
+  private void handlePaymentIntent(Event event) throws StripeException, JsonProcessingException {
     EventDataObjectDeserializer dataObjectDeserializer = event.getDataObjectDeserializer();
 
     if (dataObjectDeserializer.getObject().isPresent()) {
@@ -69,7 +68,7 @@ public class PaymentGatewayWebhookController {
     }
   }
 
-  private void handleInvoicePayment(Event event) {
+  private void handleInvoicePayment(Event event) throws JsonProcessingException {
     EventDataObjectDeserializer dataObjectDeserializer = event.getDataObjectDeserializer();
 
     if (dataObjectDeserializer.getObject().isPresent()) {
@@ -81,7 +80,7 @@ public class PaymentGatewayWebhookController {
     }
   }
 
-  private void handleSubscriptionDeleted(Event event) {
+  private void handleSubscriptionDeleted(Event event) throws JsonProcessingException {
     EventDataObjectDeserializer dataObjectDeserializer = event.getDataObjectDeserializer();
 
     if (dataObjectDeserializer.getObject().isPresent()) {

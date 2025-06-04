@@ -20,10 +20,10 @@ public interface ClientRepository extends JpaRepository<Client, UUID>, JpaSpecif
 
   @NotNull
   @Override
-  @Query("SELECT c FROM Client c JOIN FETCH c.addresses LEFT JOIN FETCH c.cart ca LEFT JOIN FETCH c.attachments LEFT JOIN FETCH c.ads  WHERE c.id = :id")
+  @Query("SELECT c FROM Client c JOIN FETCH c.addresses LEFT JOIN FETCH c.attachments LEFT JOIN FETCH c.ads  WHERE c.id = :id")
   Optional<Client> findById(@NotNull UUID id);
 
-  @Query("SELECT c FROM Client c JOIN FETCH c.addresses LEFT JOIN FETCH c.cart ca LEFT JOIN FETCH c.attachments LEFT JOIN FETCH c.ads WHERE c.id = :id AND c.status = 'ACTIVE'")
+  @Query("SELECT c FROM Client c JOIN FETCH c.addresses LEFT JOIN FETCH c.attachments LEFT JOIN FETCH c.ads WHERE c.id = :id AND c.status = 'ACTIVE'")
   Optional<Client> findActiveById(UUID id);
 
   @Query(value = """

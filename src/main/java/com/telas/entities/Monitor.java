@@ -8,7 +8,6 @@ import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import com.telas.dtos.request.MonitorRequestDto;
 import com.telas.enums.MonitorType;
 import com.telas.shared.audit.BaseAudit;
-import com.telas.shared.utils.ValidateDataUtils;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -19,7 +18,6 @@ import java.io.Serial;
 import java.io.Serializable;
 import java.math.BigDecimal;
 import java.util.*;
-import java.util.stream.IntStream;
 
 @Getter
 @Setter
@@ -63,7 +61,7 @@ public class Monitor extends BaseAudit implements Serializable {
   private Address address;
 
   @JsonIgnore
-  @OneToMany(mappedBy = "id.monitor")
+  @OneToMany(mappedBy = "id.monitor", cascade = CascadeType.ALL, orphanRemoval = true)
   private Set<MonitorAd> monitorAds = new HashSet<>();
 
   @ManyToMany
@@ -74,27 +72,36 @@ public class Monitor extends BaseAudit implements Serializable {
   )
   private Set<Client> clients = new HashSet<Client>();
 
-  public Monitor(MonitorRequestDto request, Address address) {
-    this(request, address, Set.of(), List.of());
-  }
+//  public Monitor(MonitorRequestDto request, Address address) {
+//    this(request, address, Set.of(), List.of());
+//  }
+//
+//  public Monitor(MonitorRequestDto request, Address address, Set<Client> clients, List<Ad> advertisingAttachmentsList) {
+//    productId = request.getProductId();
+//    type = request.getType();
+//    size = request.getSize();
+//    locationDescription = request.getLocationDescription();
+//    maxBlocks = request.getMaxBlocks();
+//    this.address = address;
+//
+//    if (!ValidateDataUtils.isNullOrEmpty(request.getAds())) {
+//      IntStream.range(0, advertisingAttachmentsList.size()).forEach(index -> {
+//        Ad ad = advertisingAttachmentsList.get(index);
+//        MonitorAd monitorAd = new MonitorAd(request.getAds().get(index), this, ad);
+//        monitorAds.add(monitorAd);
+//      });
+//    }
+//
+//    this.clients.addAll(clients);
+//  }
 
-  public Monitor(MonitorRequestDto request, Address address, Set<Client> clients, List<Ad> advertisingAttachmentsList) {
+  public Monitor(MonitorRequestDto request, Address address) {
     productId = request.getProductId();
     type = request.getType();
     size = request.getSize();
     locationDescription = request.getLocationDescription();
     maxBlocks = request.getMaxBlocks();
     this.address = address;
-
-    if (!ValidateDataUtils.isNullOrEmpty(request.getAds())) {
-      IntStream.range(0, advertisingAttachmentsList.size()).forEach(index -> {
-        Ad ad = advertisingAttachmentsList.get(index);
-        MonitorAd monitorAd = new MonitorAd(request.getAds().get(index), this, ad);
-        monitorAds.add(monitorAd);
-      });
-    }
-
-    this.clients.addAll(clients);
   }
 
   @Override
@@ -111,7 +118,7 @@ public class Monitor extends BaseAudit implements Serializable {
     return Objects.equals(getId(), monitor.getId());
   }
 
-  public List<Ad> getAdvertisingAttachments() {
+  public List<Ad> getAds() {
     return monitorAds.stream()
             .map(MonitorAd::getAd)
             .toList();
@@ -123,6 +130,15 @@ public class Monitor extends BaseAudit implements Serializable {
             .sum();
 
     return (activeBlocks + blocksWanted) <= maxBlocks;
+  }
+
+  public boolean adAlreadyAttached(Ad ad) {
+    return getAds().stream().anyMatch(attachedAd -> attachedAd.getId().equals(ad.getId()));
+  }
+
+  public boolean clientAlreadyHasAd(Client client) {
+    return getAds().stream()
+            .anyMatch(ad -> ad.getClient() != null && ad.getClient().getId().equals(client.getId()));
   }
 
   public String toStringMapper() throws JsonProcessingException {

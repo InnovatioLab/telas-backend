@@ -40,8 +40,13 @@ public class MonitorAd extends BaseAudit implements Serializable {
     id.setMonitor(monitor);
     id.setAd(ad);
     displayType = request.getDisplayType();
-//        blockTime = request.getBlockTime();
     orderIndex = request.getOrderIndex();
+  }
+
+  public MonitorAd(Monitor monitor, Ad ad) {
+    id.setMonitor(monitor);
+    id.setAd(ad);
+    orderIndex = monitor.getAds().size() + 1;
   }
 
   public Monitor getMonitor() {

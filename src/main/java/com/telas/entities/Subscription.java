@@ -1,8 +1,13 @@
 package com.telas.entities;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.SerializationFeature;
+import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import com.telas.enums.Recurrence;
 import com.telas.enums.Role;
 import com.telas.enums.SubscriptionStatus;
+import com.telas.shared.audit.BaseAudit;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -25,7 +30,7 @@ import java.util.stream.Collectors;
 @Table(name = "subscriptions")
 @AuditTable("subscriptions_aud")
 @NoArgsConstructor
-public class Subscription implements Serializable {
+public class Subscription extends BaseAudit implements Serializable {
   @Serial
   private static final long serialVersionUID = 1084934057135367842L;
 
@@ -43,6 +48,9 @@ public class Subscription implements Serializable {
   @Column(name = "recurrence", nullable = false)
   @Enumerated(EnumType.STRING)
   private Recurrence recurrence;
+
+  @Column(name = "stripe_id")
+  private String stripeId;
 
   @Column(name = "fl_bonus")
   private boolean bonus = false;
@@ -76,6 +84,7 @@ public class Subscription implements Serializable {
 
   public Subscription(Client client, Cart cart) {
     this.client = client;
+    setUsernameCreate(client.getBusinessName());
     bonus = isBonus();
     recurrence = cart.getRecurrence();
 
@@ -103,5 +112,13 @@ public class Subscription implements Serializable {
             .collect(Collectors.toSet());
 
     return clientAddressesIds.equals(monitorAddressesIds);
+  }
+
+  public String toStringMapper() throws JsonProcessingException {
+    ObjectMapper objectMapper = new ObjectMapper();
+    objectMapper.registerModule(new JavaTimeModule())
+            .configure(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS, false);
+
+    return objectMapper.writeValueAsString(this);
   }
 }
