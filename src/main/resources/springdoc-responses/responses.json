@@ -1,0 +1,23 @@
+{
+  "badRequestResponse": {
+    "message": "Erro na requisição, verifique os dados enviados!",
+    "errors": [
+      {
+        "field": "Nome do campo com erro.",
+        "message": "Mensagem descrevendo o erro."
+      }
+    ]
+  },
+  "notFoundResponse": {
+    "message": "Recurso não encontrado!"
+  },
+  "unauthorizedResponse": {
+    "message": "Não autorizado, precisa se autenticar!"
+  },
+  "forbiddenResponse": {
+    "message": "Recurso proibído para o tipo de acesso!"
+  },
+  "internalServerErrorResponse": {
+    "message": "Erro interno do servidor!"
+  }
+}

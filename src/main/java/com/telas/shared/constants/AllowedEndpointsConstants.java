@@ -19,6 +19,7 @@ public class AllowedEndpointsConstants {
             "/actuator/**",
             "/swagger-resources/**",
             "/docs",
+            "/docs/**",
             "/terms_conditions"
     ));
     ALLOWED_ENDPOINTS.put(HttpMethod.POST, List.of(
