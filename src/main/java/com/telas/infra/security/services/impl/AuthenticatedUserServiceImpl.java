@@ -74,7 +74,7 @@ public class AuthenticatedUserServiceImpl implements AuthenticatedUserService {
     if (loggedClient.hasActiveSubscription()) {
       return authenticatedUser;
     }
-    
+
     throw new ForbiddenException(AuthValidationMessageConstants.ERROR_NO_ACTIVE_SUBSCRIPTION);
   }
 
@@ -83,7 +83,7 @@ public class AuthenticatedUserServiceImpl implements AuthenticatedUserService {
   public void verifyTermsAccepted(UserDetails user) {
     AuthenticatedUser authenticatedUser = (AuthenticatedUser) user;
 
-    if (!authenticatedUser.isTermsAccepted()) {
+    if (!authenticatedUser.isAdmin() && !authenticatedUser.isTermsAccepted()) {
       throw new ForbiddenException(AuthValidationMessageConstants.ERROR_TERMS_NOT_ACCEPTED);
     }
   }

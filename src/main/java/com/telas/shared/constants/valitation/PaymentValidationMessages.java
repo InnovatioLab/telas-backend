@@ -8,4 +8,5 @@ public final class PaymentValidationMessages {
   public static final String PAYMENT_CLIENT_MISMATCH = "Payment client does not match with paymentId: ";
   public static final String PAYMENT_INTENT_PROCESSING_ERROR = "Error processing PaymentIntent with paymentIntentId: ";
   public static final String PAYMENT_PRODUCT_PRICES_NOT_FOUND = "Product prices not found for product";
+  public static final String PAYMENT_UPDATE_DEFAULT_SOURCE_ERROR = "Error updating default source for payment method with id: ";
 }

@@ -19,27 +19,27 @@ import java.util.UUID;
 public interface ClientController {
   @Operation(summary = "Endpoint contract to save a client", responses = {
           @ApiResponse(responseCode = "201", description = "Client created successfully."),
-          @ApiResponse(responseCode = "400", description = "Request with invalid data."),
+          @ApiResponse(responseCode = "422", description = "Request with invalid data."),
   })
   ResponseEntity<?> save(@Valid ClientRequestDto request);
 
   @Operation(summary = "Endpoint contract to validate the client's code, be it registration confirmation or password recovery", responses = {
           @ApiResponse(responseCode = "200", description = "Code validated successfully."),
-          @ApiResponse(responseCode = "400", description = "Request with invalid data."),
+          @ApiResponse(responseCode = "422", description = "Request with invalid data."),
           @ApiResponse(responseCode = "404", description = "User not found.")
   })
   ResponseEntity<?> validateCode(String identification, String code);
 
   @Operation(summary = "Endpoint contract for resending verification code", responses = {
           @ApiResponse(responseCode = "201", description = "Code resent successfully."),
-          @ApiResponse(responseCode = "400", description = "Request with invalid data."),
+          @ApiResponse(responseCode = "422", description = "Request with invalid data."),
           @ApiResponse(responseCode = "404", description = "User not found.")
   })
   ResponseEntity<?> resendCode(String identification);
 
   @Operation(summary = "Endpoint contract to create client password", responses = {
           @ApiResponse(responseCode = "200", description = "Password created successfully."),
-          @ApiResponse(responseCode = "400", description = "Request with invalid data. "),
+          @ApiResponse(responseCode = "422", description = "Request with invalid data. "),
           @ApiResponse(responseCode = "403", description = "No permission to perform this operation."),
           @ApiResponse(responseCode = "404", description = "User not found.")
   })
@@ -68,7 +68,7 @@ public interface ClientController {
 
   @Operation(summary = "Endpoint contract to update a client", responses = {
           @ApiResponse(responseCode = "200", description = "Client updated successfully."),
-          @ApiResponse(responseCode = "400", description = "Request with invalid data."),
+          @ApiResponse(responseCode = "422", description = "Request with invalid data."),
           @ApiResponse(responseCode = "401", description = "Unauthorized."),
           @ApiResponse(responseCode = "403", description = "Forbidden."),
           @ApiResponse(responseCode = "404", description = "Client not found."),
@@ -77,7 +77,7 @@ public interface ClientController {
 
   @Operation(summary = "Endpoint contract to save or update attachments of a client", responses = {
           @ApiResponse(responseCode = "201", description = "Attachment created/updated successfully."),
-          @ApiResponse(responseCode = "400", description = "Request with invalid data."),
+          @ApiResponse(responseCode = "422", description = "Request with invalid data."),
           @ApiResponse(responseCode = "401", description = "Unauthorized."),
           @ApiResponse(responseCode = "403", description = "Forbidden."),
           @ApiResponse(responseCode = "404", description = "Some data not found."),
@@ -86,7 +86,7 @@ public interface ClientController {
 
   @Operation(summary = "Endpoint contract to request ad creation to admin", responses = {
           @ApiResponse(responseCode = "201", description = "Ad Request created successfully."),
-          @ApiResponse(responseCode = "400", description = "Request with invalid data."),
+          @ApiResponse(responseCode = "422", description = "Request with invalid data."),
           @ApiResponse(responseCode = "401", description = "Unauthorized."),
           @ApiResponse(responseCode = "404", description = "Some attachment not found."),
   })
@@ -94,7 +94,7 @@ public interface ClientController {
 
   @Operation(summary = "Endpoint contract to save or update an ad of a client", responses = {
           @ApiResponse(responseCode = "201", description = "Ad created/updated successfully."),
-          @ApiResponse(responseCode = "400", description = "Request with invalid data."),
+          @ApiResponse(responseCode = "422", description = "Request with invalid data."),
           @ApiResponse(responseCode = "401", description = "Unauthorized."),
           @ApiResponse(responseCode = "403", description = "Forbidden."),
           @ApiResponse(responseCode = "404", description = "Some data not found."),
@@ -103,7 +103,7 @@ public interface ClientController {
 
   @Operation(summary = "Endpoint contract to get paginated clients from filters", responses = {
           @ApiResponse(responseCode = "200", description = "Records found successfully."),
-          @ApiResponse(responseCode = "400", description = "Request with invalid data."),
+          @ApiResponse(responseCode = "422", description = "Request with invalid data."),
           @ApiResponse(responseCode = "401", description = "Unauthorized."),
           @ApiResponse(responseCode = "403", description = "Forbidden.")
   })
@@ -125,7 +125,7 @@ public interface ClientController {
 
   @Operation(summary = "Endpoint contract to filter and list ads request", responses = {
           @ApiResponse(responseCode = "200", description = "Ads requests filtered successfully."),
-          @ApiResponse(responseCode = "400", description = "Erro while filtering ads"),
+          @ApiResponse(responseCode = "422", description = "Erro while filtering ads"),
           @ApiResponse(responseCode = "401", description = "Unauthorized."),
           @ApiResponse(responseCode = "403", description = "Forbidden."),
           @ApiResponse(responseCode = "404", description = "Some data not found."),
@@ -142,7 +142,7 @@ public interface ClientController {
 
   @Operation(summary = "Endpoint contract to validate an ad", responses = {
           @ApiResponse(responseCode = "200", description = "Ad validated successfully."),
-          @ApiResponse(responseCode = "400", description = "Request with invalid data."),
+          @ApiResponse(responseCode = "422", description = "Request with invalid data."),
           @ApiResponse(responseCode = "401", description = "Unauthorized."),
           @ApiResponse(responseCode = "403", description = "Forbidden."),
           @ApiResponse(responseCode = "404", description = "Some data not found."),
@@ -151,7 +151,7 @@ public interface ClientController {
 
   @Operation(summary = "Endpoint contract to add a client approved ad to a list of monitors with an active subscription", responses = {
           @ApiResponse(responseCode = "201", description = "Ad added to monitors successfully."),
-          @ApiResponse(responseCode = "400", description = "Request with invalid data."),
+          @ApiResponse(responseCode = "422", description = "Request with invalid data."),
           @ApiResponse(responseCode = "401", description = "Unauthorized."),
           @ApiResponse(responseCode = "403", description = "Forbidden."),
           @ApiResponse(responseCode = "404", description = "Some data not found."),

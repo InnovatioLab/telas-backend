@@ -272,7 +272,7 @@ CREATE TABLE "subscriptions"
 (
   "id"              UUID PRIMARY KEY,
   "client_id"       UUID                     NOT NULL,
-  "amount"          NUMERIC(10, 2)           NOT NULL,
+--   "amount"          NUMERIC(10, 2)           NOT NULL,
   "recurrence"      VARCHAR(15)              NOT NULL CHECK ("recurrence" IN ('THIRTY_DAYS', 'SIXTY_DAYS', 'NINETY_DAYS', 'MONTHLY')),
   "fl_bonus"        BOOLEAN                  NOT NULL DEFAULT FALSE,
   "status"          VARCHAR(15)              NOT NULL DEFAULT 'PENDING',
@@ -291,7 +291,7 @@ CREATE TABLE "subscriptions_aud"
 (
   "id"         UUID     NOT NULL,
   "client_id"  UUID,
-  "amount"     NUMERIC(10, 2),
+--   "amount"     NUMERIC(10, 2),
   "recurrence" VARCHAR(15),
   "fl_bonus"   BOOLEAN,
   "fl_upgrade"  BOOLEAN,

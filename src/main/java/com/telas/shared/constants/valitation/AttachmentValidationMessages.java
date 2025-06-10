@@ -18,4 +18,5 @@ public final class AttachmentValidationMessages {
   public static final String JUSTIFICATION_REQUIRED = "Justification is required";
   public static final String ATTACHMENTS_NOT_FOUND = "Some attachments were not found";
   public static final String MAX_ATTACHMENTS_REACHED = "Maximum number of attachments reached for this client. Please delete some attachments before uploading new ones.";
+  public static final String ATTACHMENTS_NOT_BELONG_TO_CLIENT = "Attachments do not belong to the client. Please check the attachments and try again.";
 }

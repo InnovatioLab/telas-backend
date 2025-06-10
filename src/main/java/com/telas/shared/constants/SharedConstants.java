@@ -36,16 +36,12 @@ public final class SharedConstants {
 
   public static final int MAX_MONITOR_ADS = 12;
   public static final int MAX_ADS_VALIDATION = 3;
-  public static final int MAX_MONITOR_DISPLAY_TIME = 60;
-  public static final int MINUTE_IN_SECONDS = 60;
-
-  public static final int MONITOR_ADS_TIME_IN_SECONDS = 5;
   public static final int MIN_QUANTITY_MONITOR_BLOCK = 1;
   public static final int MAX_QUANTITY_MONITOR_BLOCK = 3;
 
   public static final int TAMANHO_NOME_ANEXO = 255;
   public static final int MAX_ADS_PER_CLIENT = 1;
 
-  public static final long TWO_DAYS_EPOCH_SECONDS = 172800L;
+  public static final long MAX_BILLING_CYCLE_ANCHOR = 30L * 24 * 60 * 60;
 
 }

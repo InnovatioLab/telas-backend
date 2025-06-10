@@ -70,6 +70,11 @@ public class ClientRequestHelper {
   @Transactional
   public void createAdRequest(ClientAdRequestToAdminDto request, Client client) {
     List<Attachment> attachments = getAttachmentsByIds(request.getAttachmentIds());
+
+    if (attachments.stream().anyMatch(attachment -> attachment.getClient() != null && !attachment.getClient().getId().equals(client.getId()))) {
+      throw new BusinessRuleException(AttachmentValidationMessages.ATTACHMENTS_NOT_BELONG_TO_CLIENT);
+    }
+
     AdRequest adRequest = new AdRequest(request, client, attachments);
     adRequestRepository.save(adRequest);
   }

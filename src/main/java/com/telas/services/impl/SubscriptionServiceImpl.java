@@ -34,7 +34,6 @@ import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.math.BigDecimal;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.format.DateTimeParseException;
@@ -88,7 +87,20 @@ public class SubscriptionServiceImpl implements SubscriptionService {
     // Fazer alguma verificação se o upgrade dela já tava como true??
     entity.setUpgrade(true);
     repository.save(entity);
-    return paymentService.process(entity, recurrence);
+
+    if (Recurrence.MONTHLY.equals(recurrence)) {
+      return paymentService.createStripeSubscription(entity);
+    } else {
+      return paymentService.process(entity, recurrence);
+    }
+  }
+
+  @Override
+  @Transactional(readOnly = true)
+  public boolean checkIfCanBeUpgraded(UUID subscriptionId, Recurrence recurrence) {
+    Subscription entity = helper.findEntityById(subscriptionId);
+    authenticatedUserService.validateSelfOrAdmin(entity.getClient().getId());
+    return entity.canBeUpgraded(recurrence);
   }
 
   @Override
@@ -188,8 +200,6 @@ public class SubscriptionServiceImpl implements SubscriptionService {
       predicates.add(criteriaBuilder.like(criteriaBuilder.lower(root.get("recurrence")), filter));
 
       addDatePredicates(predicates, criteriaBuilder, root, genericFilter);
-      addAmountPredicate(predicates, criteriaBuilder, root, genericFilter);
-
       return criteriaBuilder.or(predicates.toArray(new Predicate[0]));
     });
   }
@@ -200,14 +210,6 @@ public class SubscriptionServiceImpl implements SubscriptionService {
       predicates.add(criteriaBuilder.equal(criteriaBuilder.function("date", LocalDate.class, root.get("startedAt")), date));
       predicates.add(criteriaBuilder.equal(criteriaBuilder.function("date", LocalDate.class, root.get("endsAt")), date));
     } catch (DateTimeParseException ignored) {
-    }
-  }
-
-  private void addAmountPredicate(List<Predicate> predicates, CriteriaBuilder criteriaBuilder, Root<Subscription> root, String genericFilter) {
-    try {
-      BigDecimal amount = new BigDecimal(genericFilter);
-      predicates.add(criteriaBuilder.greaterThanOrEqualTo(root.get("amount"), amount));
-    } catch (NumberFormatException ignored) {
     }
   }
 

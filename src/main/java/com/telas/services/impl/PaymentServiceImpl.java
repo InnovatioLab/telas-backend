@@ -3,9 +3,7 @@ package com.telas.services.impl;
 import com.stripe.exception.StripeException;
 import com.stripe.model.*;
 import com.stripe.model.checkout.Session;
-import com.stripe.param.CustomerCreateParams;
-import com.stripe.param.CustomerSearchParams;
-import com.stripe.param.PriceListParams;
+import com.stripe.param.*;
 import com.stripe.param.checkout.SessionCreateParams;
 import com.telas.entities.Address;
 import com.telas.entities.Client;
@@ -24,12 +22,12 @@ import com.telas.services.PaymentService;
 import com.telas.shared.audit.CustomRevisionListener;
 import com.telas.shared.constants.valitation.ClientValidationMessages;
 import com.telas.shared.constants.valitation.PaymentValidationMessages;
+import com.telas.shared.constants.valitation.SubscriptionValidationMessages;
 import com.telas.shared.utils.MoneyUtils;
 import com.telas.shared.utils.ValidateDataUtils;
 import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -48,9 +46,6 @@ public class PaymentServiceImpl implements PaymentService {
   private final SubscriptionRepository subscriptionRepository;
   private final ClientRepository clientRepository;
   private final SubscriptionHelper subscriptionHelper;
-
-  @Value("${PAYMENT_GATEWAY_API_KEY}")
-  private String key;
 
   @Override
   @Transactional
@@ -71,7 +66,14 @@ public class PaymentServiceImpl implements PaymentService {
   @Transactional
   public void updatePaymentStatus(PaymentIntent paymentIntent) {
     try {
-      UUID paymentId = UUID.fromString(paymentIntent.getMetadata().get("paymentId"));
+      String paymentIdString = paymentIntent.getMetadata().get("paymentId");
+
+      if (ValidateDataUtils.isNullOrEmptyString(paymentIdString)) {
+        log.error("Payment ID is missing in the metadata of the payment intent with id: {}", paymentIntent.getId());
+        return;
+      }
+
+      UUID paymentId = UUID.fromString(paymentIdString);
       Payment payment = findEntityById(paymentId);
 
       String recurrenceStr = paymentIntent.getMetadata().get("recurrence");
@@ -110,11 +112,6 @@ public class PaymentServiceImpl implements PaymentService {
       payment.setAmount(amountCharged);
 
       if (PaymentStatus.COMPLETED.equals(paymentStatus)) {
-        BigDecimal amountReceived = paymentIntent.getAmountReceived() != null
-                ? MoneyUtils.divide(BigDecimal.valueOf(paymentIntent.getAmountReceived()), BigDecimal.valueOf(100))
-                : BigDecimal.ZERO;
-
-
         if (recurrence != null) {
           subscription.setRecurrence(recurrence);
           Instant newEndsAt = recurrence.calculateEndsAt(subscription.getEndsAt());
@@ -123,9 +120,8 @@ public class PaymentServiceImpl implements PaymentService {
           subscription.initialize();
         }
 
-
-        subscription.calculateAmount(amountReceived);
         handleSuccessfulPayment(payment, false);
+//        updateCustomerDefaultSource(paymentIntent.getCustomer(), payment.getPaymentMethod());
       } else if (PaymentStatus.FAILED.equals(paymentStatus)) {
         handleFailedPayment(payment);
       }
@@ -149,6 +145,7 @@ public class PaymentServiceImpl implements PaymentService {
     Payment payment;
     if (!isRecurringPayment || subscription.isUpgrade()) {
       payment = subscription.getPayments().stream()
+              .filter(p -> PaymentStatus.PENDING.equals(p.getStatus()) && p.getStripeId() == null)
               .findFirst()
               .orElseGet(() -> new Payment(subscription));
     } else {
@@ -173,9 +170,6 @@ public class PaymentServiceImpl implements PaymentService {
     payment.setAmount(amountDue);
 
     if (PaymentStatus.COMPLETED.equals(paymentStatus)) {
-      BigDecimal amountPaid = MoneyUtils.divide(BigDecimal.valueOf(
-              invoice.getAmountPaid() != null ? invoice.getAmountPaid() : 0), BigDecimal.valueOf(100));
-
       if (subscription.getStartedAt() == null) {
         subscriptionHelper.updateSubscriptionPeriod(invoice, subscription);
       }
@@ -195,13 +189,71 @@ public class PaymentServiceImpl implements PaymentService {
         }
       }
 
-      subscription.calculateAmount(amountPaid);
       handleSuccessfulPayment(payment, isRecurringPayment);
     } else if (PaymentStatus.FAILED.equals(paymentStatus)) {
       handleFailedPayment(payment);
     }
 
     finalizePayment(payment);
+  }
+
+  @Override
+  @Transactional
+  public String createStripeSubscription(Subscription subscription) {
+    try {
+      Payment payment = savePayment(subscription);
+      Customer customer = getOrCreateCustomer(subscription);
+
+      ensureDefaultPaymentMethod(customer);
+
+      SubscriptionCreateParams params = buildSubscriptionParams(subscription, customer, payment);
+      com.stripe.model.Subscription.create(params);
+
+      return "Success!";
+    } catch (StripeException e) {
+      log.error("Error creating Stripe subscription for subscription with id: {}, error message: {}", subscription.getId(), e.getMessage());
+      throw new BusinessRuleException(SubscriptionValidationMessages.CREATE_STRIPE_SUBSCRIPTION_ERROR + subscription.getId());
+    } catch (BusinessRuleException e) {
+      log.error("Error creating Stripe subscription for subscription with id: {}, error message: {}", subscription.getId(), e.getMessage());
+      throw e;
+    }
+  }
+
+  private void ensureDefaultPaymentMethod(Customer customer) throws StripeException {
+    if (customer.getDefaultSource() == null) {
+      List<PaymentMethod> paymentMethods = PaymentMethod.list(
+              PaymentMethodListParams.builder()
+                      .setCustomer(customer.getId())
+                      .build()
+      ).getData();
+
+      if (!paymentMethods.isEmpty()) {
+        String paymentMethodId = paymentMethods.stream()
+                .filter(pm -> "card".equals(pm.getType()))
+                .map(PaymentMethod::getId)
+                .findFirst()
+                .orElse(paymentMethods.get(0).getId());
+        updateCustomerDefaultSource(customer, paymentMethodId);
+      } else {
+        throw new BusinessRuleException("Nenhum método de pagamento encontrado para o cliente.");
+      }
+    }
+  }
+
+  private void updateCustomerDefaultSource(Customer stripeCustomer, String paymentMethod) {
+    try {
+      stripeCustomer.update(
+              CustomerUpdateParams.builder()
+                      .setInvoiceSettings(CustomerUpdateParams.InvoiceSettings.builder()
+                              .setDefaultPaymentMethod(paymentMethod)
+                              .build())
+                      .build()
+      );
+      log.info("Método de pagamento com ID {} foi definido como padrão para o cliente com ID {}", paymentMethod, stripeCustomer.getId());
+    } catch (StripeException e) {
+      log.error("Error updating default payment method for customer with id: {}, error message: {}", stripeCustomer, e.getMessage());
+      throw new BusinessRuleException(PaymentValidationMessages.PAYMENT_UPDATE_DEFAULT_SOURCE_ERROR + stripeCustomer);
+    }
   }
 
   private Payment findEntityById(UUID paymentId) {
@@ -232,42 +284,48 @@ public class PaymentServiceImpl implements PaymentService {
     String successUrl = baseURL + "/success?subscriptionId=" + subscription.getId() +
                         (subscription.getClient().getAds().isEmpty() ? "&ads=true" : "");
 
-    boolean isSubscription = Recurrence.MONTHLY.equals(subscription.getRecurrence()) || (recurrence != null && Recurrence.MONTHLY.equals(recurrence));
+    boolean isSubscription = Recurrence.MONTHLY.equals(subscription.getRecurrence()) || (Recurrence.MONTHLY.equals(recurrence));
 
     SessionCreateParams.Builder paramsBuilder = SessionCreateParams.builder()
             .setMode(isSubscription ? SessionCreateParams.Mode.SUBSCRIPTION : SessionCreateParams.Mode.PAYMENT)
             .setCustomer(customer.getId())
+            .setAdaptivePricing(SessionCreateParams.AdaptivePricing.builder()
+                    .setEnabled(true)
+                    .build())
+            .setAllowPromotionCodes(false)
+            .setConsentCollection(SessionCreateParams.ConsentCollection.builder()
+                    .setPaymentMethodReuseAgreement(SessionCreateParams.ConsentCollection.PaymentMethodReuseAgreement.builder()
+                            .setPosition(SessionCreateParams.ConsentCollection.PaymentMethodReuseAgreement.Position.AUTO)
+                            .build())
+                    .build())
             .setSuccessUrl(successUrl)
             .setCancelUrl(baseURL + "/")
+            .addPaymentMethodType(SessionCreateParams.PaymentMethodType.CARD)
             .setClientReferenceId(payment.getId().toString());
 
-//    paramsBuilder.setPaymentIntentData(SessionCreateParams.PaymentIntentData.builder()
-//            .setCaptureMethod(SessionCreateParams.PaymentIntentData.CaptureMethod.AUTOMATIC)
-//            .putAllMetadata(metaData)
-//            .build());
 
     if (isSubscription) {
       SessionCreateParams.SubscriptionData.Builder subscriptionDataBuilder = SessionCreateParams.SubscriptionData.builder()
               .putAllMetadata(metaData)
               .setDescription("Invoice payment for your tela's subscription");
 
-      if (subscription.isUpgrade() && subscription.getEndsAt() != null && subscription.getStartedAt() != null) {
-        long now = Instant.now().getEpochSecond();
-        long difference = subscription.getEndsAt().getEpochSecond() - subscription.getStartedAt().getEpochSecond();
-        long trialEnd = now + difference;
-        subscriptionDataBuilder.setTrialEnd(trialEnd);
+      if (subscription.isUpgrade() && subscription.getEndsAt() != null) {
+        long billingCycleAnchor = subscription.getEndsAt().getEpochSecond();
+        subscriptionDataBuilder.setBillingCycleAnchor(billingCycleAnchor);
       }
 
       paramsBuilder.setSubscriptionData(subscriptionDataBuilder.build())
+              .addPaymentMethodType(SessionCreateParams.PaymentMethodType.CARD)
               .addLineItem(SessionCreateParams.LineItem.builder()
                       .setQuantity((long) subscription.getMonitors().size())
-                      .setPrice("price_1RUCNuGp8syf0NnQoWIvFM0S")
+                      .setPrice(getProductPriceIdMonthly())
                       .build());
     } else {
       BigDecimal totalPrice = calculatePrice(subscription.getMonitors().size(), recurrence != null ? recurrence : subscription.getRecurrence());
 
       paramsBuilder.setPaymentIntentData(SessionCreateParams.PaymentIntentData.builder()
-              .setCaptureMethod(SessionCreateParams.PaymentIntentData.CaptureMethod.AUTOMATIC)
+              .setSetupFutureUsage(SessionCreateParams.PaymentIntentData.SetupFutureUsage.OFF_SESSION)
+              .setReceiptEmail(customer.getEmail())
               .putAllMetadata(metaData)
               .build());
 
@@ -286,6 +344,34 @@ public class PaymentServiceImpl implements PaymentService {
     return session.getUrl();
   }
 
+  private Payment savePayment(Subscription subscription) {
+    Payment payment = new Payment(subscription);
+    subscription.getPayments().add(payment);
+    repository.save(payment);
+    return payment;
+  }
+
+  private SubscriptionCreateParams buildSubscriptionParams(Subscription subscription, Customer customer, Payment payment) throws StripeException {
+    Map<String, String> metaData = Map.of(
+            "subscriptionId", subscription.getId().toString(),
+            "clientId", subscription.getClient().getId().toString(),
+            "paymentId", payment.getId().toString(),
+            "recurrence", Recurrence.MONTHLY.name()
+    );
+
+    return SubscriptionCreateParams.builder()
+            .setCustomer(customer.getId())
+            .setCollectionMethod(SubscriptionCreateParams.CollectionMethod.CHARGE_AUTOMATICALLY)
+//            .setDefaultPaymentMethod(customer.getDefaultSource())
+            .setBillingCycleAnchor(subscription.getEndsAt().getEpochSecond())
+            .setMetadata(metaData)
+            .addItem(SubscriptionCreateParams.Item.builder()
+                    .setPrice(getProductPriceIdMonthly())
+                    .setQuantity((long) subscription.getMonitors().size())
+                    .build())
+            .build();
+  }
+
   private BigDecimal calculatePrice(int quantity, Recurrence recurrence) {
     BigDecimal totalPrice = BigDecimal.ZERO;
 
@@ -294,11 +380,6 @@ public class PaymentServiceImpl implements PaymentService {
               : (i == 2) ? BigDecimal.valueOf(600)
               : BigDecimal.valueOf(500);
       totalPrice = MoneyUtils.add(totalPrice, unitPrice);
-    }
-
-    if (recurrence == com.telas.enums.Recurrence.SIXTY_DAYS || recurrence == com.telas.enums.Recurrence.NINETY_DAYS) {
-      BigDecimal discount = MoneyUtils.multiply(totalPrice, BigDecimal.valueOf(0.10));
-      totalPrice = MoneyUtils.subtract(totalPrice, discount);
     }
 
     return totalPrice;
@@ -381,6 +462,33 @@ public class PaymentServiceImpl implements PaymentService {
   private Client findClientByStripeCustomerId(String stripeCustomerId) {
     return clientRepository.findByStripeCustomerId(stripeCustomerId)
             .orElseThrow(() -> new ResourceNotFoundException(ClientValidationMessages.CLIENT_CUSTOMER_NOT_FOUND + stripeCustomerId));
+  }
+
+  private String getProductPriceIdMonthly() throws StripeException {
+    try {
+      PriceListParams params = PriceListParams.builder()
+              .setProduct("prod_SP0KFP0uCSQrxt")
+              .addAllLookupKey(List.of("subscription"))
+              .build();
+
+      List<Price> prices = Price.list(params).getData();
+
+      // Filtrar preços por recorrência mensal e avulso
+      String monthlyPriceId = prices.stream()
+              .filter(price -> price.getRecurring() != null && "month".equals(price.getRecurring().getInterval()))
+              .map(Price::getId)
+              .findFirst()
+              .orElse(null);
+
+      if (monthlyPriceId == null) {
+        throw new ResourceNotFoundException(PaymentValidationMessages.PAYMENT_PRODUCT_PRICES_NOT_FOUND);
+      }
+
+      return monthlyPriceId;
+    } catch (StripeException e) {
+      log.error("Error retrieving monthly product price ID: {}", e.getMessage());
+      throw new BusinessRuleException(PaymentValidationMessages.PAYMENT_PRODUCT_PRICES_NOT_FOUND);
+    }
   }
 
   private Map<Recurrence, String> getProductPricesId() throws StripeException {

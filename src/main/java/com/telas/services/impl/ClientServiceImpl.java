@@ -76,6 +76,10 @@ public class ClientServiceImpl implements ClientService {
       client.setRole(Role.CLIENT);
     }
 
+    TermCondition actualTermCondition = termConditionService.getActualTermCondition();
+    client.setTermCondition(actualTermCondition);
+    client.setTermAcceptedAt(Instant.now());
+
 //        MessagingDataDto messagingData = new MessagingDataDto(client, verificationCode, client.getContact().getContactPreference());
 //        verificationCodeService.send(messagingData, SharedConstants.TEMPLATE_EMAIL_CONTACT_VERIFICATION, SharedConstants.EMAIL_SUBJECT_CONTACT_VERIFICATION);
 

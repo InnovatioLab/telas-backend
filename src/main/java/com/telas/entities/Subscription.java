@@ -1,10 +1,11 @@
 package com.telas.entities;
 
+import com.telas.enums.PaymentStatus;
 import com.telas.enums.Recurrence;
 import com.telas.enums.Role;
 import com.telas.enums.SubscriptionStatus;
 import com.telas.shared.audit.BaseAudit;
-import com.telas.shared.utils.MoneyUtils;
+import com.telas.shared.constants.SharedConstants;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -36,8 +37,8 @@ public class Subscription extends BaseAudit implements Serializable {
   @Column(name = "id")
   private UUID id;
 
-  @Column(name = "amount", precision = 10, scale = 2, nullable = false)
-  private BigDecimal amount = BigDecimal.valueOf(0.00);
+//  @Column(name = "amount", precision = 10, scale = 2, nullable = false)
+//  private BigDecimal amount = BigDecimal.valueOf(0.00);
 
 //  @Column(name = "discount", precision = 5, scale = 2, nullable = false)
 //  private BigDecimal discount = BigDecimal.valueOf(0.00);
@@ -90,7 +91,7 @@ public class Subscription extends BaseAudit implements Serializable {
 
     monitors.addAll(cart.getItems().stream()
             .map(CartItem::getMonitor)
-            .toList());
+            .collect(Collectors.toSet()));
   }
 
   public void initialize() {
@@ -121,12 +122,35 @@ public class Subscription extends BaseAudit implements Serializable {
     return clientAddressesIds.equals(monitorAddressesIds);
   }
 
-  public void calculateAmount(BigDecimal amountReceived) {
-    if (amount.compareTo(BigDecimal.ZERO) > 0) {
-      amount = MoneyUtils.add(amount, amountReceived);
-    } else {
-      amount = amountReceived;
-    }
+  public BigDecimal getPaidAmount() {
+    return payments.stream()
+            .filter(payment -> PaymentStatus.COMPLETED.equals(payment.getStatus()))
+            .map(Payment::getAmount)
+            .reduce(BigDecimal.ZERO, BigDecimal::add);
   }
+
+  public boolean canBeUpgraded(Recurrence recurrence) {
+    if (isBonus()
+        || Recurrence.MONTHLY.equals(this.recurrence)
+        || !SubscriptionStatus.ACTIVE.equals(status)
+        || endsAt == null
+        || !endsAt.isAfter(Instant.now())) {
+      return false;
+    }
+
+    if (Recurrence.MONTHLY.equals(recurrence)) {
+      long remainingTime = endsAt.getEpochSecond() - Instant.now().getEpochSecond();
+      return remainingTime <= SharedConstants.MAX_BILLING_CYCLE_ANCHOR;
+    }
+    return true;
+  }
+
+//  public void calculateAmount(BigDecimal amountReceived) {
+//    if (amount.compareTo(BigDecimal.ZERO) > 0) {
+//      amount = MoneyUtils.add(amount, amountReceived);
+//    } else {
+//      amount = amountReceived;
+//    }
+//  }
 
 }

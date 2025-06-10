@@ -16,6 +16,8 @@ public interface SubscriptionService {
 
   String upgradeSubscription(UUID subscriptionId, Recurrence recurrence);
 
+  boolean checkIfCanBeUpgraded(UUID subscriptionId, Recurrence recurrence);
+
   void cancelSubscription(com.stripe.model.Subscription stripeSubscription);
 
   void cancelSubscription(UUID subscriptionId);

@@ -42,7 +42,7 @@ public class SubscriptionResponseDto implements Serializable {
 
   public SubscriptionResponseDto(Subscription entity) {
     id = entity.getId();
-    amount = entity.getAmount();
+    amount = entity.getPaidAmount();
     recurrence = entity.getRecurrence();
     bonus = entity.isBonus();
     status = entity.getStatus();

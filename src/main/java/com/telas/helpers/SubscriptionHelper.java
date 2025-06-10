@@ -17,6 +17,7 @@ import com.telas.services.BucketService;
 import com.telas.services.CartService;
 import com.telas.services.MonitorService;
 import com.telas.shared.audit.CustomRevisionListener;
+import com.telas.shared.constants.SharedConstants;
 import com.telas.shared.constants.valitation.CartValidationMessages;
 import com.telas.shared.constants.valitation.MonitorValidationMessages;
 import com.telas.shared.constants.valitation.SubscriptionValidationMessages;
@@ -190,6 +191,20 @@ public class SubscriptionHelper {
 
     if (isInactive || isExpired) {
       throw new BusinessRuleException(SubscriptionValidationMessages.SUBSCRIPTION_UPGRADE_NOT_ALLOWED_FOR_NON_ACTIVE_OR_EXPIRED);
+    }
+
+    if (!Recurrence.MONTHLY.equals(entity.getRecurrence()) && entity.getStartedAt() != null && entity.getEndsAt() != null) {
+//      long difference = entity.getEndsAt().getEpochSecond() - entity.getStartedAt().getEpochSecond();
+//
+//      if (difference > SharedConstants.MAX_BILLING_CYCLE_ANCHOR) {
+//        throw new BusinessRuleException(SubscriptionValidationMessages.SUBSCRIPTION_UPGRADE_NOT_ALLOWED_FOR_SHORT_BILLING_CYCLE);
+//      }
+
+      long remainingTime = entity.getEndsAt().getEpochSecond() - Instant.now().getEpochSecond();
+
+      if (remainingTime > SharedConstants.MAX_BILLING_CYCLE_ANCHOR) {
+        throw new BusinessRuleException(SubscriptionValidationMessages.SUBSCRIPTION_UPGRADE_NOT_ALLOWED_FOR_SHORT_BILLING_CYCLE);
+      }
     }
   }
 }

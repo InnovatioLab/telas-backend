@@ -15,7 +15,6 @@ public class SubscriptionFilterRequestDto extends PaginationRequestDto {
 
   public Sort setOrdering() {
     return switch (getSortBy()) {
-      case "amount" -> Sort.by(Sort.Order.by("amount"));
       case "recurrence" -> Sort.by(Sort.Order.by("recurrence").ignoreCase());
       case "status" -> Sort.by(Sort.Order.by("status").ignoreCase());
       case "startedAt" -> Sort.by(Sort.Order.by("startedAt"));

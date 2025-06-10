@@ -15,4 +15,6 @@ public interface PaymentService {
   void updatePaymentStatus(PaymentIntent paymentIntent) throws StripeException, JsonProcessingException;
 
   void updatePaymentStatus(Invoice invoice) throws JsonProcessingException;
+
+  String createStripeSubscription(Subscription subscription);
 }

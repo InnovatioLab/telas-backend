@@ -10,4 +10,6 @@ public final class SubscriptionValidationMessages {
   public static final String SUBSCRIPTION_UPGRADE_NOT_ALLOWED_FOR_BONUS = "Subscription upgrade not allowed for bonus subscriptions.";
   public static final String SUBSCRIPTION_UPGRADE_NOT_ALLOWED_FOR_MONTHLY = "Subscription upgrade not allowed for monthly subscriptions.";
   public static final String SUBSCRIPTION_UPGRADE_NOT_ALLOWED_FOR_NON_ACTIVE_OR_EXPIRED = "Subscription upgrade not allowed for non-active or expired subscriptions.";
+  public static final String SUBSCRIPTION_UPGRADE_NOT_ALLOWED_FOR_SHORT_BILLING_CYCLE = "Subscription upgrade not allowed for subscriptions with a short billing cycle. The billing cycle must be at least 30 days.";
+  public static final String CREATE_STRIPE_SUBSCRIPTION_ERROR = "Error creating subscription in Stripe with subscriptionId: ";
 }

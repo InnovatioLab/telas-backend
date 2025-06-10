@@ -59,6 +59,14 @@ public class SubscriptionControllerImpl implements SubscriptionController {
     return ResponseEntity.status(HttpStatus.OK).body(ResponseDto.fromData(service.upgradeSubscription(subscriptionId, recurrence), HttpStatus.OK, MessageCommonsConstants.UPDATE_SUCCESS_MESSAGE));
   }
 
+  @Override
+  @GetMapping("/check-upgrade/{id}")
+  @SecurityRequirement(name = "jwt")
+  public ResponseEntity<?> checkIfCanBeUpgraded(@PathVariable(name = "id") UUID subscriptionId,
+                                                @RequestParam(name = "recurrence") Recurrence recurrence) {
+    return ResponseEntity.status(HttpStatus.OK).body(ResponseDto.fromData(service.checkIfCanBeUpgraded(subscriptionId, recurrence), HttpStatus.OK, null));
+  }
+
 
   @Override
   @DeleteMapping("/{id}")

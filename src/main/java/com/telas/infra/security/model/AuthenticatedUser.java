@@ -47,6 +47,10 @@ public record AuthenticatedUser(Client client) implements UserDetails {
     return DefaultStatus.ACTIVE.equals(client.getStatus());
   }
 
+  public boolean isAdmin() {
+    return client.isAdmin();
+  }
+
   public boolean isTermsAccepted() {
     return client.isTermsAccepted();
   }
