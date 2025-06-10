@@ -1,12 +1,18 @@
 package com.telas.helpers;
 
 import com.stripe.exception.StripeException;
-import com.stripe.model.Invoice;
+import com.stripe.model.*;
+import com.stripe.param.CouponCreateParams;
+import com.stripe.param.InvoicePaymentListParams;
+import com.stripe.param.PriceListParams;
+import com.stripe.param.checkout.SessionCreateParams;
 import com.telas.dtos.response.MonitorAdResponseDto;
 import com.telas.dtos.response.MonitorValidationResponseDto;
 import com.telas.dtos.response.SubscriptionMonitorResponseDto;
 import com.telas.dtos.response.SubscriptionResponseDto;
 import com.telas.entities.*;
+import com.telas.entities.Subscription;
+import com.telas.enums.PaymentStatus;
 import com.telas.enums.Recurrence;
 import com.telas.enums.SubscriptionStatus;
 import com.telas.infra.exceptions.BusinessRuleException;
@@ -20,13 +26,16 @@ import com.telas.shared.audit.CustomRevisionListener;
 import com.telas.shared.constants.SharedConstants;
 import com.telas.shared.constants.valitation.CartValidationMessages;
 import com.telas.shared.constants.valitation.MonitorValidationMessages;
+import com.telas.shared.constants.valitation.PaymentValidationMessages;
 import com.telas.shared.constants.valitation.SubscriptionValidationMessages;
 import com.telas.shared.utils.AttachmentUtils;
+import com.telas.shared.utils.MoneyUtils;
 import com.telas.shared.utils.ValidateDataUtils;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.*;
 import java.util.stream.Collectors;
@@ -194,17 +203,237 @@ public class SubscriptionHelper {
     }
 
     if (!Recurrence.MONTHLY.equals(entity.getRecurrence()) && entity.getStartedAt() != null && entity.getEndsAt() != null) {
-//      long difference = entity.getEndsAt().getEpochSecond() - entity.getStartedAt().getEpochSecond();
-//
-//      if (difference > SharedConstants.MAX_BILLING_CYCLE_ANCHOR) {
-//        throw new BusinessRuleException(SubscriptionValidationMessages.SUBSCRIPTION_UPGRADE_NOT_ALLOWED_FOR_SHORT_BILLING_CYCLE);
-//      }
-
       long remainingTime = entity.getEndsAt().getEpochSecond() - Instant.now().getEpochSecond();
 
       if (remainingTime > SharedConstants.MAX_BILLING_CYCLE_ANCHOR) {
         throw new BusinessRuleException(SubscriptionValidationMessages.SUBSCRIPTION_UPGRADE_NOT_ALLOWED_FOR_SHORT_BILLING_CYCLE);
       }
     }
+  }
+
+  @Transactional
+  public Map<String, String> createMetaData(Subscription subscription, Payment payment, Recurrence recurrence) {
+    Map<String, String> metaData = new HashMap<>();
+    metaData.put("subscriptionId", subscription.getId().toString());
+    metaData.put("clientId", subscription.getClient().getId().toString());
+    metaData.put("paymentId", payment.getId().toString());
+
+    if (recurrence != null) {
+      metaData.put("recurrence", recurrence.name());
+    }
+    return metaData;
+  }
+
+  @Transactional
+  public void configureSubscriptionParams(SessionCreateParams.Builder paramsBuilder, Subscription subscription, Map<String, String> metaData) throws StripeException {
+    SessionCreateParams.SubscriptionData.Builder subscriptionDataBuilder = SessionCreateParams.SubscriptionData.builder()
+            .putAllMetadata(metaData)
+            .setDescription("Invoice payment for your tela's subscription");
+
+    if (subscription.isUpgrade() && subscription.getEndsAt() != null) {
+      addDiscountForUpgrade(paramsBuilder, subscription);
+    }
+
+    paramsBuilder.setSubscriptionData(subscriptionDataBuilder.build())
+            .addLineItem(SessionCreateParams.LineItem.builder()
+                    .setQuantity((long) subscription.getMonitors().size())
+                    .setPrice(getProductPriceIdMonthly())
+                    .build());
+  }
+
+  @Transactional
+  public void configurePaymentParams(SessionCreateParams.Builder paramsBuilder, Subscription subscription, Customer customer, Map<String, String> metaData) {
+    BigDecimal totalPrice = calculatePrice(subscription.getMonitors().size());
+
+    paramsBuilder.setPaymentIntentData(SessionCreateParams.PaymentIntentData.builder()
+            .setSetupFutureUsage(SessionCreateParams.PaymentIntentData.SetupFutureUsage.OFF_SESSION)
+            .setReceiptEmail(customer.getEmail())
+            .putAllMetadata(metaData)
+            .build());
+
+    paramsBuilder.addLineItem(
+            SessionCreateParams.LineItem.builder()
+                    .setQuantity(1L)
+                    .setPriceData(SessionCreateParams.LineItem.PriceData.builder()
+                            .setCurrency("usd")
+                            .setUnitAmount(totalPrice.multiply(BigDecimal.valueOf(100)).longValue())
+                            .setProduct("prod_SP0KFP0uCSQrxt")
+                            .build())
+                    .build()
+    );
+  }
+
+  private void addDiscountForUpgrade(SessionCreateParams.Builder paramsBuilder, Subscription subscription) throws StripeException {
+    long now = Instant.now().getEpochSecond();
+    long endsAt = subscription.getEndsAt().getEpochSecond();
+    long remainingSeconds = endsAt - now;
+
+    if (remainingSeconds > 0) {
+      long totalSecondsInMonth = SharedConstants.MAX_BILLING_CYCLE_ANCHOR;
+      double proportion = (double) remainingSeconds / totalSecondsInMonth;
+
+      BigDecimal totalPrice = calculatePrice(subscription.getMonitors().size());
+      BigDecimal adjustedPrice = MoneyUtils.multiply(totalPrice, BigDecimal.valueOf(proportion));
+
+      CouponCreateParams couponParams = CouponCreateParams.builder()
+              .setAmountOff(adjustedPrice.multiply(BigDecimal.valueOf(100)).longValue())
+              .setCurrency("usd")
+              .setDuration(CouponCreateParams.Duration.ONCE)
+              .build();
+
+      Coupon coupon = Coupon.create(couponParams);
+
+      paramsBuilder.addDiscount(SessionCreateParams.Discount.builder()
+              .setCoupon(coupon.getId())
+              .build());
+    }
+  }
+
+  private BigDecimal calculatePrice(int quantity) {
+    BigDecimal totalPrice = BigDecimal.ZERO;
+
+    for (int i = 1; i <= quantity; i++) {
+      BigDecimal unitPrice = (i == 1) ? BigDecimal.valueOf(700)
+              : (i == 2) ? BigDecimal.valueOf(600)
+              : BigDecimal.valueOf(500);
+      totalPrice = MoneyUtils.add(totalPrice, unitPrice);
+    }
+
+    return totalPrice;
+  }
+
+  private String getProductPriceIdMonthly() {
+    try {
+      PriceListParams params = PriceListParams.builder()
+              .setProduct("prod_SP0KFP0uCSQrxt")
+              .addAllLookupKey(List.of("subscription"))
+              .build();
+
+      List<Price> prices = Price.list(params).getData();
+
+      return prices.stream()
+              .filter(price -> price.getRecurring() != null && "month".equals(price.getRecurring().getInterval()))
+              .map(Price::getId)
+              .findFirst()
+              .orElseThrow(() -> new ResourceNotFoundException(PaymentValidationMessages.PAYMENT_PRODUCT_PRICES_NOT_FOUND));
+    } catch (StripeException e) {
+      throw new BusinessRuleException(PaymentValidationMessages.PAYMENT_PRODUCT_PRICES_NOT_FOUND);
+    }
+  }
+
+  @Transactional
+  public void setPaymentMethodForInvoice(Invoice invoice, Payment payment) throws StripeException {
+    InvoicePayment invoicePayment = InvoicePayment.list(
+            InvoicePaymentListParams.builder()
+                    .setLimit(1L)
+                    .setInvoice(invoice.getId())
+                    .build()
+    ).getData().stream().findFirst().orElse(null);
+
+    if (invoicePayment == null) {
+      return;
+    }
+
+    PaymentIntent paymentIntent = PaymentIntent.retrieve(invoicePayment.getPayment().getPaymentIntent());
+    setPaymentMethod(paymentIntent, payment);
+  }
+
+  @Transactional
+  public void setPaymentMethod(PaymentIntent paymentIntent, Payment payment) throws StripeException {
+    PaymentMethod paymentMethod = PaymentMethod.retrieve(paymentIntent.getPaymentMethod());
+    payment.setPaymentMethod(paymentMethod == null ? "unknown" : paymentMethod.getType().toLowerCase());
+  }
+
+  @Transactional
+  public boolean isRecurringPayment(Subscription subscription, PaymentIntent paymentIntent) {
+    String recurrenceStr = paymentIntent.getMetadata().get("recurrence");
+    Recurrence recurrence = !ValidateDataUtils.isNullOrEmptyString(recurrenceStr) && subscription.isUpgrade()
+            ? Recurrence.valueOf(recurrenceStr)
+            : null;
+
+    return Recurrence.MONTHLY.equals(subscription.getRecurrence()) || Recurrence.MONTHLY.equals(recurrence);
+  }
+
+  @Transactional
+  public Subscription getSubscriptionFromInvoice(Invoice invoice) {
+    UUID subscriptionId = UUID.fromString(invoice.getParent().getSubscriptionDetails().getMetadata().get("subscriptionId"));
+    return repository.findById(subscriptionId)
+            .orElseThrow(() -> new ResourceNotFoundException(SubscriptionValidationMessages.SUBSCRIPTION_NOT_FOUND));
+  }
+
+  @Transactional
+  public Payment getOrCreatePayment(Invoice invoice, Subscription subscription) {
+    boolean isRecurringPayment = "subscription_cycle".equals(invoice.getBillingReason());
+
+    return (!isRecurringPayment || subscription.isUpgrade())
+            ? subscription.getPayments().stream()
+            .filter(p -> PaymentStatus.PENDING.equals(p.getStatus()) && p.getStripeId() == null)
+            .findFirst()
+            .orElseGet(() -> new Payment(subscription))
+            : new Payment(subscription);
+  }
+
+  @Transactional
+  public void updatePaymentDetails(Payment payment, PaymentIntent paymentIntent) throws StripeException {
+    payment.setStatus(PaymentStatus.fromStripeStatus(paymentIntent.getStatus(), null, payment));
+    payment.setStripeId(paymentIntent.getId());
+    setPaymentMethod(paymentIntent, payment);
+
+    BigDecimal amountCharged = paymentIntent.getAmount() != null
+            ? MoneyUtils.divide(BigDecimal.valueOf(paymentIntent.getAmount()), BigDecimal.valueOf(100))
+            : BigDecimal.ZERO;
+
+    payment.setAmount(amountCharged);
+  }
+
+  @Transactional
+  public void updatePaymentDetailsFromInvoice(Payment payment, Invoice invoice) throws StripeException {
+    payment.setStatus(PaymentStatus.fromStripeStatus(null, invoice.getStatus(), payment));
+    payment.setStripeId(invoice.getId());
+    setPaymentMethodForInvoice(invoice, payment);
+
+    BigDecimal amountDue = invoice.getAmountDue() != null
+            ? MoneyUtils.divide(BigDecimal.valueOf(invoice.getAmountDue()), BigDecimal.valueOf(100))
+            : BigDecimal.ZERO;
+
+    payment.setAmount(amountDue);
+  }
+
+  @Transactional
+  public void handleCompletedPayment(Payment payment, Subscription subscription, PaymentIntent paymentIntent) {
+    String recurrenceStr = paymentIntent.getMetadata().get("recurrence");
+    Recurrence recurrence = !ValidateDataUtils.isNullOrEmptyString(recurrenceStr) && subscription.isUpgrade()
+            ? Recurrence.valueOf(recurrenceStr)
+            : null;
+
+    if (recurrence != null) {
+      subscription.setRecurrence(recurrence);
+      subscription.setEndsAt(recurrence.calculateEndsAt(subscription.getEndsAt()));
+    } else {
+      subscription.initialize();
+    }
+  }
+
+  @Transactional
+  public void handleCompletedPaymentFromInvoice(Payment payment, Subscription subscription, Invoice invoice) {
+    if (subscription.getStartedAt() == null) {
+      updateSubscriptionPeriod(invoice, subscription);
+    }
+
+    String recurrenceStr = invoice.getParent().getSubscriptionDetails().getMetadata().get("recurrence");
+    if (!ValidateDataUtils.isNullOrEmptyString(recurrenceStr) && subscription.isUpgrade()) {
+      Recurrence recurrence = Recurrence.valueOf(recurrenceStr);
+      if (Recurrence.MONTHLY.equals(recurrence)) {
+        subscription.setRecurrence(recurrence);
+        subscription.setEndsAt(null);
+      }
+    }
+  }
+
+  @Transactional
+  public void updateAuditInfo(Subscription subscription) {
+    CustomRevisionListener.setUsername("Stripe Webhook");
+    subscription.setUsernameUpdate("Stripe Webhook");
+    subscription.getPayments().forEach(payment -> payment.setUsernameUpdate("Stripe Webhook"));
   }
 }

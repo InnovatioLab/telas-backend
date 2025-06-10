@@ -88,11 +88,9 @@ public class SubscriptionServiceImpl implements SubscriptionService {
     entity.setUpgrade(true);
     repository.save(entity);
 
-    if (Recurrence.MONTHLY.equals(recurrence)) {
-      return paymentService.createStripeSubscription(entity);
-    } else {
-      return paymentService.process(entity, recurrence);
-    }
+
+    return paymentService.process(entity, recurrence);
+
   }
 
   @Override

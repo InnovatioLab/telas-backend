@@ -10,11 +10,7 @@ import com.telas.enums.Recurrence;
 public interface PaymentService {
   String process(Subscription subscription, Recurrence recurrence);
 
-//  String processUpgrade(Subscription subscription, Recurrence recurrence);
-
   void updatePaymentStatus(PaymentIntent paymentIntent) throws StripeException, JsonProcessingException;
 
-  void updatePaymentStatus(Invoice invoice) throws JsonProcessingException;
-
-  String createStripeSubscription(Subscription subscription);
+  void updatePaymentStatus(Invoice invoice) throws JsonProcessingException, StripeException;
 }
