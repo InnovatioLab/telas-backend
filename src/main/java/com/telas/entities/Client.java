@@ -168,6 +168,10 @@ public class Client extends BaseAudit implements Serializable {
             .orElse(null);
   }
 
+  public boolean isFirstSubscription() {
+    return subscriptions.isEmpty();
+  }
+
 
   private void setUsernameCreateForRelatedEntities(String username) {
     setUsernameCreate(username);

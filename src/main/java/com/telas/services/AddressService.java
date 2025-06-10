@@ -15,6 +15,6 @@ public interface AddressService {
 
   Address findById(UUID id);
 
-  Address findAddressPartnerById(UUID id);
+  Address getOrCreateAddress(AddressRequestDto addressRequestDto);
 }
 

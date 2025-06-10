@@ -1,7 +1,5 @@
 package com.telas.services.impl;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.stripe.Stripe;
 import com.stripe.exception.StripeException;
 import com.stripe.model.*;
 import com.stripe.model.checkout.Session;
@@ -36,6 +34,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.time.Instant;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -54,13 +54,13 @@ public class PaymentServiceImpl implements PaymentService {
 
   @Override
   @Transactional
-  public String process(Subscription subscription) {
+  public String process(Subscription subscription, Recurrence recurrence) {
     try {
-      Stripe.apiKey = key;
+//      Stripe.apiKey = key;
       Payment payment = new Payment(subscription);
       subscription.getPayments().add(payment);
       repository.save(payment);
-      return generateSession(subscription, payment);
+      return generateSession(subscription, payment, recurrence);
     } catch (StripeException e) {
       log.error("Error during processing payment for subscription with id: {}, error message: {}", subscription.getId(), e.getMessage());
       throw new BusinessRuleException(PaymentValidationMessages.PAYMENT_PROCESSING_ERROR);
@@ -69,12 +69,22 @@ public class PaymentServiceImpl implements PaymentService {
 
   @Override
   @Transactional
-  public void updatePaymentStatus(PaymentIntent paymentIntent) throws JsonProcessingException {
+  public void updatePaymentStatus(PaymentIntent paymentIntent) {
     try {
       UUID paymentId = UUID.fromString(paymentIntent.getMetadata().get("paymentId"));
       Payment payment = findEntityById(paymentId);
 
-      if (Recurrence.MONTHLY.equals(payment.getSubscription().getRecurrence())) {
+      String recurrenceStr = paymentIntent.getMetadata().get("recurrence");
+
+      Recurrence recurrence;
+
+      if (!ValidateDataUtils.isNullOrEmptyString(recurrenceStr) && payment.getSubscription().isUpgrade()) {
+        recurrence = Recurrence.valueOf(recurrenceStr);
+      } else {
+        recurrence = null;
+      }
+
+      if (Recurrence.MONTHLY.equals(payment.getSubscription().getRecurrence()) || Recurrence.MONTHLY.equals(recurrence)) {
         return; // Não processa pagamentos recorrentes aqui
       }
 
@@ -82,17 +92,16 @@ public class PaymentServiceImpl implements PaymentService {
 
       Subscription subscription = payment.getSubscription();
       setAuditInfo(subscription);
-      SubscriptionStatus subscriptionStatus = SubscriptionStatus.fromStripeStatus(paymentIntent.getStatus(), null, subscription);
-      subscription.setStatus(subscriptionStatus);
+
+      if (!subscription.isUpgrade()) {
+        SubscriptionStatus subscriptionStatus = SubscriptionStatus.fromStripeStatus(paymentIntent.getStatus(), null, subscription);
+        subscription.setStatus(subscriptionStatus);
+      }
 
       PaymentStatus paymentStatus = PaymentStatus.fromStripeStatus(paymentIntent.getStatus(), null, payment);
       payment.setStatus(paymentStatus);
       payment.setStripeId(paymentIntent.getId());
       setPaymentMethod(paymentIntent, payment);
-
-      BigDecimal amountReceived = paymentIntent.getAmountReceived() != null
-              ? MoneyUtils.divide(BigDecimal.valueOf(paymentIntent.getAmountReceived()), BigDecimal.valueOf(100))
-              : BigDecimal.ZERO;
 
       BigDecimal amountCharged = paymentIntent.getAmount() != null
               ? MoneyUtils.divide(BigDecimal.valueOf(paymentIntent.getAmount()), BigDecimal.valueOf(100))
@@ -101,8 +110,21 @@ public class PaymentServiceImpl implements PaymentService {
       payment.setAmount(amountCharged);
 
       if (PaymentStatus.COMPLETED.equals(paymentStatus)) {
-        subscription.setAmount(amountReceived);
-        subscription.initialize();
+        BigDecimal amountReceived = paymentIntent.getAmountReceived() != null
+                ? MoneyUtils.divide(BigDecimal.valueOf(paymentIntent.getAmountReceived()), BigDecimal.valueOf(100))
+                : BigDecimal.ZERO;
+
+
+        if (recurrence != null) {
+          subscription.setRecurrence(recurrence);
+          Instant newEndsAt = recurrence.calculateEndsAt(subscription.getEndsAt());
+          subscription.setEndsAt(newEndsAt);
+        } else {
+          subscription.initialize();
+        }
+
+
+        subscription.calculateAmount(amountReceived);
         handleSuccessfulPayment(payment, false);
       } else if (PaymentStatus.FAILED.equals(paymentStatus)) {
         handleFailedPayment(payment);
@@ -117,7 +139,7 @@ public class PaymentServiceImpl implements PaymentService {
 
   @Override
   @Transactional
-  public void updatePaymentStatus(Invoice invoice) throws JsonProcessingException {
+  public void updatePaymentStatus(Invoice invoice) {
     boolean isRecurringPayment = invoice.getBillingReason() != null && invoice.getBillingReason().equals("subscription_cycle");
     UUID subscriptionId = UUID.fromString(invoice.getParent().getSubscriptionDetails().getMetadata().get("subscriptionId"));
     Subscription subscription = subscriptionHelper.findEntityById(subscriptionId);
@@ -125,7 +147,7 @@ public class PaymentServiceImpl implements PaymentService {
     setAuditInfo(subscription);
 
     Payment payment;
-    if (!isRecurringPayment) {
+    if (!isRecurringPayment || subscription.isUpgrade()) {
       payment = subscription.getPayments().stream()
               .findFirst()
               .orElseGet(() -> new Payment(subscription));
@@ -140,14 +162,9 @@ public class PaymentServiceImpl implements PaymentService {
     PaymentStatus paymentStatus = PaymentStatus.fromStripeStatus(null, invoice.getStatus(), payment);
     payment.setStatus(paymentStatus);
 
-    SubscriptionStatus subscriptionStatus = SubscriptionStatus.fromStripeStatus(null, invoice.getStatus(), subscription);
-    subscription.setStatus(subscriptionStatus);
-
-    BigDecimal amountPaid = MoneyUtils.divide(BigDecimal.valueOf(
-            invoice.getAmountPaid() != null ? invoice.getAmountPaid() : 0), BigDecimal.valueOf(100));
-
-    if (BigDecimal.ZERO.compareTo(subscription.getAmount()) == 0) {
-      subscription.setAmount(amountPaid);
+    if (!subscription.isUpgrade()) {
+      SubscriptionStatus subscriptionStatus = SubscriptionStatus.fromStripeStatus(null, invoice.getStatus(), subscription);
+      subscription.setStatus(subscriptionStatus);
     }
 
     BigDecimal amountDue = invoice.getAmountDue() != null
@@ -156,15 +173,29 @@ public class PaymentServiceImpl implements PaymentService {
     payment.setAmount(amountDue);
 
     if (PaymentStatus.COMPLETED.equals(paymentStatus)) {
+      BigDecimal amountPaid = MoneyUtils.divide(BigDecimal.valueOf(
+              invoice.getAmountPaid() != null ? invoice.getAmountPaid() : 0), BigDecimal.valueOf(100));
+
       if (subscription.getStartedAt() == null) {
         subscriptionHelper.updateSubscriptionPeriod(invoice, subscription);
       }
-
 
       if (ValidateDataUtils.isNullOrEmptyString(subscription.getStripeId()) && !ValidateDataUtils.isNullOrEmptyString(invoice.getParent().getSubscriptionDetails().getSubscription())) {
         subscription.setStripeId(invoice.getParent().getSubscriptionDetails().getSubscription());
       }
 
+      String recurrenceStr = invoice.getParent().getSubscriptionDetails().getMetadata().get("recurrence");
+
+      if (!ValidateDataUtils.isNullOrEmptyString(recurrenceStr) && subscription.isUpgrade()) {
+        Recurrence recurrence = Recurrence.valueOf(recurrenceStr);
+
+        if (Recurrence.MONTHLY.equals(recurrence)) {
+          subscription.setRecurrence(recurrence);
+          subscription.setEndsAt(null);
+        }
+      }
+
+      subscription.calculateAmount(amountPaid);
       handleSuccessfulPayment(payment, isRecurringPayment);
     } else if (PaymentStatus.FAILED.equals(paymentStatus)) {
       handleFailedPayment(payment);
@@ -184,68 +215,111 @@ public class PaymentServiceImpl implements PaymentService {
     repository.save(payment);
   }
 
-  private String generateSession(Subscription subscription, Payment payment) throws StripeException {
+  private String generateSession(Subscription subscription, Payment payment, Recurrence recurrence) throws StripeException {
     Customer customer = getOrCreateCustomer(subscription);
 
     String baseURL = "http://localhost:4200";
 
-    Map<String, String> metaData = Map.of(
-            "subscriptionId", subscription.getId().toString(),
-            "clientId", subscription.getClient().getId().toString(),
-            "paymentId", payment.getId().toString()
-    );
+    Map<String, String> metaData = new HashMap<>();
+    metaData.put("subscriptionId", subscription.getId().toString());
+    metaData.put("clientId", subscription.getClient().getId().toString());
+    metaData.put("paymentId", payment.getId().toString());
 
-    String successUrl = !subscription.getClient().getAds().isEmpty() ?
-            baseURL + "/success?subscriptionId=" + subscription.getId() :
-            baseURL + "/success?subscriptionId=" + subscription.getId() + "&ads=true";
+    if (recurrence != null) {
+      metaData.put("recurrence", recurrence.name());
+    }
+
+    String successUrl = baseURL + "/success?subscriptionId=" + subscription.getId() +
+                        (subscription.getClient().getAds().isEmpty() ? "&ads=true" : "");
+
+    boolean isSubscription = Recurrence.MONTHLY.equals(subscription.getRecurrence()) || (recurrence != null && Recurrence.MONTHLY.equals(recurrence));
 
     SessionCreateParams.Builder paramsBuilder = SessionCreateParams.builder()
-            .setMode(Recurrence.MONTHLY.equals(subscription.getRecurrence()) ? SessionCreateParams.Mode.SUBSCRIPTION : SessionCreateParams.Mode.PAYMENT)
+            .setMode(isSubscription ? SessionCreateParams.Mode.SUBSCRIPTION : SessionCreateParams.Mode.PAYMENT)
             .setCustomer(customer.getId())
             .setSuccessUrl(successUrl)
-            .setCancelUrl(baseURL + "/failure")
+            .setCancelUrl(baseURL + "/")
             .setClientReferenceId(payment.getId().toString());
 
+//    paramsBuilder.setPaymentIntentData(SessionCreateParams.PaymentIntentData.builder()
+//            .setCaptureMethod(SessionCreateParams.PaymentIntentData.CaptureMethod.AUTOMATIC)
+//            .putAllMetadata(metaData)
+//            .build());
 
-    if (!Recurrence.MONTHLY.equals(subscription.getRecurrence())) {
+    if (isSubscription) {
+      SessionCreateParams.SubscriptionData.Builder subscriptionDataBuilder = SessionCreateParams.SubscriptionData.builder()
+              .putAllMetadata(metaData)
+              .setDescription("Invoice payment for your tela's subscription");
+
+      if (subscription.isUpgrade() && subscription.getEndsAt() != null && subscription.getStartedAt() != null) {
+        long now = Instant.now().getEpochSecond();
+        long difference = subscription.getEndsAt().getEpochSecond() - subscription.getStartedAt().getEpochSecond();
+        long trialEnd = now + difference;
+        subscriptionDataBuilder.setTrialEnd(trialEnd);
+      }
+
+      paramsBuilder.setSubscriptionData(subscriptionDataBuilder.build())
+              .addLineItem(SessionCreateParams.LineItem.builder()
+                      .setQuantity((long) subscription.getMonitors().size())
+                      .setPrice("price_1RUCNuGp8syf0NnQoWIvFM0S")
+                      .build());
+    } else {
+      BigDecimal totalPrice = calculatePrice(subscription.getMonitors().size(), recurrence != null ? recurrence : subscription.getRecurrence());
+
       paramsBuilder.setPaymentIntentData(SessionCreateParams.PaymentIntentData.builder()
               .setCaptureMethod(SessionCreateParams.PaymentIntentData.CaptureMethod.AUTOMATIC)
               .putAllMetadata(metaData)
               .build());
-    } else {
-      paramsBuilder
-              .setSubscriptionData(SessionCreateParams.SubscriptionData.builder()
-                      .putAllMetadata(metaData)
-                      .setDescription("Invoice payment for your tela's subscription")
-                      .build());
+
+      paramsBuilder.addLineItem(
+              SessionCreateParams.LineItem.builder()
+                      .setQuantity(1L) // Sempre 1, pois o preço total já é calculado
+                      .setPriceData(SessionCreateParams.LineItem.PriceData.builder()
+                              .setCurrency("usd")
+                              .setUnitAmount(totalPrice.multiply(BigDecimal.valueOf(100)).longValue())
+                              .setProduct("prod_SP0KFP0uCSQrxt")
+                              .build())
+                      .build()
+      );
     }
-
-    String priceId = getProductPricesId().get(subscription.getRecurrence());
-
-    paramsBuilder.addLineItem(
-            SessionCreateParams.LineItem.builder()
-                    .setQuantity((long) subscription.getMonitors().size())
-                    .setPrice(priceId)
-                    .build()
-    );
-
     Session session = Session.create(paramsBuilder.build());
     return session.getUrl();
   }
 
+  private BigDecimal calculatePrice(int quantity, Recurrence recurrence) {
+    BigDecimal totalPrice = BigDecimal.ZERO;
+
+    for (int i = 1; i <= quantity; i++) {
+      BigDecimal unitPrice = (i == 1) ? BigDecimal.valueOf(700)
+              : (i == 2) ? BigDecimal.valueOf(600)
+              : BigDecimal.valueOf(500);
+      totalPrice = MoneyUtils.add(totalPrice, unitPrice);
+    }
+
+    if (recurrence == com.telas.enums.Recurrence.SIXTY_DAYS || recurrence == com.telas.enums.Recurrence.NINETY_DAYS) {
+      BigDecimal discount = MoneyUtils.multiply(totalPrice, BigDecimal.valueOf(0.10));
+      totalPrice = MoneyUtils.subtract(totalPrice, discount);
+    }
+
+    return totalPrice;
+  }
+
   private void handleSuccessfulPayment(Payment payment, boolean isRecurringPayment) {
     log.info("Payment succeeded id: {}", payment.getId());
+    Subscription subscription = payment.getSubscription();
 
-    if (isRecurringPayment) {
+    if (subscription.isUpgrade()) {
+      log.info("Skipping cart inactivation for upgraded subscription: {}", subscription.getId());
+      subscription.setUpgrade(false);
       return;
     }
 
-    Subscription subscription = payment.getSubscription();
-    Client client = subscription.getClient();
-
-    subscriptionHelper.inactivateCart(client);
-    subscriptionHelper.deleteSubscriptionFlow(client);
-    clientRepository.save(client);
+    if (!isRecurringPayment) {
+      Client client = subscription.getClient();
+      subscriptionHelper.inactivateCart(client);
+      subscriptionHelper.deleteSubscriptionFlow(client);
+      clientRepository.save(client);
+    }
   }
 
   private void handleFailedPayment(Payment payment) {
@@ -313,7 +387,7 @@ public class PaymentServiceImpl implements PaymentService {
     try {
       PriceListParams params = PriceListParams.builder()
               .setProduct("prod_SP0KFP0uCSQrxt")
-              .addAllLookupKey(List.of("subscription", "one_time", Recurrence.THIRTY_DAYS.name(), Recurrence.SIXTY_DAYS.name(), Recurrence.NINETY_DAYS.name()))
+              .addAllLookupKey(List.of("subscription", "one_time", Recurrence.THIRTY_DAYS.name(), com.telas.enums.Recurrence.SIXTY_DAYS.name(), com.telas.enums.Recurrence.NINETY_DAYS.name()))
               .build();
 
       List<Price> prices = Price.list(params).getData();

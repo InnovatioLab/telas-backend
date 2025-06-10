@@ -13,19 +13,34 @@ import java.util.UUID;
 
 @Repository
 public interface AdRepository extends JpaRepository<Ad, UUID>, JpaSpecificationExecutor<Ad> {
+//  @Query("""
+//              SELECT ad FROM Ad ad
+//              JOIN ad.client c
+//              JOIN c.subscriptions s
+//              JOIN s.monitors m
+//              WHERE ad.id IN :ids
+//              AND ad.validation = :validation
+//              AND s.status = 'ACTIVE'
+//              AND (s.endsAt IS NULL OR s.endsAt > CURRENT_TIMESTAMP)
+//              AND m.id = :monitorId
+//          """)
+//  List<Ad> findAllValidAdsForMonitor(
+//          @Param("ids") List<UUID> ids,
+//          @Param("validation") AdValidationType validation,
+//          @Param("monitorId") UUID monitorId
+//  );
+
   @Query("""
               SELECT ad FROM Ad ad
               JOIN ad.client c
               JOIN c.subscriptions s
               JOIN s.monitors m
-              WHERE ad.id IN :ids
-              AND ad.validation = :validation
+              WHERE ad.validation = :validation
               AND s.status = 'ACTIVE'
               AND (s.endsAt IS NULL OR s.endsAt > CURRENT_TIMESTAMP)
               AND m.id = :monitorId
           """)
   List<Ad> findAllValidAdsForMonitor(
-          @Param("ids") List<UUID> ids,
           @Param("validation") AdValidationType validation,
           @Param("monitorId") UUID monitorId
   );

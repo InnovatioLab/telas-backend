@@ -4,6 +4,7 @@ import com.stripe.exception.StripeException;
 import com.telas.dtos.request.filters.SubscriptionFilterRequestDto;
 import com.telas.dtos.response.PaginationResponseDto;
 import com.telas.dtos.response.SubscriptionMinResponseDto;
+import com.telas.dtos.response.SubscriptionResponseDto;
 import com.telas.entities.Cart;
 import com.telas.entities.Client;
 import com.telas.entities.Subscription;
@@ -67,12 +68,27 @@ public class SubscriptionServiceImpl implements SubscriptionService {
     }
 
     persistSubscriptionClient(client, subscription);
-    return paymentService.process(subscription);
+    return paymentService.process(subscription, null);
   }
 
   @Override
-  public Subscription findById(UUID subscriptionId) {
-    return null;
+  @Transactional(readOnly = true)
+  public SubscriptionResponseDto findById(UUID subscriptionId) {
+    Subscription entity = helper.findEntityById(subscriptionId);
+    Client loggedUser = authenticatedUserService.validateSelfOrAdmin(entity.getClient().getId()).client();
+    return helper.getSubscriptionResponse(entity, loggedUser);
+  }
+
+  @Override
+  @Transactional
+  public String upgradeSubscription(UUID subscriptionId, Recurrence recurrence) {
+    Subscription entity = helper.findEntityById(subscriptionId);
+    authenticatedUserService.validateSelfOrAdmin(entity.getClient().getId());
+    helper.validateSubscriptionForUpgrade(entity);
+    // Fazer alguma verificação se o upgrade dela já tava como true??
+    entity.setUpgrade(true);
+    repository.save(entity);
+    return paymentService.process(entity, recurrence);
   }
 
   @Override

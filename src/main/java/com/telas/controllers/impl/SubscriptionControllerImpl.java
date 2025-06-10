@@ -5,6 +5,7 @@ import com.telas.dtos.request.filters.SubscriptionFilterRequestDto;
 import com.telas.dtos.response.PaginationResponseDto;
 import com.telas.dtos.response.ResponseDto;
 import com.telas.dtos.response.SubscriptionMinResponseDto;
+import com.telas.enums.Recurrence;
 import com.telas.services.SubscriptionService;
 import com.telas.shared.constants.MessageCommonsConstants;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
@@ -45,8 +46,19 @@ public class SubscriptionControllerImpl implements SubscriptionController {
   @GetMapping("/{id}")
   @SecurityRequirement(name = "jwt")
   public ResponseEntity<?> findById(@PathVariable(name = "id") UUID subscriptionId) {
-    return null;
+    return ResponseEntity.status(HttpStatus.OK)
+            .body(ResponseDto.fromData(service.findById(subscriptionId), HttpStatus.OK, MessageCommonsConstants.FIND_ID_SUCCESS_MESSAGE));
   }
+
+  @Override
+  @PatchMapping("/upgrade/{id}")
+  @SecurityRequirement(name = "jwt")
+  public ResponseEntity<?> upgradeSubscription(
+          @PathVariable(name = "id") UUID subscriptionId,
+          @RequestParam(name = "recurrence") Recurrence recurrence) {
+    return ResponseEntity.status(HttpStatus.OK).body(ResponseDto.fromData(service.upgradeSubscription(subscriptionId, recurrence), HttpStatus.OK, MessageCommonsConstants.UPDATE_SUCCESS_MESSAGE));
+  }
+
 
   @Override
   @DeleteMapping("/{id}")

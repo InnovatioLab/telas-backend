@@ -2,31 +2,33 @@ package com.telas.helpers;
 
 import com.stripe.exception.StripeException;
 import com.stripe.model.Invoice;
+import com.telas.dtos.response.MonitorAdResponseDto;
 import com.telas.dtos.response.MonitorValidationResponseDto;
-import com.telas.entities.Cart;
-import com.telas.entities.CartItem;
-import com.telas.entities.Client;
-import com.telas.entities.Subscription;
+import com.telas.dtos.response.SubscriptionMonitorResponseDto;
+import com.telas.dtos.response.SubscriptionResponseDto;
+import com.telas.entities.*;
+import com.telas.enums.Recurrence;
+import com.telas.enums.SubscriptionStatus;
 import com.telas.infra.exceptions.BusinessRuleException;
 import com.telas.infra.exceptions.ResourceNotFoundException;
 import com.telas.repositories.SubscriptionFlowRepository;
 import com.telas.repositories.SubscriptionRepository;
+import com.telas.services.BucketService;
 import com.telas.services.CartService;
 import com.telas.services.MonitorService;
 import com.telas.shared.audit.CustomRevisionListener;
 import com.telas.shared.constants.valitation.CartValidationMessages;
 import com.telas.shared.constants.valitation.MonitorValidationMessages;
 import com.telas.shared.constants.valitation.SubscriptionValidationMessages;
+import com.telas.shared.utils.AttachmentUtils;
 import com.telas.shared.utils.ValidateDataUtils;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
-import java.util.Collections;
-import java.util.List;
-import java.util.Optional;
-import java.util.UUID;
+import java.util.*;
+import java.util.stream.Collectors;
 
 @Component
 @RequiredArgsConstructor
@@ -35,6 +37,7 @@ public class SubscriptionHelper {
   private final SubscriptionFlowRepository subscriptionFlowRepository;
   private final CartService cartService;
   private final MonitorService monitorService;
+  private final BucketService bucketService;
 
   @Transactional
   public Cart getActiveCart(Client client) {
@@ -131,6 +134,31 @@ public class SubscriptionHelper {
             });
   }
 
+  @Transactional(readOnly = true)
+  public SubscriptionResponseDto getSubscriptionResponse(Subscription subscription, Client loggedUser) {
+    SubscriptionResponseDto response = new SubscriptionResponseDto(subscription);
+    List<Monitor> monitors = monitorService.findAllByIds(response.getMonitors().stream().map(SubscriptionMonitorResponseDto::getId).toList());
+
+    if (monitors.isEmpty()) {
+      return response;
+    }
+
+    Map<UUID, List<MonitorAdResponseDto>> monitorAdLinksMap = monitors.stream()
+            .collect(Collectors.toMap(
+                    Monitor::getId,
+                    monitor -> monitor.getMonitorAds().stream()
+                            .filter(monitorAd -> loggedUser.isAdmin() || monitorAd.getAd().getClient().getId().equals(loggedUser.getId()))
+                            .map(monitorAd -> new MonitorAdResponseDto(monitorAd, bucketService.getLink(AttachmentUtils.format(monitorAd.getAd()))))
+                            .toList()
+            ));
+
+    response.getMonitors().forEach(monitor ->
+            monitor.setAdLinks(monitorAdLinksMap.getOrDefault(monitor.getId(), List.of()))
+    );
+
+    return response;
+  }
+
   private void validateStripeId(String stripeId) {
     if (ValidateDataUtils.isNullOrEmptyString(stripeId)) {
       throw new BusinessRuleException(SubscriptionValidationMessages.SUBSCRIPTION_WITHOUT_STRIPE_ID);
@@ -147,5 +175,21 @@ public class SubscriptionHelper {
     }
   }
 
+  @Transactional(readOnly = true)
+  public void validateSubscriptionForUpgrade(Subscription entity) {
+    if (entity.isBonus()) {
+      throw new BusinessRuleException(SubscriptionValidationMessages.SUBSCRIPTION_UPGRADE_NOT_ALLOWED_FOR_BONUS);
+    }
 
+    if (Recurrence.MONTHLY.equals(entity.getRecurrence())) {
+      throw new BusinessRuleException(SubscriptionValidationMessages.SUBSCRIPTION_UPGRADE_NOT_ALLOWED_FOR_MONTHLY);
+    }
+
+    boolean isExpired = entity.getEndsAt() != null && !entity.getEndsAt().isAfter(Instant.now());
+    boolean isInactive = !SubscriptionStatus.ACTIVE.equals(entity.getStatus());
+
+    if (isInactive || isExpired) {
+      throw new BusinessRuleException(SubscriptionValidationMessages.SUBSCRIPTION_UPGRADE_NOT_ALLOWED_FOR_NON_ACTIVE_OR_EXPIRED);
+    }
+  }
 }

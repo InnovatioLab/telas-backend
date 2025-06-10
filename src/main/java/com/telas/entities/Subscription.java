@@ -1,13 +1,10 @@
 package com.telas.entities;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.SerializationFeature;
-import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import com.telas.enums.Recurrence;
 import com.telas.enums.Role;
 import com.telas.enums.SubscriptionStatus;
 import com.telas.shared.audit.BaseAudit;
+import com.telas.shared.utils.MoneyUtils;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -59,6 +56,9 @@ public class Subscription extends BaseAudit implements Serializable {
   @Enumerated(EnumType.STRING)
   private SubscriptionStatus status = SubscriptionStatus.PENDING;
 
+  @Column(name = "fl_upgrade", nullable = false)
+  private boolean upgrade = false;
+
   @NotAudited
   @Column(name = "started_at", columnDefinition = "TIMESTAMP WITHOUT TIME ZONE")
   private Instant startedAt;
@@ -94,7 +94,14 @@ public class Subscription extends BaseAudit implements Serializable {
   }
 
   public void initialize() {
-    startedAt = Instant.now();
+//    if (!upgrade) {
+//      startedAt = startedAt == null ? Instant.now() : startedAt;
+//      endsAt = isBonus() ? null : recurrence.calculateEndsAt(startedAt);
+//    } else {
+//      endsAt = recurrence.calculateEndsAt(endsAt);
+//    }
+
+    startedAt = startedAt == null ? Instant.now() : startedAt;
     endsAt = isBonus() ? null : recurrence.calculateEndsAt(startedAt);
   }
 
@@ -114,11 +121,12 @@ public class Subscription extends BaseAudit implements Serializable {
     return clientAddressesIds.equals(monitorAddressesIds);
   }
 
-  public String toStringMapper() throws JsonProcessingException {
-    ObjectMapper objectMapper = new ObjectMapper();
-    objectMapper.registerModule(new JavaTimeModule())
-            .configure(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS, false);
-
-    return objectMapper.writeValueAsString(this);
+  public void calculateAmount(BigDecimal amountReceived) {
+    if (amount.compareTo(BigDecimal.ZERO) > 0) {
+      amount = MoneyUtils.add(amount, amountReceived);
+    } else {
+      amount = amountReceived;
+    }
   }
+
 }

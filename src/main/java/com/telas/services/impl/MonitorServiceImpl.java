@@ -10,7 +10,6 @@ import com.telas.entities.*;
 import com.telas.enums.AdValidationType;
 import com.telas.enums.SubscriptionStatus;
 import com.telas.helpers.MonitorRequestHelper;
-import com.telas.infra.exceptions.BusinessRuleException;
 import com.telas.infra.exceptions.ResourceNotFoundException;
 import com.telas.infra.security.model.AuthenticatedUser;
 import com.telas.infra.security.services.AuthenticatedUserService;
@@ -18,8 +17,6 @@ import com.telas.repositories.MonitorRepository;
 import com.telas.services.BucketService;
 import com.telas.services.MonitorService;
 import com.telas.shared.audit.CustomRevisionListener;
-import com.telas.shared.constants.SharedConstants;
-import com.telas.shared.constants.valitation.AddressValidationMessages;
 import com.telas.shared.constants.valitation.MonitorValidationMessages;
 import com.telas.shared.utils.AttachmentUtils;
 import com.telas.shared.utils.ValidateDataUtils;
@@ -52,7 +49,7 @@ public class MonitorServiceImpl implements MonitorService {
 
     if (monitorId != null) {
       List<Ad> ads = !ValidateDataUtils.isNullOrEmpty(request.getAds()) ? helper.getAds(request, monitorId) : List.of();
-      Set<Client> clients = getClients(ads);
+      Set<Client> clients = helper.getClients(ads);
       monitor = updateExistingMonitor(request, monitorId, authenticatedUser, address, clients, ads);
     } else {
       monitor = createNewMonitor(request, authenticatedUser, address);
@@ -68,12 +65,12 @@ public class MonitorServiceImpl implements MonitorService {
 
     Monitor entity = repository.findById(monitorId).orElseThrow(() -> new ResourceNotFoundException(MonitorValidationMessages.MONITOR_NOT_FOUND));
 
-    List<MonitorAdResponseDto> advertisingAttachmentLinks = entity.getMonitorAds().stream()
+    List<MonitorAdResponseDto> adLinks = entity.getMonitorAds().stream()
             .filter(monitorAttachment -> AdValidationType.APPROVED.equals(monitorAttachment.getAd().getValidation()))
             .map(monitorAttachment -> new MonitorAdResponseDto(monitorAttachment, bucketService.getLink(AttachmentUtils.format(monitorAttachment.getAd()))))
             .toList();
 
-    return new MonitorResponseDto(entity, advertisingAttachmentLinks);
+    return new MonitorResponseDto(entity, adLinks);
   }
 
   @Override
@@ -91,7 +88,7 @@ public class MonitorServiceImpl implements MonitorService {
             .map(Address::getCountry)
             .orElse("US");
 
-    List<String> zipCodeList = validateZipCodeList(zipCodes);
+    List<String> zipCodeList = helper.validateZipCodeList(zipCodes);
 
     Map<String, List<MonitorMinResponseDto>> result = new HashMap<>();
 
@@ -159,21 +156,6 @@ public class MonitorServiceImpl implements MonitorService {
     }
   }
 
-  private List<String> validateZipCodeList(String zipCodes) {
-    List<String> zipCodeList = Arrays.asList(zipCodes.split(","));
-
-    if (zipCodeList.isEmpty()) {
-      throw new BusinessRuleException(MonitorValidationMessages.ZIP_CODE_LIST_EMPTY);
-    }
-
-    zipCodeList.forEach(zipCode -> {
-      if (!zipCode.matches(SharedConstants.REGEX_ZIP_CODE)) {
-        throw new BusinessRuleException(AddressValidationMessages.ZIP_CODE_LIST_INVALID);
-      }
-    });
-    return zipCodeList;
-  }
-
   private Monitor createNewMonitor(MonitorRequestDto request, AuthenticatedUser authenticatedUser, Address address) {
     helper.setAddressCoordinates(address);
     Monitor monitor = new Monitor(request, address);
@@ -193,11 +175,11 @@ public class MonitorServiceImpl implements MonitorService {
 
     }
 
-    CustomRevisionListener.setUsername(authenticatedUser.client().getBusinessName());
-    CustomRevisionListener.setOldData(monitor.toStringMapper());
-    updateMonitorDetails(request, monitor, clients, ads);
-    monitor.setUsernameUpdate(authenticatedUser.client().getBusinessName());
+    String usernameUpdate = authenticatedUser.client().getBusinessName();
+    CustomRevisionListener.setUsername(usernameUpdate);
+    monitor.setUsernameUpdate(usernameUpdate);
 
+    updateMonitorDetails(request, monitor, clients, ads);
     return monitor;
   }
 
@@ -221,12 +203,4 @@ public class MonitorServiceImpl implements MonitorService {
     monitor.getClients().clear();
     monitor.getClients().addAll(clients);
   }
-
-  private Set<Client> getClients(List<Ad> ads) {
-    return ads.isEmpty() ? Set.of() : ads.stream()
-            .map(Ad::getClient)
-            .collect(Collectors.toSet());
-  }
-
-
 }

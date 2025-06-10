@@ -7,12 +7,15 @@ import com.stripe.model.*;
 import com.stripe.net.Webhook;
 import com.telas.services.PaymentService;
 import com.telas.services.SubscriptionService;
+import com.telas.shared.utils.MoneyUtils;
 import com.telas.shared.utils.ValidateDataUtils;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+
+import java.math.BigDecimal;
 
 @RestController
 @RequestMapping("/webhook")
@@ -75,7 +78,14 @@ public class PaymentGatewayWebhookController {
       StripeObject stripeObject = dataObjectDeserializer.getObject().get();
 
       if (stripeObject instanceof Invoice invoice) {
-        paymentService.updatePaymentStatus(invoice);
+        BigDecimal amountDue = invoice.getAmountDue() != null
+                ? MoneyUtils.divide(BigDecimal.valueOf(invoice.getAmountDue()), BigDecimal.valueOf(100))
+                : BigDecimal.ZERO;
+
+        // Ignorar faturas com valor 0
+        if (amountDue.compareTo(BigDecimal.ZERO) > 0) {
+          paymentService.updatePaymentStatus(invoice);
+        }
       }
     }
   }

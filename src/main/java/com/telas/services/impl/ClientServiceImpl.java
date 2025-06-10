@@ -15,6 +15,7 @@ import com.telas.helpers.AttachmentHelper;
 import com.telas.helpers.ClientRequestHelper;
 import com.telas.infra.exceptions.BusinessRuleException;
 import com.telas.infra.exceptions.ResourceNotFoundException;
+import com.telas.infra.exceptions.UnauthorizedException;
 import com.telas.infra.security.model.AuthenticatedUser;
 import com.telas.infra.security.model.PasswordRequestDto;
 import com.telas.infra.security.model.PasswordUpdateRequestDto;
@@ -195,8 +196,8 @@ public class ClientServiceImpl implements ClientService {
     Client client = authClient.client();
     helper.verifyValidationCode(client);
 
-    if (!passwordEncoder.matches(request.getPassword(), authClient.getPassword())) {
-      throw new BusinessRuleException(AuthValidationMessageConstants.INVALID_CREDENTIALS);
+    if (!passwordEncoder.matches(request.getCurrentPassword(), authClient.getPassword())) {
+      throw new UnauthorizedException(AuthValidationMessageConstants.INVALID_CREDENTIALS);
     }
 
     String hashedPass = passwordEncoder.encode(request.getPassword());

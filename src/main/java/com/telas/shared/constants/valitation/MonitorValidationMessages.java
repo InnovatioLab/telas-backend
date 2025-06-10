@@ -26,5 +26,5 @@ public final class MonitorValidationMessages {
   public static final String PRODUCT_ID_REQUIRED = "Product ID is required";
   public static final String MONITOR_ALREADY_ATTACHED_TO_CLIENT = "One or more screens already has ads linked to the client.";
   public static final String MONITOR_ADS_REQUIRED = "Monitor must have at least one ad associated with it.";
-  public static final String AD_NOT_ABLE_TO_ASSIGN_TO_MONITOR = "Ad is not able to be assigned to the monitor. It may not be approved or may not belong to the client associated with the monitor.";
+  public static final String AD_NOT_ABLE_TO_ASSIGN_TO_MONITOR = "Ad cannot be assigned to the monitor. It might not be approved, not associated with the monitor, or linked to an invalid subscription.";
 }

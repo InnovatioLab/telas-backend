@@ -54,8 +54,14 @@ public class AddressServiceImpl implements AddressService {
 
   @Override
   @Transactional
-  public Address findAddressPartnerById(UUID id) {
-    return repository.findAddressPartnerById(id)
-            .orElseThrow(() -> new ResourceNotFoundException(AddressValidationMessages.ADDRESS_NOT_FOUND));
+  public Address getOrCreateAddress(AddressRequestDto addressRequestDto) {
+    return repository.findByStreetAndCityAndStateAndZipCodeWithoutClient(
+            addressRequestDto.getStreet(),
+            addressRequestDto.getCity(),
+            addressRequestDto.getState(),
+            addressRequestDto.getZipCode()
+    ).orElseGet(() -> save(addressRequestDto));
   }
+
+
 }

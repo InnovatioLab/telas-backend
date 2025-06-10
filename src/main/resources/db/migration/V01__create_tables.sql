@@ -170,43 +170,6 @@ CREATE TABLE "clients_aud"
   CONSTRAINT "fk_tbclients_aud_tbaudit" FOREIGN KEY ("audit_id") REFERENCES "audit" ("audit_id") ON UPDATE NO ACTION ON DELETE NO ACTION
 );
 
-CREATE TABLE "plans"
-(
-  "id"                UUID PRIMARY KEY,
-  "name"              VARCHAR(100)             NOT NULL unique,
-  "description"       VARCHAR(255)                      DEFAULT NULL,
-  "monthly_price"     NUMERIC(10, 2),
-  "quarterly_price"   NUMERIC(10, 2),
-  "semi_annual_price" NUMERIC(10, 2),
-  "yearly_price"      NUMERIC(10, 2),
-  "status"            VARCHAR(15)              NOT NULL,
-  "monitors_quantity" INTEGER                  NOT NULL,
-  "ads"               INTEGER                  NOT NULL,
-  "username_create"   VARCHAR(255)             NULL     DEFAULT NULL,
-  "username_update"   VARCHAR(255)             NULL     DEFAULT NULL,
-  "created_at"        TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT (now()),
-  "updated_at"        TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT (now()),
-  "inactivated_at"    TIMESTAMP WITH TIME ZONE
-);
-
-CREATE TABLE "plans_aud"
-(
-  "id"                UUID     NOT NULL,
-  "name"              VARCHAR(100),
-  "description"       VARCHAR(255),
-  "monthly_price"     NUMERIC(10, 2),
-  "quarterly_price"   NUMERIC(10, 2),
-  "semi_annual_price" NUMERIC(10, 2),
-  "yearly_price"      NUMERIC(10, 2),
-  "status"            VARCHAR(15),
-  "monitors_quantity" INTEGER,
-  "ads"               INTEGER,
-  "audit_id"          BIGINT   NOT NULL,
-  "audit_type"        SMALLINT NULL DEFAULT NULL,
-  CONSTRAINT "pk_tbplans_aud" PRIMARY KEY ("id", "audit_id"),
-  CONSTRAINT "fk_tbplans_aud_tbaudit" FOREIGN KEY ("audit_id") REFERENCES "audit" ("audit_id") ON UPDATE NO ACTION ON DELETE NO ACTION
-);
-
 -- CREATE TABLE "subscriptions"
 -- (
 --   "id"              UUID PRIMARY KEY,
@@ -313,6 +276,7 @@ CREATE TABLE "subscriptions"
   "recurrence"      VARCHAR(15)              NOT NULL CHECK ("recurrence" IN ('THIRTY_DAYS', 'SIXTY_DAYS', 'NINETY_DAYS', 'MONTHLY')),
   "fl_bonus"        BOOLEAN                  NOT NULL DEFAULT FALSE,
   "status"          VARCHAR(15)              NOT NULL DEFAULT 'PENDING',
+  "fl_upgrade"  BOOLEAN                  NOT NULL DEFAULT FALSE,
   "stripe_id"       VARCHAR(255)             NULL     DEFAULT NULL,
   "started_at"      TIMESTAMP WITH TIME ZONE,
   "ends_at"         TIMESTAMP WITH TIME ZONE,
@@ -330,6 +294,7 @@ CREATE TABLE "subscriptions_aud"
   "amount"     NUMERIC(10, 2),
   "recurrence" VARCHAR(15),
   "fl_bonus"   BOOLEAN,
+  "fl_upgrade"  BOOLEAN,
   "status"     VARCHAR(15),
   "stripe_id"  VARCHAR(255),
   "audit_id"   BIGINT   NOT NULL,

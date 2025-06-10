@@ -1,6 +1,7 @@
 package com.telas.controllers;
 
 import com.telas.dtos.request.filters.SubscriptionFilterRequestDto;
+import com.telas.enums.Recurrence;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -32,6 +33,15 @@ public interface SubscriptionController {
           @ApiResponse(responseCode = "404", description = "Subscription not found."),
   })
   ResponseEntity<?> findById(UUID subscriptionId);
+
+  @Operation(summary = "Endpoint contract to upgrade a one time buy subscription by id", responses = {
+          @ApiResponse(responseCode = "200", description = "Subscription upgraded successfully."),
+          @ApiResponse(responseCode = "400", description = "Request with invalid data or payment error."),
+          @ApiResponse(responseCode = "401", description = "Unauthorized."),
+          @ApiResponse(responseCode = "403", description = "Forbidden."),
+          @ApiResponse(responseCode = "404", description = "Subscription not found."),
+  })
+  ResponseEntity<?> upgradeSubscription(UUID subscriptionId, Recurrence recurrence);
 
   @Operation(summary = "Endpoint contract to cancel a monthly and active subscription by id", responses = {
           @ApiResponse(responseCode = "204", description = "Subscription cancelled successfully."),

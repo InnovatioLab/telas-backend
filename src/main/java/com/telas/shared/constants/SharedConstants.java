@@ -46,4 +46,6 @@ public final class SharedConstants {
   public static final int TAMANHO_NOME_ANEXO = 255;
   public static final int MAX_ADS_PER_CLIENT = 1;
 
+  public static final long TWO_DAYS_EPOCH_SECONDS = 172800L;
+
 }

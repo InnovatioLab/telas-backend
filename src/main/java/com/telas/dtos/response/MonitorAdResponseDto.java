@@ -23,14 +23,11 @@ public final class MonitorAdResponseDto implements Serializable {
 
   private DisplayType displayType;
 
-//    private Integer blockTime;
-
   private Integer orderIndex;
 
   public MonitorAdResponseDto(MonitorAd entity, String adLink) {
     adId = entity.getAd().getId();
     displayType = entity.getDisplayType();
-//        blockTime = entity.getBlockTime();
     orderIndex = entity.getOrderIndex();
     this.adLink = adLink;
   }
