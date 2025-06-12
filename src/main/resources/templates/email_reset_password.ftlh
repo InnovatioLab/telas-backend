@@ -23,7 +23,7 @@
         }
 
         td {
-            font-size: 22px;
+            font-size: 18px;
             line-height: 42px;
         }
 
@@ -75,7 +75,7 @@
             line-height: 35px;
             margin: 0 auto;
             text-align: left;
-            font-size: 18px;
+            font-size: 15px;
             background-color: #ffffff;
             padding: 40px 0px 20px 80px;
             border-radius: 0px 0px 25px 25px;
@@ -114,8 +114,8 @@
                 </td>
             </tr>
             <tr>
-                <td style="text-align:center; background-color:#ffffff; line-height:50px; color:#00763B;">
-                    <h3 style="font-size:26px; font-weight:700; margin:0;">
+                <td style="text-align:center; line-height:50px; color:#00763B;">
+                    <h3 style="font-size:22px; font-weight:700; margin:0;">
                         ${verificationCode}
                     </h3>
                 </td>
@@ -128,7 +128,7 @@
             </tr>
             <tr>
                 <td style="padding-bottom: 20px;">
-                    If you did not request a password reset, please ignore this email.
+                    If you did not request a password reset, please <u>ignore this email./u>
                 </td>
             </tr>
             <tr>
@@ -138,7 +138,7 @@
             </tr>
         </table>
     </div>
-    <div class="footer" style="margin-top: 40px; border-top: 1px solid #e0e0e0; padding-top: 20px;">
+    <div class="footer" style="padding-top: 40px;">
         <p style="margin:0;">Best regards,</p>
         <p style="margin:0;"><strong>The Tela's Team</strong></p>
         <p style="margin:5px 0 0;">Contact us at

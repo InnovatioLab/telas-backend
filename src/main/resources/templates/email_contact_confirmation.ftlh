@@ -23,7 +23,7 @@
         }
 
         td {
-            font-size: 22px;
+            font-size: 18px;
             line-height: 42px;
         }
 
@@ -75,7 +75,7 @@
             line-height: 35px;
             margin: 0 auto;
             text-align: left;
-            font-size: 18px;
+            font-size: 15px;
             background-color: #ffffff;
             padding: 40px 0px 20px 80px;
             border-radius: 0px 0px 25px 25px;
@@ -94,41 +94,41 @@
         <table role="presentation" style="width: 100%; border-collapse: collapse;">
             <tr class="header">
                 <td style="padding:20px 0 30px;">
-                    <h1 style="margin:0;font-size:24px;color:#333;">Verify Your Contact</h1>
+                    <h1 style="margin:0;font-size:24px;">Verify Your Contact</h1>
                 </td>
             </tr>
             <tr>
-                <td style="padding-bottom:10px;font-size:16px;color:#555;">
+                <td style="padding-bottom:10px;">
                     Hi<strong style="font-weight:500;"> ${name}</strong>,
                 </td>
             </tr>
             <tr>
-                <td style="padding-bottom:20px;font-size:16px;color:#555;">
+                <td style="padding-bottom:20px;">
                     Welcome to Telas! We’re excited to have you on board.
                 </td>
             </tr>
             <tr>
-                <td style="padding-bottom:30px;font-size:16px;color:#555;">
+                <td style="padding-bottom:30px;">
                     To complete your registration and explore our features, enter the verification code below on the
                     validation screen—or click the button for a quick confirm.
                 </td>
             </tr>
             <tr>
-                <td style="text-align:center;background-color:#f9f9f9;line-height:60px;color:#00763B;border-radius:4px;">
-                    <h3 style="margin:0;font-size:28px;font-weight:700;color:#00763B;">
+                <td style="text-align:center;line-height:60px;color:#00763B;border-radius:4px;">
+                    <h3 style="margin:0;font-size:22px;font-weight:700;color:#00763B;">
                         ${verificationCode}
                     </h3>
                 </td>
             </tr>
             <tr>
-                <td style="padding-bottom:20px;font-size:14px;color:#555;">
+                <td style="padding-bottom:20px;padding-top:30px;">
                     <strong>This code expires in 15 minutes.</strong> If it’s no longer valid, you can request a new one
                     in our system.
                 </td>
             </tr>
             <tr>
-                <td style="padding-bottom:20px;font-size:14px;color:#555;">
-                    If you didn’t sign up for an Tela's account, simply ignore this email, no action is needed.
+                <td style="padding-bottom:20px;">
+                    If you didn’t sign up for an Tela's account, simply ignore this email, <u>no action is needed.</u>
                 </td>
             </tr>
             <tr>
@@ -138,7 +138,7 @@
             </tr>
         </table>
     </div>
-    <div class="footer" style="margin-top: 40px; border-top: 1px solid #e0e0e0; padding-top: 20px;">
+    <div class="footer" style="padding-top: 40px;">
         <p style="margin:0;">Best regards,</p>
         <p style="margin:0;"><strong>The Tela's Team</strong></p>
         <p style="margin:5px 0 0;">Contact us at

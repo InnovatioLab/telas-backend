@@ -14,6 +14,10 @@ public final class SharedConstants {
   public static final String TEMPLATE_EMAIL_CONTACT_VERIFICATION = "email_contact_confirmation.ftlh";
   public static final String TEMPLATE_EMAIL_RESET_PASSWORD = "email_reset_password.ftlh";
   public static final String EMAIL_SUBJECT_RESET_PASSWORD = "Password Reset - Telas";
+  public static final String TEMPLATE_EMAIL_FIRST_SUBSCRIPTION = "email_first_subscription.ftlh";
+  public static final String EMAIL_SUBJECT_FIRST_SUBSCRIPTION = "Your Ad service Purchase is Confirmed";
+  public static final String TEMPLATE_EMAIL_SUBSCRIPTION_EXPIRING = "email_subscription_about_expire.ftlh";
+  public static final String EMAIL_SUBJECT_SUBSCRIPTION_EXPIRING = "Your Ad service is about to expire – Renew Today!";
   public static final int ZERO = 0;
 
   public static final List<String> FORMATOS_PERMITIDOS_ANEXO = List.of("jpeg", "png");

@@ -32,6 +32,8 @@ import com.telas.shared.utils.AttachmentUtils;
 import com.telas.shared.utils.MoneyUtils;
 import com.telas.shared.utils.ValidateDataUtils;
 import lombok.RequiredArgsConstructor;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -43,6 +45,7 @@ import java.util.stream.Collectors;
 @Component
 @RequiredArgsConstructor
 public class SubscriptionHelper {
+  private final Logger log = LoggerFactory.getLogger(SubscriptionHelper.class);
   private final SubscriptionRepository repository;
   private final SubscriptionFlowRepository subscriptionFlowRepository;
   private final CartService cartService;
@@ -117,8 +120,7 @@ public class SubscriptionHelper {
       subscription.setStartedAt(Instant.ofEpochSecond(Collections.min(periods)));
     }
   }
-
-
+  
   @Transactional
   public void setAuditInfo(Subscription subscription, String agent) {
     CustomRevisionListener.setUsername(agent);
@@ -133,15 +135,6 @@ public class SubscriptionHelper {
     validateStripeSubscription(stripeSubscription);
 
     return stripeSubscription;
-  }
-
-  @Transactional
-  public void deleteSubscriptionFlow(Client client) {
-    Optional.ofNullable(client.getSubscriptionFlow())
-            .ifPresent(subscriptionFlow -> {
-              subscriptionFlowRepository.deleteById(subscriptionFlow.getId());
-              client.setSubscriptionFlow(null);
-            });
   }
 
   @Transactional(readOnly = true)
@@ -322,26 +315,34 @@ public class SubscriptionHelper {
   }
 
   @Transactional
-  public void setPaymentMethodForInvoice(Invoice invoice, Payment payment) throws StripeException {
-    InvoicePayment invoicePayment = InvoicePayment.list(
-            InvoicePaymentListParams.builder()
-                    .setLimit(1L)
-                    .setInvoice(invoice.getId())
-                    .build()
-    ).getData().stream().findFirst().orElse(null);
+  public void setPaymentMethodForInvoice(Invoice invoice, Payment payment) {
+    try {
+      InvoicePayment invoicePayment = InvoicePayment.list(
+              InvoicePaymentListParams.builder()
+                      .setLimit(1L)
+                      .setInvoice(invoice.getId())
+                      .build()
+      ).getData().stream().findFirst().orElse(null);
 
-    if (invoicePayment == null) {
-      return;
+      if (invoicePayment == null) {
+        return;
+      }
+
+      PaymentIntent paymentIntent = PaymentIntent.retrieve(invoicePayment.getPayment().getPaymentIntent());
+      setPaymentMethod(paymentIntent, payment);
+    } catch (StripeException e) {
+      log.error("Failed to set payment method for Invoice ID: {}, error: {}", invoice.getId(), e.getMessage());
     }
-
-    PaymentIntent paymentIntent = PaymentIntent.retrieve(invoicePayment.getPayment().getPaymentIntent());
-    setPaymentMethod(paymentIntent, payment);
   }
 
   @Transactional
-  public void setPaymentMethod(PaymentIntent paymentIntent, Payment payment) throws StripeException {
-    PaymentMethod paymentMethod = PaymentMethod.retrieve(paymentIntent.getPaymentMethod());
-    payment.setPaymentMethod(paymentMethod == null ? "unknown" : paymentMethod.getType().toLowerCase());
+  public void setPaymentMethod(PaymentIntent paymentIntent, Payment payment) {
+    try {
+      PaymentMethod paymentMethod = PaymentMethod.retrieve(paymentIntent.getPaymentMethod());
+      payment.setPaymentMethod(paymentMethod == null ? "unknown" : paymentMethod.getType().toLowerCase());
+    } catch (StripeException e) {
+      log.error("Failed to set payment method for PaymentIntent ID: {}, error: {}", paymentIntent.getId(), e.getMessage());
+    }
   }
 
   @Transactional
@@ -374,7 +375,7 @@ public class SubscriptionHelper {
   }
 
   @Transactional
-  public void updatePaymentDetails(Payment payment, PaymentIntent paymentIntent) throws StripeException {
+  public void updatePaymentDetails(Payment payment, PaymentIntent paymentIntent) {
     payment.setStatus(PaymentStatus.fromStripeStatus(paymentIntent.getStatus(), null, payment));
     payment.setStripeId(paymentIntent.getId());
     setPaymentMethod(paymentIntent, payment);
@@ -387,7 +388,7 @@ public class SubscriptionHelper {
   }
 
   @Transactional
-  public void updatePaymentDetailsFromInvoice(Payment payment, Invoice invoice) throws StripeException {
+  public void updatePaymentDetailsFromInvoice(Payment payment, Invoice invoice) {
     payment.setStatus(PaymentStatus.fromStripeStatus(null, invoice.getStatus(), payment));
     payment.setStripeId(invoice.getId());
     setPaymentMethodForInvoice(invoice, payment);
@@ -400,7 +401,7 @@ public class SubscriptionHelper {
   }
 
   @Transactional
-  public void handleCompletedPayment(Payment payment, Subscription subscription, PaymentIntent paymentIntent) {
+  public void handleCompletedPayment(Subscription subscription, PaymentIntent paymentIntent) {
     String recurrenceStr = paymentIntent.getMetadata().get("recurrence");
     Recurrence recurrence = !ValidateDataUtils.isNullOrEmptyString(recurrenceStr) && subscription.isUpgrade()
             ? Recurrence.valueOf(recurrenceStr)
@@ -415,7 +416,7 @@ public class SubscriptionHelper {
   }
 
   @Transactional
-  public void handleCompletedPaymentFromInvoice(Payment payment, Subscription subscription, Invoice invoice) {
+  public void handleCompletedPaymentFromInvoice(Subscription subscription, Invoice invoice) {
     if (subscription.getStartedAt() == null) {
       updateSubscriptionPeriod(invoice, subscription);
     }

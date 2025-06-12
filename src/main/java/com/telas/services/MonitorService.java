@@ -2,6 +2,7 @@ package com.telas.services;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.telas.dtos.request.MonitorRequestDto;
+import com.telas.dtos.response.LinkResponseDto;
 import com.telas.dtos.response.MonitorMinResponseDto;
 import com.telas.dtos.response.MonitorResponseDto;
 import com.telas.dtos.response.MonitorValidationResponseDto;
@@ -25,6 +26,8 @@ public interface MonitorService {
   List<Monitor> findAllByIds(List<UUID> monitorIds);
 
   List<MonitorValidationResponseDto> findInvalidMonitorsDuringCheckout(List<UUID> monitorIds, UUID clientId);
+
+  List<LinkResponseDto> findValidAdsForMonitor(UUID monitorId);
 
   void removeMonitorAdsFromSubscription(Subscription subscription);
 }

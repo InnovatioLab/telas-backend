@@ -39,6 +39,13 @@ public interface MonitorController {
   })
   ResponseEntity<?> findById(UUID monitorId);
 
+  @Operation(summary = "Endpoint contract to find valid ads from monitor", responses = {
+          @ApiResponse(responseCode = "200", description = "Ads founded successfully."),
+          @ApiResponse(responseCode = "401", description = "Unauthorized."),
+          @ApiResponse(responseCode = "403", description = "Forbidden."),
+  })
+  ResponseEntity<?> findValidAdsForMonitor(UUID monitorId);
+
   @Operation(summary = "Endpoint contract to get a list of the nearest active monitors from a list of zipCodes", responses = {
           @ApiResponse(responseCode = "200", description = "Monitors founded successfully.")
   })

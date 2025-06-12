@@ -2,23 +2,17 @@ package com.telas.services.impl;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.telas.dtos.request.MonitorRequestDto;
-import com.telas.dtos.response.MonitorAdResponseDto;
-import com.telas.dtos.response.MonitorMinResponseDto;
-import com.telas.dtos.response.MonitorResponseDto;
-import com.telas.dtos.response.MonitorValidationResponseDto;
+import com.telas.dtos.response.*;
 import com.telas.entities.*;
-import com.telas.enums.AdValidationType;
 import com.telas.enums.SubscriptionStatus;
 import com.telas.helpers.MonitorRequestHelper;
 import com.telas.infra.exceptions.ResourceNotFoundException;
 import com.telas.infra.security.model.AuthenticatedUser;
 import com.telas.infra.security.services.AuthenticatedUserService;
 import com.telas.repositories.MonitorRepository;
-import com.telas.services.BucketService;
 import com.telas.services.MonitorService;
 import com.telas.shared.audit.CustomRevisionListener;
 import com.telas.shared.constants.valitation.MonitorValidationMessages;
-import com.telas.shared.utils.AttachmentUtils;
 import com.telas.shared.utils.ValidateDataUtils;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -34,8 +28,6 @@ import java.util.stream.Collectors;
 public class MonitorServiceImpl implements MonitorService {
   private final AuthenticatedUserService authenticatedUserService;
   private final MonitorRepository repository;
-  //  private final MonitorAdRepository monitorAdRepository;
-  private final BucketService bucketService;
   private final MonitorRequestHelper helper;
 
   @Override
@@ -65,10 +57,7 @@ public class MonitorServiceImpl implements MonitorService {
 
     Monitor entity = repository.findById(monitorId).orElseThrow(() -> new ResourceNotFoundException(MonitorValidationMessages.MONITOR_NOT_FOUND));
 
-    List<MonitorAdResponseDto> adLinks = entity.getMonitorAds().stream()
-            .filter(monitorAttachment -> AdValidationType.APPROVED.equals(monitorAttachment.getAd().getValidation()))
-            .map(monitorAttachment -> new MonitorAdResponseDto(monitorAttachment, bucketService.getLink(AttachmentUtils.format(monitorAttachment.getAd()))))
-            .toList();
+    List<MonitorAdResponseDto> adLinks = helper.getMonitorAdsResponse(entity);
 
     return new MonitorResponseDto(entity, adLinks);
   }
@@ -131,6 +120,13 @@ public class MonitorServiceImpl implements MonitorService {
   }
 
   @Override
+  @Transactional(readOnly = true)
+  public List<LinkResponseDto> findValidAdsForMonitor(UUID monitorId) {
+    authenticatedUserService.validateAdmin();
+    return helper.getValidAdsForMonitor(monitorId);
+  }
+
+  @Override
   @Transactional
   public void removeMonitorAdsFromSubscription(Subscription subscription) {
     List<SubscriptionStatus> validStatuses = List.of(SubscriptionStatus.EXPIRED, SubscriptionStatus.CANCELLED);
@@ -166,7 +162,7 @@ public class MonitorServiceImpl implements MonitorService {
   private Monitor updateExistingMonitor(MonitorRequestDto request, UUID monitorId, AuthenticatedUser authenticatedUser, Address address, Set<Client> clients, List<Ad> ads) throws JsonProcessingException {
     Monitor monitor = findEntityById(monitorId);
 
-    if (!monitor.getAddress().getId().equals(request.getAddressId())) {
+    if (!monitor.getAddress().getId().equals(address.getId())) {
       monitor.setAddress(address);
 
       if (!address.hasLocation()) {

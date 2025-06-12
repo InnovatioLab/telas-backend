@@ -60,38 +60,38 @@ public class PaymentServiceImpl implements PaymentService {
   @Override
   @Transactional
   public void updatePaymentStatus(PaymentIntent paymentIntent) {
-    try {
-      Payment payment = getPaymentFromIntent(paymentIntent);
-      Subscription subscription = payment.getSubscription();
+    Payment payment = getPaymentFromIntent(paymentIntent);
 
-      if (subscriptionHelper.isRecurringPayment(subscription, paymentIntent)) {
-        return;
-      }
-
-      subscriptionHelper.updateAuditInfo(subscription);
-
-      if (!subscription.isUpgrade()) {
-        subscription.setStatus(SubscriptionStatus.fromStripeStatus(paymentIntent.getStatus(), null, subscription));
-      }
-
-      subscriptionHelper.updatePaymentDetails(payment, paymentIntent);
-
-      if (PaymentStatus.COMPLETED.equals(payment.getStatus())) {
-        subscriptionHelper.handleCompletedPayment(payment, subscription, paymentIntent);
-      } else if (PaymentStatus.FAILED.equals(payment.getStatus())) {
-        handleFailedPayment(payment);
-      }
-
-      finalizePayment(payment);
-    } catch (StripeException e) {
-      log.error("Error processing payment intent with id: {}, error message: {}", paymentIntent.getId(), e.getMessage());
-      throw new BusinessRuleException(PaymentValidationMessages.PAYMENT_INTENT_PROCESSING_ERROR + paymentIntent.getId());
+    if (payment == null) {
+      return;
     }
+
+    Subscription subscription = payment.getSubscription();
+
+    if (subscriptionHelper.isRecurringPayment(subscription, paymentIntent)) {
+      return;
+    }
+
+    subscriptionHelper.updateAuditInfo(subscription);
+
+    if (!subscription.isUpgrade()) {
+      subscription.setStatus(SubscriptionStatus.fromStripeStatus(paymentIntent.getStatus(), null, subscription));
+    }
+
+    subscriptionHelper.updatePaymentDetails(payment, paymentIntent);
+
+    if (PaymentStatus.COMPLETED.equals(payment.getStatus())) {
+      subscriptionHelper.handleCompletedPayment(subscription, paymentIntent);
+    } else if (PaymentStatus.FAILED.equals(payment.getStatus())) {
+      handleFailedPayment(payment);
+    }
+
+    finalizePayment(payment);
   }
 
   @Override
   @Transactional
-  public void updatePaymentStatus(Invoice invoice) throws StripeException {
+  public void updatePaymentStatus(Invoice invoice) {
     Subscription subscription = subscriptionHelper.getSubscriptionFromInvoice(invoice);
     subscriptionHelper.updateAuditInfo(subscription);
 
@@ -100,7 +100,7 @@ public class PaymentServiceImpl implements PaymentService {
     subscriptionHelper.updatePaymentDetailsFromInvoice(payment, invoice);
 
     if (PaymentStatus.COMPLETED.equals(payment.getStatus())) {
-      subscriptionHelper.handleCompletedPaymentFromInvoice(payment, subscription, invoice);
+      subscriptionHelper.handleCompletedPaymentFromInvoice(subscription, invoice);
     } else if (PaymentStatus.FAILED.equals(payment.getStatus())) {
       handleFailedPayment(payment);
     }
@@ -187,7 +187,8 @@ public class PaymentServiceImpl implements PaymentService {
     String paymentIdString = paymentIntent.getMetadata().get("paymentId");
 
     if (ValidateDataUtils.isNullOrEmptyString(paymentIdString)) {
-      throw new BusinessRuleException("Payment ID is missing in the metadata.");
+      log.warn("Payment ID is missing in the metadata of the payment intent with id: {}", paymentIntent.getId());
+      return null;
     }
 
     UUID paymentId = UUID.fromString(paymentIdString);

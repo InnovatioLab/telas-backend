@@ -23,44 +23,52 @@ import java.util.UUID;
 @RequestMapping(value = "monitors")
 @RequiredArgsConstructor
 public class MonitorControllerImpl implements MonitorController {
-    private final MonitorService service;
+  private final MonitorService service;
 
-    @Override
-    @PostMapping
-    @SecurityRequirement(name = "jwt")
-    public ResponseEntity<?> save(@Valid @RequestBody MonitorRequestDto request) throws JsonProcessingException {
-        service.save(request, null);
-        return ResponseEntity.status(HttpStatus.CREATED)
-                .body(ResponseDto.fromData(null, HttpStatus.CREATED, MessageCommonsConstants.SAVE_SUCCESS_MESSAGE));
-    }
+  @Override
+  @PostMapping
+  @SecurityRequirement(name = "jwt")
+  public ResponseEntity<?> save(@Valid @RequestBody MonitorRequestDto request) throws JsonProcessingException {
+    service.save(request, null);
+    return ResponseEntity.status(HttpStatus.CREATED)
+            .body(ResponseDto.fromData(null, HttpStatus.CREATED, MessageCommonsConstants.SAVE_SUCCESS_MESSAGE));
+  }
 
-    @Override
-    @PutMapping("/{id}")
-    @SecurityRequirement(name = "jwt")
-    public ResponseEntity<?> update(@Valid @RequestBody MonitorRequestDto request, @PathVariable(name = "id") UUID monitorId) throws JsonProcessingException {
-        service.save(request, monitorId);
-        return ResponseEntity.status(HttpStatus.OK)
-                .body(ResponseDto.fromData(null, HttpStatus.OK, MessageCommonsConstants.UPDATE_SUCCESS_MESSAGE));
-    }
+  @Override
+  @PutMapping("/{id}")
+  @SecurityRequirement(name = "jwt")
+  public ResponseEntity<?> update(@Valid @RequestBody MonitorRequestDto request, @PathVariable(name = "id") UUID monitorId) throws JsonProcessingException {
+    service.save(request, monitorId);
+    return ResponseEntity.status(HttpStatus.OK)
+            .body(ResponseDto.fromData(null, HttpStatus.OK, MessageCommonsConstants.UPDATE_SUCCESS_MESSAGE));
+  }
 
-    @Override
-    @GetMapping("/{id}")
-    @SecurityRequirement(name = "jwt")
-    public ResponseEntity<?> findById(@PathVariable(name = "id") UUID monitorId) {
-        return ResponseEntity.status(HttpStatus.OK)
-                .body(ResponseDto.fromData(service.findById(monitorId), HttpStatus.OK, MessageCommonsConstants.FIND_ID_SUCCESS_MESSAGE));
-    }
+  @Override
+  @GetMapping("/{id}")
+  @SecurityRequirement(name = "jwt")
+  public ResponseEntity<?> findById(@PathVariable(name = "id") UUID monitorId) {
+    return ResponseEntity.status(HttpStatus.OK)
+            .body(ResponseDto.fromData(service.findById(monitorId), HttpStatus.OK, MessageCommonsConstants.FIND_ID_SUCCESS_MESSAGE));
+  }
 
-    @Override
-    @GetMapping("/nearest")
-    @SecurityRequirement(name = "jwt")
-    public ResponseEntity<?> findNearestActiveMonitors(
-            @RequestParam String zipCodes,
-            @RequestParam(required = false) BigDecimal size,
-            @RequestParam(required = false) String type,
-            @RequestParam(defaultValue = "3") int limit) {
-        Map<String, List<MonitorMinResponseDto>> monitors = service.findNearestActiveMonitors(zipCodes, size, type, limit);
-        String message = monitors.isEmpty() ? MessageCommonsConstants.FIND_FILTER_EMPTY_MESSAGE : MessageCommonsConstants.FIND_ALL_SUCCESS_MESSAGE;
-        return ResponseEntity.status(HttpStatus.OK).body(ResponseDto.fromData(monitors, HttpStatus.OK, message));
-    }
+  @Override
+  @GetMapping("/valid-ads/{id}")
+  @SecurityRequirement(name = "jwt")
+  public ResponseEntity<?> findValidAdsForMonitor(@PathVariable(name = "id") UUID monitorId) {
+    return ResponseEntity.status(HttpStatus.OK)
+            .body(ResponseDto.fromData(service.findValidAdsForMonitor(monitorId), HttpStatus.OK, MessageCommonsConstants.FIND_ID_SUCCESS_MESSAGE));
+  }
+
+  @Override
+  @GetMapping("/nearest")
+  @SecurityRequirement(name = "jwt")
+  public ResponseEntity<?> findNearestActiveMonitors(
+          @RequestParam String zipCodes,
+          @RequestParam(required = false) BigDecimal size,
+          @RequestParam(required = false) String type,
+          @RequestParam(defaultValue = "3") int limit) {
+    Map<String, List<MonitorMinResponseDto>> monitors = service.findNearestActiveMonitors(zipCodes, size, type, limit);
+    String message = monitors.isEmpty() ? MessageCommonsConstants.FIND_FILTER_EMPTY_MESSAGE : MessageCommonsConstants.FIND_ALL_SUCCESS_MESSAGE;
+    return ResponseEntity.status(HttpStatus.OK).body(ResponseDto.fromData(monitors, HttpStatus.OK, message));
+  }
 }

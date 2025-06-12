@@ -2,19 +2,24 @@ package com.telas.helpers;
 
 import com.telas.dtos.request.MonitorAdRequestDto;
 import com.telas.dtos.request.MonitorRequestDto;
+import com.telas.dtos.response.LinkResponseDto;
+import com.telas.dtos.response.MonitorAdResponseDto;
 import com.telas.entities.Ad;
 import com.telas.entities.Address;
 import com.telas.entities.Client;
+import com.telas.entities.Monitor;
 import com.telas.enums.AdValidationType;
 import com.telas.enums.Role;
 import com.telas.infra.exceptions.BusinessRuleException;
 import com.telas.infra.exceptions.ResourceNotFoundException;
 import com.telas.repositories.AdRepository;
 import com.telas.services.AddressService;
+import com.telas.services.BucketService;
 import com.telas.services.GeolocationService;
 import com.telas.shared.constants.SharedConstants;
 import com.telas.shared.constants.valitation.AddressValidationMessages;
 import com.telas.shared.constants.valitation.MonitorValidationMessages;
+import com.telas.shared.utils.AttachmentUtils;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
@@ -28,30 +33,10 @@ public class MonitorRequestHelper {
   private final GeolocationService geolocationService;
   private final AdRepository adRepository;
   private final AddressService addressService;
+  private final BucketService bucketService;
 
   @Transactional
   public List<Ad> getAds(MonitorRequestDto request, UUID monitorId) {
-//    List<UUID> adsIds = request.getAds().stream()
-//            .map(MonitorAdRequestDto::getId)
-//            .toList();
-//
-//    if (adsIds.size() > SharedConstants.MAX_MONITOR_ADS) {
-//      throw new BusinessRuleException(MonitorValidationMessages.MAX_MONITOR_ADS);
-//    }
-//
-//    List<Ad> ads = adRepository.findAllValidAdsForMonitor(adsIds, AdValidationType.APPROVED, monitorId);
-//
-//    if (ads.isEmpty()) {
-//      return List.of();
-//    }
-//
-//    boolean hasInvalidAds = ads.stream().anyMatch(ad -> !adsIds.contains(ad.getId()));
-//
-//    if (hasInvalidAds) {
-//      throw new ResourceNotFoundException(MonitorValidationMessages.AD_NOT_ABLE_TO_ASSIGN_TO_MONITOR);
-//    }
-//
-//    return ads;
     Set<UUID> adsIds = request.getAds().stream()
             .map(MonitorAdRequestDto::getId)
             .collect(Collectors.toSet());
@@ -70,15 +55,17 @@ public class MonitorRequestHelper {
             .map(Ad::getId)
             .collect(Collectors.toSet());
 
-//    boolean hasInvalidAds = !monitorAdsIds.containsAll(adsIds) || !adsIds.containsAll(monitorAdsIds);
-
     boolean hasInvalidAds = !monitorAdsIds.containsAll(adsIds);
 
     if (hasInvalidAds) {
       throw new BusinessRuleException(MonitorValidationMessages.AD_NOT_ABLE_TO_ASSIGN_TO_MONITOR);
     }
 
-    return ads;
+    return ads.stream()
+            .filter(ad -> adsIds.contains(ad.getId()))
+            .toList();
+
+//    return ads;
   }
 
   @Transactional
@@ -126,5 +113,19 @@ public class MonitorRequestHelper {
     return ads.isEmpty() ? Set.of() : ads.stream()
             .map(Ad::getClient)
             .collect(Collectors.toSet());
+  }
+
+  @Transactional(readOnly = true)
+  public List<LinkResponseDto> getValidAdsForMonitor(UUID monitorId) {
+    return adRepository.findAllValidAdsForMonitor(AdValidationType.APPROVED, monitorId).stream()
+            .map(ad -> new LinkResponseDto(ad.getId(), bucketService.getLink(AttachmentUtils.format(ad))))
+            .toList();
+  }
+
+  @Transactional(readOnly = true)
+  public List<MonitorAdResponseDto> getMonitorAdsResponse(Monitor entity) {
+    return entity.getMonitorAds().stream()
+            .map(monitorAd -> new MonitorAdResponseDto(monitorAd, bucketService.getLink(AttachmentUtils.format(monitorAd.getAd()))))
+            .toList();
   }
 }
