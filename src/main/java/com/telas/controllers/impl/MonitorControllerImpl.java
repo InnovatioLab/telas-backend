@@ -3,7 +3,10 @@ package com.telas.controllers.impl;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.telas.controllers.MonitorController;
 import com.telas.dtos.request.MonitorRequestDto;
+import com.telas.dtos.request.filters.FilterMonitorRequestDto;
 import com.telas.dtos.response.MonitorMinResponseDto;
+import com.telas.dtos.response.MonitorResponseDto;
+import com.telas.dtos.response.PaginationResponseDto;
 import com.telas.dtos.response.ResponseDto;
 import com.telas.services.MonitorService;
 import com.telas.shared.constants.MessageCommonsConstants;
@@ -57,6 +60,17 @@ public class MonitorControllerImpl implements MonitorController {
   public ResponseEntity<?> findValidAdsForMonitor(@PathVariable(name = "id") UUID monitorId) {
     return ResponseEntity.status(HttpStatus.OK)
             .body(ResponseDto.fromData(service.findValidAdsForMonitor(monitorId), HttpStatus.OK, MessageCommonsConstants.FIND_ID_SUCCESS_MESSAGE));
+  }
+
+  @Override
+  @GetMapping("/filters")
+  @SecurityRequirement(name = "jwt")
+  public ResponseEntity<?> findAllMonitorsFilters(FilterMonitorRequestDto request) {
+    PaginationResponseDto<List<MonitorResponseDto>> response = service.findAllByFilters(request);
+
+    String msg = response.getList().isEmpty() ? MessageCommonsConstants.FIND_FILTER_EMPTY_MESSAGE : MessageCommonsConstants.FIND_ALL_SUCCESS_MESSAGE;
+
+    return ResponseEntity.status(HttpStatus.OK).body(ResponseDto.fromData(response, HttpStatus.OK, msg));
   }
 
   @Override

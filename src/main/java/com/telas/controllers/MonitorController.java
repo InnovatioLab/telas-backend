@@ -2,6 +2,7 @@ package com.telas.controllers;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.telas.dtos.request.MonitorRequestDto;
+import com.telas.dtos.request.filters.FilterMonitorRequestDto;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -45,6 +46,13 @@ public interface MonitorController {
           @ApiResponse(responseCode = "403", description = "Forbidden."),
   })
   ResponseEntity<?> findValidAdsForMonitor(UUID monitorId);
+
+  @Operation(summary = "Endpoint contract to find all monitors paginated with filters", responses = {
+          @ApiResponse(responseCode = "200", description = "Monitors founded successfully."),
+          @ApiResponse(responseCode = "401", description = "Unauthorized."),
+          @ApiResponse(responseCode = "403", description = "Forbidden."),
+  })
+  ResponseEntity<?> findAllMonitorsFilters(FilterMonitorRequestDto request);
 
   @Operation(summary = "Endpoint contract to get a list of the nearest active monitors from a list of zipCodes", responses = {
           @ApiResponse(responseCode = "200", description = "Monitors founded successfully.")

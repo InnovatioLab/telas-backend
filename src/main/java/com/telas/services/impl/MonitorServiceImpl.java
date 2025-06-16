@@ -2,6 +2,7 @@ package com.telas.services.impl;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.telas.dtos.request.MonitorRequestDto;
+import com.telas.dtos.request.filters.FilterMonitorRequestDto;
 import com.telas.dtos.response.*;
 import com.telas.entities.*;
 import com.telas.enums.SubscriptionStatus;
@@ -13,8 +14,14 @@ import com.telas.repositories.MonitorRepository;
 import com.telas.services.MonitorService;
 import com.telas.shared.audit.CustomRevisionListener;
 import com.telas.shared.constants.valitation.MonitorValidationMessages;
+import com.telas.shared.utils.PaginationFilterUtil;
 import com.telas.shared.utils.ValidateDataUtils;
+import jakarta.persistence.criteria.Predicate;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -48,6 +55,32 @@ public class MonitorServiceImpl implements MonitorService {
     }
 
     repository.save(monitor);
+  }
+
+  @Override
+  @Transactional
+  public void removeMonitorAdsFromSubscription(Subscription subscription) {
+    List<SubscriptionStatus> validStatuses = List.of(SubscriptionStatus.EXPIRED, SubscriptionStatus.CANCELLED);
+
+    if (validStatuses.contains(subscription.getStatus())) {
+      Client client = subscription.getClient();
+
+      // Itera sobre os monitores da subscription
+      subscription.getMonitors().forEach(monitor -> {
+        // Filtra os anúncios que pertencem ao cliente da subscription
+        Set<MonitorAd> adsToRemove = monitor.getMonitorAds().stream()
+                .filter(monitorAd -> monitorAd.getAd().getClient().equals(client))
+                .collect(Collectors.toSet());
+
+        // Remove os anúncios do monitor
+        monitor.getMonitorAds().removeAll(adsToRemove);
+        monitor.getClients().remove(client);
+
+        // Remove os anúncios do repositório
+//        monitorAdRepository.deleteAll(adsToRemove);
+        repository.save(monitor);
+      });
+    }
   }
 
   @Override
@@ -127,29 +160,47 @@ public class MonitorServiceImpl implements MonitorService {
   }
 
   @Override
-  @Transactional
-  public void removeMonitorAdsFromSubscription(Subscription subscription) {
-    List<SubscriptionStatus> validStatuses = List.of(SubscriptionStatus.EXPIRED, SubscriptionStatus.CANCELLED);
+  @Transactional(readOnly = true)
+  public PaginationResponseDto<List<MonitorResponseDto>> findAllByFilters(FilterMonitorRequestDto request) {
+    authenticatedUserService.validateAdmin();
 
-    if (validStatuses.contains(subscription.getStatus())) {
-      Client client = subscription.getClient();
+    Sort order = request.setOrdering();
+    Pageable pageable = PaginationFilterUtil.getPageable(request, order);
+    Specification<Monitor> filter = PaginationFilterUtil.addSpecificationFilter(
+            null,
+            request.getGenericFilter(),
+            this::filterMonitors
+    );
 
-      // Itera sobre os monitores da subscription
-      subscription.getMonitors().forEach(monitor -> {
-        // Filtra os anúncios que pertencem ao cliente da subscription
-        Set<MonitorAd> adsToRemove = monitor.getMonitorAds().stream()
-                .filter(monitorAd -> monitorAd.getAd().getClient().equals(client))
-                .collect(Collectors.toSet());
+    Page<Monitor> page = repository.findAll(filter, pageable);
+    List<MonitorResponseDto> response = page.stream()
+            .map(monitor -> new MonitorResponseDto(monitor, helper.getMonitorAdsResponse(monitor)))
+            .toList();
 
-        // Remove os anúncios do monitor
-        monitor.getMonitorAds().removeAll(adsToRemove);
-        monitor.getClients().remove(client);
+    return PaginationResponseDto.fromResult(response, (int) page.getTotalElements(), page.getTotalPages(), request.getPage());
+  }
 
-        // Remove os anúncios do repositório
-//        monitorAdRepository.deleteAll(adsToRemove);
-        repository.save(monitor);
-      });
-    }
+  private Specification<Monitor> filterMonitors(Specification<Monitor> specification, String genericFilter) {
+    return specification.and((root, query, criteriaBuilder) -> {
+      String filter = "%" + genericFilter.toLowerCase() + "%";
+      List<Predicate> predicates = new ArrayList<>();
+      predicates.add(criteriaBuilder.like(criteriaBuilder.lower(root.get("type")), filter));
+
+
+      if ("true".equalsIgnoreCase(genericFilter) || "false".equalsIgnoreCase(genericFilter)) {
+        predicates.add(criteriaBuilder.equal(root.get("active"), Boolean.valueOf(genericFilter)));
+      }
+
+      Predicate addressPredicate = helper.createAddressPredicate(criteriaBuilder, root, filter);
+      predicates.add(addressPredicate);
+
+      try {
+        predicates.add(criteriaBuilder.equal(root.get("size"), new BigDecimal(genericFilter)));
+      } catch (NumberFormatException ignored) {
+      }
+
+      return criteriaBuilder.or(predicates.toArray(new Predicate[0]));
+    });
   }
 
   private Monitor createNewMonitor(MonitorRequestDto request, AuthenticatedUser authenticatedUser, Address address) {

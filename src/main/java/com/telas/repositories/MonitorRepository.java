@@ -4,6 +4,7 @@ import com.telas.dtos.response.MonitorValidationResponseDto;
 import com.telas.entities.Monitor;
 import org.jetbrains.annotations.NotNull;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
@@ -14,7 +15,7 @@ import java.util.Optional;
 import java.util.UUID;
 
 @Repository
-public interface MonitorRepository extends JpaRepository<Monitor, UUID> {
+public interface MonitorRepository extends JpaRepository<Monitor, UUID>, JpaSpecificationExecutor<Monitor> {
   @Override
   @NotNull
   @Query("SELECT m FROM Monitor m LEFT JOIN FETCH m.monitorAds WHERE m.id = :id")

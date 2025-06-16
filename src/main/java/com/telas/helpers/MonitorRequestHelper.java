@@ -20,6 +20,9 @@ import com.telas.shared.constants.SharedConstants;
 import com.telas.shared.constants.valitation.AddressValidationMessages;
 import com.telas.shared.constants.valitation.MonitorValidationMessages;
 import com.telas.shared.utils.AttachmentUtils;
+import jakarta.persistence.criteria.CriteriaBuilder;
+import jakarta.persistence.criteria.Predicate;
+import jakarta.persistence.criteria.Root;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
@@ -127,5 +130,31 @@ public class MonitorRequestHelper {
     return entity.getMonitorAds().stream()
             .map(monitorAd -> new MonitorAdResponseDto(monitorAd, bucketService.getLink(AttachmentUtils.format(monitorAd.getAd()))))
             .toList();
+  }
+
+  @Transactional(readOnly = true)
+  public Predicate createAddressPredicate(CriteriaBuilder criteriaBuilder, Root<Monitor> root, String filter) {
+    return criteriaBuilder.like(
+            criteriaBuilder.lower(
+                    criteriaBuilder.concat(
+                            criteriaBuilder.concat(
+                                    criteriaBuilder.concat(
+                                            criteriaBuilder.concat(
+                                                    root.get("address").get("street"), " "
+                                            ),
+                                            root.get("address").get("city")
+                                    ),
+                                    " "
+                            ),
+                            criteriaBuilder.concat(
+                                    criteriaBuilder.concat(
+                                            root.get("address").get("state"), " "
+                                    ),
+                                    root.get("address").get("zipCode")
+                            )
+                    )
+            ),
+            filter
+    );
   }
 }
