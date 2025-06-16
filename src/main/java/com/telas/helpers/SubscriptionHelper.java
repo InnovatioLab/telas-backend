@@ -120,7 +120,7 @@ public class SubscriptionHelper {
       subscription.setStartedAt(Instant.ofEpochSecond(Collections.min(periods)));
     }
   }
-  
+
   @Transactional
   public void setAuditInfo(Subscription subscription, String agent) {
     CustomRevisionListener.setUsername(agent);
@@ -221,7 +221,7 @@ public class SubscriptionHelper {
   public void configureSubscriptionParams(SessionCreateParams.Builder paramsBuilder, Subscription subscription, Map<String, String> metaData) throws StripeException {
     SessionCreateParams.SubscriptionData.Builder subscriptionDataBuilder = SessionCreateParams.SubscriptionData.builder()
             .putAllMetadata(metaData)
-            .setDescription("Invoice payment for your tela's subscription");
+            .setDescription("Invoice payment for your tela's subscription for monitors: " + subscription.getMonitorAddresses());
 
     if (subscription.isUpgrade() && subscription.getEndsAt() != null) {
       addDiscountForUpgrade(paramsBuilder, subscription);

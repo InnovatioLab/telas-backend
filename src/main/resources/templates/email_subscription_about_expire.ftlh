@@ -111,7 +111,7 @@
                 </td>
             </tr>
             <tr>
-                <td><strong>Service End Date:</strong> ${locations}</td>
+                <td><strong>Service End Date:</strong> ${endDate}</td>
             </tr>
             <tr>
                 <td>

@@ -37,12 +37,6 @@ public class Subscription extends BaseAudit implements Serializable {
   @Column(name = "id")
   private UUID id;
 
-//  @Column(name = "amount", precision = 10, scale = 2, nullable = false)
-//  private BigDecimal amount = BigDecimal.valueOf(0.00);
-
-//  @Column(name = "discount", precision = 5, scale = 2, nullable = false)
-//  private BigDecimal discount = BigDecimal.valueOf(0.00);
-
   @Column(name = "recurrence", nullable = false)
   @Enumerated(EnumType.STRING)
   private Recurrence recurrence;
@@ -145,12 +139,9 @@ public class Subscription extends BaseAudit implements Serializable {
     return true;
   }
 
-//  public void calculateAmount(BigDecimal amountReceived) {
-//    if (amount.compareTo(BigDecimal.ZERO) > 0) {
-//      amount = MoneyUtils.add(amount, amountReceived);
-//    } else {
-//      amount = amountReceived;
-//    }
-//  }
-
+  public String getMonitorAddresses() {
+    return monitors.stream()
+            .map(monitor -> monitor.getAddress().getCoordinatesParams())
+            .collect(Collectors.joining("\n"));
+  }
 }
