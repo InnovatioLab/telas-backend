@@ -35,10 +35,10 @@ public class VerificationCodeServiceImpl implements VerificationCodeService {
   @Override
   @Transactional
   public void validate(Client client, String code) {
-    Instant actualDate = Instant.now();
-    Instant expiryDate = client.getVerificationCode().getExpiresAt();
+    Instant now = Instant.now();
+    Instant expiresAt = client.getVerificationCode().getExpiresAt();
     boolean invalidCode = !client.getVerificationCode().getCode().equals(code);
-    boolean expiredCode = !actualDate.isBefore(expiryDate);
+    boolean expiredCode = now.isAfter(expiresAt);
 
     if (invalidCode || expiredCode) {
       throw new BusinessRuleException(ClientValidationMessages.INVALID_OR_EXPIRED_CODE);
