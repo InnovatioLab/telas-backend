@@ -128,7 +128,7 @@
             </tr>
             <tr>
                 <td style="padding-bottom: 20px;">
-                    If you did not request a password reset, please <u>ignore this email./u>
+                    If you did not request a password reset, please <u>ignore this email.</u>
                 </td>
             </tr>
             <tr>

@@ -100,7 +100,7 @@
             <tr class="header">
                 <td style="padding-bottom: 10px">
                     <h3 style="color: #131518; font-weight: 500; padding-top: 20px">
-                        Dear<strong style="font-weight: 500"> ${name}</strong>
+                        Dear<strong> ${name}</strong>
                     </h3>
                 </td>
             </tr>
@@ -124,13 +124,12 @@
             </tr>
             <tr>
                 <td>
-                    Visit this link to renew your service:
-                    <a
-                            href="${renewalLink}"
-                            style="color: #00763b; text-decoration: none"
-                    >${renewalLink}</a
-                    >
-                    and follow the easy renewal steps.
+                    Visit <strong><a
+                                href="${renewalLink}"
+                                style="color: #00763b; text-decoration: none"
+                        >this link</a
+                        ></strong>
+                    to renew your service and follow the easy renewal steps.
                 </td>
             </tr>
             <tr>

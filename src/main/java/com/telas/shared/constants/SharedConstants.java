@@ -4,6 +4,7 @@ import java.util.List;
 
 public final class SharedConstants {
   public static final String DAILY_CRON = "0 0 3 * * *";
+  public static final String EXPIRY_SUBSCRIPTION_CRON = "0 0 19 * * *";
   public static final String ZONE_ID = "America/New_York";
   public static final String PROJECT_NAME = "Marketing-Project";
   public static final String DESTINATARIO = "Recipient";
@@ -30,6 +31,7 @@ public final class SharedConstants {
   public static final String REGEX_ONLY_LETTERS = "^[a-zA-ZÀ-ÖØ-öø-ÿ\\s]*$";
   public static final String REGEX_ONLY_LETTERS_NUMBERS = "[\\p{L}0-9\\s-.,]+";
   public static final String REGEX_ZIP_CODE = "\\d{5}";
+  public static final String REGEX_IP = "^((25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\\.){3}(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$";
 
   public static final String REGEX_ATTACHMENT_NAME = ".*\\.(jpg|jpeg|png|gif|svg|bmp|tiff)$";
   public static final String REGEX_ATTACHMENT_TYPE = "image/(jpg|jpeg|png|gif|svg|bmp|tiff)";

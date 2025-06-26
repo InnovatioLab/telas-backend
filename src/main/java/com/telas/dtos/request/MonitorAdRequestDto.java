@@ -1,7 +1,6 @@
 package com.telas.dtos.request;
 
 
-import com.telas.enums.DisplayType;
 import com.telas.shared.constants.valitation.MonitorValidationMessages;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Positive;
@@ -24,13 +23,6 @@ public class MonitorAdRequestDto implements Serializable {
 
   @NotNull(message = MonitorValidationMessages.AD_ID_REQUIRED)
   private UUID id;
-
-  private DisplayType displayType = DisplayType.INTERLEAVED;
-
-//    @NotNull(message = MonitorValidationMessages.BLOCK_TIME_REQUIRED)
-//    @Positive(message = MonitorValidationMessages.BLOCK_TIME_INVALID)
-//    @Max(value = SharedConstants.MINUTE_IN_SECONDS, message = MonitorValidationMessages.BLOCK_TIME_MAX_VALUE)
-//    private Integer blockTime;
 
   @NotNull(message = MonitorValidationMessages.ORDER_REQUIRED)
   @Positive(message = MonitorValidationMessages.ORDER_INVALID)

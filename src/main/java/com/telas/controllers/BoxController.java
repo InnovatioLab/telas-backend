@@ -1,0 +1,38 @@
+package com.telas.controllers;
+
+import com.telas.dtos.request.BoxRequestDto;
+import com.telas.dtos.response.StatusMonitorsResponseDto;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.tags.Tag;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestParam;
+
+import java.util.List;
+
+@Tag(name = "Boxes", description = "Endpoints to manage monitors boxes")
+public interface BoxController {
+  @Operation(summary = "Endpoint to create a box", responses = {
+          @ApiResponse(responseCode = "201", description = "Box created successfully."),
+          @ApiResponse(responseCode = "422", description = "Request with invalid data."),
+          @ApiResponse(responseCode = "401", description = "Unauthorized."),
+          @ApiResponse(responseCode = "403", description = "Forbidden."),
+          @ApiResponse(responseCode = "404", description = "Some data not found."),
+  })
+  ResponseEntity<?> save(BoxRequestDto request);
+
+  @Operation(summary = "Endpoint to fetch monitors and ads data by Ip", responses = {
+          @ApiResponse(responseCode = "200", description = "Monitors and ads founded successfully."),
+          @ApiResponse(responseCode = "422", description = "Request with invalid data."),
+          @ApiResponse(responseCode = "404", description = "Some data not found."),
+  })
+  ResponseEntity<?> getMonitorsAdsByIp(@RequestParam(name = "ip") String ip);
+
+  @Operation(summary = "Endpoint to get monitors health from the box and update monitor status", responses = {
+          @ApiResponse(responseCode = "204", description = "Monitors health checked successfully."),
+          @ApiResponse(responseCode = "404", description = "Some data not found."),
+          @ApiResponse(responseCode = "500", description = "Internal server error."),
+  })
+  ResponseEntity<?> checkMonitorsHealth(@RequestBody List<StatusMonitorsResponseDto> responseList);
+}

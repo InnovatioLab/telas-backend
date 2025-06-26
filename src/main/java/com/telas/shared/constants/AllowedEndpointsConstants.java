@@ -14,6 +14,8 @@ public class AllowedEndpointsConstants {
             "/clients/identification/{identificationNumber}",
             "/clients/{id}",
             "/addresses/{zipCode}",
+            "/boxes/**",
+            "/boxes",
             "/swagger-ui/**",
             "/v*/api-docs/**",
             "/actuator/**",
@@ -27,7 +29,8 @@ public class AllowedEndpointsConstants {
             "/clients/resend-code/{identification}",
             "/webhook",
             "/auth/login",
-            "/auth/recovery-password/{identificationNumber}"
+            "/auth/recovery-password/{identificationNumber}",
+            "/boxes/health"
     ));
     ALLOWED_ENDPOINTS.put(HttpMethod.PATCH, List.of(
             "/clients/create-password/{identification}",

@@ -100,7 +100,7 @@
             <tr class="header">
                 <td style="padding-bottom: 10px">
                     <h3 style="color: #131518; font-weight: 500; padding-top: 20px;">
-                        Dear<strong style="font-weight: 500"> ${name}</strong>
+                        Dear<strong> ${name}</strong>
                     </h3>
                 </td>
             </tr>
