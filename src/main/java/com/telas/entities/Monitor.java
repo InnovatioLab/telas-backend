@@ -9,6 +9,7 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 import org.hibernate.envers.AuditTable;
+import org.hibernate.envers.NotAudited;
 
 import java.io.Serial;
 import java.io.Serializable;
@@ -46,9 +47,6 @@ public class Monitor extends BaseAudit implements Serializable {
   @Column(name = "product_id", nullable = false)
   private String productId;
 
-//  @Column(name = "block_price", precision = 10, scale = 2, nullable = false)
-//  private BigDecimal blockPrice;
-
   @Column(name = "max_blocks")
   private Integer maxBlocks = 12;
 
@@ -67,6 +65,12 @@ public class Monitor extends BaseAudit implements Serializable {
           inverseJoinColumns = @JoinColumn(name = "client_id")
   )
   private Set<Client> clients = new HashSet<Client>();
+
+  @JsonIgnore
+  @NotAudited
+  @ManyToOne
+  @JoinColumn(name = "box_id", referencedColumnName = "id")
+  private Box box;
 
   public Monitor(MonitorRequestDto request, Address address) {
     productId = request.getProductId();
@@ -98,11 +102,7 @@ public class Monitor extends BaseAudit implements Serializable {
   }
 
   public boolean hasAvailableBlocks(int blocksWanted) {
-    int activeBlocks = monitorAds.stream()
-            .mapToInt(MonitorAd::getBlockQuantity)
-            .sum();
-
-    return (activeBlocks + blocksWanted) <= maxBlocks;
+    return (monitorAds.size() + blocksWanted) <= maxBlocks;
   }
 
   public boolean clientAlreadyHasAd(Client client) {

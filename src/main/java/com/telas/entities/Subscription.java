@@ -89,13 +89,6 @@ public class Subscription extends BaseAudit implements Serializable {
   }
 
   public void initialize() {
-//    if (!upgrade) {
-//      startedAt = startedAt == null ? Instant.now() : startedAt;
-//      endsAt = isBonus() ? null : recurrence.calculateEndsAt(startedAt);
-//    } else {
-//      endsAt = recurrence.calculateEndsAt(endsAt);
-//    }
-
     startedAt = startedAt == null ? Instant.now() : startedAt;
     endsAt = isBonus() ? null : recurrence.calculateEndsAt(startedAt);
   }
@@ -125,6 +118,7 @@ public class Subscription extends BaseAudit implements Serializable {
 
   public boolean canBeUpgraded(Recurrence recurrence) {
     if (isBonus()
+        || isUpgrade()
         || Recurrence.MONTHLY.equals(this.recurrence)
         || !SubscriptionStatus.ACTIVE.equals(status)
         || endsAt == null

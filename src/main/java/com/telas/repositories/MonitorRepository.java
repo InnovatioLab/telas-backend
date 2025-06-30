@@ -67,7 +67,7 @@ public interface MonitorRepository extends JpaRepository<Monitor, UUID>, JpaSpec
               SELECT new com.telas.dtos.response.MonitorValidationResponseDto(
                   m.id,
                   (m.active = true AND m.maxBlocks >
-                      (SELECT COALESCE(SUM(ma.blockQuantity), 0) FROM MonitorAd ma WHERE ma.id.monitor.id = m.id)),
+                      (SELECT COUNT(*) FROM MonitorAd ma WHERE ma.id.monitor.id = m.id)),
                   CASE WHEN EXISTS (
                       SELECT 1 FROM Subscription s
                       JOIN s.monitors sm

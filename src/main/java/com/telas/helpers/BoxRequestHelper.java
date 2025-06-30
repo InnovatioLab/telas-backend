@@ -1,18 +1,23 @@
 package com.telas.helpers;
 
+import com.telas.dtos.request.UpdateBoxMonitorsAdRequestDto;
 import com.telas.dtos.response.BoxMonitorAdResponseDto;
 import com.telas.dtos.response.MonitorAdResponseDto;
 import com.telas.dtos.response.StatusMonitorsResponseDto;
 import com.telas.entities.Box;
 import com.telas.entities.Ip;
 import com.telas.entities.Monitor;
+import com.telas.enums.AdValidationType;
+import com.telas.infra.exceptions.BusinessRuleException;
 import com.telas.infra.exceptions.ResourceNotFoundException;
+import com.telas.repositories.BoxRepository;
 import com.telas.repositories.IpRepository;
 import com.telas.repositories.MonitorRepository;
 import com.telas.services.BucketService;
-import com.telas.services.impl.PaymentServiceImpl;
+import com.telas.shared.constants.valitation.BoxValidationMessages;
 import com.telas.shared.constants.valitation.MonitorValidationMessages;
 import com.telas.shared.utils.AttachmentUtils;
+import com.telas.shared.utils.HttpClientUtil;
 import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -26,10 +31,19 @@ import java.util.UUID;
 @Component
 @RequiredArgsConstructor
 public class BoxRequestHelper {
-  private final Logger log = LoggerFactory.getLogger(PaymentServiceImpl.class);
+  private final Logger log = LoggerFactory.getLogger(BoxRequestHelper.class);
   private final IpRepository ipRepository;
+  private final BoxRepository boxRepository;
   private final MonitorRepository monitorRepository;
   private final BucketService bucketService;
+  private final HttpClientUtil httpClient;
+
+  @Transactional(readOnly = true)
+  public void validateUniqueBoxByIp(String ip) {
+    if (boxRepository.findByIp(ip).isPresent()) {
+      throw new BusinessRuleException(BoxValidationMessages.BOX_ALREADY_EXISTS_FOR_IP);
+    }
+  }
 
   @Transactional(readOnly = true)
   public Ip getIp(String ip) {
@@ -80,5 +94,29 @@ public class BoxRequestHelper {
                 log.warn("Monitor with ID {} is sending MODERATE error level due to health check failure! message: {}", response.getId(), response.getMessage());
               }
             });
+  }
+
+  @Transactional
+  public void sendUpdateBoxMonitorsAdsRequest(Box box, List<Monitor> monitors) {
+    if (box.isActive()) {
+      String url = "http://" + box.getIp().getIpAddress() + ":5050/update-ads";
+
+      List<UpdateBoxMonitorsAdRequestDto> body = monitors.stream()
+              .flatMap(monitor -> monitor.getAds().stream()
+                      .filter(ad -> AdValidationType.APPROVED.equals(ad.getValidation()))
+                      .map(ad -> new UpdateBoxMonitorsAdRequestDto(
+                              monitor.getId(),
+                              ad.getName(),
+                              bucketService.getLink(AttachmentUtils.format(ad))
+                      ))
+              )
+              .toList();
+
+      try {
+        httpClient.makePostRequest(url, body, Void.class, null);
+      } catch (Exception e) {
+        log.error("Error while sending box update request to boxId: {}, URL: {}, message: {}", box.getId().toString(), url, e.getMessage());
+      }
+    }
   }
 }

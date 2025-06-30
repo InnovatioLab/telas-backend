@@ -84,17 +84,17 @@ public class ClientControllerImpl implements ClientController {
   @Override
   @PutMapping("/{id}")
   @SecurityRequirement(name = "jwt")
-  public ResponseEntity<?> update(@Valid @RequestBody ClientRequestDto request, @PathVariable(name = "id") UUID clientId) throws JsonProcessingException {
+  public ResponseEntity<?> update(@Valid @RequestBody ClientRequestDto request, @PathVariable(name = "id") UUID clientId) {
     service.update(request, clientId);
     return ResponseEntity.status(HttpStatus.OK)
             .body(ResponseDto.fromData(null, HttpStatus.OK, MessageCommonsConstants.UPDATE_SUCCESS_MESSAGE));
   }
 
   @Override
-  @PostMapping("/attachments/{id}")
+  @PostMapping("/attachments")
   @SecurityRequirement(name = "jwt")
-  public ResponseEntity<?> uploadAttachments(@Valid @RequestBody List<AttachmentRequestDto> request, @PathVariable(name = "id") UUID clientId) throws JsonProcessingException {
-    service.uploadAttachments(request, clientId);
+  public ResponseEntity<?> uploadAttachments(@Valid @RequestBody List<AttachmentRequestDto> request) {
+    service.uploadAttachments(request);
     return ResponseEntity.status(HttpStatus.CREATED)
             .body(ResponseDto.fromData(null, HttpStatus.CREATED, MessageCommonsConstants.UPLOAD_SUCCESS_MESSAGE));
   }
@@ -176,15 +176,6 @@ public class ClientControllerImpl implements ClientController {
 
     service.validateAd(adId, validation, request);
     return ResponseEntity.status(HttpStatus.OK).body(ResponseDto.fromData(null, HttpStatus.OK, MessageCommonsConstants.AD_VALIDATION_MESSAGE));
-  }
-
-  @Override
-  @PostMapping("/monitors")
-  @SecurityRequirement(name = "jwt")
-  public ResponseEntity<?> addAdToMonitor(@RequestParam(name = "monitorIds") List<UUID> monitorIds) {
-    service.addAdToMonitor(monitorIds);
-    return ResponseEntity.status(HttpStatus.CREATED)
-            .body(ResponseDto.fromData(null, HttpStatus.CREATED, MessageCommonsConstants.AD_ATTACHED_SUCCESS_MESSAGE));
   }
 
   @Override

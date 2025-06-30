@@ -25,6 +25,20 @@ CREATE TABLE "audit"
   CONSTRAINT "pk_tbauditoria" PRIMARY KEY ("audit_id")
 );
 
+CREATE TABLE "ips" (
+  "id"              UUID PRIMARY KEY,
+  "ip_address"      VARCHAR(45)             NOT NULL,
+  "created_at"      TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT (now())
+);
+
+CREATE TABLE "boxes" (
+  "id"              UUID PRIMARY KEY,
+  "fl_active"       BOOLEAN DEFAULT TRUE,
+  "ip_id"          UUID                     NOT NULL,
+  "created_at"      TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT (now()),
+  CONSTRAINT "fk_box_ip" FOREIGN KEY ("ip_id") REFERENCES "ips" ("id") ON UPDATE NO ACTION ON DELETE NO ACTION
+);
+
 CREATE TABLE "verification_codes"
 (
   "id"           UUID PRIMARY KEY,
@@ -238,13 +252,13 @@ CREATE TABLE "monitors"
 (
   "id"                   UUID PRIMARY KEY,
   "fl_active"            BOOLEAN                           DEFAULT TRUE,
+  "box_id"               UUID                     NULL DEFAULT NULL,
+  "address_id"           UUID                     NOT NULL,
   "type"                 VARCHAR(50)              NOT NULL DEFAULT 'BASIC',
   "max_blocks"           INTEGER                  NOT NULL DEFAULT 12,
   "product_id"           VARCHAR(255)             NOT NULL,
---   "block_price"          NUMERIC(10, 2)           NOT NULL,
   "location_description" VARCHAR(255)             NULL     DEFAULT NULL,
   "size_in_inches"       NUMERIC(5, 2)            NOT NULL DEFAULT 0.00,
-  "address_id"           UUID                     NOT NULL,
   "username_create"      VARCHAR(255)             NULL     DEFAULT NULL,
   "username_update"      VARCHAR(255)             NULL     DEFAULT NULL,
   "created_at"           TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT (now()),
@@ -490,8 +504,6 @@ CREATE TABLE "monitors_ads"
 (
   "monitor_id"      UUID                     NOT NULL,
   "ad_id"           UUID                     NOT NULL,
-  "display_type"    VARCHAR(50)              NOT NULL DEFAULT 'INTERLEAVED',
-  "block_quantity"  INTEGER                  NOT NULL DEFAULT 1,
   "order_index"     INTEGER                  NOT NULL,
   "username_create" VARCHAR(255)             NULL     DEFAULT NULL,
   "username_update" VARCHAR(255)             NULL     DEFAULT NULL,
@@ -506,8 +518,6 @@ CREATE TABLE "monitors_ads_aud"
 (
   "monitor_id"     UUID     NOT NULL,
   "ad_id"          UUID     NOT NULL,
-  "display_type"   VARCHAR(50),
-  "block_quantity" INTEGER,
   "order_index"    INTEGER,
   "audit_id"       BIGINT   NOT NULL,
   "audit_type"     SMALLINT NULL DEFAULT NULL,
@@ -621,6 +631,12 @@ CREATE TABLE "subscriptions_flows"
   "client_id" UUID        NOT NULL,
   CONSTRAINT "fk_subscriptions_flows_client" FOREIGN KEY ("client_id") REFERENCES "clients" ("id") ON UPDATE NO ACTION ON DELETE CASCADE
 );
+
+INSERT INTO "ips" (id, ip_address, created_at)
+VALUES ('626644b9-5ce5-4c66-a8da-4444e3997174', '127.0.0.1', now());
+
+-- INSERT INTO "boxes" (id, ip_id, created_at)
+-- VALUES ('e52a414c-fa4f-454a-bf7f-1dd26e5fe755', '626644b9-5ce5-4c66-a8da-4444e3997174', now());
 
 INSERT INTO "terms_conditions" (id, version, content, created_at, updated_at, username_create, username_update)
 VALUES ('eb1f62bf-9d16-45c1-be45-bd52f97dffb2',

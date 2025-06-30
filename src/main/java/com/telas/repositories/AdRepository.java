@@ -9,6 +9,7 @@ import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 
 @Repository
@@ -44,4 +45,11 @@ public interface AdRepository extends JpaRepository<Ad, UUID>, JpaSpecificationE
           @Param("validation") AdValidationType validation,
           @Param("monitorId") UUID monitorId
   );
+
+  @Query("""
+          SELECT ad FROM Ad ad
+          WHERE ad.id IN :adsIds
+          AND ad.validation = 'APPROVED'
+          """)
+  List<Ad> findAllByIdIn(Set<UUID> adsIds);
 }

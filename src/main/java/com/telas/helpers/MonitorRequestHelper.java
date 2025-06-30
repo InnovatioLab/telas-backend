@@ -2,6 +2,8 @@ package com.telas.helpers;
 
 import com.telas.dtos.request.MonitorAdRequestDto;
 import com.telas.dtos.request.MonitorRequestDto;
+import com.telas.dtos.request.RemoveBoxMonitorsAdRequestDto;
+import com.telas.dtos.request.UpdateBoxMonitorsAdRequestDto;
 import com.telas.dtos.response.LinkResponseDto;
 import com.telas.dtos.response.MonitorAdResponseDto;
 import com.telas.entities.Ad;
@@ -20,10 +22,13 @@ import com.telas.shared.constants.SharedConstants;
 import com.telas.shared.constants.valitation.AddressValidationMessages;
 import com.telas.shared.constants.valitation.MonitorValidationMessages;
 import com.telas.shared.utils.AttachmentUtils;
+import com.telas.shared.utils.HttpClientUtil;
 import jakarta.persistence.criteria.CriteriaBuilder;
 import jakarta.persistence.criteria.Predicate;
 import jakarta.persistence.criteria.Root;
 import lombok.RequiredArgsConstructor;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -33,10 +38,12 @@ import java.util.stream.Collectors;
 @Component
 @RequiredArgsConstructor
 public class MonitorRequestHelper {
+  private final Logger log = LoggerFactory.getLogger(MonitorRequestHelper.class);
   private final GeolocationService geolocationService;
   private final AdRepository adRepository;
   private final AddressService addressService;
   private final BucketService bucketService;
+  private final HttpClientUtil httpClient;
 
   @Transactional
   public List<Ad> getAds(MonitorRequestDto request, UUID monitorId) {
@@ -67,8 +74,6 @@ public class MonitorRequestHelper {
     return ads.stream()
             .filter(ad -> adsIds.contains(ad.getId()))
             .toList();
-
-//    return ads;
   }
 
   @Transactional
@@ -156,5 +161,44 @@ public class MonitorRequestHelper {
             ),
             filter
     );
+  }
+
+  @Transactional
+  public void sendBoxesMonitorsUpdateAds(Monitor monitor, List<Ad> ads) {
+    if (monitor.getBox() == null || !monitor.getBox().isActive()) {
+      return;
+    }
+
+    String url = "http://" + monitor.getBox().getIp().getIpAddress() + ":5050/update-ads";
+
+    List<UpdateBoxMonitorsAdRequestDto> dtos = ads.stream()
+            .map(ad -> new UpdateBoxMonitorsAdRequestDto(
+                    monitor.getId(),
+                    ad.getName(),
+                    bucketService.getLink(AttachmentUtils.format(ad))
+            ))
+            .toList();
+
+    executePostRequest(url, dtos, monitor.getId());
+  }
+
+  @Transactional
+  public void sendBoxesMonitorsRemoveAds(Monitor monitor, List<String> adNamesToRemove) {
+    if (monitor.getBox() == null || !monitor.getBox().isActive()) {
+      return;
+    }
+
+    String url = "http://" + monitor.getBox().getIp().getIpAddress() + ":5050/remove-ads";
+    RemoveBoxMonitorsAdRequestDto dto = new RemoveBoxMonitorsAdRequestDto(monitor.getId(), adNamesToRemove);
+
+    executePostRequest(url, dto, monitor.getId());
+  }
+
+  private <T> void executePostRequest(String url, T body, UUID monitorId) {
+    try {
+      httpClient.makePostRequest(url, body, Void.class, null);
+    } catch (Exception e) {
+      log.error("Error while sending request with monitorID: {}, URL: {}, message: {}", monitorId, url, e.getMessage());
+    }
   }
 }

@@ -67,7 +67,7 @@ public class ClientServiceImpl implements ClientService {
 
     Client client = new Client(request);
     VerificationCode verificationCode = verificationCodeService.save(CodeType.CONTACT, client);
-    verificationCode.setValidated(true);
+//    verificationCode.setValidated(true);
     client.setVerificationCode(verificationCode);
 
     if (Objects.equals(client.getBusinessName(), "Admin")) {
@@ -80,9 +80,7 @@ public class ClientServiceImpl implements ClientService {
     client.setTermCondition(actualTermCondition);
     client.setTermAcceptedAt(Instant.now());
 
-//        MessagingDataDto messagingData = new MessagingDataDto(client, verificationCode, client.getContact().getContactPreference());
-//        verificationCodeService.send(messagingData, SharedConstants.TEMPLATE_EMAIL_CONTACT_VERIFICATION, SharedConstants.EMAIL_SUBJECT_CONTACT_VERIFICATION);
-
+    sendContactConfirmationEmail(client, verificationCode);
     repository.save(client);
   }
 
@@ -211,14 +209,13 @@ public class ClientServiceImpl implements ClientService {
 
   @Transactional
   @Override
-  public void update(ClientRequestDto request, UUID id) throws JsonProcessingException {
+  public void update(ClientRequestDto request, UUID id) {
     AuthenticatedUser authenticatedUser = authenticatedUserService.validateSelfOrAdmin(id);
 
     Client client = findActiveEntityById(id);
     helper.validateClientRequest(request, client);
 
     CustomRevisionListener.setUsername(authenticatedUser.client().getBusinessName());
-    CustomRevisionListener.setOldData(client.toStringMapper());
 
     client.update(request, authenticatedUser.client().getBusinessName());
     helper.updateAddresses(request.getAddresses(), client);
@@ -227,18 +224,15 @@ public class ClientServiceImpl implements ClientService {
 
   @Transactional
   @Override
-  public void uploadAttachments(List<AttachmentRequestDto> request, UUID clientId) {
+  public void uploadAttachments(List<AttachmentRequestDto> request) {
     attachmentHelper.validate(request);
 
-    AuthenticatedUser authenticatedUser = authenticatedUserService.validateSelfOrAdmin(clientId);
-    Client client = findActiveEntityById(clientId);
-
-    helper.validateActiveSubscription(client);
+    Client client = authenticatedUserService.validateActiveSubscription().client();
     helper.validateAttachmentsCount(client, request);
 
     if (!client.getAttachments().isEmpty()) {
-      CustomRevisionListener.setUsername(authenticatedUser.client().getBusinessName());
-      client.setUsernameUpdate(authenticatedUser.client().getBusinessName());
+      CustomRevisionListener.setUsername(client.getBusinessName());
+      client.setUsernameUpdate(client.getBusinessName());
     }
 
     attachmentHelper.saveAttachments(request, client, null);
@@ -250,11 +244,10 @@ public class ClientServiceImpl implements ClientService {
   public void requestAdCreation(ClientAdRequestToAdminDto request) {
     Client client = authenticatedUserService.validateActiveSubscription().client();
 
-    if (client.getAds().size() >= SharedConstants.MAX_ADS_PER_CLIENT) {
+    if (client.getAds().size() >= SharedConstants.MAX_ADS_PER_CLIENT && !Role.ADMIN.equals(client.getRole())) {
       throw new BusinessRuleException(ClientValidationMessages.MAX_ADS_REACHED);
     }
 
-    helper.validateActiveSubscription(client);
     helper.createAdRequest(request, client);
   }
 
@@ -314,9 +307,10 @@ public class ClientServiceImpl implements ClientService {
   @Transactional
   public void validateAd(UUID adId, AdValidationType validation, RefusedAdRequestDto request) throws JsonProcessingException {
     Ad ad = helper.getAdById(adId);
-    Client client = authenticatedUserService.validateSelfOrAdmin(ad.getClient().getId()).client();
+    authenticatedUserService.validateSelfOrAdmin(ad.getClient().getId());
 
-    helper.validateActiveSubscription(client);
+    Client client = authenticatedUserService.validateActiveSubscription().client();
+
     attachmentHelper.validateAd(ad, validation, request, client);
 
     if (AdValidationType.APPROVED.equals(validation)) {
@@ -326,14 +320,6 @@ public class ClientServiceImpl implements ClientService {
 
       helper.addAdToMonitor(ad, monitorIds, client);
     }
-  }
-
-  @Override
-  @Transactional
-  public void addAdToMonitor(List<UUID> monitorIds) {
-    Client client = authenticatedUserService.validateActiveSubscription().client();
-    Ad ad = client.getApprovedAd();
-    helper.addAdToMonitor(ad, monitorIds, client);
   }
 
   @Override
@@ -381,6 +367,15 @@ public class ClientServiceImpl implements ClientService {
     Page<AdRequest> page = adRequestRepository.findAll(filter, pageable);
     List<AdRequestResponseDto> response = page.stream().map(adRequest -> new AdRequestResponseDto(adRequest, attachmentHelper.getAdRequestData(adRequest))).toList();
     return PaginationResponseDto.fromResult(response, (int) page.getTotalElements(), page.getTotalPages(), request.getPage());
+  }
+
+  private void sendContactConfirmationEmail(Client client, VerificationCode verificationCode) {
+    Map<String, String> params = new HashMap<>();
+    params.put("name", client.getBusinessName());
+    params.put("verificationCode", verificationCode.getCode());
+
+    EmailDataDto emailData = new EmailDataDto(client.getContact().getEmail(), SharedConstants.TEMPLATE_EMAIL_CONTACT_VERIFICATION, SharedConstants.EMAIL_SUBJECT_CONTACT_VERIFICATION, params);
+    verificationCodeService.send(emailData);
   }
 
   Specification<Client> filterClients(Specification<Client> specification, String genericFilter) {

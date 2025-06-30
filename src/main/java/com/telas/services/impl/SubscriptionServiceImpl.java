@@ -1,6 +1,7 @@
 package com.telas.services.impl;
 
 import com.stripe.exception.StripeException;
+import com.stripe.model.checkout.Session;
 import com.telas.dtos.request.filters.SubscriptionFilterRequestDto;
 import com.telas.dtos.response.PaginationResponseDto;
 import com.telas.dtos.response.SubscriptionMinResponseDto;
@@ -9,11 +10,14 @@ import com.telas.entities.Cart;
 import com.telas.entities.Client;
 import com.telas.entities.Subscription;
 import com.telas.enums.Recurrence;
+import com.telas.enums.Role;
 import com.telas.enums.SubscriptionStatus;
 import com.telas.helpers.SubscriptionHelper;
 import com.telas.infra.exceptions.BusinessRuleException;
+import com.telas.infra.exceptions.ResourceNotFoundException;
 import com.telas.infra.security.services.AuthenticatedUserService;
 import com.telas.repositories.ClientRepository;
+import com.telas.repositories.PaymentRepository;
 import com.telas.repositories.SubscriptionRepository;
 import com.telas.services.PaymentService;
 import com.telas.services.SubscriptionService;
@@ -37,6 +41,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.format.DateTimeParseException;
+import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -47,6 +52,7 @@ import java.util.UUID;
 public class SubscriptionServiceImpl implements SubscriptionService {
   private final Logger log = LoggerFactory.getLogger(SubscriptionServiceImpl.class);
   private final SubscriptionRepository repository;
+  private final PaymentRepository paymentRepository;
   private final ClientRepository clientRepository;
   private final AuthenticatedUserService authenticatedUserService;
   private final PaymentService paymentService;
@@ -61,8 +67,11 @@ public class SubscriptionServiceImpl implements SubscriptionService {
 
     if (subscription.isBonus()) {
       subscription.initialize();
+      subscription.setBonus(true);
       subscription.setStatus(SubscriptionStatus.ACTIVE);
+      subscription.setRecurrence(Recurrence.MONTHLY);
       persistSubscriptionClient(client, subscription);
+      helper.sendFirstBuyEmail(subscription);
       return null;
     }
 
@@ -84,10 +93,8 @@ public class SubscriptionServiceImpl implements SubscriptionService {
     Subscription entity = helper.findEntityById(subscriptionId);
     authenticatedUserService.validateSelfOrAdmin(entity.getClient().getId());
     helper.validateSubscriptionForUpgrade(entity);
-    // Fazer alguma verificação se o upgrade dela já tava como true??
     entity.setUpgrade(true);
     repository.save(entity);
-
 
     return paymentService.process(entity, recurrence);
 
@@ -103,26 +110,6 @@ public class SubscriptionServiceImpl implements SubscriptionService {
 
   @Override
   @Transactional
-  public void cancelSubscription(com.stripe.model.Subscription stripeSubscription) {
-    UUID subscriptionId = UUID.fromString(stripeSubscription.getMetadata().get("subscriptionId"));
-    Subscription subscription = helper.findEntityById(subscriptionId);
-    List<SubscriptionStatus> invalidStatuses = List.of(SubscriptionStatus.CANCELLED, SubscriptionStatus.EXPIRED);
-
-    if (invalidStatuses.contains(subscription.getStatus())) {
-      log.info("Subscription with id: {} is already cancelled or expired.", subscriptionId);
-      return;
-    }
-
-    log.info("Handling subscription deletion for id: {}", subscriptionId);
-    helper.setAuditInfo(subscription, "Stripe Webhook");
-    subscription.setStatus(SubscriptionStatus.CANCELLED);
-
-    subscription.setEndsAt(Instant.ofEpochSecond(stripeSubscription.getEndedAt()));
-    repository.save(subscription);
-  }
-
-  @Override
-  @Transactional
   public void cancelSubscription(UUID subscriptionId) {
     Subscription subscription = helper.findEntityById(subscriptionId);
 
@@ -131,20 +118,52 @@ public class SubscriptionServiceImpl implements SubscriptionService {
       return;
     }
 
-    if (!Recurrence.MONTHLY.equals(subscription.getRecurrence())) {
-      log.info("Subscription with id: {} is not a monthly subscription, skipping cancellation.", subscriptionId);
+    Client client = authenticatedUserService.validateSelfOrAdmin(subscription.getClient().getId()).client();
+
+    if (Recurrence.MONTHLY.equals(subscription.getRecurrence())) {
+      handleStripeCancellation(subscription, client);
+    } else {
+      updateSubscriptionStatusCancelled(subscription, Instant.now(), client.getBusinessName());
+      helper.removeMonitorAdsFromSubscription(subscription);
+    }
+  }
+
+  @Override
+  @Transactional
+  public void cancelSubscription(com.stripe.model.Subscription stripeSubscription) {
+    UUID subscriptionId = UUID.fromString(stripeSubscription.getMetadata().get("subscriptionId"));
+    Subscription subscription = helper.findEntityById(subscriptionId);
+
+    if (isInvalidStatus(subscription.getStatus())) {
+      log.info("Subscription with id: {} is already cancelled or expired.", subscriptionId);
       return;
     }
 
-    authenticatedUserService.validateSelfOrAdmin(subscription.getClient().getId());
+    Instant endedAt = Instant.ofEpochSecond(stripeSubscription.getEndedAt());
+    updateSubscriptionStatusCancelled(subscription, endedAt, "Stripe Webhook");
+    helper.removeMonitorAdsFromSubscription(subscription);
+  }
+
+  @Override
+  @Transactional
+  public void handleCheckoutSessionExpired(Session session) {
+    String subscriptionId = session.getClientReferenceId();
+    log.info("Handling checkout session expired for subscription id: {}", subscriptionId);
 
     try {
-      com.stripe.model.Subscription stripeSubscription = helper.getStripeSubscription(subscription);
-      stripeSubscription.update(Map.of("cancel_at_period_end", true));
-      log.info("Subscription with id: {} set to cancel at the end of the billing period.", subscriptionId);
-    } catch (StripeException e) {
-      log.error("Error setting subscription with id: {} to cancel at period end", subscriptionId, e);
-      throw new BusinessRuleException(SubscriptionValidationMessages.RETRIEVE_STRIPE_SUBSCRIPTION_ERROR + subscriptionId);
+      Subscription subscription = helper.findEntityById(UUID.fromString(subscriptionId));
+
+      if (SubscriptionStatus.ACTIVE.equals(subscription.getStatus()) && subscription.isUpgrade()) {
+        log.info("Subscription with id: {} is active and on upgrade, setting upgrade to false.", subscriptionId);
+        subscription.setUpgrade(false);
+        repository.save(subscription);
+      } else if (SubscriptionStatus.PENDING.equals(subscription.getStatus())) {
+        log.info("Subscription with id: {} is pending, so it will be deleted", subscriptionId);
+        paymentRepository.deleteAll(subscription.getPayments());
+        repository.delete(subscription);
+      }
+    } catch (ResourceNotFoundException e) {
+      log.warn("Subscription with id: {}, not found for checkout session expired.", subscriptionId);
     }
   }
 
@@ -171,6 +190,26 @@ public class SubscriptionServiceImpl implements SubscriptionService {
   }
 
   @Override
+  @Transactional
+  @Scheduled(cron = SharedConstants.EXPIRY_SUBSCRIPTION_CRON, zone = SharedConstants.ZONE_ID)
+  public void sendSubscriptionExpirationEmail() {
+    Instant exactDate = Instant.now().plus(15, ChronoUnit.DAYS);
+    List<Subscription> subscriptions = repository.findSubscriptionsExpiringExactlyOn(exactDate);
+
+    if (subscriptions.isEmpty()) {
+      log.info("No subscriptions expiring in 15 days.");
+      return;
+    }
+
+    log.info("Found {} subscriptions expiring in 15 days, sending emails.", subscriptions.size());
+
+    subscriptions.forEach(subscription -> {
+      log.info("Sending expiration email for subscription with id: {}", subscription.getId());
+      helper.sendSubscriptionAboutToExpiryEmail(subscription);
+    });
+  }
+
+  @Override
   @Transactional(readOnly = true)
   public PaginationResponseDto<List<SubscriptionMinResponseDto>> findClientSubscriptionsFilters(SubscriptionFilterRequestDto request) {
     Client client = authenticatedUserService.getLoggedUser().client();
@@ -186,6 +225,35 @@ public class SubscriptionServiceImpl implements SubscriptionService {
     Page<Subscription> page = repository.findAll(filter, pageable);
     List<SubscriptionMinResponseDto> response = page.stream().map(SubscriptionMinResponseDto::new).toList();
     return PaginationResponseDto.fromResult(response, (int) page.getTotalElements(), page.getTotalPages(), request.getPage());
+  }
+
+  private boolean isInvalidStatus(SubscriptionStatus status) {
+    return List.of(SubscriptionStatus.CANCELLED, SubscriptionStatus.EXPIRED).contains(status);
+  }
+
+  private void updateSubscriptionStatusCancelled(Subscription subscription, Instant endsAt, String updatedBy) {
+    log.info("Handling subscription deletion for id: {}", subscription.getId().toString());
+    helper.setAuditInfo(subscription, updatedBy);
+    subscription.setStatus(SubscriptionStatus.CANCELLED);
+    subscription.setEndsAt(endsAt);
+    repository.save(subscription);
+  }
+
+  private void handleStripeCancellation(Subscription subscription, Client client) {
+    try {
+      com.stripe.model.Subscription stripeSubscription = helper.getStripeSubscription(subscription);
+
+      if (Role.ADMIN.equals(client.getRole())) {
+        log.info("Subscription with id: {} set to cancel NOW by admin, removing monitors ads", subscription.getId());
+        stripeSubscription.cancel();
+      } else {
+        stripeSubscription.update(Map.of("cancel_at_period_end", true));
+        log.info("Subscription with id: {} set to cancel at the end of the billing period.", subscription.getId());
+      }
+    } catch (StripeException e) {
+      log.error("Error setting subscription with id: {} to cancel at period end", subscription.getId(), e);
+      throw new BusinessRuleException(SubscriptionValidationMessages.RETRIEVE_STRIPE_SUBSCRIPTION_ERROR + subscription.getId());
+    }
   }
 
   Specification<Subscription> filterSubscriptions(Specification<Subscription> specification, String genericFilter) {

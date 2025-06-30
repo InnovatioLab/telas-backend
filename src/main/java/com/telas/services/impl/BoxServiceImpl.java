@@ -30,12 +30,13 @@ public class BoxServiceImpl implements BoxService {
   @Transactional
   public void save(BoxRequestDto request, UUID boxId) {
     authenticatedUserService.validateAdmin();
-//    Adicionar validação para só ter 1 box por IP
+
     Ip ip = helper.getIp(request.getIp());
     List<Monitor> monitors = helper.getMonitors(request.getMonitorIds());
-    Box box = new Box(ip, monitors);
-    monitors.forEach(monitor -> monitor.setBox(box));
+    Box box = (boxId != null) ? updateBox(request, boxId, ip, monitors) : createBox(request, ip, monitors);
+
     repository.save(box);
+    helper.sendUpdateBoxMonitorsAdsRequest(box, monitors);
   }
 
   @Override
@@ -54,8 +55,56 @@ public class BoxServiceImpl implements BoxService {
     helper.checkMonitorsHealth(responseList);
   }
 
+  private Box findById(UUID boxId) {
+    return repository.findById(boxId)
+            .orElseThrow(() -> new ResourceNotFoundException(BoxValidationMessages.BOX_NOT_FOUND));
+  }
+
   private Box findByIp(String ip) {
     return repository.findByIp(ip)
             .orElseThrow(() -> new ResourceNotFoundException(BoxValidationMessages.BOX_NOT_FOUND));
+  }
+
+  private Box createBox(BoxRequestDto request, Ip ip, List<Monitor> monitors) {
+    helper.validateUniqueBoxByIp(request.getIp());
+
+    if (monitors.stream().anyMatch(monitor -> monitor.getBox() != null)) {
+      throw new ResourceNotFoundException(BoxValidationMessages.MONITOR_ALREADY_ASSOCIATED);
+    }
+
+    Box box = new Box(ip, monitors);
+    monitors.forEach(monitor -> monitor.setBox(box));
+    return box;
+  }
+
+  private Box updateBox(BoxRequestDto request, UUID boxId, Ip ip, List<Monitor> monitors) {
+    Box box = findById(boxId);
+
+    if (!box.getIp().getIpAddress().equals(request.getIp())) {
+      helper.validateUniqueBoxByIp(request.getIp());
+      box.setIp(ip);
+    }
+
+    box.setActive(request.isActive());
+    updateMonitors(box, monitors);
+
+    return box;
+  }
+
+  private void updateMonitors(Box box, List<Monitor> monitors) {
+    box.getMonitors().removeIf(monitor -> {
+      if (!monitors.contains(monitor)) {
+        monitor.setBox(null);
+        return true;
+      }
+      return false;
+    });
+
+    monitors.stream()
+            .filter(monitor -> !box.getMonitors().contains(monitor))
+            .forEach(monitor -> {
+              monitor.setBox(box);
+              box.getMonitors().add(monitor);
+            });
   }
 }

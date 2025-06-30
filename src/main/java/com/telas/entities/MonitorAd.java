@@ -1,9 +1,11 @@
 package com.telas.entities;
 
 import com.telas.dtos.request.MonitorAdRequestDto;
-import com.telas.enums.DisplayType;
 import com.telas.shared.audit.BaseAudit;
-import jakarta.persistence.*;
+import jakarta.persistence.Column;
+import jakarta.persistence.EmbeddedId;
+import jakarta.persistence.Entity;
+import jakarta.persistence.Table;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
@@ -26,20 +28,12 @@ public class MonitorAd extends BaseAudit implements Serializable {
   @EmbeddedId
   private MonitorAdPK id = new MonitorAdPK();
 
-  @Column(name = "display_type", nullable = false)
-  @Enumerated(EnumType.STRING)
-  private DisplayType displayType = DisplayType.INTERLEAVED;
-
-  @Column(name = "block_quantity", nullable = false)
-  private Integer blockQuantity = 1;
-
   @Column(name = "order_index", nullable = false)
   private Integer orderIndex;
 
   public MonitorAd(MonitorAdRequestDto request, Monitor monitor, Ad ad) {
     id.setMonitor(monitor);
     id.setAd(ad);
-    displayType = request.getDisplayType();
     orderIndex = request.getOrderIndex();
   }
 

@@ -71,7 +71,7 @@ public class AuthenticatedUserServiceImpl implements AuthenticatedUserService {
     Client loggedClient = getLoggedUser().client();
     AuthenticatedUser authenticatedUser = new AuthenticatedUser(loggedClient);
 
-    if (loggedClient.hasActiveSubscription()) {
+    if (loggedClient.hasActiveSubscription() || loggedClient.isAdmin()) {
       return authenticatedUser;
     }
 

@@ -11,4 +11,6 @@ public interface PaymentService {
   void updatePaymentStatus(PaymentIntent paymentIntent);
 
   void updatePaymentStatus(Invoice invoice);
+
+  void handleDisputeFundsWithdrawn(com.stripe.model.Dispute dispute);
 }

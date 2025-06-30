@@ -28,7 +28,6 @@ import org.springframework.transaction.annotation.Transactional;
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.*;
-import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -62,25 +61,32 @@ public class MonitorServiceImpl implements MonitorService {
   public void removeMonitorAdsFromSubscription(Subscription subscription) {
     List<SubscriptionStatus> validStatuses = List.of(SubscriptionStatus.EXPIRED, SubscriptionStatus.CANCELLED);
 
-    if (validStatuses.contains(subscription.getStatus())) {
-      Client client = subscription.getClient();
-
-      // Itera sobre os monitores da subscription
-      subscription.getMonitors().forEach(monitor -> {
-        // Filtra os anúncios que pertencem ao cliente da subscription
-        Set<MonitorAd> adsToRemove = monitor.getMonitorAds().stream()
-                .filter(monitorAd -> monitorAd.getAd().getClient().equals(client))
-                .collect(Collectors.toSet());
-
-        // Remove os anúncios do monitor
-        monitor.getMonitorAds().removeAll(adsToRemove);
-        monitor.getClients().remove(client);
-
-        // Remove os anúncios do repositório
-//        monitorAdRepository.deleteAll(adsToRemove);
-        repository.save(monitor);
-      });
+    if (!validStatuses.contains(subscription.getStatus())) {
+      return;
     }
+
+    Client client = subscription.getClient();
+
+    subscription.getMonitors().forEach(monitor -> {
+      if (monitor.getBox() == null) {
+        return;
+      }
+
+      List<String> adNamesToRemove = monitor.getMonitorAds().stream()
+              .filter(monitorAd -> monitorAd.getAd().getClient().equals(client))
+              .map(monitorAd -> monitorAd.getAd().getName())
+              .toList();
+
+      // Remove os anúncios e o cliente do monitor
+      monitor.getMonitorAds().removeIf(monitorAd -> adNamesToRemove.contains(monitorAd.getAd().getName()));
+      monitor.getClients().remove(client);
+
+      repository.save(monitor);
+
+      if (!adNamesToRemove.isEmpty()) {
+        helper.sendBoxesMonitorsRemoveAds(monitor, adNamesToRemove);
+      }
+    });
   }
 
   @Override
@@ -104,12 +110,7 @@ public class MonitorServiceImpl implements MonitorService {
   @Override
   @Transactional(readOnly = true)
   public Map<String, List<MonitorMinResponseDto>> findNearestActiveMonitors(String zipCodes, BigDecimal sizeFilter, String typeFilter, int limit) {
-    Client client = authenticatedUserService.getLoggedUser().client();
-    String countryCode = client.getAddresses().stream()
-            .findFirst()
-            .map(Address::getCountry)
-            .orElse("US");
-
+    String countryCode = "US";
     List<String> zipCodeList = helper.validateZipCodeList(zipCodes);
 
     Map<String, List<MonitorMinResponseDto>> result = new HashMap<>();
@@ -236,18 +237,19 @@ public class MonitorServiceImpl implements MonitorService {
     monitor.setMaxBlocks(request.getMaxBlocks());
     monitor.setSize(request.getSize());
 
-    if (!ValidateDataUtils.isNullOrEmpty(ads)) {
-//      monitorAdRepository.deleteAll(monitor.getMonitorAds());
+    if (!ValidateDataUtils.isNullOrEmpty(request.getAds())) {
       monitor.getMonitorAds().clear();
 
       ads.forEach(attachment -> monitor.getMonitorAds().add(
               new MonitorAd(request.getAds().get(ads.indexOf(attachment)), monitor, attachment)
       ));
 
-//      monitorAdRepository.saveAll(monitor.getMonitorAds());
-    }
+      monitor.getClients().clear();
+      monitor.getClients().addAll(clients);
 
-    monitor.getClients().clear();
-    monitor.getClients().addAll(clients);
+      if (!monitor.getMonitorAds().isEmpty()) {
+        helper.sendBoxesMonitorsUpdateAds(monitor, ads);
+      }
+    }
   }
 }

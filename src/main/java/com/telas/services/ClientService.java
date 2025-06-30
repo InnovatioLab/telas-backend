@@ -39,9 +39,9 @@ public interface ClientService {
 
   void updatePassword(PasswordUpdateRequestDto request, AuthenticatedUser authClient);
 
-  void update(ClientRequestDto request, UUID id) throws JsonProcessingException;
+  void update(ClientRequestDto request, UUID id);
 
-  void uploadAttachments(List<AttachmentRequestDto> request, UUID clientId);
+  void uploadAttachments(List<AttachmentRequestDto> request);
 
   void requestAdCreation(ClientAdRequestToAdminDto request);
 
@@ -54,8 +54,6 @@ public interface ClientService {
   List<AdResponseDto> findPendingAds();
 
   void validateAd(UUID adId, AdValidationType validation, RefusedAdRequestDto request) throws JsonProcessingException;
-
-  void addAdToMonitor(List<UUID> monitorIds);
 
   void incrementSubscriptionFlow();
 

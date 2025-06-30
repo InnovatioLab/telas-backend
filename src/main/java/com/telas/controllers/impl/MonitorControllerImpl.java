@@ -75,7 +75,6 @@ public class MonitorControllerImpl implements MonitorController {
 
   @Override
   @GetMapping("/nearest")
-  @SecurityRequirement(name = "jwt")
   public ResponseEntity<?> findNearestActiveMonitors(
           @RequestParam String zipCodes,
           @RequestParam(required = false) BigDecimal size,

@@ -39,8 +39,10 @@ public final class SharedConstants {
   public static final int ATTACHMENT_LINK_EXPIRY_TIME = 7 * 24 * 60 * 60;
   public static final int MAX_ATTACHMENT_SIZE = 10 * 1024 * 1024;
   public static final int MAX_ATTACHMENT_PER_CLIENT = 10;
+  public static final int AD_DISPLAY_TIME_IN_SECONDS = 5;
+  public static final int TOTAL_SECONDS_IN_A_MINUTE = 60;
 
-  public static final int MAX_MONITOR_ADS = 12;
+  public static final int MAX_MONITOR_ADS = 17;
   public static final int MAX_ADS_VALIDATION = 3;
   public static final int MIN_QUANTITY_MONITOR_BLOCK = 1;
   public static final int MAX_QUANTITY_MONITOR_BLOCK = 3;

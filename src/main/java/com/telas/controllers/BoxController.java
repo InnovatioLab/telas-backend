@@ -5,11 +5,13 @@ import com.telas.dtos.response.StatusMonitorsResponseDto;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestParam;
 
 import java.util.List;
+import java.util.UUID;
 
 @Tag(name = "Boxes", description = "Endpoints to manage monitors boxes")
 public interface BoxController {
@@ -21,6 +23,15 @@ public interface BoxController {
           @ApiResponse(responseCode = "404", description = "Some data not found."),
   })
   ResponseEntity<?> save(BoxRequestDto request);
+
+  @Operation(summary = "Endpoint contract to update a box", responses = {
+          @ApiResponse(responseCode = "200", description = "Box updated successfully."),
+          @ApiResponse(responseCode = "422", description = "Request with invalid data."),
+          @ApiResponse(responseCode = "401", description = "Unauthorized."),
+          @ApiResponse(responseCode = "403", description = "Forbidden."),
+          @ApiResponse(responseCode = "404", description = "Box not found."),
+  })
+  ResponseEntity<?> update(@Valid BoxRequestDto request, UUID boxId);
 
   @Operation(summary = "Endpoint to fetch monitors and ads data by Ip", responses = {
           @ApiResponse(responseCode = "200", description = "Monitors and ads founded successfully."),

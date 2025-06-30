@@ -8,4 +8,8 @@ public final class BoxValidationMessages {
   public static final String MONITOR_ID_NOT_NULL = "Monitor ID cannot be null.";
   public static final String FILE_NAME_NOT_BLANK = "File name cannot be blank.";
   public static final String LINK_NOT_BLANK = "Link cannot be blank.";
+  public static final String FILE_NAMES_NOT_NULL = "File names cannot be null.";
+  public static final String FILE_NAMES_NOT_EMPTY = "File names cannot be empty.";
+  public static final String BOX_ALREADY_EXISTS_FOR_IP = "A box with this IP already exists.";
+  public static final String MONITOR_ALREADY_ASSOCIATED = "One or more monitors are already associated with a box.";
 }

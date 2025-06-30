@@ -4,6 +4,7 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.stripe.exception.SignatureVerificationException;
 import com.stripe.exception.StripeException;
 import com.stripe.model.*;
+import com.stripe.model.checkout.Session;
 import com.stripe.net.Webhook;
 import com.telas.services.PaymentService;
 import com.telas.services.SubscriptionService;
@@ -35,6 +36,11 @@ public class PaymentGatewayWebhookController {
       Event event = Webhook.constructEvent(payload, sigHeader, webhookSecret);
 
       switch (event.getType()) {
+        case "checkout.session.expired":
+          handleCheckoutSessionExpired(event);
+        case "charge.dispute.funds_withdrawn":
+          handleChargeDisputeFundsWithdrawn(event);
+          break;
         case "invoice.payment_failed":
         case "invoice.payment_succeeded":
           handleInvoicePayment(event);
@@ -53,6 +59,18 @@ public class PaymentGatewayWebhookController {
       return ResponseEntity.ok("Evento processado com sucesso");
     } catch (SignatureVerificationException e) {
       return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("Assinatura inválida");
+    }
+  }
+
+  private void handleCheckoutSessionExpired(Event event) {
+    EventDataObjectDeserializer dataObjectDeserializer = event.getDataObjectDeserializer();
+
+    if (dataObjectDeserializer.getObject().isPresent()) {
+      StripeObject stripeObject = dataObjectDeserializer.getObject().get();
+
+      if (stripeObject instanceof Session session) {
+        subscriptionService.handleCheckoutSessionExpired(session);
+      }
     }
   }
 
@@ -88,6 +106,18 @@ public class PaymentGatewayWebhookController {
 
       if (stripeObject instanceof Subscription subscription) {
         subscriptionService.cancelSubscription(subscription);
+      }
+    }
+  }
+
+  private void handleChargeDisputeFundsWithdrawn(Event event) {
+    EventDataObjectDeserializer dataObjectDeserializer = event.getDataObjectDeserializer();
+
+    if (dataObjectDeserializer.getObject().isPresent()) {
+      StripeObject stripeObject = dataObjectDeserializer.getObject().get();
+
+      if (stripeObject instanceof com.stripe.model.Dispute dispute) {
+        paymentService.handleDisputeFundsWithdrawn(dispute);
       }
     }
   }

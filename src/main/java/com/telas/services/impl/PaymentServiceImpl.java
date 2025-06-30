@@ -16,7 +16,7 @@ import com.telas.entities.Subscription;
 import com.telas.enums.PaymentStatus;
 import com.telas.enums.Recurrence;
 import com.telas.enums.SubscriptionStatus;
-import com.telas.helpers.SubscriptionHelper;
+import com.telas.helpers.PaymentHelper;
 import com.telas.infra.exceptions.BusinessRuleException;
 import com.telas.infra.exceptions.ResourceNotFoundException;
 import com.telas.repositories.ClientRepository;
@@ -24,13 +24,18 @@ import com.telas.repositories.PaymentRepository;
 import com.telas.repositories.SubscriptionRepository;
 import com.telas.services.PaymentService;
 import com.telas.shared.constants.valitation.PaymentValidationMessages;
+import com.telas.shared.constants.valitation.SubscriptionValidationMessages;
+import com.telas.shared.utils.MoneyUtils;
 import com.telas.shared.utils.ValidateDataUtils;
 import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
+import java.time.Instant;
 import java.util.Map;
 import java.util.UUID;
 
@@ -41,7 +46,10 @@ public class PaymentServiceImpl implements PaymentService {
   private final PaymentRepository repository;
   private final SubscriptionRepository subscriptionRepository;
   private final ClientRepository clientRepository;
-  private final SubscriptionHelper subscriptionHelper;
+  private final PaymentHelper helper;
+
+  @Value("${front.base.url}")
+  private String frontBaseUrl;
 
   @Override
   @Transactional
@@ -68,20 +76,20 @@ public class PaymentServiceImpl implements PaymentService {
 
     Subscription subscription = payment.getSubscription();
 
-    if (subscriptionHelper.isRecurringPayment(subscription, paymentIntent)) {
+    if (helper.isRecurringPayment(subscription, paymentIntent)) {
       return;
     }
 
-    subscriptionHelper.updateAuditInfo(subscription);
+    helper.updateAuditInfo(subscription);
 
     if (!subscription.isUpgrade()) {
       subscription.setStatus(SubscriptionStatus.fromStripeStatus(paymentIntent.getStatus(), null, subscription));
     }
 
-    subscriptionHelper.updatePaymentDetails(payment, paymentIntent);
+    helper.updatePaymentDetails(payment, paymentIntent);
 
     if (PaymentStatus.COMPLETED.equals(payment.getStatus())) {
-      subscriptionHelper.handleCompletedPayment(subscription, paymentIntent);
+      helper.handleCompletedPayment(subscription, payment, paymentIntent);
     } else if (PaymentStatus.FAILED.equals(payment.getStatus())) {
       handleFailedPayment(payment);
     }
@@ -92,15 +100,23 @@ public class PaymentServiceImpl implements PaymentService {
   @Override
   @Transactional
   public void updatePaymentStatus(Invoice invoice) {
-    Subscription subscription = subscriptionHelper.getSubscriptionFromInvoice(invoice);
-    subscriptionHelper.updateAuditInfo(subscription);
+    Subscription subscription = helper.getSubscriptionFromInvoice(invoice);
+    helper.updateAuditInfo(subscription);
 
-    Payment payment = subscriptionHelper.getOrCreatePayment(invoice, subscription);
+    Payment payment = helper.getOrCreatePayment(invoice, subscription);
 
-    subscriptionHelper.updatePaymentDetailsFromInvoice(payment, invoice);
+    if (payment.getId() == null) {
+      repository.save(payment);
+    }
+
+    helper.updatePaymentDetailsFromInvoice(payment, invoice);
+
+    if (!subscription.isUpgrade()) {
+      subscription.setStatus(SubscriptionStatus.fromStripeStatus(null, invoice.getStatus(), subscription));
+    }
 
     if (PaymentStatus.COMPLETED.equals(payment.getStatus())) {
-      subscriptionHelper.handleCompletedPaymentFromInvoice(subscription, invoice);
+      helper.handleCompletedPaymentFromInvoice(subscription, payment, invoice);
     } else if (PaymentStatus.FAILED.equals(payment.getStatus())) {
       handleFailedPayment(payment);
     }
@@ -108,27 +124,81 @@ public class PaymentServiceImpl implements PaymentService {
     finalizePayment(payment);
   }
 
+  @Override
+  @Transactional
+  public void handleDisputeFundsWithdrawn(com.stripe.model.Dispute dispute) {
+    String paymentIntentId = dispute.getPaymentIntent();
+
+    if (ValidateDataUtils.isNullOrEmptyString(paymentIntentId)) {
+      log.warn("Dispute without paymentIntentId.");
+      return;
+    }
+
+    Payment payment = getPaymentFromStripeId(paymentIntentId);
+
+    BigDecimal disputeAmount = dispute.getAmount() != null
+            ? BigDecimal.valueOf(dispute.getAmount() / 100.0)
+            : BigDecimal.ZERO;
+
+    payment.setAmount(MoneyUtils.subtract(payment.getAmount(), disputeAmount));
+    payment.setStatus(PaymentStatus.FAILED);
+    repository.save(payment);
+
+    Subscription subscription = payment.getSubscription();
+
+    if (subscription == null || !SubscriptionStatus.ACTIVE.equals(subscription.getStatus())) {
+      log.warn("Subscription not found or not active for payment with id: {}", payment.getId());
+      return;
+    }
+
+    subscription.setStatus(SubscriptionStatus.CANCELLED);
+    subscription.setEndsAt(Instant.now());
+    subscriptionRepository.save(subscription);
+
+    if (Recurrence.MONTHLY.equals(subscription.getRecurrence())) {
+      log.info("Cancelling Stripe subscription with id: {} due to dispute funds withdrawn.", subscription.getId());
+      cancelStripeSubscription(subscription);
+    }
+  }
+
+  private void cancelStripeSubscription(Subscription subscription) {
+    try {
+      com.stripe.model.Subscription stripeSubscription = helper.getStripeSubscription(subscription);
+      stripeSubscription.cancel();
+    } catch (StripeException e) {
+      log.error("Error cancelling subscription with id: {} on Stripe, error message: {}", subscription.getId(), e.getMessage());
+      throw new BusinessRuleException(SubscriptionValidationMessages.SUBSCRIPTION_CANCELLATION_ERROR_DURING_DISPUTE + subscription.getId());
+    }
+  }
+
+  private Payment getPaymentFromStripeId(String paymentIntentId) {
+    return repository.findByStripeId(paymentIntentId)
+            .orElseThrow(() -> new ResourceNotFoundException(PaymentValidationMessages.PAYMENT_NOT_FOUND));
+  }
+
   private String generateSession(Subscription subscription, Payment payment, Recurrence recurrence) throws StripeException {
     Customer customer = getOrCreateCustomer(subscription);
-    String baseURL = "http://localhost:4200";
-    Map<String, String> metaData = subscriptionHelper.createMetaData(subscription, payment, recurrence);
+    Map<String, String> metaData = helper.createMetaData(subscription, payment, recurrence);
 
-    String successUrl = baseURL + "/success?subscriptionId=" + subscription.getId() +
+    String successUrl = frontBaseUrl + "/success?subscriptionId=" + subscription.getId() +
                         (subscription.getClient().getAds().isEmpty() ? "&ads=true" : "");
 
     boolean isSubscription = Recurrence.MONTHLY.equals(subscription.getRecurrence()) || Recurrence.MONTHLY.equals(recurrence);
+
+    long expiresAt = (System.currentTimeMillis() / 1000L) + 1800;
 
     SessionCreateParams.Builder paramsBuilder = SessionCreateParams.builder()
             .setMode(isSubscription ? SessionCreateParams.Mode.SUBSCRIPTION : SessionCreateParams.Mode.PAYMENT)
             .setCustomer(customer.getId())
             .setSuccessUrl(successUrl)
-            .setCancelUrl(baseURL + "/")
-            .setClientReferenceId(payment.getId().toString());
+            .setExpiresAt(expiresAt)
+            .setCancelUrl(frontBaseUrl + "/profile")
+            .setClientReferenceId(subscription.getId().toString());
 
     if (isSubscription) {
-      subscriptionHelper.configureSubscriptionParams(paramsBuilder, subscription, metaData);
+      helper.configureSubscriptionParams(paramsBuilder, subscription, metaData);
     } else {
-      subscriptionHelper.configurePaymentParams(paramsBuilder, subscription, customer, metaData);
+      helper.configurePaymentParams(paramsBuilder, subscription, customer, metaData);
     }
 
     Session session = Session.create(paramsBuilder.build());

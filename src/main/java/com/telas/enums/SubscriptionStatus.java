@@ -13,9 +13,9 @@ public enum SubscriptionStatus {
   public static SubscriptionStatus fromStripeStatus(String stripePaymentStatus, String invoiceStatus, Subscription subscription) {
     if (stripePaymentStatus != null) {
       return switch (stripePaymentStatus) {
-        case "succeeded" -> ACTIVE;
+        case "succeeded", "requires_payment_method", "unpaid" -> ACTIVE;
         case "canceled" -> CANCELLED;
-        case "requires_payment_method", "unpaid", "incomplete_expired" -> EXPIRED;
+        case "incomplete_expired" -> EXPIRED;
         default -> subscription.getStatus();
       };
     }

@@ -14,6 +14,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.UUID;
 
 @RestController
 @RequestMapping(value = "boxes")
@@ -28,6 +29,15 @@ public class BoxControllerImpl implements BoxController {
     service.save(request, null);
     return ResponseEntity.status(HttpStatus.CREATED)
             .body(ResponseDto.fromData(null, HttpStatus.CREATED, MessageCommonsConstants.SAVE_SUCCESS_MESSAGE));
+  }
+
+  @Override
+  @PutMapping("/{id}")
+  @SecurityRequirement(name = "jwt")
+  public ResponseEntity<?> update(@Valid @RequestBody BoxRequestDto request, @PathVariable(name = "id") UUID boxId) {
+    service.save(request, boxId);
+    return ResponseEntity.status(HttpStatus.OK)
+            .body(ResponseDto.fromData(null, HttpStatus.OK, MessageCommonsConstants.UPDATE_SUCCESS_MESSAGE));
   }
 
   @Override

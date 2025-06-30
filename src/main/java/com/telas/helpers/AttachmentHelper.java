@@ -8,6 +8,7 @@ import com.telas.dtos.response.LinkResponseDto;
 import com.telas.entities.*;
 import com.telas.enums.AdValidationType;
 import com.telas.enums.NotificationReference;
+import com.telas.enums.Role;
 import com.telas.infra.exceptions.BusinessRuleException;
 import com.telas.infra.exceptions.ResourceNotFoundException;
 import com.telas.repositories.AdRepository;
@@ -99,26 +100,35 @@ public class AttachmentHelper {
 
           Client adOwner = adRequestEntity.getClient();
 
-          Ad ad = adRequestEntity.getAd() == null
-                  ? new Ad(adRequest, adOwner, adRequestEntity)
-                  : adRequestEntity.getAd();
+          Ad ad = Optional.ofNullable(adRequestEntity.getAd())
+                  .orElseGet(() -> {
+                    Ad newAd = new Ad(adRequest, adOwner, adRequestEntity);
+                    newAd.getAttachments().addAll(attachments);
+                    adOwner.getAds().add(newAd);
+                    return newAd;
+                  });
 
-          if (adRequestEntity.getAd() == null) {
-            ad.getAttachments().addAll(attachments);
-            adOwner.getAds().add(ad);
-          } else {
+          if (adRequestEntity.getAd() != null) {
             bucketService.deleteAttachment(AttachmentUtils.format(ad));
             ad.setName(attachment.getName());
             ad.setType(attachment.getType());
             ad.setValidation(AdValidationType.PENDING);
           }
 
+          if (Role.ADMIN.equals(client.getRole())) {
+            ad.setValidation(AdValidationType.APPROVED);
+          }
+
           adRequestEntity.closeRequest();
           adRequestRepository.save(adRequestEntity);
 
           Ad savedAd = adRepository.save(ad);
-          String fileName = AttachmentUtils.format(savedAd);
-          bucketService.upload(attachment.getBytes(), fileName, attachment.getType(), new ByteArrayInputStream(attachment.getBytes()));
+          bucketService.upload(
+                  attachment.getBytes(),
+                  AttachmentUtils.format(savedAd),
+                  attachment.getType(),
+                  new ByteArrayInputStream(attachment.getBytes())
+          );
         } else if (!(attachment instanceof AdRequestDto) && adRequestEntity == null) {
           Attachment newAttachment = new Attachment(attachment, client);
           Attachment savedAttachment = attachmentRepository.save(newAttachment);
@@ -143,48 +153,6 @@ public class AttachmentHelper {
     });
   }
 
-//  @Transactional
-//  public <T extends AttachmentRequestDto> void removeAttachmentsNotSent(List<T> requestList, Client client) {
-//    List<UUID> attachmentIds = requestList.stream()
-//            .map(AttachmentRequestDto::getId)
-//            .filter(Objects::nonNull)
-//            .toList();
-//
-//    boolean isAd = requestList.stream().allMatch(AdRequestDto.class::isInstance);
-//
-//    if (isAd) {
-//      List<Ad> adsToDelete = client.getAds().stream()
-//              .filter(attachment -> !attachmentIds.contains(attachment.getId()))
-//              .toList();
-//
-//      removeAds(adsToDelete, client);
-//    }
-//  }
-
-//  void removeAds(List<Ad> adsToDelete, Client client) {
-//    adsToDelete.forEach(ad -> {
-//      client.getAds().remove(ad);
-//      ad.getAttachments().clear();
-//      removeAdsFromMonitors(ad);
-//      bucketService.deleteAttachment(AttachmentUtils.format(ad));
-//    });
-//
-//    adRepository.deleteAll(adsToDelete);
-//  }
-
-//  void removeAdsFromMonitors(Ad ad) {
-//    List<Monitor> monitors = monitorRepository.findByAdId(ad.getId());
-//
-//    monitors.forEach(monitor ->
-//            monitor.getMonitorAds()
-//                    .removeIf(attachment -> attachment.getAd().equals(ad))
-//    );
-//
-//    monitorAdRepository.deleteAll(
-//            monitorAdRepository.findByAdId(ad.getId())
-//    );
-//  }
-
   @Transactional
   public void validateAd(Ad entity, AdValidationType validation, RefusedAdRequestDto request, Client client) throws JsonProcessingException {
     if (AdValidationType.PENDING.equals(validation)) {
@@ -208,7 +176,6 @@ public class AttachmentHelper {
         throw new BusinessRuleException(AttachmentValidationMessages.JUSTIFICATION_REQUIRED);
       }
       createRefusedAd(request, entity, client);
-//      removeAdsFromMonitors(entity);
     }
 
     adRequestRepository.save(entity.getAdRequest());

@@ -33,4 +33,6 @@ public class BoxRequestDto implements Serializable {
 
   @NotEmpty(message = BoxValidationMessages.MONITOR_IDS_NOT_EMPTY)
   private List<UUID> monitorIds = new ArrayList<>();
+
+  private boolean active = true;
 }

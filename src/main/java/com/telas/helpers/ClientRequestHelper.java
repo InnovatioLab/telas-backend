@@ -1,42 +1,47 @@
 package com.telas.helpers;
 
-import com.telas.dtos.request.AddressRequestDto;
-import com.telas.dtos.request.AttachmentRequestDto;
-import com.telas.dtos.request.ClientAdRequestToAdminDto;
-import com.telas.dtos.request.ClientRequestDto;
+import com.telas.dtos.request.*;
 import com.telas.entities.*;
 import com.telas.enums.AdValidationType;
+import com.telas.enums.Role;
 import com.telas.infra.exceptions.BusinessRuleException;
 import com.telas.infra.exceptions.ForbiddenException;
 import com.telas.infra.exceptions.ResourceNotFoundException;
 import com.telas.repositories.*;
 import com.telas.services.AddressService;
+import com.telas.services.BucketService;
 import com.telas.services.GeolocationService;
-import com.telas.services.MonitorService;
 import com.telas.shared.constants.SharedConstants;
 import com.telas.shared.constants.valitation.*;
+import com.telas.shared.utils.AttachmentUtils;
+import com.telas.shared.utils.HttpClientUtil;
 import com.telas.shared.utils.ValidateDataUtils;
 import lombok.RequiredArgsConstructor;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.BeanUtils;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 @Component
 @RequiredArgsConstructor
 public class ClientRequestHelper {
+  private final Logger log = LoggerFactory.getLogger(ClientRequestHelper.class);
   private final OwnerRepository ownerRepository;
   private final ClientRepository clientRepository;
   private final MonitorRepository monitorRepository;
-  private final MonitorService monitorService;
   private final ContactRepository contactRepository;
   private final AttachmentRepository attachmentRepository;
   private final AdRepository adRepository;
   private final AdRequestRepository adRequestRepository;
   private final AddressService addressService;
   private final GeolocationService geolocationService;
+  private final HttpClientUtil httpClient;
+  private final BucketService bucketService;
 
   @Transactional(readOnly = true)
   public void validateClientRequest(ClientRequestDto request, Client client) {
@@ -162,9 +167,14 @@ public class ClientRequestHelper {
   }
 
   @Transactional(readOnly = true)
-  public void validateActiveSubscription(Client client) {
-    if (!client.hasActiveSubscription()) {
-      throw new ForbiddenException(AuthValidationMessageConstants.ERROR_NO_ACTIVE_SUBSCRIPTION);
+  public void validateAttachmentsCount(Client client, List<AttachmentRequestDto> request) {
+    if (!Role.ADMIN.equals(client.getRole())) {
+      int newAttachments = (int) request.stream().filter(r -> r.getId() == null).count();
+      int totalAttachments = client.getAttachments().size() + newAttachments;
+
+      if (totalAttachments >= SharedConstants.MAX_ATTACHMENT_PER_CLIENT) {
+        throw new BusinessRuleException(AttachmentValidationMessages.MAX_ATTACHMENTS_REACHED);
+      }
     }
   }
 
@@ -187,6 +197,33 @@ public class ClientRequestHelper {
     });
 
     monitorRepository.saveAll(monitors);
+
+    sendBoxesMonitorsUpdateAd(ad, monitors);
+  }
+
+  private void sendBoxesMonitorsUpdateAd(Ad ad, List<Monitor> monitors) {
+    monitors.stream()
+            .filter(monitor -> monitor.getBox() != null && monitor.getBox().isActive())
+            .collect(Collectors.groupingBy(Monitor::getBox))
+            .forEach((box, boxMonitors) -> {
+              String ip = box.getIp().getIpAddress();
+
+              boxMonitors.forEach(monitor -> {
+                UpdateBoxMonitorsAdRequestDto dto = new UpdateBoxMonitorsAdRequestDto(
+                        monitor.getId(),
+                        ad.getName(),
+                        bucketService.getLink(AttachmentUtils.format(ad))
+                );
+
+                String url = "http://" + ip + ":5050/ad";
+
+                try {
+                  httpClient.makePostRequest(url, dto, Void.class, null);
+                } catch (Exception e) {
+                  log.error("Error sending unique ad after approval to update monitor with id: {}, IP: {}, message: {}", monitor.getId(), ip, e.getMessage());
+                }
+              });
+            });
   }
 
   private void validateAd(Ad ad) {
@@ -210,16 +247,6 @@ public class ClientRequestHelper {
 
     if (!monitor.hasAvailableBlocks(1)) {
       throw new BusinessRuleException(ClientValidationMessages.MONITOR_MAX_ADS_REACHED);
-    }
-  }
-
-  @Transactional(readOnly = true)
-  public void validateAttachmentsCount(Client client, List<AttachmentRequestDto> request) {
-    int attachmentToAdd = request.stream().filter(r -> r.getId() == null).toList().size();
-    int attachmentCount = client.getAttachments().size() + attachmentToAdd;
-
-    if (attachmentCount >= SharedConstants.MAX_ATTACHMENT_PER_CLIENT) {
-      throw new BusinessRuleException(AttachmentValidationMessages.MAX_ATTACHMENTS_REACHED);
     }
   }
 }

@@ -1,5 +1,6 @@
 package com.telas.services;
 
+import com.stripe.model.checkout.Session;
 import com.telas.dtos.request.filters.SubscriptionFilterRequestDto;
 import com.telas.dtos.response.PaginationResponseDto;
 import com.telas.dtos.response.SubscriptionMinResponseDto;
@@ -18,11 +19,15 @@ public interface SubscriptionService {
 
   boolean checkIfCanBeUpgraded(UUID subscriptionId, Recurrence recurrence);
 
-  void cancelSubscription(com.stripe.model.Subscription stripeSubscription);
-
   void cancelSubscription(UUID subscriptionId);
 
+  void cancelSubscription(com.stripe.model.Subscription stripeSubscription);
+
+  void handleCheckoutSessionExpired(Session session);
+
   void removeAdsFromExpiredSubscriptions();
+
+  void sendSubscriptionExpirationEmail();
 
   PaginationResponseDto<List<SubscriptionMinResponseDto>> findClientSubscriptionsFilters(SubscriptionFilterRequestDto request);
 }
