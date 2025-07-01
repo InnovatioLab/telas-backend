@@ -255,7 +255,7 @@ CREATE TABLE "monitors"
   "box_id"               UUID                     NULL DEFAULT NULL,
   "address_id"           UUID                     NOT NULL,
   "type"                 VARCHAR(50)              NOT NULL DEFAULT 'BASIC',
-  "max_blocks"           INTEGER                  NOT NULL DEFAULT 12,
+  "max_blocks"           INTEGER                  NOT NULL DEFAULT 17,
   "product_id"           VARCHAR(255)             NOT NULL,
   "location_description" VARCHAR(255)             NULL     DEFAULT NULL,
   "size_in_inches"       NUMERIC(5, 2)            NOT NULL DEFAULT 0.00,
@@ -431,7 +431,7 @@ CREATE TABLE "ads"
   "name"            VARCHAR(255)             NOT NULL,
   "mime_type"       VARCHAR(15)              NOT NULL,
   "client_id"       UUID                     NOT NULL,
-  "ad_request_id"   UUID                     NOT NULL,
+  "ad_request_id"   UUID                     NULL DEFAULT NULL,
   "validation"      VARCHAR(15)              NOT NULL DEFAULT 'PENDING',
   "username_create" VARCHAR(255)             NULL     DEFAULT NULL,
   "username_update" VARCHAR(255)             NULL     DEFAULT NULL,
@@ -632,11 +632,20 @@ CREATE TABLE "subscriptions_flows"
   CONSTRAINT "fk_subscriptions_flows_client" FOREIGN KEY ("client_id") REFERENCES "clients" ("id") ON UPDATE NO ACTION ON DELETE CASCADE
 );
 
-INSERT INTO "ips" (id, ip_address, created_at)
-VALUES ('626644b9-5ce5-4c66-a8da-4444e3997174', '127.0.0.1', now());
+CREATE TABLE "wishlist" (
+  "id"        UUID PRIMARY KEY,
+  "client_id" UUID NOT NULL UNIQUE,
+  CONSTRAINT "fk_wishlist_client" FOREIGN KEY ("client_id") REFERENCES "clients" ("id") ON DELETE CASCADE
+);
 
--- INSERT INTO "boxes" (id, ip_id, created_at)
--- VALUES ('e52a414c-fa4f-454a-bf7f-1dd26e5fe755', '626644b9-5ce5-4c66-a8da-4444e3997174', now());
+CREATE TABLE "wishlist_monitors" (
+  "wishlist_id" UUID NOT NULL,
+  "monitor_id"  UUID NOT NULL,
+  PRIMARY KEY ("wishlist_id", "monitor_id"),
+  CONSTRAINT "fk_wishlist_monitor_wishlist" FOREIGN KEY ("wishlist_id") REFERENCES "wishlist" ("id") ON DELETE CASCADE,
+  CONSTRAINT "fk_wishlist_monitor_monitor" FOREIGN KEY ("monitor_id") REFERENCES "monitors" ("id") ON DELETE CASCADE
+);
+
 
 INSERT INTO "terms_conditions" (id, version, content, created_at, updated_at, username_create, username_update)
 VALUES ('eb1f62bf-9d16-45c1-be45-bd52f97dffb2',

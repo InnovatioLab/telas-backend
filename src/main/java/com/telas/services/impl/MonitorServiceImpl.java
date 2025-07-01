@@ -7,6 +7,7 @@ import com.telas.dtos.response.*;
 import com.telas.entities.*;
 import com.telas.enums.SubscriptionStatus;
 import com.telas.helpers.MonitorRequestHelper;
+import com.telas.infra.exceptions.BusinessRuleException;
 import com.telas.infra.exceptions.ResourceNotFoundException;
 import com.telas.infra.security.model.AuthenticatedUser;
 import com.telas.infra.security.services.AuthenticatedUserService;
@@ -18,6 +19,7 @@ import com.telas.shared.utils.PaginationFilterUtil;
 import com.telas.shared.utils.ValidateDataUtils;
 import jakarta.persistence.criteria.Predicate;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
@@ -35,6 +37,9 @@ public class MonitorServiceImpl implements MonitorService {
   private final AuthenticatedUserService authenticatedUserService;
   private final MonitorRepository repository;
   private final MonitorRequestHelper helper;
+
+  @Value("${stripe.product.id}")
+  private String productId;
 
   @Override
   @Transactional
@@ -155,9 +160,10 @@ public class MonitorServiceImpl implements MonitorService {
 
   @Override
   @Transactional(readOnly = true)
-  public List<LinkResponseDto> findValidAdsForMonitor(UUID monitorId) {
+  public List<MonitorValidAdResponseDto> findValidAdsForMonitor(UUID monitorId) {
     authenticatedUserService.validateAdmin();
-    return helper.getValidAdsForMonitor(monitorId);
+    Monitor monitor = findEntityById(monitorId);
+    return helper.getValidAdsForMonitor(monitor);
   }
 
   @Override
@@ -179,6 +185,29 @@ public class MonitorServiceImpl implements MonitorService {
             .toList();
 
     return PaginationResponseDto.fromResult(response, (int) page.getTotalElements(), page.getTotalPages(), request.getPage());
+  }
+
+  @Override
+  @Transactional
+  public void delete(UUID monitorId) {
+    authenticatedUserService.validateAdmin();
+    Monitor monitor = findEntityById(monitorId);
+    ensureNoActiveSubscription(monitor);
+    helper.sendBoxRemoveMonitor(monitor);
+    clearMonitorAssociations(monitor);
+    repository.delete(monitor);
+  }
+
+  private void ensureNoActiveSubscription(Monitor monitor) {
+    if (repository.existsActiveSubscriptionByMonitorId(monitor.getId())) {
+      throw new BusinessRuleException(MonitorValidationMessages.MONITOR_HAS_ACTIVE_SUBSCRIPTION);
+    }
+  }
+
+  private void clearMonitorAssociations(Monitor monitor) {
+    monitor.getMonitorAds().clear();
+    monitor.getClients().clear();
+    monitor.setBox(null);
   }
 
   private Specification<Monitor> filterMonitors(Specification<Monitor> specification, String genericFilter) {
@@ -206,7 +235,7 @@ public class MonitorServiceImpl implements MonitorService {
 
   private Monitor createNewMonitor(MonitorRequestDto request, AuthenticatedUser authenticatedUser, Address address) {
     helper.setAddressCoordinates(address);
-    Monitor monitor = new Monitor(request, address);
+    Monitor monitor = new Monitor(request, address, productId);
     monitor.setUsernameCreate(authenticatedUser.client().getBusinessName());
     return monitor;
   }
@@ -233,8 +262,8 @@ public class MonitorServiceImpl implements MonitorService {
 
   private void updateMonitorDetails(MonitorRequestDto request, Monitor monitor, Set<Client> clients, List<Ad> ads) {
     monitor.setType(request.getType());
+    monitor.setProductId(productId);
     monitor.setLocationDescription(request.getLocationDescription());
-    monitor.setMaxBlocks(request.getMaxBlocks());
     monitor.setSize(request.getSize());
 
     if (!ValidateDataUtils.isNullOrEmpty(request.getAds())) {

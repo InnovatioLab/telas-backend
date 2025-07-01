@@ -10,8 +10,6 @@ import com.telas.shared.utils.TrimStringDeserializer;
 import com.telas.shared.utils.ValidateDataUtils;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Digits;
-import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.Positive;
 import jakarta.validation.constraints.Size;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
@@ -34,19 +32,12 @@ public class MonitorRequestDto implements Serializable {
   @Serial
   private static final long serialVersionUID = -3963846843873646628L;
 
-  @NotBlank(message = MonitorValidationMessages.PRODUCT_ID_REQUIRED)
-  @JsonDeserialize(using = TrimStringDeserializer.class)
-  private String productId = "prod_SP0KFP0uCSQrxt";
-
   @Digits(integer = 3, fraction = 2, message = MonitorValidationMessages.SIZE_INVALID)
   private BigDecimal size;
 
   private UUID addressId;
 
   private AddressRequestDto address;
-
-  @Positive(message = MonitorValidationMessages.MAX_BLOCKS_INVALID)
-  private Integer maxBlocks;
 
   @Size(max = SharedConstants.TAMANHO_NOME_ANEXO, message = MonitorValidationMessages.LOCATION_DESCRIPTION_SIZE)
   @JsonDeserialize(using = TrimStringDeserializer.class)
@@ -61,8 +52,6 @@ public class MonitorRequestDto implements Serializable {
   public void validate() {
     validateAddress();
     validadeAdsOrderIndex();
-
-//        validateMaxDisplayTime();
   }
 
   private void validateAddress() {

@@ -99,6 +99,10 @@ public class Client extends BaseAudit implements Serializable {
   @JoinColumn(name = "social_media_id", referencedColumnName = "id")
   private SocialMedia socialMedia;
 
+  @NotAudited
+  @OneToOne(mappedBy = "client", cascade = CascadeType.ALL)
+  private Wishlist wishlist;
+
   @JsonIgnore
   @OneToMany(mappedBy = "client")
   private Set<Subscription> subscriptions = new HashSet<>();
@@ -125,6 +129,7 @@ public class Client extends BaseAudit implements Serializable {
     status = request.getStatus();
     contact = new Contact(request.getContact());
     owner = new Owner(request.getOwner(), this);
+    wishlist = new Wishlist(this);
 
     socialMedia = Optional.ofNullable(request.getSocialMedia())
             .map(SocialMedia::new)

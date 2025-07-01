@@ -28,6 +28,7 @@ import com.telas.services.TermConditionService;
 import com.telas.services.VerificationCodeService;
 import com.telas.shared.audit.CustomRevisionListener;
 import com.telas.shared.constants.SharedConstants;
+import com.telas.shared.constants.valitation.AdValidationMessages;
 import com.telas.shared.constants.valitation.AuthValidationMessageConstants;
 import com.telas.shared.constants.valitation.ClientValidationMessages;
 import com.telas.shared.utils.AttachmentUtils;
@@ -67,7 +68,7 @@ public class ClientServiceImpl implements ClientService {
 
     Client client = new Client(request);
     VerificationCode verificationCode = verificationCodeService.save(CodeType.CONTACT, client);
-//    verificationCode.setValidated(true);
+    verificationCode.setValidated(true);
     client.setVerificationCode(verificationCode);
 
     if (Objects.equals(client.getBusinessName(), "Admin")) {
@@ -253,20 +254,29 @@ public class ClientServiceImpl implements ClientService {
 
   @Transactional
   @Override
-  public void uploadAds(AdRequestDto request) {
+  public void uploadAds(AdRequestDto request, UUID clientId) {
     request.validate();
 
-    authenticatedUserService.validateAdmin();
-    AdRequest adRequest = helper.getAdRequestById(request.getAdRequestId());
-    Client client = adRequest.getClient();
+    Client admin = authenticatedUserService.validateAdmin().client();
 
-    if (!adRequest.isActive()) {
-      throw new BusinessRuleException(ClientValidationMessages.AD_REQUEST_NOT_ACTIVE);
+    if (admin.getId().equals(clientId)) {
+      attachmentHelper.saveAdminAds(request, admin);
+    } else {
+      Client client = findActiveEntityById(clientId);
+
+      if (request.getAdRequestId() == null) {
+        throw new BusinessRuleException(AdValidationMessages.AD_REQUEST_ID_REQUIRED);
+      }
+
+      AdRequest adRequest = helper.getAdRequestById(request.getAdRequestId());
+
+      if (!adRequest.isActive()) {
+        throw new BusinessRuleException(ClientValidationMessages.AD_REQUEST_NOT_ACTIVE);
+      }
+
+      attachmentHelper.saveAttachments(List.of(request), client, adRequest);
+      repository.save(client);
     }
-
-    attachmentHelper.saveAttachments(List.of(request), client, adRequest);
-
-    repository.save(client);
   }
 
   @Transactional
@@ -367,6 +377,13 @@ public class ClientServiceImpl implements ClientService {
     Page<AdRequest> page = adRequestRepository.findAll(filter, pageable);
     List<AdRequestResponseDto> response = page.stream().map(adRequest -> new AdRequestResponseDto(adRequest, attachmentHelper.getAdRequestData(adRequest))).toList();
     return PaginationResponseDto.fromResult(response, (int) page.getTotalElements(), page.getTotalPages(), request.getPage());
+  }
+
+  @Override
+  @Transactional
+  public void addMonitorToWishlist(UUID monitorId) {
+    Client client = authenticatedUserService.getLoggedUser().client();
+    helper.addMonitorToWishlist(monitorId, client);
   }
 
   private void sendContactConfirmationEmail(Client client, VerificationCode verificationCode) {

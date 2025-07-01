@@ -1,6 +1,7 @@
 package com.telas.repositories;
 
 import com.telas.entities.Client;
+import com.telas.entities.Monitor;
 import org.jetbrains.annotations.NotNull;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
@@ -9,6 +10,7 @@ import org.springframework.stereotype.Repository;
 
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 
 @Repository
@@ -52,6 +54,6 @@ public interface ClientRepository extends JpaRepository<Client, UUID>, JpaSpecif
   @Query("SELECT c FROM Client c WHERE c.role = 'ADMIN'")
   List<Client> findAllAdmins();
 
-  @Query("SELECT c FROM Client c WHERE c.stripeCustomerId = :stripeCustomerId")
-  Optional<Client> findByStripeCustomerId(String stripeCustomerId);
+  @Query("SELECT c FROM Client c JOIN FETCH c.wishlist w LEFT JOIN FETCH w.monitors m WHERE m IN :monitors")
+  List<Client> findAllByMonitorsInWishlist(Set<Monitor> monitors);
 }

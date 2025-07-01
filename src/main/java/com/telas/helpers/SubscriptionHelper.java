@@ -7,16 +7,14 @@ import com.telas.dtos.response.MonitorValidationResponseDto;
 import com.telas.dtos.response.SubscriptionMonitorResponseDto;
 import com.telas.dtos.response.SubscriptionResponseDto;
 import com.telas.entities.*;
+import com.telas.enums.NotificationReference;
 import com.telas.enums.Recurrence;
 import com.telas.enums.SubscriptionStatus;
 import com.telas.infra.exceptions.BusinessRuleException;
 import com.telas.infra.exceptions.ResourceNotFoundException;
 import com.telas.repositories.SubscriptionFlowRepository;
 import com.telas.repositories.SubscriptionRepository;
-import com.telas.services.BucketService;
-import com.telas.services.CartService;
-import com.telas.services.EmailService;
-import com.telas.services.MonitorService;
+import com.telas.services.*;
 import com.telas.shared.audit.CustomRevisionListener;
 import com.telas.shared.constants.SharedConstants;
 import com.telas.shared.constants.valitation.CartValidationMessages;
@@ -46,6 +44,7 @@ public class SubscriptionHelper {
   private final CartService cartService;
   private final MonitorService monitorService;
   private final BucketService bucketService;
+  private final NotificationService notificationService;
 
   @Transactional
   public Cart getActiveCart(Client client) {
@@ -241,5 +240,24 @@ public class SubscriptionHelper {
     return DateTimeFormatter.ofPattern("MM/dd/yyyy")
             .withZone(ZoneId.of(SharedConstants.ZONE_ID))
             .format(date);
+  }
+
+  @Transactional
+  public void notifyClientsWishList(List<Client> clients, Set<Monitor> monitors) {
+    clients.forEach(client -> {
+      Set<Monitor> wishlistMonitors = new HashSet<>(client.getWishlist().getMonitors());
+      wishlistMonitors.retainAll(monitors);
+
+      if (!wishlistMonitors.isEmpty()) {
+        Map<String, String> params = Map.of(
+                "clientName", client.getBusinessName(),
+                "monitorsAddress", wishlistMonitors.stream()
+                        .map(m -> m.getAddress().getCoordinatesParams())
+                        .collect(Collectors.joining(", "))
+        );
+
+        notificationService.save(NotificationReference.MONITOR_IN_WISHLIST_NOW_AVAILABLE, client, params);
+      }
+    });
   }
 }

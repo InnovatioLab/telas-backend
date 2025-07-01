@@ -8,6 +8,7 @@ import com.stripe.param.PriceListParams;
 import com.stripe.param.checkout.SessionCreateParams;
 import com.telas.dtos.EmailDataDto;
 import com.telas.entities.Client;
+import com.telas.entities.Monitor;
 import com.telas.entities.Payment;
 import com.telas.entities.Subscription;
 import com.telas.enums.PaymentStatus;
@@ -291,7 +292,10 @@ public class PaymentHelper {
 
   private void handleSuccessfulPayment(Payment payment, boolean isRecurringPayment) {
     log.info("Payment succeeded with id: {}", payment.getId());
-    Subscription subscription = payment.getSubscription();
+
+    UUID subscriptionId = payment.getSubscription().getId();
+    Subscription subscription = subscriptionHelper.findEntityById(subscriptionId);
+    updateClientWishlist(subscription);
 
     if (subscription.isUpgrade()) {
       log.info("Skipping cart inactivation for upgraded subscription: {}", subscription.getId());
@@ -301,6 +305,21 @@ public class PaymentHelper {
 
     if (!isRecurringPayment) {
       handleNonRecurringPayment(subscription);
+    }
+  }
+
+  private void updateClientWishlist(Subscription subscription) {
+    Set<Monitor> monitors = subscription.getMonitors();
+    Client client = subscription.getClient();
+
+    Set<Monitor> wishlistMonitors = client.getWishlist().getMonitors();
+
+    int before = wishlistMonitors.size();
+
+    wishlistMonitors.removeIf(monitors::contains);
+
+    if (wishlistMonitors.size() < before) {
+      clientRepository.save(client);
     }
   }
 

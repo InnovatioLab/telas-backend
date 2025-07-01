@@ -45,7 +45,7 @@ public interface ClientService {
 
   void requestAdCreation(ClientAdRequestToAdminDto request);
 
-  void uploadAds(AdRequestDto request);
+  void uploadAds(AdRequestDto request, UUID clientId);
 
   void acceptTermsAndConditions();
 
@@ -60,4 +60,6 @@ public interface ClientService {
   PaginationResponseDto<List<ClientMinResponseDto>> findAllFilters(ClientFilterRequestDto request);
 
   PaginationResponseDto<List<AdRequestResponseDto>> findPendingAdRequest(FilterAdRequestDto request);
+
+  void addMonitorToWishlist(UUID monitorId);
 }

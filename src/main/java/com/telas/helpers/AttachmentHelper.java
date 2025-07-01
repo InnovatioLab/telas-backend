@@ -83,6 +83,7 @@ public class AttachmentHelper {
   }
 
 
+  @Transactional
   public List<Attachment> getAttachmentsFromAdRequest(AdRequest adRequestEntity) {
     List<UUID> attachmentIds = Arrays.stream(adRequestEntity.getAttachmentIds().split(","))
             .map(UUID::fromString)
@@ -140,6 +141,7 @@ public class AttachmentHelper {
       } else {
         if (!(attachment instanceof AdRequestDto)) {
           Attachment entity = attachmentRepository.findById(attachment.getId()).orElseThrow(() -> new ResourceNotFoundException(AttachmentValidationMessages.ATTACHMENT_NOT_FOUND));
+          verifyFileNameChanged(attachment, entity);
           bucketService.deleteAttachment(AttachmentUtils.format(entity));
           entity.setName(attachment.getName());
           entity.setType(attachment.getType());
@@ -151,6 +153,54 @@ public class AttachmentHelper {
         }
       }
     });
+  }
+
+  private void verifyFileNameChanged(AttachmentRequestDto request, Attachment entity) {
+    if (entity.getName().equals(request.getName())) {
+      throw new BusinessRuleException(AdValidationMessages.FILE_NAME_MUST_BE_CHANGED_DURING_UPDATE);
+    }
+  }
+
+  @Transactional
+  public void saveAdminAds(AdRequestDto request, Client admin) {
+    Ad ad = request.getId() == null ? createNewAd(request, admin) : updateExistingAd(request);
+    bucketService.upload(
+            request.getBytes(),
+            AttachmentUtils.format(ad),
+            request.getType(),
+            new ByteArrayInputStream(request.getBytes())
+    );
+  }
+
+  private Ad createNewAd(AdRequestDto request, Client admin) {
+    Ad ad = new Ad();
+    ad.setName(request.getName());
+    ad.setType(request.getType());
+    ad.setClient(admin);
+    ad.setValidation(AdValidationType.APPROVED);
+
+    Ad savedAd = adRepository.save(ad);
+    admin.getAds().add(savedAd);
+    clientRepository.save(admin);
+    return savedAd;
+  }
+
+  private Ad updateExistingAd(AdRequestDto request) {
+    Ad ad = adRepository.findById(request.getId())
+            .orElseThrow(() -> new ResourceNotFoundException(AdValidationMessages.AD_NOT_FOUND));
+    verifyFileNameChanged(request, ad);
+
+    bucketService.deleteAttachment(AttachmentUtils.format(ad));
+    ad.setName(request.getName());
+    ad.setType(request.getType());
+
+    return adRepository.save(ad);
+  }
+
+  private void verifyFileNameChanged(AdRequestDto request, Ad ad) {
+    if (ad.getName().equals(request.getName())) {
+      throw new BusinessRuleException(AdValidationMessages.FILE_NAME_MUST_BE_CHANGED_DURING_UPDATE);
+    }
   }
 
   @Transactional
@@ -182,30 +232,21 @@ public class AttachmentHelper {
 
     if (AdValidationType.REJECTED.equals(validation)) {
       clientRepository.findAllAdmins().forEach(admin ->
-              sendNotification(entity, admin, validation, request)
+              sendNotification(entity, admin, request)
       );
     }
   }
 
-  private void sendNotification(Ad entity, Client admin, AdValidationType validation, RefusedAdRequestDto request) {
+  private void sendNotification(Ad entity, Client admin, RefusedAdRequestDto request) {
     Map<String, String> params = new HashMap<>();
 
     String link = "";
     params.put("link", link);
     params.put("attachmentName", entity.getName());
     params.put("recipient", admin.getBusinessName());
-
-    if (AdValidationType.REJECTED.equals(validation)) {
-      params.put("justification", request.getJustification());
-      params.put("description", Optional.ofNullable(request.getDescription()).orElse(""));
-    } else {
-      params.put("justification", "");
-      params.put("description", "");
-    }
-
-//        NotificationReference notificationReference = AdValidationType.APPROVED.equals(validation) ? NotificationReference.ATTACHMENT_APPROVED : NotificationReference.ATTACHMENT_REFUSED;
-    notificationService.save(NotificationReference.ATTACHMENT_REFUSED, admin, params);
-//        notificationService.notify(notificationReference, client, params);
+    params.put("justification", request.getJustification());
+    params.put("description", Optional.ofNullable(request.getDescription()).orElse(""));
+    notificationService.save(NotificationReference.AD_REFUSED, admin, params);
   }
 
   private void createRefusedAd(RefusedAdRequestDto request, Ad entity, Client admin) {

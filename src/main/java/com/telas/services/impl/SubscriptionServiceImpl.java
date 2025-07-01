@@ -8,6 +8,7 @@ import com.telas.dtos.response.SubscriptionMinResponseDto;
 import com.telas.dtos.response.SubscriptionResponseDto;
 import com.telas.entities.Cart;
 import com.telas.entities.Client;
+import com.telas.entities.Monitor;
 import com.telas.entities.Subscription;
 import com.telas.enums.Recurrence;
 import com.telas.enums.Role;
@@ -42,10 +43,7 @@ import java.time.Instant;
 import java.time.LocalDate;
 import java.time.format.DateTimeParseException;
 import java.time.temporal.ChronoUnit;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
-import java.util.UUID;
+import java.util.*;
 
 @Service
 @RequiredArgsConstructor
@@ -125,6 +123,7 @@ public class SubscriptionServiceImpl implements SubscriptionService {
     } else {
       updateSubscriptionStatusCancelled(subscription, Instant.now(), client.getBusinessName());
       helper.removeMonitorAdsFromSubscription(subscription);
+      notifyClientsWishList(subscription);
     }
   }
 
@@ -142,6 +141,7 @@ public class SubscriptionServiceImpl implements SubscriptionService {
     Instant endedAt = Instant.ofEpochSecond(stripeSubscription.getEndedAt());
     updateSubscriptionStatusCancelled(subscription, endedAt, "Stripe Webhook");
     helper.removeMonitorAdsFromSubscription(subscription);
+    notifyClientsWishList(subscription);
   }
 
   @Override
@@ -186,6 +186,7 @@ public class SubscriptionServiceImpl implements SubscriptionService {
       subscription.setStatus(SubscriptionStatus.EXPIRED);
       helper.removeMonitorAdsFromSubscription(subscription);
       repository.save(subscription);
+      notifyClientsWishList(subscription);
     });
   }
 
@@ -225,6 +226,18 @@ public class SubscriptionServiceImpl implements SubscriptionService {
     Page<Subscription> page = repository.findAll(filter, pageable);
     List<SubscriptionMinResponseDto> response = page.stream().map(SubscriptionMinResponseDto::new).toList();
     return PaginationResponseDto.fromResult(response, (int) page.getTotalElements(), page.getTotalPages(), request.getPage());
+  }
+
+  private void notifyClientsWishList(Subscription subscription) {
+    List<Client> clients = clientRepository.findAllByMonitorsInWishlist(subscription.getMonitors());
+    Set<Monitor> monitors = subscription.getMonitors();
+
+    if (clients.isEmpty() || monitors.isEmpty()) {
+      log.info("No clients or monitors to notify.");
+      return;
+    }
+
+    helper.notifyClientsWishList(clients, subscription.getMonitors());
   }
 
   private boolean isInvalidStatus(SubscriptionStatus status) {

@@ -6,6 +6,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import com.telas.dtos.request.AdRequestDto;
+import com.telas.dtos.request.AttachmentRequestDto;
 import com.telas.enums.AdValidationType;
 import com.telas.shared.audit.BaseAudit;
 import jakarta.persistence.*;
@@ -55,7 +56,7 @@ public class Ad extends BaseAudit implements Serializable {
   @JsonIgnore
   @NotAudited
   @OneToOne
-  @JoinColumn(name = "ad_request_id", referencedColumnName = "id", nullable = false)
+  @JoinColumn(name = "ad_request_id", referencedColumnName = "id")
   private AdRequest adRequest;
 
   @JsonIgnore
@@ -71,6 +72,12 @@ public class Ad extends BaseAudit implements Serializable {
   @JsonIgnore
   @OneToMany(mappedBy = "id.ad")
   private Set<MonitorAd> monitorAds = new HashSet<>();
+
+  public Ad(AttachmentRequestDto request, Client client) {
+    name = request.getName();
+    type = request.getType();
+    this.client = client;
+  }
 
   public Ad(AdRequestDto request, Client client, AdRequest adRequest) {
     name = request.getName();

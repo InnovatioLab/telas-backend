@@ -249,4 +249,22 @@ public class ClientRequestHelper {
       throw new BusinessRuleException(ClientValidationMessages.MONITOR_MAX_ADS_REACHED);
     }
   }
+
+  @Transactional
+  public void addMonitorToWishlist(UUID monitorId, Client client) {
+    Monitor monitor = monitorRepository.findById(monitorId)
+            .orElseThrow(() -> new ResourceNotFoundException(MonitorValidationMessages.MONITOR_NOT_FOUND));
+
+    if (client.getWishlist().getMonitors().stream().anyMatch(m -> m.getId().equals(monitorId))) {
+      log.info("Monitor with id {} already exists in wishlist for client {}", monitorId, client.getId());
+      return;
+    }
+
+    if (client.getMonitorsWithActiveSubscriptions().stream().anyMatch(m -> m.getId().equals(monitorId))) {
+      throw new BusinessRuleException(ClientValidationMessages.MONITOR_IN_ACTIVE_SUBSCRIPTION);
+    }
+
+    client.getWishlist().getMonitors().add(monitor);
+    clientRepository.save(client);
+  }
 }

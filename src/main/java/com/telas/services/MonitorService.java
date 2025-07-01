@@ -27,7 +27,9 @@ public interface MonitorService {
 
   List<MonitorValidationResponseDto> findInvalidMonitorsDuringCheckout(List<UUID> monitorIds, UUID clientId);
 
-  List<LinkResponseDto> findValidAdsForMonitor(UUID monitorId);
+  List<MonitorValidAdResponseDto> findValidAdsForMonitor(UUID monitorId);
 
   PaginationResponseDto<List<MonitorResponseDto>> findAllByFilters(FilterMonitorRequestDto request);
+
+  void delete(UUID monitorId);
 }

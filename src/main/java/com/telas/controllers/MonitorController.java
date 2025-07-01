@@ -58,4 +58,13 @@ public interface MonitorController {
           @ApiResponse(responseCode = "200", description = "Monitors founded successfully.")
   })
   ResponseEntity<?> findNearestActiveMonitors(String zipCode, BigDecimal size, String type, int limit);
+
+  @Operation(summary = "Endpoint contract to delete a monitor", responses = {
+          @ApiResponse(responseCode = "204", description = "Monitor deleted successfully."),
+          @ApiResponse(responseCode = "422", description = "Request with invalid data."),
+          @ApiResponse(responseCode = "401", description = "Unauthorized."),
+          @ApiResponse(responseCode = "403", description = "Forbidden."),
+          @ApiResponse(responseCode = "404", description = "Monitor not found."),
+  })
+  ResponseEntity<?> delete(UUID monitorId);
 }

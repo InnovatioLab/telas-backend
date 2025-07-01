@@ -84,4 +84,13 @@ public class MonitorControllerImpl implements MonitorController {
     String message = monitors.isEmpty() ? MessageCommonsConstants.FIND_FILTER_EMPTY_MESSAGE : MessageCommonsConstants.FIND_ALL_SUCCESS_MESSAGE;
     return ResponseEntity.status(HttpStatus.OK).body(ResponseDto.fromData(monitors, HttpStatus.OK, message));
   }
+
+  @Override
+  @DeleteMapping("/{id}")
+  @SecurityRequirement(name = "jwt")
+  public ResponseEntity<?> delete(@PathVariable(name = "id") UUID monitorId) {
+    service.delete(monitorId);
+    return ResponseEntity.status(HttpStatus.NO_CONTENT)
+            .body(ResponseDto.fromData(null, HttpStatus.NO_CONTENT, MessageCommonsConstants.DELETE_SUCCESS_MESSAGE));
+  }
 }

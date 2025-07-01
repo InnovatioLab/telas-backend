@@ -52,6 +52,7 @@ public interface MonitorRepository extends JpaRepository<Monitor, UUID>, JpaSpec
               FROM monitors m
               JOIN addresses a ON m.address_id = a.id
               WHERE m.fl_active = TRUE
+                AND m.box_id IS NOT NULL
                 AND (:size IS NULL OR m.size_in_inches >= :size)
                 AND (:type IS NULL OR m.type = :type)
               ORDER BY distance
@@ -81,4 +82,13 @@ public interface MonitorRepository extends JpaRepository<Monitor, UUID>, JpaSpec
               WHERE m.id IN :monitorIds
           """)
   List<MonitorValidationResponseDto> findInvalidMonitors(@Param("monitorIds") List<UUID> monitorIds, @Param("clientId") UUID clientId);
+
+  @Query("""
+              SELECT CASE WHEN COUNT(s) > 0 THEN true ELSE false END
+              FROM Subscription s
+              JOIN s.monitors m
+              WHERE m.id = :monitorId
+                AND s.status = 'ACTIVE'
+          """)
+  boolean existsActiveSubscriptionByMonitorId(@Param("monitorId") UUID monitorId);
 }

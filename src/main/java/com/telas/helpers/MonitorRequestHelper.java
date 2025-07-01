@@ -4,12 +4,9 @@ import com.telas.dtos.request.MonitorAdRequestDto;
 import com.telas.dtos.request.MonitorRequestDto;
 import com.telas.dtos.request.RemoveBoxMonitorsAdRequestDto;
 import com.telas.dtos.request.UpdateBoxMonitorsAdRequestDto;
-import com.telas.dtos.response.LinkResponseDto;
 import com.telas.dtos.response.MonitorAdResponseDto;
-import com.telas.entities.Ad;
-import com.telas.entities.Address;
-import com.telas.entities.Client;
-import com.telas.entities.Monitor;
+import com.telas.dtos.response.MonitorValidAdResponseDto;
+import com.telas.entities.*;
 import com.telas.enums.AdValidationType;
 import com.telas.enums.Role;
 import com.telas.infra.exceptions.BusinessRuleException;
@@ -124,9 +121,25 @@ public class MonitorRequestHelper {
   }
 
   @Transactional(readOnly = true)
-  public List<LinkResponseDto> getValidAdsForMonitor(UUID monitorId) {
-    return adRepository.findAllValidAdsForMonitor(AdValidationType.APPROVED, monitorId).stream()
-            .map(ad -> new LinkResponseDto(ad.getId(), bucketService.getLink(AttachmentUtils.format(ad))))
+  public List<MonitorValidAdResponseDto> getValidAdsForMonitor(Monitor monitor) {
+    Set<MonitorAd> monitorAds = monitor.getMonitorAds();
+
+    if (monitorAds.isEmpty()) {
+      return List.of();
+    }
+
+    List<Ad> validAds = adRepository.findAllValidAdsForMonitor(AdValidationType.APPROVED, monitor.getId());
+
+    if (validAds.isEmpty()) {
+      return List.of();
+    }
+
+    return validAds.stream()
+            .map(ad -> new MonitorValidAdResponseDto(
+                    ad,
+                    bucketService.getLink(AttachmentUtils.format(ad)),
+                    monitorAds.stream().anyMatch(ma -> ma.getAd().equals(ad))
+            ))
             .toList();
   }
 
@@ -199,6 +212,21 @@ public class MonitorRequestHelper {
       httpClient.makePostRequest(url, body, Void.class, null);
     } catch (Exception e) {
       log.error("Error while sending request with monitorID: {}, URL: {}, message: {}", monitorId, url, e.getMessage());
+    }
+  }
+
+  @Transactional
+  public void sendBoxRemoveMonitor(Monitor monitor) {
+    if (monitor.getBox() == null || !monitor.getBox().isActive()) {
+      return;
+    }
+
+    String url = "http://" + monitor.getBox().getIp().getIpAddress() + ":5050/remove-monitor/" + monitor.getId().toString();
+    try {
+      httpClient.makeDeleteRequest(url, Void.class, null);
+    } catch (Exception e) {
+      log.error("Error while sending request to remove monitor with ID: {}, URL: {}, message: {}", monitor.getId(), url, e.getMessage());
+      throw new BusinessRuleException("Failed to remove monitor from box: " + e.getMessage());
     }
   }
 }

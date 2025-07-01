@@ -4,6 +4,7 @@ import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.telas.dtos.request.MonitorRequestDto;
 import com.telas.enums.MonitorType;
 import com.telas.shared.audit.BaseAudit;
+import com.telas.shared.constants.SharedConstants;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -48,7 +49,7 @@ public class Monitor extends BaseAudit implements Serializable {
   private String productId;
 
   @Column(name = "max_blocks")
-  private Integer maxBlocks = 12;
+  private Integer maxBlocks = SharedConstants.MAX_MONITOR_ADS;
 
   @ManyToOne
   @JoinColumn(name = "address_id", referencedColumnName = "id", nullable = false)
@@ -72,12 +73,11 @@ public class Monitor extends BaseAudit implements Serializable {
   @JoinColumn(name = "box_id", referencedColumnName = "id")
   private Box box;
 
-  public Monitor(MonitorRequestDto request, Address address) {
-    productId = request.getProductId();
+  public Monitor(MonitorRequestDto request, Address address, String productId) {
+    this.productId = productId;
     type = request.getType();
     size = request.getSize();
     locationDescription = request.getLocationDescription();
-    maxBlocks = request.getMaxBlocks();
     this.address = address;
   }
 
