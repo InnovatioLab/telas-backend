@@ -1,6 +1,5 @@
 package com.telas.controllers;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
 import com.telas.dtos.request.*;
 import com.telas.dtos.request.filters.ClientFilterRequestDto;
 import com.telas.dtos.request.filters.FilterAdRequestDto;
@@ -121,7 +120,7 @@ public interface ClientController {
           @ApiResponse(responseCode = "403", description = "Forbidden."),
           @ApiResponse(responseCode = "404", description = "Client not found."),
   })
-  ResponseEntity<?> changeRoleToPartner(UUID clientId) throws JsonProcessingException;
+  ResponseEntity<?> changeRoleToPartner(UUID clientId);
 
   @Operation(summary = "Endpoint contract to filter and list ads request", responses = {
           @ApiResponse(responseCode = "200", description = "Ads requests filtered successfully."),
@@ -147,11 +146,25 @@ public interface ClientController {
           @ApiResponse(responseCode = "403", description = "Forbidden."),
           @ApiResponse(responseCode = "404", description = "Some data not found."),
   })
-  ResponseEntity<?> validateAd(AdValidationType validation, RefusedAdRequestDto request, UUID attachmentId) throws JsonProcessingException;
+  ResponseEntity<?> validateAd(AdValidationType validation, RefusedAdRequestDto request, UUID attachmentId);
 
   @Operation(summary = "Endpoint contract to increment logged client subscription flow", responses = {
           @ApiResponse(responseCode = "200", description = "Subscription flow incremented successfully."),
           @ApiResponse(responseCode = "401", description = "Unauthorized."),
   })
   ResponseEntity<?> incrementSubscriptionFlow();
+
+  @Operation(summary = "Endpoint contract to get client wishlist", responses = {
+          @ApiResponse(responseCode = "200", description = "Success."),
+          @ApiResponse(responseCode = "401", description = "Unauthorized."),
+          @ApiResponse(responseCode = "404", description = "Wishlist not found."),
+  })
+  ResponseEntity<?> getWishlistMonitors();
+
+  @Operation(summary = "Endpoint contract to add an monitor to logged client wishlist", responses = {
+          @ApiResponse(responseCode = "201", description = "Monitor added to wishlist successfully."),
+          @ApiResponse(responseCode = "401", description = "Unauthorized."),
+          @ApiResponse(responseCode = "404", description = "Monitor not found."),
+  })
+  ResponseEntity<?> addMonitorToWishlist(UUID monitorId);
 }

@@ -1,6 +1,5 @@
 package com.telas.services;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
 import com.telas.dtos.request.*;
 import com.telas.dtos.request.filters.ClientFilterRequestDto;
 import com.telas.dtos.request.filters.FilterAdRequestDto;
@@ -49,11 +48,11 @@ public interface ClientService {
 
   void acceptTermsAndConditions();
 
-  void changeRoleToPartner(UUID clientId) throws JsonProcessingException;
+  void changeRoleToPartner(UUID clientId);
 
   List<AdResponseDto> findPendingAds();
 
-  void validateAd(UUID adId, AdValidationType validation, RefusedAdRequestDto request) throws JsonProcessingException;
+  void validateAd(UUID adId, AdValidationType validation, RefusedAdRequestDto request);
 
   void incrementSubscriptionFlow();
 
@@ -62,4 +61,6 @@ public interface ClientService {
   PaginationResponseDto<List<AdRequestResponseDto>> findPendingAdRequest(FilterAdRequestDto request);
 
   void addMonitorToWishlist(UUID monitorId);
+
+  WishlistResponseDto getWishlistMonitors();
 }

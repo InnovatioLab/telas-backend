@@ -1,6 +1,5 @@
 package com.telas.dtos.response;
 
-import com.telas.entities.Address;
 import com.telas.entities.Monitor;
 import com.telas.enums.MonitorType;
 import com.telas.shared.constants.SharedConstants;
@@ -22,21 +21,23 @@ public final class MonitorResponseDto implements Serializable {
   private final UUID id;
   private final boolean active;
   private final MonitorType type;
+  private final String locationDescription;
   private final BigDecimal size;
   private final Integer adsDailyDisplayTimeInMinutes;
   private final Double latitude;
   private final Double longitude;
-  private final Address address;
+  private final String fullAddress;
   private final List<MonitorAdResponseDto> adLinks;
 
   public MonitorResponseDto(Monitor entity, List<MonitorAdResponseDto> adLinks) {
     id = entity.getId();
     active = entity.isActive();
     type = entity.getType();
+    locationDescription = entity.getLocationDescription();
     size = entity.getSize();
     latitude = entity.getAddress().getLatitude();
     longitude = entity.getAddress().getLongitude();
-    address = entity.getAddress();
+    fullAddress = entity.getAddress().getCoordinatesParams();
     this.adLinks = adLinks;
     adsDailyDisplayTimeInMinutes = calculateAdsDailyDisplayTimeInMinutes(entity.getMonitorAds().size(), Instant.now());
   }

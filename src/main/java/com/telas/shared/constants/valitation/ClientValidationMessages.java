@@ -29,4 +29,5 @@ public final class ClientValidationMessages {
   public static final String CLIENT_CUSTOMER_NOT_FOUND = "Client not found with the provided customer id: ";
   public static final String MAX_ADS_REACHED = "Client has reached the maximum number of ads allowed.";
   public static final String MONITOR_IN_ACTIVE_SUBSCRIPTION = "Client has an active subscription for the selected monitor.";
+  public static final String WISHLIST_NOT_FOUND = "Wishlist not found!";
 }

@@ -1,6 +1,5 @@
 package com.telas.shared.utils;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.telas.infra.exceptions.BusinessRuleException;
 import com.telas.infra.exceptions.InvalidQueryParamsException;
 import org.slf4j.Logger;
@@ -20,7 +19,7 @@ public class HttpClientUtil {
   private final Logger log = LoggerFactory.getLogger(HttpClientUtil.class);
   private final WebClient webClient;
 
-  public HttpClientUtil(WebClient.Builder webClientBuilder, ObjectMapper objectMapper) {
+  public HttpClientUtil(WebClient.Builder webClientBuilder) {
     webClient = webClientBuilder.build();
   }
 
@@ -78,12 +77,12 @@ public class HttpClientUtil {
   }
 
   @Async
-  public <T> T makeDeleteRequest(String url, Class<T> responseType, Map<String, String> queryParams) {
-    return makeDeleteRequest(url, responseType, queryParams, null);
+  public void makeDeleteRequest(String url, Map<String, String> queryParams) {
+    makeDeleteRequest(url, queryParams, null);
   }
 
   @Async
-  public <T> T makeDeleteRequest(String url, Class<T> responseType, Map<String, String> queryParams, Map<String, String> headers) {
+  public void makeDeleteRequest(String url, Map<String, String> queryParams, Map<String, String> headers) {
     try {
       UriComponentsBuilder uriBuilder = UriComponentsBuilder.fromHttpUrl(url);
 
@@ -98,9 +97,9 @@ public class HttpClientUtil {
         requestSpec.headers(httpHeaders -> headers.forEach(httpHeaders::add));
       }
 
-      return requestSpec
+      requestSpec
               .retrieve()
-              .bodyToMono(responseType)
+              .bodyToMono(Void.class)
               .block();
     } catch (WebClientResponseException | HttpClientErrorException exception) {
       String responseBody = exception instanceof WebClientResponseException

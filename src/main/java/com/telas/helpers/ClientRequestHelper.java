@@ -43,6 +43,7 @@ public class ClientRequestHelper {
   private final HttpClientUtil httpClient;
   private final BucketService bucketService;
 
+
   @Transactional(readOnly = true)
   public void validateClientRequest(ClientRequestDto request, Client client) {
     request.validate();
@@ -206,8 +207,6 @@ public class ClientRequestHelper {
             .filter(monitor -> monitor.getBox() != null && monitor.getBox().isActive())
             .collect(Collectors.groupingBy(Monitor::getBox))
             .forEach((box, boxMonitors) -> {
-              String ip = box.getIp().getIpAddress();
-
               boxMonitors.forEach(monitor -> {
                 UpdateBoxMonitorsAdRequestDto dto = new UpdateBoxMonitorsAdRequestDto(
                         monitor.getId(),
@@ -215,12 +214,13 @@ public class ClientRequestHelper {
                         bucketService.getLink(AttachmentUtils.format(ad))
                 );
 
-                String url = "http://" + ip + ":5050/ad";
+                String url = "http://" + box.getIp().getIpAddress() + ":5050/ad";
 
                 try {
+                  log.info("Sending unique ad after approval to update box monitor ad with adId: {}, IP: {}, url: {}", ad.getId(), box.getIp().getIpAddress(), url);
                   httpClient.makePostRequest(url, dto, Void.class, null);
                 } catch (Exception e) {
-                  log.error("Error sending unique ad after approval to update monitor with id: {}, IP: {}, message: {}", monitor.getId(), ip, e.getMessage());
+                  log.error("Error while sending unique ad after approval to update box monitor ad with adId: {}, IP: {}, url: {}, message: {}", ad.getId(), box.getIp().getIpAddress(), url, e.getMessage());
                   throw e;
                 }
               });

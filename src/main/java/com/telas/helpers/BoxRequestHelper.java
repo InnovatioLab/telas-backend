@@ -97,27 +97,45 @@ public class BoxRequestHelper {
   }
 
   @Transactional
-  public void sendUpdateBoxMonitorsAdsRequest(Box box, List<Monitor> monitors) {
-    if (box.isActive()) {
-      String url = "http://" + box.getIp().getIpAddress() + ":5050/update-ads";
+  public void sendUpdateBoxMonitorsAdsRequest(Box box) {
+    if (!box.isActive()) {
+      return;
+    }
 
-      List<UpdateBoxMonitorsAdRequestDto> body = monitors.stream()
-              .flatMap(monitor -> monitor.getAds().stream()
-                      .filter(ad -> AdValidationType.APPROVED.equals(ad.getValidation()))
-                      .map(ad -> new UpdateBoxMonitorsAdRequestDto(
-                              monitor.getId(),
-                              ad.getName(),
-                              bucketService.getLink(AttachmentUtils.format(ad))
-                      ))
-              )
+    String url;
+    List<UpdateBoxMonitorsAdRequestDto> body = box.getMonitors().stream()
+            .flatMap(monitor -> monitor.getAds().stream()
+                    .filter(ad -> AdValidationType.APPROVED.equals(ad.getValidation()))
+                    .map(ad -> new UpdateBoxMonitorsAdRequestDto(
+                            monitor.getId(),
+                            ad.getName(),
+                            bucketService.getLink(AttachmentUtils.format(ad))
+                    ))
+            )
+            .toList();
+
+    if (body.isEmpty()) {
+      url = "http://" + box.getIp().getIpAddress() + ":5050/create-folders";
+      body = box.getMonitors().stream()
+              .map(monitor -> new UpdateBoxMonitorsAdRequestDto(
+                      monitor.getId(),
+                      null,
+                      null
+              ))
               .toList();
+    } else {
+      url = "http://" + box.getIp().getIpAddress() + ":5050/update-folders";
+    }
 
-      try {
-        httpClient.makePostRequest(url, body, Void.class, null);
-      } catch (Exception e) {
-        log.error("Error while sending box update request to boxId: {}, URL: {}, message: {}", box.getId().toString(), url, e.getMessage());
-        throw e;
-      }
+    try {
+      String action = url.contains("create-folders") ? "create folders" : "update folders";
+      log.info("Sending box {} request to boxId: {}, URL: {}, body: {}", action, box.getId(), url, body);
+
+      httpClient.makePostRequest(url, body, Void.class, null);
+    } catch (Exception e) {
+      String action = url.contains("create-folders") ? "create folders" : "update folders";
+      log.error("Failed to send box {} request to boxId: {}, URL: {}, body: {}, error: {}", action, box.getId(), url, body, e.getMessage());
+      throw e;
     }
   }
 }

@@ -192,6 +192,7 @@ public class MonitorRequestHelper {
             ))
             .toList();
 
+    log.info("Sending request to update boxMonitorsAds for monitor with ID: {}, URL: {}", monitor.getId(), url);
     executePostRequest(url, dtos, monitor.getId());
   }
 
@@ -203,6 +204,7 @@ public class MonitorRequestHelper {
     String url = "http://" + monitor.getBox().getIp().getIpAddress() + ":5050/remove-ads";
     RemoveBoxMonitorsAdRequestDto dto = new RemoveBoxMonitorsAdRequestDto(monitor.getId(), adNamesToRemove);
 
+    log.info("Sending request to remove ads from boxMonitorsAds for monitor with ID: {}, URL: {}", monitor.getId(), url);
     executePostRequest(url, dto, monitor.getId());
   }
 
@@ -223,10 +225,11 @@ public class MonitorRequestHelper {
 
     String url = "http://" + monitor.getBox().getIp().getIpAddress() + ":5050/remove-monitor/" + monitor.getId().toString();
     try {
-      httpClient.makeDeleteRequest(url, Void.class, null);
+      log.info("Sending request to remove monitor with ID: {}, URL: {}", monitor.getId(), url);
+      httpClient.makeDeleteRequest(url, null);
     } catch (Exception e) {
       log.error("Error while sending request to remove monitor with ID: {}, URL: {}, message: {}", monitor.getId(), url, e.getMessage());
-      throw new BusinessRuleException("Failed to remove monitor from box: " + e.getMessage());
+      throw e;
     }
   }
 }

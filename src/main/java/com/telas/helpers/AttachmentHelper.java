@@ -22,6 +22,7 @@ import com.telas.shared.constants.valitation.AttachmentValidationMessages;
 import com.telas.shared.utils.AttachmentUtils;
 import com.telas.shared.utils.ValidateDataUtils;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -37,6 +38,9 @@ public class AttachmentHelper {
   private final NotificationService notificationService;
   private final AdRequestRepository adRequestRepository;
   private final ClientRepository clientRepository;
+
+  @Value("${front.base.url}")
+  private String frontBaseUrl;
 
   @Transactional
   public <T extends AttachmentRequestDto> void validate(List<T> requestList) {
@@ -111,6 +115,13 @@ public class AttachmentHelper {
 
       Ad savedAd = adRepository.save(ad);
       uploadAttachment(attachment, savedAd);
+
+      notificationService.save(
+              NotificationReference.AD_RECEIVED,
+              client,
+              Map.of("link", frontBaseUrl + "/ads/" + savedAd.getId()),
+              false
+      );
     } else if (!(attachment instanceof AdRequestDto) && adRequestEntity == null) {
       Attachment newAttachment = new Attachment(attachment, client);
       newAttachment.setUsernameCreate(client.getBusinessName());
@@ -243,24 +254,6 @@ public class AttachmentHelper {
     }
 
     adRequestRepository.save(entity.getAdRequest());
-
-    if (AdValidationType.REJECTED.equals(validation)) {
-      clientRepository.findAllAdmins().forEach(admin ->
-              sendNotification(entity, admin, request)
-      );
-    }
-  }
-
-  private void sendNotification(Ad entity, Client admin, RefusedAdRequestDto request) {
-    Map<String, String> params = new HashMap<>();
-
-    String link = "";
-    params.put("link", link);
-    params.put("attachmentName", entity.getName());
-    params.put("recipient", admin.getBusinessName());
-    params.put("justification", request.getJustification());
-    params.put("description", Optional.ofNullable(request.getDescription()).orElse(""));
-    notificationService.save(NotificationReference.AD_REFUSED, admin, params);
   }
 
   private void createRefusedAd(RefusedAdRequestDto request, Ad entity, Client admin) {

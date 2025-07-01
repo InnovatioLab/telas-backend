@@ -1,7 +1,6 @@
 package com.telas.helpers;
 
 import com.stripe.exception.StripeException;
-import com.telas.dtos.EmailDataDto;
 import com.telas.dtos.response.MonitorAdResponseDto;
 import com.telas.dtos.response.MonitorValidationResponseDto;
 import com.telas.dtos.response.SubscriptionMonitorResponseDto;
@@ -25,6 +24,7 @@ import com.telas.shared.utils.ValidateDataUtils;
 import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -45,6 +45,9 @@ public class SubscriptionHelper {
   private final MonitorService monitorService;
   private final BucketService bucketService;
   private final NotificationService notificationService;
+
+  @Value("${front.base.url}")
+  private String frontBaseUrl;
 
   @Transactional
   public Cart getActiveCart(Client client) {
@@ -196,44 +199,29 @@ public class SubscriptionHelper {
     }
   }
 
-  @Transactional
   public void sendSubscriptionAboutToExpiryEmail(Subscription subscription) {
     Map<String, String> params = new HashMap<>(Map.of(
             "name", subscription.getClient().getBusinessName(),
-            "renewalLink", "http://localhost:4200/subscription/" + subscription.getId(),
+            "link", "/subscription/" + subscription.getId(),
             "endDate", formatDate(subscription.getEndsAt())
     ));
 
-    String email = subscription.getClient().getContact().getEmail();
-    EmailDataDto emailData = new EmailDataDto(
-            email,
-            SharedConstants.TEMPLATE_EMAIL_SUBSCRIPTION_EXPIRING,
-            SharedConstants.EMAIL_SUBJECT_SUBSCRIPTION_EXPIRING,
-            params
-    );
-    emailService.send(emailData);
+    notificationService.save(NotificationReference.SUBSCRIPTION_ABOUT_TO_EXPIRY, subscription.getClient(), params, true);
   }
 
-  @Transactional
   public void sendFirstBuyEmail(Subscription subscription) {
     Map<String, String> params = new HashMap<>(Map.of(
             "name", subscription.getClient().getBusinessName(),
             "locations", String.join(", ", subscription.getMonitorAddresses()),
-            "startDate", formatDate(subscription.getStartedAt())
+            "startDate", formatDate(subscription.getStartedAt()),
+            "link", frontBaseUrl + "/subscription/" + subscription.getId()
     ));
 
     if (subscription.getEndsAt() != null) {
       params.put("endDate", formatDate(subscription.getEndsAt()));
     }
 
-    String email = subscription.getClient().getContact().getEmail();
-    EmailDataDto emailData = new EmailDataDto(
-            email,
-            SharedConstants.TEMPLATE_EMAIL_FIRST_SUBSCRIPTION,
-            SharedConstants.EMAIL_SUBJECT_FIRST_SUBSCRIPTION,
-            params
-    );
-    emailService.send(emailData);
+    notificationService.save(NotificationReference.FIRST_SUBSCRIPTION, subscription.getClient(), params, true);
   }
 
   private String formatDate(Instant date) {
@@ -249,14 +237,17 @@ public class SubscriptionHelper {
       wishlistMonitors.retainAll(monitors);
 
       if (!wishlistMonitors.isEmpty()) {
+        log.info("Notifying client {} about available monitors in wishlist", client.getBusinessName());
+
         Map<String, String> params = Map.of(
                 "clientName", client.getBusinessName(),
                 "monitorsAddress", wishlistMonitors.stream()
                         .map(m -> m.getAddress().getCoordinatesParams())
-                        .collect(Collectors.joining(", "))
+                        .collect(Collectors.joining(", ")),
+                "link", frontBaseUrl + "/wishlist"
         );
 
-        notificationService.save(NotificationReference.MONITOR_IN_WISHLIST_NOW_AVAILABLE, client, params);
+        notificationService.save(NotificationReference.MONITOR_IN_WISHLIST_NOW_AVAILABLE, client, params, true);
       }
     });
   }

@@ -47,7 +47,6 @@ public class VerificationCodeServiceImpl implements VerificationCodeService {
     client.getVerificationCode().setValidated(true);
   }
 
-  @Transactional
   @Override
   public void send(EmailDataDto emailData) {
     emailService.send(emailData);

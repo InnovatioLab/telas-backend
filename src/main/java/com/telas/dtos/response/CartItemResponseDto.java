@@ -20,12 +20,12 @@ public class CartItemResponseDto implements Serializable {
 
   private Integer blockQuantity;
 
-  private AddressFromZipCodeResponseDto monitorAddress;
+  private String monitorAddress;
 
   public CartItemResponseDto(CartItem entity) {
     id = entity.getId();
     monitorId = entity.getMonitor().getId();
     blockQuantity = entity.getBlockQuantity();
-    monitorAddress = new AddressFromZipCodeResponseDto(entity.getMonitor().getAddress());
+    monitorAddress = entity.getMonitor().getAddress().getCoordinatesParams();
   }
 }

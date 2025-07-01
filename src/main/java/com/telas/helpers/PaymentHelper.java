@@ -6,17 +6,17 @@ import com.stripe.param.CouponCreateParams;
 import com.stripe.param.InvoicePaymentListParams;
 import com.stripe.param.PriceListParams;
 import com.stripe.param.checkout.SessionCreateParams;
-import com.telas.dtos.EmailDataDto;
 import com.telas.entities.Client;
 import com.telas.entities.Monitor;
 import com.telas.entities.Payment;
 import com.telas.entities.Subscription;
+import com.telas.enums.NotificationReference;
 import com.telas.enums.PaymentStatus;
 import com.telas.enums.Recurrence;
 import com.telas.infra.exceptions.BusinessRuleException;
 import com.telas.infra.exceptions.ResourceNotFoundException;
 import com.telas.repositories.ClientRepository;
-import com.telas.services.EmailService;
+import com.telas.services.NotificationService;
 import com.telas.shared.audit.CustomRevisionListener;
 import com.telas.shared.constants.SharedConstants;
 import com.telas.shared.constants.valitation.PaymentValidationMessages;
@@ -25,6 +25,7 @@ import com.telas.shared.utils.ValidateDataUtils;
 import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -40,7 +41,10 @@ public class PaymentHelper {
   private final Logger log = LoggerFactory.getLogger(PaymentHelper.class);
   private final SubscriptionHelper subscriptionHelper;
   private final ClientRepository clientRepository;
-  private final EmailService emailService;
+  private final NotificationService notificationService;
+
+  @Value("${front.base.url}")
+  private String frontBaseUrl;
 
   @Transactional
   public void updateSubscriptionPeriod(Invoice invoice, Subscription subscription) {
@@ -350,21 +354,15 @@ public class PaymentHelper {
     Map<String, String> params = new HashMap<>(Map.of(
             "name", subscription.getClient().getBusinessName(),
             "locations", String.join(", ", subscription.getMonitorAddresses()),
-            "startDate", formatDate(subscription.getStartedAt())
+            "startDate", formatDate(subscription.getStartedAt()),
+            "link", frontBaseUrl + "/subscription/" + subscription.getId()
     ));
 
     if (subscription.getEndsAt() != null) {
       params.put("endDate", formatDate(subscription.getEndsAt()));
     }
 
-    String email = subscription.getClient().getContact().getEmail();
-    EmailDataDto emailData = new EmailDataDto(
-            email,
-            SharedConstants.TEMPLATE_EMAIL_FIRST_SUBSCRIPTION,
-            SharedConstants.EMAIL_SUBJECT_FIRST_SUBSCRIPTION,
-            params
-    );
-    emailService.send(emailData);
+    notificationService.save(NotificationReference.FIRST_SUBSCRIPTION, subscription.getClient(), params, true);
   }
 
   private String formatDate(Instant date) {

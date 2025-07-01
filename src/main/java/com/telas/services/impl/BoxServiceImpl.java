@@ -10,6 +10,7 @@ import com.telas.helpers.BoxRequestHelper;
 import com.telas.infra.exceptions.ResourceNotFoundException;
 import com.telas.infra.security.services.AuthenticatedUserService;
 import com.telas.repositories.BoxRepository;
+import com.telas.repositories.MonitorRepository;
 import com.telas.services.BoxService;
 import com.telas.shared.constants.valitation.BoxValidationMessages;
 import lombok.RequiredArgsConstructor;
@@ -24,6 +25,7 @@ import java.util.UUID;
 public class BoxServiceImpl implements BoxService {
   private final BoxRepository repository;
   private final AuthenticatedUserService authenticatedUserService;
+  private final MonitorRepository monitorRepository;
   private final BoxRequestHelper helper;
 
   @Override
@@ -36,7 +38,7 @@ public class BoxServiceImpl implements BoxService {
     Box box = (boxId != null) ? updateBox(request, boxId, ip, monitors) : createBox(request, ip, monitors);
 
     repository.save(box);
-    helper.sendUpdateBoxMonitorsAdsRequest(box, monitors);
+    helper.sendUpdateBoxMonitorsAdsRequest(box);
   }
 
   @Override
@@ -92,18 +94,22 @@ public class BoxServiceImpl implements BoxService {
   }
 
   private void updateMonitors(Box box, List<Monitor> monitors) {
-    box.getMonitors().removeIf(monitor -> {
-      if (!monitors.contains(monitor)) {
+    List<UUID> boxMonitorIds = box.getMonitors().stream().map(Monitor::getId).toList();
+    List<UUID> newMonitorIds = monitors.stream().map(Monitor::getId).toList();
+
+    box.getMonitors().forEach(monitor -> {
+      if (!newMonitorIds.contains(monitor.getId())) {
         monitor.setBox(null);
-        return true;
+        monitorRepository.save(monitor);
+        box.getMonitors().remove(monitor);
       }
-      return false;
     });
 
     monitors.stream()
-            .filter(monitor -> !box.getMonitors().contains(monitor))
+            .filter(monitor -> !boxMonitorIds.contains(monitor.getId()))
             .forEach(monitor -> {
               monitor.setBox(box);
+              monitorRepository.save(monitor);
               box.getMonitors().add(monitor);
             });
   }

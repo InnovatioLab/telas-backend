@@ -125,7 +125,7 @@
             <tr>
                 <td>
                     Visit <strong><a
-                                href="${renewalLink}"
+                                href="${link}"
                                 style="color: #00763b; text-decoration: none"
                         >this link</a
                         ></strong>

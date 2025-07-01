@@ -7,7 +7,6 @@ import lombok.Setter;
 
 import java.io.Serial;
 import java.io.Serializable;
-import java.math.BigDecimal;
 import java.util.List;
 import java.util.UUID;
 
@@ -22,8 +21,6 @@ public final class CartResponseDto implements Serializable {
   private boolean active;
 
   private Recurrence recurrence;
-
-  private BigDecimal totalPrice;
 
   private List<CartItemResponseDto> items;
 

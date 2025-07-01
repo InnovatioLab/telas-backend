@@ -1,6 +1,7 @@
 package com.telas.dtos.request;
 
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import com.telas.enums.MonitorType;
 import com.telas.infra.exceptions.BusinessRuleException;
@@ -28,6 +29,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 @Setter
 @AllArgsConstructor
 @NoArgsConstructor
+@JsonIgnoreProperties(ignoreUnknown = true)
 public class MonitorRequestDto implements Serializable {
   @Serial
   private static final long serialVersionUID = -3963846843873646628L;

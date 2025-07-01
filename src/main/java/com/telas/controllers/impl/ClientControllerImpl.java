@@ -1,6 +1,5 @@
 package com.telas.controllers.impl;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
 import com.telas.controllers.ClientController;
 import com.telas.dtos.request.*;
 import com.telas.dtos.request.filters.ClientFilterRequestDto;
@@ -140,7 +139,7 @@ public class ClientControllerImpl implements ClientController {
   @Override
   @PatchMapping("/partner/{id}")
   @SecurityRequirement(name = "jwt")
-  public ResponseEntity<?> changeRoleToPartner(@PathVariable(name = "id") UUID clientId) throws JsonProcessingException {
+  public ResponseEntity<?> changeRoleToPartner(@PathVariable(name = "id") UUID clientId) {
     service.changeRoleToPartner(clientId);
     return ResponseEntity.status(HttpStatus.OK)
             .body(ResponseDto.fromData(null, HttpStatus.OK, MessageCommonsConstants.UPDATE_SUCCESS_MESSAGE));
@@ -172,7 +171,7 @@ public class ClientControllerImpl implements ClientController {
   public ResponseEntity<?> validateAd(
           @RequestParam("validation") AdValidationType validation,
           @RequestBody(required = false) RefusedAdRequestDto request,
-          @PathVariable(name = "id") UUID adId) throws JsonProcessingException {
+          @PathVariable(name = "id") UUID adId) {
 
     service.validateAd(adId, validation, request);
     return ResponseEntity.status(HttpStatus.OK).body(ResponseDto.fromData(null, HttpStatus.OK, MessageCommonsConstants.AD_VALIDATION_MESSAGE));
@@ -184,6 +183,23 @@ public class ClientControllerImpl implements ClientController {
   public ResponseEntity<?> incrementSubscriptionFlow() {
     service.incrementSubscriptionFlow();
     return ResponseEntity.status(HttpStatus.OK).body(ResponseDto.fromData(null, HttpStatus.OK, "Subscription flow incremented successfully!"));
+  }
+
+  @Override
+  @GetMapping("/wishlist")
+  @SecurityRequirement(name = "jwt")
+  public ResponseEntity<?> getWishlistMonitors() {
+    return ResponseEntity.status(HttpStatus.OK)
+            .body(ResponseDto.fromData(service.getWishlistMonitors(), HttpStatus.OK, MessageCommonsConstants.FIND_ALL_SUCCESS_MESSAGE));
+  }
+
+  @Override
+  @PostMapping("/wishlist/{monitorId}")
+  @SecurityRequirement(name = "jwt")
+  public ResponseEntity<?> addMonitorToWishlist(@PathVariable(name = "monitorId") UUID monitorId) {
+    service.addMonitorToWishlist(monitorId);
+    return ResponseEntity.status(HttpStatus.CREATED)
+            .body(ResponseDto.fromData(null, HttpStatus.CREATED, MessageCommonsConstants.SAVE_SUCCESS_MESSAGE));
   }
 
 

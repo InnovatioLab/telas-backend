@@ -60,6 +60,7 @@ public class ClientServiceImpl implements ClientService {
   private final TermConditionService termConditionService;
   private final AdRequestRepository adRequestRepository;
 
+
   @Override
   @Transactional
   public void save(ClientRequestDto request) {
@@ -67,7 +68,7 @@ public class ClientServiceImpl implements ClientService {
 
     Client client = new Client(request);
     VerificationCode verificationCode = verificationCodeService.save(CodeType.CONTACT, client);
-    verificationCode.setValidated(true);
+//    verificationCode.setValidated(true);
     client.setVerificationCode(verificationCode);
 
     if (Objects.equals(client.getBusinessName(), "Admin")) {
@@ -378,6 +379,18 @@ public class ClientServiceImpl implements ClientService {
   public void addMonitorToWishlist(UUID monitorId) {
     Client client = authenticatedUserService.getLoggedUser().client();
     helper.addMonitorToWishlist(monitorId, client);
+  }
+
+  @Override
+  @Transactional(readOnly = true)
+  public WishlistResponseDto getWishlistMonitors() {
+    Client client = authenticatedUserService.getLoggedUser().client();
+
+    if (client.getWishlist() == null) {
+      throw new ResourceNotFoundException(ClientValidationMessages.WISHLIST_NOT_FOUND);
+    }
+
+    return new WishlistResponseDto(client.getWishlist());
   }
 
   private void validateAdRequestId(UUID adRequestId) {

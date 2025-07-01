@@ -18,6 +18,7 @@ public class MessageCommonsConstants {
   public static final String REQUEST_AD_SUCCESS_MESSAGE = "Ad creation request successfully sent!";
   public static final String SUBSCRIPTION_CANCELLED_SUCCESS_MESSAGE = "Subscription successfully cancelled!";
   public static final String DELETE_SUCCESS_MESSAGE = "The record has been successfully deleted!";
+  public static final String NOTIFICATION_NOT_FOUND = "Notification not found!";
 
 
   // Private constructor to prevent instantiation
