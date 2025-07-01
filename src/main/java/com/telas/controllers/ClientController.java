@@ -99,7 +99,7 @@ public interface ClientController {
           @ApiResponse(responseCode = "403", description = "Forbidden."),
           @ApiResponse(responseCode = "404", description = "Some data not found."),
   })
-  ResponseEntity<?> uploadAd(@Valid AdRequestDto request);
+  ResponseEntity<?> uploadAd(@Valid AdRequestDto request, UUID clientId);
 
   @Operation(summary = "Endpoint contract to get paginated clients from filters", responses = {
           @ApiResponse(responseCode = "200", description = "Records found successfully."),

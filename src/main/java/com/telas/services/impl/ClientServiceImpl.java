@@ -1,6 +1,5 @@
 package com.telas.services.impl;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
 import com.telas.dtos.EmailDataDto;
 import com.telas.dtos.request.*;
 import com.telas.dtos.request.filters.ClientFilterRequestDto;
@@ -81,7 +80,7 @@ public class ClientServiceImpl implements ClientService {
     client.setTermCondition(actualTermCondition);
     client.setTermAcceptedAt(Instant.now());
 
-    sendContactConfirmationEmail(client, verificationCode);
+//    sendContactConfirmationEmail(client, verificationCode);
     repository.save(client);
   }
 
@@ -245,7 +244,11 @@ public class ClientServiceImpl implements ClientService {
   public void requestAdCreation(ClientAdRequestToAdminDto request) {
     Client client = authenticatedUserService.validateActiveSubscription().client();
 
-    if (client.getAds().size() >= SharedConstants.MAX_ADS_PER_CLIENT && !Role.ADMIN.equals(client.getRole())) {
+    if (client.getRole() == Role.ADMIN) {
+      return;
+    }
+
+    if (!client.getAds().isEmpty()) {
       throw new BusinessRuleException(ClientValidationMessages.MAX_ADS_REACHED);
     }
 
@@ -258,25 +261,17 @@ public class ClientServiceImpl implements ClientService {
     request.validate();
 
     Client admin = authenticatedUserService.validateAdmin().client();
-
     if (admin.getId().equals(clientId)) {
       attachmentHelper.saveAdminAds(request, admin);
-    } else {
-      Client client = findActiveEntityById(clientId);
-
-      if (request.getAdRequestId() == null) {
-        throw new BusinessRuleException(AdValidationMessages.AD_REQUEST_ID_REQUIRED);
-      }
-
-      AdRequest adRequest = helper.getAdRequestById(request.getAdRequestId());
-
-      if (!adRequest.isActive()) {
-        throw new BusinessRuleException(ClientValidationMessages.AD_REQUEST_NOT_ACTIVE);
-      }
-
-      attachmentHelper.saveAttachments(List.of(request), client, adRequest);
-      repository.save(client);
+      return;
     }
+
+    Client client = findActiveEntityById(clientId);
+    validateAdRequestId(request.getAdRequestId());
+    AdRequest adRequest = helper.getAdRequestById(request.getAdRequestId());
+    validateAdRequestActive(adRequest);
+
+    attachmentHelper.saveAttachments(List.of(request), client, adRequest);
   }
 
   @Transactional
@@ -291,13 +286,12 @@ public class ClientServiceImpl implements ClientService {
 
   @Transactional
   @Override
-  public void changeRoleToPartner(UUID clientId) throws JsonProcessingException {
+  public void changeRoleToPartner(UUID clientId) {
     Client admin = authenticatedUserService.validateAdmin().client();
     Client partner = repository.findById(clientId).orElseThrow(() -> new ResourceNotFoundException(ClientValidationMessages.USER_NOT_FOUND));
 
     if (!Role.PARTNER.equals(partner.getRole())) {
       CustomRevisionListener.setUsername(admin.getBusinessName());
-      CustomRevisionListener.setOldData(partner.toStringMapper());
 
       partner.setRole(Role.PARTNER);
       partner.setUsernameUpdate(admin.getBusinessName());
@@ -315,7 +309,7 @@ public class ClientServiceImpl implements ClientService {
 
   @Override
   @Transactional
-  public void validateAd(UUID adId, AdValidationType validation, RefusedAdRequestDto request) throws JsonProcessingException {
+  public void validateAd(UUID adId, AdValidationType validation, RefusedAdRequestDto request) {
     Ad ad = helper.getAdById(adId);
     authenticatedUserService.validateSelfOrAdmin(ad.getClient().getId());
 
@@ -384,6 +378,18 @@ public class ClientServiceImpl implements ClientService {
   public void addMonitorToWishlist(UUID monitorId) {
     Client client = authenticatedUserService.getLoggedUser().client();
     helper.addMonitorToWishlist(monitorId, client);
+  }
+
+  private void validateAdRequestId(UUID adRequestId) {
+    if (adRequestId == null) {
+      throw new BusinessRuleException(AdValidationMessages.AD_REQUEST_ID_REQUIRED);
+    }
+  }
+
+  private void validateAdRequestActive(AdRequest adRequest) {
+    if (!adRequest.isActive()) {
+      throw new BusinessRuleException(ClientValidationMessages.AD_REQUEST_NOT_ACTIVE);
+    }
   }
 
   private void sendContactConfirmationEmail(Client client, VerificationCode verificationCode) {

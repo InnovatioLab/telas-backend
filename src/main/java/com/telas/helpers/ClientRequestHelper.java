@@ -221,6 +221,7 @@ public class ClientRequestHelper {
                   httpClient.makePostRequest(url, dto, Void.class, null);
                 } catch (Exception e) {
                   log.error("Error sending unique ad after approval to update monitor with id: {}, IP: {}, message: {}", monitor.getId(), ip, e.getMessage());
+                  throw e;
                 }
               });
             });

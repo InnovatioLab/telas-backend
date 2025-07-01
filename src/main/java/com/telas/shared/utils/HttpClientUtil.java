@@ -6,8 +6,8 @@ import com.telas.infra.exceptions.InvalidQueryParamsException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.MediaType;
+import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Component;
-import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.reactive.function.client.WebClient;
 import org.springframework.web.reactive.function.client.WebClientResponseException;
@@ -19,19 +19,16 @@ import java.util.Map;
 public class HttpClientUtil {
   private final Logger log = LoggerFactory.getLogger(HttpClientUtil.class);
   private final WebClient webClient;
-  private final ObjectMapper objectMapper;
 
   public HttpClientUtil(WebClient.Builder webClientBuilder, ObjectMapper objectMapper) {
     webClient = webClientBuilder.build();
-    this.objectMapper = objectMapper;
   }
 
-  @Transactional
-  public <T> T makePostRequest(String url, Object body, Class<T> responseType, Map<String, String> queryParams) {
-    return makePostRequest(url, body, responseType, queryParams, null);
+  public <T> void makePostRequest(String url, Object body, Class<T> responseType, Map<String, String> queryParams) {
+    makePostRequest(url, body, responseType, queryParams, null);
   }
 
-  private <T> T makePostRequest(String url, Object body, Class<T> responseType, Map<String, String> queryParams, Map<String, String> headers) {
+  public <T> void makePostRequest(String url, Object body, Class<T> responseType, Map<String, String> queryParams, Map<String, String> headers) {
     try {
       UriComponentsBuilder uriBuilder = UriComponentsBuilder.fromHttpUrl(url);
 
@@ -47,7 +44,7 @@ public class HttpClientUtil {
         requestBodySpec.headers(httpHeaders -> headers.forEach(httpHeaders::add));
       }
 
-      return requestBodySpec
+      requestBodySpec
               .bodyValue(body)
               .retrieve()
               .bodyToMono(responseType)
@@ -59,7 +56,6 @@ public class HttpClientUtil {
     }
   }
 
-  @Transactional
   public <T> T makeGetRequest(String url, Class<T> responseType, Map<String, String> queryParams) {
     try {
       UriComponentsBuilder uriBuilder = UriComponentsBuilder.fromHttpUrl(url);
@@ -81,12 +77,13 @@ public class HttpClientUtil {
     }
   }
 
-  @Transactional
+  @Async
   public <T> T makeDeleteRequest(String url, Class<T> responseType, Map<String, String> queryParams) {
     return makeDeleteRequest(url, responseType, queryParams, null);
   }
 
-  private <T> T makeDeleteRequest(String url, Class<T> responseType, Map<String, String> queryParams, Map<String, String> headers) {
+  @Async
+  public <T> T makeDeleteRequest(String url, Class<T> responseType, Map<String, String> queryParams, Map<String, String> headers) {
     try {
       UriComponentsBuilder uriBuilder = UriComponentsBuilder.fromHttpUrl(url);
 

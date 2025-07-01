@@ -1,10 +1,6 @@
 package com.telas.entities;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.SerializationFeature;
-import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import com.telas.dtos.request.AdRequestDto;
 import com.telas.dtos.request.AttachmentRequestDto;
 import com.telas.enums.AdValidationType;
@@ -84,14 +80,6 @@ public class Ad extends BaseAudit implements Serializable {
     type = request.getType();
     this.client = client;
     this.adRequest = adRequest;
-  }
-
-  public String toStringMapper() throws JsonProcessingException {
-    ObjectMapper objectMapper = new ObjectMapper();
-    objectMapper.registerModule(new JavaTimeModule())
-            .configure(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS, false);
-
-    return objectMapper.writeValueAsString(this);
   }
 
   @Override

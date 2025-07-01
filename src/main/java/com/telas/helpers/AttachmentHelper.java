@@ -1,6 +1,5 @@
 package com.telas.helpers;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
 import com.telas.dtos.request.AdRequestDto;
 import com.telas.dtos.request.AttachmentRequestDto;
 import com.telas.dtos.request.RefusedAdRequestDto;
@@ -94,69 +93,96 @@ public class AttachmentHelper {
 
   @Transactional
   public <T extends AttachmentRequestDto> void saveAttachments(List<T> requestList, Client client, AdRequest adRequestEntity) {
-    requestList.forEach(attachment -> {
+    for (T attachment : requestList) {
       if (attachment.getId() == null) {
-        if ((attachment instanceof AdRequestDto adRequest) && adRequestEntity != null) {
-          List<Attachment> attachments = getAttachmentsFromAdRequest(adRequestEntity);
-
-          Client adOwner = adRequestEntity.getClient();
-
-          Ad ad = Optional.ofNullable(adRequestEntity.getAd())
-                  .orElseGet(() -> {
-                    Ad newAd = new Ad(adRequest, adOwner, adRequestEntity);
-                    newAd.getAttachments().addAll(attachments);
-                    adOwner.getAds().add(newAd);
-                    return newAd;
-                  });
-
-          if (adRequestEntity.getAd() != null) {
-            bucketService.deleteAttachment(AttachmentUtils.format(ad));
-            ad.setName(attachment.getName());
-            ad.setType(attachment.getType());
-            ad.setValidation(AdValidationType.PENDING);
-          }
-
-          if (Role.ADMIN.equals(client.getRole())) {
-            ad.setValidation(AdValidationType.APPROVED);
-          }
-
-          adRequestEntity.closeRequest();
-          adRequestRepository.save(adRequestEntity);
-
-          Ad savedAd = adRepository.save(ad);
-          bucketService.upload(
-                  attachment.getBytes(),
-                  AttachmentUtils.format(savedAd),
-                  attachment.getType(),
-                  new ByteArrayInputStream(attachment.getBytes())
-          );
-        } else if (!(attachment instanceof AdRequestDto) && adRequestEntity == null) {
-          Attachment newAttachment = new Attachment(attachment, client);
-          Attachment savedAttachment = attachmentRepository.save(newAttachment);
-          client.getAttachments().add(savedAttachment);
-
-          String fileName = AttachmentUtils.format(savedAttachment);
-          bucketService.upload(attachment.getBytes(), fileName, attachment.getType(), new ByteArrayInputStream(attachment.getBytes()));
-        }
+        handleNewAttachment(attachment, client, adRequestEntity);
       } else {
-        if (!(attachment instanceof AdRequestDto)) {
-          Attachment entity = attachmentRepository.findById(attachment.getId()).orElseThrow(() -> new ResourceNotFoundException(AttachmentValidationMessages.ATTACHMENT_NOT_FOUND));
-          verifyFileNameChanged(attachment, entity);
-          bucketService.deleteAttachment(AttachmentUtils.format(entity));
-          entity.setName(attachment.getName());
-          entity.setType(attachment.getType());
-
-          Attachment savedAttachment = attachmentRepository.save(entity);
-
-          String newFileName = AttachmentUtils.format(savedAttachment);
-          bucketService.upload(attachment.getBytes(), newFileName, savedAttachment.getType(), new ByteArrayInputStream(attachment.getBytes()));
-        }
+        handleExistingAttachment(attachment);
       }
-    });
+    }
+    clientRepository.save(client);
   }
 
-  private void verifyFileNameChanged(AttachmentRequestDto request, Attachment entity) {
-    if (entity.getName().equals(request.getName())) {
+  private <T extends AttachmentRequestDto> void handleNewAttachment(T attachment, Client client, AdRequest adRequestEntity) {
+    if (attachment instanceof AdRequestDto adRequest && adRequestEntity != null) {
+      Ad ad = prepareAd(adRequestEntity, adRequest, client);
+      adRequestEntity.closeRequest();
+      adRequestRepository.save(adRequestEntity);
+
+      Ad savedAd = adRepository.save(ad);
+      uploadAttachment(attachment, savedAd);
+    } else if (!(attachment instanceof AdRequestDto) && adRequestEntity == null) {
+      Attachment newAttachment = new Attachment(attachment, client);
+      newAttachment.setUsernameCreate(client.getBusinessName());
+      Attachment savedAttachment = attachmentRepository.save(newAttachment);
+      client.getAttachments().add(savedAttachment);
+
+      uploadAttachment(attachment, savedAttachment);
+    }
+  }
+
+  private Ad prepareAd(AdRequest adRequestEntity, AdRequestDto adRequest, Client client) {
+    Ad ad = Optional.ofNullable(adRequestEntity.getAd())
+            .orElseGet(() -> createNewAdFromRequest(adRequestEntity, adRequest));
+
+    if (adRequestEntity.getAd() != null) {
+      updateExistingAdFromRequest(ad, adRequest);
+    }
+
+    if (Role.ADMIN.equals(client.getRole())) {
+      ad.setValidation(AdValidationType.APPROVED);
+    }
+
+    return ad;
+  }
+
+  private Ad createNewAdFromRequest(AdRequest adRequestEntity, AdRequestDto adRequest) {
+    List<Attachment> attachments = getAttachmentsFromAdRequest(adRequestEntity);
+    Client adOwner = adRequestEntity.getClient();
+
+    Ad newAd = new Ad(adRequest, adOwner, adRequestEntity);
+    newAd.getAttachments().addAll(attachments);
+    adOwner.getAds().add(newAd);
+
+    return newAd;
+  }
+
+  private void updateExistingAdFromRequest(Ad ad, AdRequestDto adRequest) {
+    bucketService.deleteAttachment(AttachmentUtils.format(ad));
+    ad.setName(adRequest.getName());
+    ad.setType(adRequest.getType());
+    ad.setValidation(AdValidationType.PENDING);
+  }
+
+  private <T extends AttachmentRequestDto> void handleExistingAttachment(T attachment) {
+    if (!(attachment instanceof AdRequestDto)) {
+      Attachment entity = attachmentRepository.findById(attachment.getId())
+              .orElseThrow(() -> new ResourceNotFoundException(AttachmentValidationMessages.ATTACHMENT_NOT_FOUND));
+      verifyFileNameChanged(attachment, entity);
+      bucketService.deleteAttachment(AttachmentUtils.format(entity));
+      entity.setName(attachment.getName());
+      entity.setType(attachment.getType());
+
+      Attachment savedAttachment = attachmentRepository.save(entity);
+      uploadAttachment(attachment, savedAttachment);
+    }
+  }
+
+  private <T extends AttachmentRequestDto> void uploadAttachment(T attachment, Object entity) {
+    if (entity instanceof Ad || entity instanceof Attachment) {
+      bucketService.upload(
+              attachment.getBytes(),
+              AttachmentUtils.format(entity),
+              attachment.getType(),
+              new ByteArrayInputStream(attachment.getBytes())
+      );
+    }
+  }
+
+  private void verifyFileNameChanged(AttachmentRequestDto request, Object entity) {
+    String entityName = entity instanceof Attachment ? ((Attachment) entity).getName() : ((Ad) entity).getName();
+
+    if (entityName.equals(request.getName())) {
       throw new BusinessRuleException(AdValidationMessages.FILE_NAME_MUST_BE_CHANGED_DURING_UPDATE);
     }
   }
@@ -164,12 +190,8 @@ public class AttachmentHelper {
   @Transactional
   public void saveAdminAds(AdRequestDto request, Client admin) {
     Ad ad = request.getId() == null ? createNewAd(request, admin) : updateExistingAd(request);
-    bucketService.upload(
-            request.getBytes(),
-            AttachmentUtils.format(ad),
-            request.getType(),
-            new ByteArrayInputStream(request.getBytes())
-    );
+    uploadAttachment(request, ad);
+    clientRepository.save(admin);
   }
 
   private Ad createNewAd(AdRequestDto request, Client admin) {
@@ -181,7 +203,6 @@ public class AttachmentHelper {
 
     Ad savedAd = adRepository.save(ad);
     admin.getAds().add(savedAd);
-    clientRepository.save(admin);
     return savedAd;
   }
 
@@ -197,14 +218,8 @@ public class AttachmentHelper {
     return adRepository.save(ad);
   }
 
-  private void verifyFileNameChanged(AdRequestDto request, Ad ad) {
-    if (ad.getName().equals(request.getName())) {
-      throw new BusinessRuleException(AdValidationMessages.FILE_NAME_MUST_BE_CHANGED_DURING_UPDATE);
-    }
-  }
-
   @Transactional
-  public void validateAd(Ad entity, AdValidationType validation, RefusedAdRequestDto request, Client client) throws JsonProcessingException {
+  public void validateAd(Ad entity, AdValidationType validation, RefusedAdRequestDto request, Client client) {
     if (AdValidationType.PENDING.equals(validation)) {
       throw new BusinessRuleException(AdValidationMessages.PENDING_VALIDATION_NOT_ACCEPTED);
     }
@@ -218,7 +233,6 @@ public class AttachmentHelper {
     }
 
     CustomRevisionListener.setUsername(client.getBusinessName());
-    CustomRevisionListener.setOldData(entity.toStringMapper());
     entity.setValidation(validation);
 
     if (AdValidationType.REJECTED.equals(validation)) {

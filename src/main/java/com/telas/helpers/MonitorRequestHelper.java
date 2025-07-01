@@ -176,7 +176,7 @@ public class MonitorRequestHelper {
     );
   }
 
-  @Transactional
+
   public void sendBoxesMonitorsUpdateAds(Monitor monitor, List<Ad> ads) {
     if (monitor.getBox() == null || !monitor.getBox().isActive()) {
       return;
@@ -195,7 +195,6 @@ public class MonitorRequestHelper {
     executePostRequest(url, dtos, monitor.getId());
   }
 
-  @Transactional
   public void sendBoxesMonitorsRemoveAds(Monitor monitor, List<String> adNamesToRemove) {
     if (monitor.getBox() == null || !monitor.getBox().isActive()) {
       return;
@@ -212,6 +211,7 @@ public class MonitorRequestHelper {
       httpClient.makePostRequest(url, body, Void.class, null);
     } catch (Exception e) {
       log.error("Error while sending request with monitorID: {}, URL: {}, message: {}", monitorId, url, e.getMessage());
+      throw e;
     }
   }
 

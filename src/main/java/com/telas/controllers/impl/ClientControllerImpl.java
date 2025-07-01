@@ -109,10 +109,10 @@ public class ClientControllerImpl implements ClientController {
   }
 
   @Override
-  @PostMapping("/ads")
+  @PostMapping("/ads/{id}")
   @SecurityRequirement(name = "jwt")
-  public ResponseEntity<?> uploadAd(@Valid @RequestBody AdRequestDto request) {
-    service.uploadAds(request);
+  public ResponseEntity<?> uploadAd(@Valid @RequestBody AdRequestDto request, @PathVariable(name = "id") UUID clientId) {
+    service.uploadAds(request, clientId);
     return ResponseEntity.status(HttpStatus.CREATED)
             .body(ResponseDto.fromData(null, HttpStatus.CREATED, MessageCommonsConstants.UPLOAD_SUCCESS_MESSAGE));
   }

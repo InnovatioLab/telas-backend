@@ -116,6 +116,7 @@ public class BoxRequestHelper {
         httpClient.makePostRequest(url, body, Void.class, null);
       } catch (Exception e) {
         log.error("Error while sending box update request to boxId: {}, URL: {}, message: {}", box.getId().toString(), url, e.getMessage());
+        throw e;
       }
     }
   }

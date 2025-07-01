@@ -16,8 +16,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -29,75 +29,73 @@ import java.util.stream.Collectors;
 @Service
 @RequiredArgsConstructor
 public class BucketServiceImpl implements BucketService {
-    private final Logger log = LoggerFactory.getLogger(BucketServiceImpl.class);
-    private final MinioClient minioClient;
+  private final Logger log = LoggerFactory.getLogger(BucketServiceImpl.class);
+  private final MinioClient minioClient;
 
-    @Value("${MINIO_BUCKET_NAME}")
-    private String bucketName;
+  @Value("${MINIO_BUCKET_NAME}")
+  private String bucketName;
 
-    @Autowired
-    BucketServiceImpl(
-            @Value("${MINIO_ENDPOINT}") String endpoint,
-            @Value("${MINIO_ACCESS_KEY}") String accessKey,
-            @Value("${MINIO_SECRET_KEY}") String secretKey) {
-        minioClient = MinioClient.builder()
-                .endpoint(endpoint)
-                .credentials(accessKey, secretKey)
-                .build();
+  @Autowired
+  BucketServiceImpl(
+          @Value("${MINIO_ENDPOINT}") String endpoint,
+          @Value("${MINIO_ACCESS_KEY}") String accessKey,
+          @Value("${MINIO_SECRET_KEY}") String secretKey) {
+    minioClient = MinioClient.builder()
+            .endpoint(endpoint)
+            .credentials(accessKey, secretKey)
+            .build();
+  }
+
+  @Override
+  @Async
+  public void upload(byte[] bytes, String fileName, String contentType, InputStream inputStream) {
+    try {
+      minioClient.putObject(
+              PutObjectArgs.builder()
+                      .bucket(bucketName)
+                      .object(fileName)
+                      .stream(inputStream, bytes.length, -1)
+                      .contentType(contentType)
+                      .build());
+    } catch (MinioException | InvalidKeyException | IOException | NoSuchAlgorithmException e) {
+      log.error("Error uploading file: {}", e.getMessage());
+      throw new BusinessRuleException(AttachmentValidationMessages.ERROR_UPLOAD + " message: " + e.getMessage());
     }
+  }
 
-    @Override
-    @Transactional
-    public void upload(byte[] bytes, String fileName, String contentType, InputStream inputStream) {
-        try {
-            minioClient.putObject(
-                    PutObjectArgs.builder()
-                            .bucket(bucketName)
-                            .object(fileName)
-                            .stream(inputStream, bytes.length, -1)
-                            .contentType(contentType)
-                            .build());
-        } catch (MinioException | InvalidKeyException | IOException | NoSuchAlgorithmException e) {
-            log.error("Error uploading file: {}", e.getMessage());
-            throw new BusinessRuleException(AttachmentValidationMessages.ERROR_UPLOAD + " message: " + e.getMessage());
-        }
+  @Override
+  @Async
+  public void deleteAttachment(String fileName) {
+    try {
+      minioClient.removeObject(
+              RemoveObjectArgs.builder()
+                      .bucket(bucketName)
+                      .object(fileName)
+                      .build());
+    } catch (Exception e) {
+      throw new BusinessRuleException(
+              AttachmentValidationMessages.ERROR_DELETE_ATTACHMENT + fileName + " message: " + e.getMessage());
     }
+  }
 
-    @Override
-    @Transactional
-    public void deleteAttachment(String fileName) {
-        try {
-            minioClient.removeObject(
-                    RemoveObjectArgs.builder()
-                            .bucket(bucketName)
-                            .object(fileName)
-                            .build());
-        } catch (Exception e) {
-            throw new BusinessRuleException(
-                    AttachmentValidationMessages.ERROR_DELETE_ATTACHMENT + fileName + " message: " + e.getMessage());
-        }
-    }
+  @Override
+  public List<String> getLinksDownload(List<String> objectNames) {
+    return objectNames.stream().map(this::getLink).collect(Collectors.toList());
+  }
 
-    @Override
-    @Transactional
-    public List<String> getLinksDownload(List<String> objectNames) {
-        return objectNames.stream().map(this::getLink).collect(Collectors.toList());
+  @Override
+  public String getLink(String objectName) {
+    try {
+      return minioClient.getPresignedObjectUrl(
+              GetPresignedObjectUrlArgs.builder()
+                      .method(Method.GET)
+                      .bucket(bucketName)
+                      .object(objectName)
+                      .expiry(SharedConstants.ATTACHMENT_LINK_EXPIRY_TIME)
+                      .build());
+    } catch (Exception e) {
+      throw new BusinessRuleException(
+              AttachmentValidationMessages.ERROR_ATTACHMENT_LINK + objectName + " message: " + e.getMessage());
     }
-
-    @Override
-    @Transactional
-    public String getLink(String objectName) {
-        try {
-            return minioClient.getPresignedObjectUrl(
-                    GetPresignedObjectUrlArgs.builder()
-                            .method(Method.GET)
-                            .bucket(bucketName)
-                            .object(objectName)
-                            .expiry(SharedConstants.ATTACHMENT_LINK_EXPIRY_TIME)
-                            .build());
-        } catch (Exception e) {
-            throw new BusinessRuleException(
-                    AttachmentValidationMessages.ERROR_ATTACHMENT_LINK + objectName + " message: " + e.getMessage());
-        }
-    }
+  }
 }
