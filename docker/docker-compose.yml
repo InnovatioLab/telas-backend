@@ -79,6 +79,22 @@ services:
     networks:
       - observability
     restart: always
+  
+  rabbitmq:
+    image: rabbitmq:3.13-management
+    hostname: rabbitmq
+    container_name: rabbitmq_telas
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    healthcheck:
+      test: rabbitmq-diagnostics check_port_connectivity
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    networks:
+      - observability
+    restart: always
 
 networks:
   observability:

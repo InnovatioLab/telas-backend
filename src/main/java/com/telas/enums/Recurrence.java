@@ -1,9 +1,12 @@
 package com.telas.enums;
 
+import com.telas.infra.exceptions.BusinessRuleException;
+import com.telas.shared.constants.valitation.SubscriptionValidationMessages;
 import lombok.Getter;
 
 import java.math.BigDecimal;
 import java.time.Instant;
+import java.util.List;
 
 @Getter
 public enum Recurrence {
@@ -22,5 +25,25 @@ public enum Recurrence {
 
   public Instant calculateEndsAt(Instant startedAt) {
     return days > 0 ? startedAt.plusSeconds(days * 24 * 60 * 60) : null;
+  }
+
+  public void validateUpgradeTo(Recurrence target) {
+    List<Recurrence> allowed = List.of(SIXTY_DAYS, NINETY_DAYS, MONTHLY);
+
+    if (!allowed.contains(target)) {
+      throw new BusinessRuleException(SubscriptionValidationMessages.SUBSCRIPTION_UPGRADE_NOT_ALLOWED_FOR_RECURRENCE);
+    }
+    if (this == MONTHLY) {
+      throw new BusinessRuleException(SubscriptionValidationMessages.SUBSCRIPTION_UPGRADE_NOT_ALLOWED_FOR_MONTHLY);
+    }
+    if (this == target) {
+      throw new BusinessRuleException(SubscriptionValidationMessages.SUBSCRIPTION_UPGRADE_NOT_ALLOWED_TO_SAME_RECURRENCE);
+    }
+    if (this == SIXTY_DAYS && target != NINETY_DAYS && target != MONTHLY) {
+      throw new BusinessRuleException(SubscriptionValidationMessages.SUBSCRIPTION_UPGRADE_NOT_ALLOWED_FROM_SIXTY_DAYS);
+    }
+    if (this == NINETY_DAYS && target != MONTHLY) {
+      throw new BusinessRuleException(SubscriptionValidationMessages.SUBSCRIPTION_UPGRADE_NOT_ALLOWED_FROM_NINETY_DAYS);
+    }
   }
 }

@@ -1,5 +1,6 @@
 package com.telas;
 
+import net.javacrumbs.shedlock.spring.annotation.EnableSchedulerLock;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.data.envers.repository.support.EnversRevisionRepositoryFactoryBean;
@@ -11,6 +12,7 @@ import org.springframework.scheduling.annotation.EnableScheduling;
 @SpringBootApplication
 @EnableJpaAuditing
 @EnableScheduling
+@EnableSchedulerLock(defaultLockAtMostFor = "PT1M")
 @EnableAsync
 @EnableJpaRepositories(basePackages = "com.telas", repositoryFactoryBeanClass = EnversRevisionRepositoryFactoryBean.class)
 public class TelasApplication {

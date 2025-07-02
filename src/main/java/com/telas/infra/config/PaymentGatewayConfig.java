@@ -9,7 +9,7 @@ import org.springframework.stereotype.Component;
 @Component
 @Getter
 public class PaymentGatewayConfig {
-  @Value("${PAYMENT_GATEWAY_API_KEY}")
+  @Value("${payment.gateway.key}")
   private String apiKey;
 
   @PostConstruct

@@ -46,6 +46,9 @@ public class PaymentHelper {
   @Value("${front.base.url}")
   private String frontBaseUrl;
 
+  @Value("${stripe.product.id}")
+  private String productId;
+
   @Transactional
   public void updateSubscriptionPeriod(Invoice invoice, Subscription subscription) {
     List<Long> periods = invoice.getLines().getData().stream()
@@ -71,13 +74,13 @@ public class PaymentHelper {
   }
 
   @Transactional
-  public void configureSubscriptionParams(SessionCreateParams.Builder paramsBuilder, Subscription subscription, Map<String, String> metaData) throws StripeException {
+  public void configureSubscriptionParams(SessionCreateParams.Builder paramsBuilder, Subscription subscription, Map<String, String> metaData, Recurrence recurrence) throws StripeException {
     SessionCreateParams.SubscriptionData.Builder subscriptionDataBuilder = SessionCreateParams.SubscriptionData.builder()
             .putAllMetadata(metaData)
             .setDescription("Invoice payment for your tela's subscription for monitors: " + subscription.getMonitorAddresses());
 
     if (subscription.isUpgrade() && subscription.getEndsAt() != null) {
-      addDiscountForUpgrade(paramsBuilder, subscription);
+      addDiscountForUpgrade(paramsBuilder, subscription, recurrence);
     }
 
     paramsBuilder.setSubscriptionData(subscriptionDataBuilder.build())
@@ -88,8 +91,8 @@ public class PaymentHelper {
   }
 
   @Transactional
-  public void configurePaymentParams(SessionCreateParams.Builder paramsBuilder, Subscription subscription, Customer customer, Map<String, String> metaData) {
-    BigDecimal totalPrice = calculatePrice(subscription.getMonitors().size());
+  public void configurePaymentParams(SessionCreateParams.Builder paramsBuilder, Subscription subscription, Customer customer, Map<String, String> metaData, Recurrence recurrence) {
+    BigDecimal totalPrice = calculatePrice(subscription, recurrence);
 
     paramsBuilder.setPaymentIntentData(SessionCreateParams.PaymentIntentData.builder()
             .setSetupFutureUsage(SessionCreateParams.PaymentIntentData.SetupFutureUsage.OFF_SESSION)
@@ -103,13 +106,13 @@ public class PaymentHelper {
                     .setPriceData(SessionCreateParams.LineItem.PriceData.builder()
                             .setCurrency("usd")
                             .setUnitAmount(totalPrice.multiply(BigDecimal.valueOf(100)).longValue())
-                            .setProduct("prod_SP0KFP0uCSQrxt")
+                            .setProduct(productId)
                             .build())
                     .build()
     );
   }
 
-  private void addDiscountForUpgrade(SessionCreateParams.Builder paramsBuilder, Subscription subscription) throws StripeException {
+  private void addDiscountForUpgrade(SessionCreateParams.Builder paramsBuilder, Subscription subscription, Recurrence recurrence) throws StripeException {
     long now = Instant.now().getEpochSecond();
     long endsAt = subscription.getEndsAt().getEpochSecond();
     long remainingSeconds = endsAt - now;
@@ -118,7 +121,7 @@ public class PaymentHelper {
       long totalSecondsInMonth = SharedConstants.MAX_BILLING_CYCLE_ANCHOR;
       double proportion = (double) remainingSeconds / totalSecondsInMonth;
 
-      BigDecimal totalPrice = calculatePrice(subscription.getMonitors().size());
+      BigDecimal totalPrice = calculatePrice(subscription, recurrence);
       BigDecimal adjustedPrice = MoneyUtils.multiply(totalPrice, BigDecimal.valueOf(proportion));
 
       CouponCreateParams couponParams = CouponCreateParams.builder()
@@ -135,23 +138,34 @@ public class PaymentHelper {
     }
   }
 
-  private BigDecimal calculatePrice(int quantity) {
+  private BigDecimal calculatePrice(Subscription subscription, Recurrence recurrence) {
     BigDecimal totalPrice = BigDecimal.ZERO;
 
-    for (int i = 1; i <= quantity; i++) {
-      BigDecimal unitPrice = (i == 1) ? BigDecimal.valueOf(700)
-              : (i == 2) ? BigDecimal.valueOf(600)
-              : BigDecimal.valueOf(500);
+    for (int i = 0; i < subscription.getMonitors().size(); i++) {
+      BigDecimal unitPrice = switch (i) {
+        case 0 -> BigDecimal.valueOf(700);
+        case 1 -> BigDecimal.valueOf(600);
+        default -> BigDecimal.valueOf(500);
+      };
       totalPrice = MoneyUtils.add(totalPrice, unitPrice);
     }
 
-    return totalPrice;
+    return MoneyUtils.multiply(totalPrice, getMultiplier(subscription, recurrence));
+  }
+
+  private BigDecimal getMultiplier(Subscription subscription, Recurrence recurrence) {
+    if (!subscription.isUpgrade()) {
+      return subscription.getRecurrence().getMultiplier();
+    }
+    return Recurrence.MONTHLY.equals(recurrence)
+            ? recurrence.getMultiplier()
+            : MoneyUtils.subtract(recurrence.getMultiplier(), subscription.getRecurrence().getMultiplier());
   }
 
   private String getProductPriceIdMonthly() {
     try {
       PriceListParams params = PriceListParams.builder()
-              .setProduct("prod_SP0KFP0uCSQrxt")
+              .setProduct(productId)
               .addAllLookupKey(List.of("subscription"))
               .build();
 

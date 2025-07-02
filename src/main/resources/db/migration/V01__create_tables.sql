@@ -646,6 +646,19 @@ CREATE TABLE "wishlist_monitors" (
   CONSTRAINT "fk_wishlist_monitor_monitor" FOREIGN KEY ("monitor_id") REFERENCES "monitors" ("id") ON DELETE CASCADE
 );
 
+CREATE TABLE webhook_events (
+  "id" VARCHAR(255) PRIMARY KEY,
+  "type" VARCHAR(255),
+  "received_at" TIMESTAMP DEFAULT now()
+);
+
+CREATE TABLE shedlock (
+    name VARCHAR(64) PRIMARY KEY,
+    lock_until TIMESTAMP(3) NOT NULL,
+    locked_at TIMESTAMP(3) NOT NULL,
+    locked_by VARCHAR(255) NOT NULL
+);
+
 
 INSERT INTO "terms_conditions" (id, version, content, created_at, updated_at, username_create, username_update)
 VALUES ('eb1f62bf-9d16-45c1-be45-bd52f97dffb2',
@@ -656,9 +669,33 @@ VALUES ('eb1f62bf-9d16-45c1-be45-bd52f97dffb2',
         'Virtual Assistant',
         'Virtual Assistant');
 
-CREATE INDEX idx_clients_identification_number ON clients (identification_number);
-CREATE INDEX idx_monitors_fl_active ON monitors (fl_active);
 CREATE INDEX idx_email ON contacts (email);
 
 -- Índice para zip_code
 CREATE INDEX idx_address_zip_code ON addresses (zip_code);
+
+
+-- Índice para WebhookEventRepository.existsById
+CREATE INDEX idx_webhook_events_id ON webhook_events (id);
+
+-- Índice para ClientRepository.findActiveByIdentificationNumber
+CREATE INDEX idx_clients_identification_number_status ON clients (identification_number, status);
+
+-- Índice para ClientRepository.findActiveById
+CREATE INDEX idx_clients_id_status ON clients (id, status);
+
+-- Índices para MonitorRepository.findNearestActiveMonitorsWithFilters
+CREATE INDEX idx_monitors_fl_active_type_size ON monitors (fl_active, type, size_in_inches);
+CREATE INDEX idx_monitors_address_id ON monitors (address_id);
+CREATE INDEX idx_addresses_lat_long ON addresses (latitude, longitude);
+
+-- Índices adicionais para métodos comuns dos repositórios
+CREATE INDEX idx_ads_client_id_validation ON ads (client_id, validation);
+CREATE INDEX idx_subscriptions_client_id_status ON subscriptions (client_id, status);
+CREATE INDEX idx_subscriptions_ends_at_status ON subscriptions (ends_at, status);
+CREATE INDEX idx_payments_stripe_id ON payments (stripe_id);
+CREATE INDEX idx_boxes_ip_id ON boxes (ip_id);
+CREATE INDEX idx_boxes_id ON boxes (id);
+CREATE INDEX idx_monitors_box_id ON monitors (box_id);
+CREATE INDEX idx_monitors_id ON monitors (id);
+CREATE INDEX idx_monitors_fl_active ON monitors (fl_active);

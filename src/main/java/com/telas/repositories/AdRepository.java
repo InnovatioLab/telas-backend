@@ -16,10 +16,11 @@ public interface AdRepository extends JpaRepository<Ad, UUID>, JpaSpecificationE
   @Query("""
               SELECT ad FROM Ad ad
               JOIN ad.client c
-              JOIN c.subscriptions s
-              JOIN s.monitors m
+              LEFT JOIN c.subscriptions s
+              LEFT JOIN s.monitors m
               WHERE (
-                  ad.validation = :validation
+                  c.role <> 'ADMIN'
+                  AND ad.validation = :validation
                   AND s.status = 'ACTIVE'
                   AND (s.endsAt IS NULL OR s.endsAt > CURRENT_TIMESTAMP)
                   AND m.id = :monitorId

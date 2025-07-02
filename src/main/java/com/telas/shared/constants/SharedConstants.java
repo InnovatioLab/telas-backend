@@ -6,7 +6,7 @@ public final class SharedConstants {
   public static final String DAILY_CRON = "0 0 3 * * *";
   public static final String EXPIRY_SUBSCRIPTION_CRON = "0 0 19 * * *";
   public static final String ZONE_ID = "America/New_York";
-  public static final String PROJECT_NAME = "Marketing-Project";
+  public static final String PROJECT_NAME = "Telas";
   public static final String DESTINATARIO = "Recipient";
   public static final String PERMISSIONS = "permissions";
 

@@ -196,9 +196,9 @@ public class PaymentServiceImpl implements PaymentService {
             .setClientReferenceId(subscription.getId().toString());
 
     if (isSubscription) {
-      helper.configureSubscriptionParams(paramsBuilder, subscription, metaData);
+      helper.configureSubscriptionParams(paramsBuilder, subscription, metaData, recurrence);
     } else {
-      helper.configurePaymentParams(paramsBuilder, subscription, customer, metaData);
+      helper.configurePaymentParams(paramsBuilder, subscription, customer, metaData, recurrence);
     }
 
     Session session = Session.create(paramsBuilder.build());

@@ -174,14 +174,12 @@ public class SubscriptionHelper {
   }
 
   @Transactional(readOnly = true)
-  public void validateSubscriptionForUpgrade(Subscription entity) {
+  public void validateSubscriptionForUpgrade(Subscription entity, Recurrence recurrence) {
     if (entity.isBonus()) {
       throw new BusinessRuleException(SubscriptionValidationMessages.SUBSCRIPTION_UPGRADE_NOT_ALLOWED_FOR_BONUS);
     }
 
-    if (Recurrence.MONTHLY.equals(entity.getRecurrence())) {
-      throw new BusinessRuleException(SubscriptionValidationMessages.SUBSCRIPTION_UPGRADE_NOT_ALLOWED_FOR_MONTHLY);
-    }
+    entity.getRecurrence().validateUpgradeTo(recurrence);
 
     boolean isExpired = entity.getEndsAt() != null && !entity.getEndsAt().isAfter(Instant.now());
     boolean isInactive = !SubscriptionStatus.ACTIVE.equals(entity.getStatus());

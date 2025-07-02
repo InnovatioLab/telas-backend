@@ -29,6 +29,7 @@ import jakarta.persistence.criteria.CriteriaBuilder;
 import jakarta.persistence.criteria.Predicate;
 import jakarta.persistence.criteria.Root;
 import lombok.RequiredArgsConstructor;
+import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.data.domain.Page;
@@ -90,7 +91,7 @@ public class SubscriptionServiceImpl implements SubscriptionService {
   public String upgradeSubscription(UUID subscriptionId, Recurrence recurrence) {
     Subscription entity = helper.findEntityById(subscriptionId);
     authenticatedUserService.validateSelfOrAdmin(entity.getClient().getId());
-    helper.validateSubscriptionForUpgrade(entity);
+    helper.validateSubscriptionForUpgrade(entity, recurrence);
     entity.setUpgrade(true);
     repository.save(entity);
 
@@ -170,6 +171,7 @@ public class SubscriptionServiceImpl implements SubscriptionService {
   @Override
   @Transactional
   @Scheduled(cron = SharedConstants.DAILY_CRON, zone = SharedConstants.ZONE_ID)
+  @SchedulerLock(name = "removeAdsFromExpiredSubscriptionsLock", lockAtLeastFor = "PT10M", lockAtMostFor = "PT1H")
   public void removeAdsFromExpiredSubscriptions() {
     List<Subscription> expiredSubscriptions = repository.getActiveAndExpiredSubscriptions(Instant.now());
 
@@ -193,6 +195,7 @@ public class SubscriptionServiceImpl implements SubscriptionService {
   @Override
   @Transactional
   @Scheduled(cron = SharedConstants.EXPIRY_SUBSCRIPTION_CRON, zone = SharedConstants.ZONE_ID)
+  @SchedulerLock(name = "sendSubscriptionExpirationEmailLock", lockAtLeastFor = "PT10M", lockAtMostFor = "PT30M")
   public void sendSubscriptionExpirationEmail() {
     Instant exactDate = Instant.now().plus(15, ChronoUnit.DAYS);
     List<Subscription> subscriptions = repository.findSubscriptionsExpiringExactlyOn(exactDate);

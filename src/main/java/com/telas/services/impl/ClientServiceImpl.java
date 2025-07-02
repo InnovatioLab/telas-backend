@@ -68,7 +68,7 @@ public class ClientServiceImpl implements ClientService {
 
     Client client = new Client(request);
     VerificationCode verificationCode = verificationCodeService.save(CodeType.CONTACT, client);
-//    verificationCode.setValidated(true);
+    verificationCode.setValidated(true);
     client.setVerificationCode(verificationCode);
 
     if (Objects.equals(client.getBusinessName(), "Admin")) {

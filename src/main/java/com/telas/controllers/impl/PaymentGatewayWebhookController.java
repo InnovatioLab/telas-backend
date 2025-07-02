@@ -1,15 +1,15 @@
 package com.telas.controllers.impl;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
 import com.stripe.exception.SignatureVerificationException;
-import com.stripe.exception.StripeException;
-import com.stripe.model.*;
-import com.stripe.model.checkout.Session;
+import com.stripe.model.Event;
 import com.stripe.net.Webhook;
-import com.telas.services.PaymentService;
-import com.telas.services.SubscriptionService;
+import com.telas.entities.WebhookEvent;
+import com.telas.repositories.WebhookEventRepository;
+import com.telas.services.MessageSender;
 import com.telas.shared.utils.ValidateDataUtils;
 import lombok.RequiredArgsConstructor;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -19,106 +19,39 @@ import org.springframework.web.bind.annotation.*;
 @RequestMapping("/webhook")
 @RequiredArgsConstructor
 public class PaymentGatewayWebhookController {
-  private final PaymentService paymentService;
-  private final SubscriptionService subscriptionService;
+  private final Logger log = LoggerFactory.getLogger(PaymentGatewayWebhookController.class);
+  private final WebhookEventRepository webhookEventRepository;
+  private final MessageSender messageSender;
 
-  @Value("${STRIPE_WEBHOOK_SECRET}")
+  @Value("${payment.gateway.webhook.secret}")
   private String webhookSecret;
 
   @PostMapping
-  public ResponseEntity<String> handleStripeWebhook(@RequestBody String payload, @RequestHeader("Stripe-Signature") String sigHeader) throws StripeException, JsonProcessingException {
-
+  public ResponseEntity<String> handleStripeWebhook(@RequestBody String payload, @RequestHeader("Stripe-Signature") String sigHeader) {
     if (ValidateDataUtils.isNullOrEmptyString(webhookSecret) || ValidateDataUtils.isNullOrEmptyString(sigHeader)) {
       ResponseEntity.status(HttpStatus.BAD_REQUEST).body("Webhook secret ou cabeçalho de assinatura não configurados");
     }
 
+    Event event;
+
     try {
-      Event event = Webhook.constructEvent(payload, sigHeader, webhookSecret);
-
-      switch (event.getType()) {
-        case "checkout.session.expired":
-          handleCheckoutSessionExpired(event);
-        case "charge.dispute.funds_withdrawn":
-          handleChargeDisputeFundsWithdrawn(event);
-          break;
-        case "invoice.payment_failed":
-        case "invoice.payment_succeeded":
-          handleInvoicePayment(event);
-          break;
-        case "payment_intent.succeeded":
-        case "payment_intent.canceled":
-        case "payment_intent.payment_failed":
-          handlePaymentIntent(event);
-          break;
-        case "customer.subscription.deleted":
-          handleSubscriptionDeleted(event);
-        default:
-          break;
-      }
-
-      return ResponseEntity.ok("Evento processado com sucesso");
+      event = Webhook.constructEvent(payload, sigHeader, webhookSecret);
     } catch (SignatureVerificationException e) {
-      return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("Assinatura inválida");
+      log.error("[WEBHOOK CONTROLLER]: Error during webhook signature verification: {}", e.getMessage());
+      return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("Webhook signature verification failed");
     }
-  }
 
-  private void handleCheckoutSessionExpired(Event event) {
-    EventDataObjectDeserializer dataObjectDeserializer = event.getDataObjectDeserializer();
-
-    if (dataObjectDeserializer.getObject().isPresent()) {
-      StripeObject stripeObject = dataObjectDeserializer.getObject().get();
-
-      if (stripeObject instanceof Session session) {
-        subscriptionService.handleCheckoutSessionExpired(session);
-      }
+    if (webhookEventRepository.existsById(event.getId())) {
+      log.info("[WEBHOOK CONTROLLER]: Event with ID {} has already been processed", event.getId());
+      return ResponseEntity.ok("Event already processed");
     }
-  }
 
-  private void handlePaymentIntent(Event event) {
-    EventDataObjectDeserializer dataObjectDeserializer = event.getDataObjectDeserializer();
+    log.info("[WEBHOOK CONTROLLER]: Processing event with ID: {} and type: {}", event.getId(), event.getType());
+    webhookEventRepository.save(new WebhookEvent(event.getId(), event.getType()));
 
-    if (dataObjectDeserializer.getObject().isPresent()) {
-      StripeObject stripeObject = dataObjectDeserializer.getObject().get();
+    log.info("[WEBHOOK CONTROLLER]: Saving event with ID: {} to the database", event.getId());
+    messageSender.sendEvent(event);
 
-      if (stripeObject instanceof PaymentIntent paymentIntent) {
-        paymentService.updatePaymentStatus(paymentIntent);
-      }
-    }
-  }
-
-  private void handleInvoicePayment(Event event) {
-    EventDataObjectDeserializer dataObjectDeserializer = event.getDataObjectDeserializer();
-
-    if (dataObjectDeserializer.getObject().isPresent()) {
-      StripeObject stripeObject = dataObjectDeserializer.getObject().get();
-
-      if (stripeObject instanceof Invoice invoice) {
-        paymentService.updatePaymentStatus(invoice);
-      }
-    }
-  }
-
-  private void handleSubscriptionDeleted(Event event) {
-    EventDataObjectDeserializer dataObjectDeserializer = event.getDataObjectDeserializer();
-
-    if (dataObjectDeserializer.getObject().isPresent()) {
-      StripeObject stripeObject = dataObjectDeserializer.getObject().get();
-
-      if (stripeObject instanceof Subscription subscription) {
-        subscriptionService.cancelSubscription(subscription);
-      }
-    }
-  }
-
-  private void handleChargeDisputeFundsWithdrawn(Event event) {
-    EventDataObjectDeserializer dataObjectDeserializer = event.getDataObjectDeserializer();
-
-    if (dataObjectDeserializer.getObject().isPresent()) {
-      StripeObject stripeObject = dataObjectDeserializer.getObject().get();
-
-      if (stripeObject instanceof com.stripe.model.Dispute dispute) {
-        paymentService.handleDisputeFundsWithdrawn(dispute);
-      }
-    }
+    return ResponseEntity.ok("Webhook event processed successfully");
   }
 }
