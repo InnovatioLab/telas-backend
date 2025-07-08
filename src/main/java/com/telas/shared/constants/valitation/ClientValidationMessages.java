@@ -22,12 +22,8 @@ public final class ClientValidationMessages {
   public static final String CURRENT_EQUALS_NEW_PASSWORD = "Current password cannot be the same as the new password.";
   public static final String SOCIAL_MEDIA_REQUIRED = "At least one social media URL must be provided.";
   public static final String AD_REQUEST_NOT_ACTIVE = "Ad request is not active.";
-  public static final String MONITOR_MAX_ADS_REACHED = "Monitor has reached the maximum number of ads allowed.";
-  public static final String AD_NOT_APPROVED = "Ad is not approved.";
-  public static final String MONITOR_WITHOUT_ACTIVE_SUBSCRIPTION = "User doesn't have an active subscription for the selected monitor.";
-  public static final String CLIENT_ALREADY_HAS_AD_IN_MONITOR = "Client already has an ad in the selected monitor.";
-  public static final String CLIENT_CUSTOMER_NOT_FOUND = "Client not found with the provided customer id: ";
   public static final String MAX_ADS_REACHED = "Client has reached the maximum number of ads allowed.";
   public static final String MONITOR_IN_ACTIVE_SUBSCRIPTION = "Client has an active subscription for the selected monitor.";
   public static final String WISHLIST_NOT_FOUND = "Wishlist not found!";
+  public static final String OWNER_EMAIL_UNIQUE = "Owner email must be unique.";
 }

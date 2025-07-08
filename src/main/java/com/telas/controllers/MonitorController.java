@@ -44,6 +44,7 @@ public interface MonitorController {
           @ApiResponse(responseCode = "200", description = "Ads founded successfully."),
           @ApiResponse(responseCode = "401", description = "Unauthorized."),
           @ApiResponse(responseCode = "403", description = "Forbidden."),
+          @ApiResponse(responseCode = "404", description = "Monitor not found."),
   })
   ResponseEntity<?> findValidAdsForMonitor(UUID monitorId);
 
@@ -58,6 +59,14 @@ public interface MonitorController {
           @ApiResponse(responseCode = "200", description = "Monitors founded successfully.")
   })
   ResponseEntity<?> findNearestActiveMonitors(String zipCode, BigDecimal size, String type, int limit);
+
+  @Operation(summary = "Endpoint contract to get from the box, the list of current displayed ads from monitor", responses = {
+          @ApiResponse(responseCode = "200", description = "Ads founded successfully."),
+          @ApiResponse(responseCode = "401", description = "Unauthorized."),
+          @ApiResponse(responseCode = "403", description = "Forbidden."),
+          @ApiResponse(responseCode = "404", description = "Monitor not found."),
+  })
+  ResponseEntity<?> findCurrentDisplayedAdsFromBox(UUID monitorId);
 
   @Operation(summary = "Endpoint contract to delete a monitor", responses = {
           @ApiResponse(responseCode = "204", description = "Monitor deleted successfully."),

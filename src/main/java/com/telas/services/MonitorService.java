@@ -32,4 +32,6 @@ public interface MonitorService {
   PaginationResponseDto<List<MonitorResponseDto>> findAllByFilters(FilterMonitorRequestDto request);
 
   void delete(UUID monitorId);
+
+  List<MonitorValidAdResponseDto> findCurrentDisplayedAdsFromBox(UUID monitorId);
 }

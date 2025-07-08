@@ -86,6 +86,14 @@ public class MonitorControllerImpl implements MonitorController {
   }
 
   @Override
+  @GetMapping("/displayed-ads/{id}")
+  @SecurityRequirement(name = "jwt")
+  public ResponseEntity<?> findCurrentDisplayedAdsFromBox(@PathVariable(name = "id") UUID monitorId) {
+    return ResponseEntity.status(HttpStatus.OK)
+            .body(ResponseDto.fromData(service.findCurrentDisplayedAdsFromBox(monitorId), HttpStatus.OK, MessageCommonsConstants.FIND_ALL_SUCCESS_MESSAGE));
+  }
+
+  @Override
   @DeleteMapping("/{id}")
   @SecurityRequirement(name = "jwt")
   public ResponseEntity<?> delete(@PathVariable(name = "id") UUID monitorId) {

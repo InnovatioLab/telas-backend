@@ -30,8 +30,8 @@ import java.util.UUID;
 
 @Component
 @RequiredArgsConstructor
-public class BoxRequestHelper {
-  private final Logger log = LoggerFactory.getLogger(BoxRequestHelper.class);
+public class BoxHelper {
+  private final Logger log = LoggerFactory.getLogger(BoxHelper.class);
   private final IpRepository ipRepository;
   private final BoxRepository boxRepository;
   private final MonitorRepository monitorRepository;
@@ -135,7 +135,6 @@ public class BoxRequestHelper {
     } catch (Exception e) {
       String action = url.contains("create-folders") ? "create folders" : "update folders";
       log.error("Failed to send box {} request to boxId: {}, URL: {}, body: {}, error: {}", action, box.getId(), url, body, e.getMessage());
-      throw e;
     }
   }
 }

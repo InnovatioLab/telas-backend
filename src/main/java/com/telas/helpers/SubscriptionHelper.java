@@ -2,7 +2,6 @@ package com.telas.helpers;
 
 import com.stripe.exception.StripeException;
 import com.telas.dtos.response.MonitorAdResponseDto;
-import com.telas.dtos.response.MonitorValidationResponseDto;
 import com.telas.dtos.response.SubscriptionMonitorResponseDto;
 import com.telas.dtos.response.SubscriptionResponseDto;
 import com.telas.entities.*;
@@ -13,24 +12,27 @@ import com.telas.infra.exceptions.BusinessRuleException;
 import com.telas.infra.exceptions.ResourceNotFoundException;
 import com.telas.repositories.SubscriptionFlowRepository;
 import com.telas.repositories.SubscriptionRepository;
-import com.telas.services.*;
+import com.telas.services.BucketService;
+import com.telas.services.CartService;
+import com.telas.services.MonitorService;
+import com.telas.services.NotificationService;
 import com.telas.shared.audit.CustomRevisionListener;
 import com.telas.shared.constants.SharedConstants;
 import com.telas.shared.constants.valitation.CartValidationMessages;
 import com.telas.shared.constants.valitation.MonitorValidationMessages;
 import com.telas.shared.constants.valitation.SubscriptionValidationMessages;
 import com.telas.shared.utils.AttachmentUtils;
+import com.telas.shared.utils.DateUtils;
 import com.telas.shared.utils.ValidateDataUtils;
 import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
-import java.time.ZoneId;
-import java.time.format.DateTimeFormatter;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -39,18 +41,18 @@ import java.util.stream.Collectors;
 public class SubscriptionHelper {
   private final Logger log = LoggerFactory.getLogger(SubscriptionHelper.class);
   private final SubscriptionRepository repository;
-  private final EmailService emailService;
   private final SubscriptionFlowRepository subscriptionFlowRepository;
   private final CartService cartService;
   private final MonitorService monitorService;
   private final BucketService bucketService;
   private final NotificationService notificationService;
+  private final ClientHelper clientHelper;
 
   @Value("${front.base.url}")
   private String frontBaseUrl;
 
   @Transactional
-  public Cart getActiveCart(Client client) {
+  public Cart getAndValidateActiveCart(Client client) {
     Cart cart = cartService.findActiveByClientIdWithItens(client.getId());
 
     validateCart(cart);
@@ -71,38 +73,6 @@ public class SubscriptionHelper {
   public void inactivateCart(Client client) {
     Cart cart = cartService.findActiveByClientIdWithItens(client.getId());
     cartService.inactivateCart(cart);
-  }
-
-  private void validateCart(Cart cart) {
-    if (cart.getItems().isEmpty()) {
-      throw new BusinessRuleException(CartValidationMessages.CART_EMPTY);
-    }
-
-    if (!cart.isActive()) {
-      throw new BusinessRuleException(CartValidationMessages.CART_INACTIVE);
-    }
-  }
-
-  private void validateItems(List<CartItem> items) {
-    List<UUID> monitorIds = items.stream()
-            .map(item -> item.getMonitor().getId())
-            .toList();
-
-    Client client = items.get(0).getCart().getClient();
-
-    List<MonitorValidationResponseDto> results = monitorService.findInvalidMonitorsDuringCheckout(monitorIds, client.getId());
-
-    boolean hasInvalidMonitor = results.stream().anyMatch(result -> !result.isValidMonitor());
-
-    if (hasInvalidMonitor) {
-      throw new BusinessRuleException(MonitorValidationMessages.MONITOR_INACTIVE_OR_BLOCKS_UNAVAILABLE);
-    }
-
-    boolean hasActiveSubscriptionWithMonitor = results.stream().anyMatch(MonitorValidationResponseDto::isHasActiveSubscription);
-
-    if (hasActiveSubscriptionWithMonitor) {
-      throw new BusinessRuleException(SubscriptionValidationMessages.CLIENT_ALREADY_HAS_ACTIVE_SUBSCRIPTION_WITH_MONITOR);
-    }
   }
 
   @Transactional
@@ -157,20 +127,20 @@ public class SubscriptionHelper {
     return response;
   }
 
-  private void validateStripeId(String stripeId) {
-    if (ValidateDataUtils.isNullOrEmptyString(stripeId)) {
-      throw new BusinessRuleException(SubscriptionValidationMessages.SUBSCRIPTION_WITHOUT_STRIPE_ID);
-    }
-  }
+  @Transactional
+  public void handleBonusSubscriptionOrNonRecurringPayment(Subscription subscription) {
+    Client client = subscription.getClient();
+    inactivateCart(client);
+    deleteSubscriptionFlow(client);
 
-  private void validateStripeSubscription(com.stripe.model.Subscription stripeSubscription) {
-    if (stripeSubscription == null) {
-      throw new ResourceNotFoundException(SubscriptionValidationMessages.SUBSCRIPTION_NOT_FOUND_IN_STRIPE);
+    if (client.isFirstSubscription()) {
+      sendFirstBuyEmail(subscription);
+      return;
+    } else if (!client.getAds().isEmpty() && client.getApprovedAd() != null) {
+      clientHelper.addAdToMonitor(subscription.getMonitors(), client);
     }
 
-    if (!"active".equals(stripeSubscription.getStatus())) {
-      throw new BusinessRuleException(SubscriptionValidationMessages.SUBSCRIPTION_NOT_ACTIVE_IN_STRIPE + stripeSubscription.getId());
-    }
+    createNewSubscriptionNotification(subscription);
   }
 
   @Transactional(readOnly = true)
@@ -188,7 +158,11 @@ public class SubscriptionHelper {
       throw new BusinessRuleException(SubscriptionValidationMessages.SUBSCRIPTION_UPGRADE_NOT_ALLOWED_FOR_NON_ACTIVE_OR_EXPIRED);
     }
 
-    if (!Recurrence.MONTHLY.equals(entity.getRecurrence()) && entity.getStartedAt() != null && entity.getEndsAt() != null) {
+    if (entity.isUpgrade()) {
+      throw new BusinessRuleException(SubscriptionValidationMessages.SUBSCRIPTION_ALREADY_ON_UPGRADE);
+    }
+
+    if (Recurrence.MONTHLY.equals(recurrence) && entity.getEndsAt() != null) {
       long remainingTime = entity.getEndsAt().getEpochSecond() - Instant.now().getEpochSecond();
 
       if (remainingTime > SharedConstants.MAX_BILLING_CYCLE_ANCHOR) {
@@ -201,7 +175,7 @@ public class SubscriptionHelper {
     Map<String, String> params = new HashMap<>(Map.of(
             "name", subscription.getClient().getBusinessName(),
             "link", "/subscription/" + subscription.getId(),
-            "endDate", formatDate(subscription.getEndsAt())
+            "endDate", DateUtils.formatInstantToString(subscription.getEndsAt())
     ));
 
     notificationService.save(NotificationReference.SUBSCRIPTION_ABOUT_TO_EXPIRY, subscription.getClient(), params, true);
@@ -211,24 +185,19 @@ public class SubscriptionHelper {
     Map<String, String> params = new HashMap<>(Map.of(
             "name", subscription.getClient().getBusinessName(),
             "locations", String.join(", ", subscription.getMonitorAddresses()),
-            "startDate", formatDate(subscription.getStartedAt()),
-            "link", frontBaseUrl + "/subscription/" + subscription.getId()
+            "startDate", DateUtils.formatInstantToString(subscription.getStartedAt()),
+            "link", getRedirectUrlAfterCreatingNewSubscription(subscription.getClient())
     ));
 
     if (subscription.getEndsAt() != null) {
-      params.put("endDate", formatDate(subscription.getEndsAt()));
+      params.put("endDate", DateUtils.formatInstantToString(subscription.getEndsAt()));
     }
 
     notificationService.save(NotificationReference.FIRST_SUBSCRIPTION, subscription.getClient(), params, true);
   }
 
-  private String formatDate(Instant date) {
-    return DateTimeFormatter.ofPattern("MM/dd/yyyy")
-            .withZone(ZoneId.of(SharedConstants.ZONE_ID))
-            .format(date);
-  }
-
   @Transactional
+  @Async
   public void notifyClientsWishList(List<Client> clients, Set<Monitor> monitors) {
     clients.forEach(client -> {
       Set<Monitor> wishlistMonitors = new HashSet<>(client.getWishlist().getMonitors());
@@ -245,8 +214,91 @@ public class SubscriptionHelper {
                 "link", frontBaseUrl + "/wishlist"
         );
 
-        notificationService.save(NotificationReference.MONITOR_IN_WISHLIST_NOW_AVAILABLE, client, params, true);
+        notificationService.save(NotificationReference.MONITOR_IN_WISHLIST_NOW_AVAILABLE, client, params, false);
       }
     });
+  }
+
+  public String getRedirectUrlAfterCreatingNewSubscription(Client client) {
+    if (client.getAttachments().isEmpty()) {
+      return buildRedirectUrl("attachments");
+    }
+
+    if (client.getAds().isEmpty()) {
+      return buildRedirectUrl("request-ad");
+    }
+
+    return buildRedirectUrl("subscriptions");
+  }
+
+  private void validateCart(Cart cart) {
+    if (cart.getItems().isEmpty()) {
+      throw new BusinessRuleException(CartValidationMessages.CART_EMPTY);
+    }
+
+    if (!cart.isActive()) {
+      throw new BusinessRuleException(CartValidationMessages.CART_INACTIVE);
+    }
+  }
+
+  private void validateItems(List<CartItem> items) {
+    Client client = items.get(0).getCart().getClient();
+    Map<UUID, Monitor> monitors = monitorService.findAllByIds(
+            items.stream().map(item -> item.getMonitor().getId()).toList()
+    ).stream().collect(Collectors.toMap(Monitor::getId, monitor -> monitor));
+
+    Set<Monitor> clientActiveMonitors = client.getActiveSubscriptions().stream()
+            .flatMap(sub -> sub.getMonitors().stream())
+            .collect(Collectors.toSet());
+
+    for (CartItem item : items) {
+      Monitor monitor = monitors.get(item.getMonitor().getId());
+
+      if (monitor == null || !monitor.isActive() || !monitor.hasAvailableBlocks(item.getBlockQuantity())) {
+        throw new BusinessRuleException(MonitorValidationMessages.MONITOR_INACTIVE_OR_BLOCKS_UNAVAILABLE);
+      }
+
+      if (clientActiveMonitors.contains(monitor)) {
+        throw new BusinessRuleException(SubscriptionValidationMessages.CLIENT_ALREADY_HAS_ACTIVE_SUBSCRIPTION_WITH_MONITOR);
+      }
+
+      if (monitor.getBox() == null || !monitor.getBox().isActive()) {
+        throw new BusinessRuleException(MonitorValidationMessages.MONITOR_BOX_NOT_VALID);
+      }
+    }
+  }
+
+  private void validateStripeId(String stripeId) {
+    if (ValidateDataUtils.isNullOrEmptyString(stripeId)) {
+      throw new BusinessRuleException(SubscriptionValidationMessages.SUBSCRIPTION_WITHOUT_STRIPE_ID);
+    }
+  }
+
+  private void validateStripeSubscription(com.stripe.model.Subscription stripeSubscription) {
+    if (stripeSubscription == null) {
+      throw new ResourceNotFoundException(SubscriptionValidationMessages.SUBSCRIPTION_NOT_FOUND_IN_STRIPE);
+    }
+
+    if (!"active".equals(stripeSubscription.getStatus())) {
+      throw new BusinessRuleException(SubscriptionValidationMessages.SUBSCRIPTION_NOT_ACTIVE_IN_STRIPE + stripeSubscription.getId());
+    }
+  }
+
+  private void createNewSubscriptionNotification(Subscription subscription) {
+    Map<String, String> params = new HashMap<>(Map.of(
+            "locations", subscription.getMonitorAddresses(),
+            "startDate", DateUtils.formatInstantToString(subscription.getStartedAt()),
+            "link", getRedirectUrlAfterCreatingNewSubscription(subscription.getClient())
+    ));
+
+    if (subscription.getEndsAt() != null) {
+      params.put("endDate", DateUtils.formatInstantToString(subscription.getEndsAt()));
+    }
+
+    notificationService.save(NotificationReference.NEW_SUBSCRIPTION, subscription.getClient(), params, false);
+  }
+
+  private String buildRedirectUrl(String path) {
+    return frontBaseUrl + "/" + path;
   }
 }

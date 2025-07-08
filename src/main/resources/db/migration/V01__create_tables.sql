@@ -1,14 +1,14 @@
 CREATE EXTENSION IF NOT EXISTS unaccent;
 CREATE EXTENSION IF NOT EXISTS postgis;
 
-CREATE SEQUENCE public.audit_seq
+CREATE SEQUENCE IF NOT EXISTS public.audit_seq
   INCREMENT BY 1
   MINVALUE 1
   MAXVALUE 9223372036854775807
   START WITH 1 CACHE 1
   NO CYCLE;
 
-CREATE SEQUENCE hibernate_sequence
+CREATE SEQUENCE IF NOT EXISTS hibernate_sequence
   INCREMENT BY 1
   MINVALUE 1
   START 1
@@ -25,17 +25,19 @@ CREATE TABLE "audit"
   CONSTRAINT "pk_tbauditoria" PRIMARY KEY ("audit_id")
 );
 
-CREATE TABLE "ips" (
-  "id"              UUID PRIMARY KEY,
-  "ip_address"      VARCHAR(45)             NOT NULL,
-  "created_at"      TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT (now())
+CREATE TABLE "ips"
+(
+  "id"         UUID PRIMARY KEY,
+  "ip_address" VARCHAR(45)              NOT NULL,
+  "created_at" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT (now())
 );
 
-CREATE TABLE "boxes" (
-  "id"              UUID PRIMARY KEY,
-  "fl_active"       BOOLEAN DEFAULT TRUE,
-  "ip_id"          UUID                     NOT NULL,
-  "created_at"      TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT (now()),
+CREATE TABLE "boxes"
+(
+  "id"         UUID PRIMARY KEY,
+  "fl_active"  BOOLEAN                           DEFAULT TRUE,
+  "ip_id"      UUID                     NOT NULL,
+  "created_at" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT (now()),
   CONSTRAINT "fk_box_ip" FOREIGN KEY ("ip_id") REFERENCES "ips" ("id") ON UPDATE NO ACTION ON DELETE NO ACTION
 );
 
@@ -184,33 +186,6 @@ CREATE TABLE "clients_aud"
   CONSTRAINT "fk_tbclients_aud_tbaudit" FOREIGN KEY ("audit_id") REFERENCES "audit" ("audit_id") ON UPDATE NO ACTION ON DELETE NO ACTION
 );
 
--- CREATE TABLE "subscriptions"
--- (
---   "id"              UUID PRIMARY KEY,
--- --   "plan_id"         UUID                     NOT NULL,
---   "client_id"       UUID                     NOT NULL,
---   "discount"        DECIMAL(5, 2)            NOT NULL DEFAULT 0.00,
---   "status"          VARCHAR(15)              NOT NULL DEFAULT 'PENDING',
---   "username_create" VARCHAR(255)             NULL     DEFAULT NULL,
---   "username_update" VARCHAR(255)             NULL     DEFAULT NULL,
---   "started_at"      TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT (now()),
---   "ends_at"         TIMESTAMP WITH TIME ZONE NOT NULL,
---   CONSTRAINT "fk_subscription_plan" FOREIGN KEY ("plan_id") REFERENCES "plans" ("id") ON UPDATE NO ACTION ON DELETE NO ACTION,
---   CONSTRAINT "fk_subscription_client" FOREIGN KEY ("client_id") REFERENCES "clients" ("id") ON UPDATE NO ACTION ON DELETE NO ACTION
--- );
--- 
--- CREATE TABLE "subscriptions_aud"
--- (
---   "id"         UUID     NOT NULL,
---   "client_id"  UUID,
---   "discount"   DECIMAL(5, 2),
---   "status"     VARCHAR(15),
---   "audit_id"   BIGINT   NOT NULL,
---   "audit_type" SMALLINT NULL DEFAULT NULL,
---   CONSTRAINT "pk_tbsubscriptions_aud" PRIMARY KEY ("id", "audit_id"),
---   CONSTRAINT "fk_tbsubscriptions_aud_tbaudit" FOREIGN KEY ("audit_id") REFERENCES "audit" ("audit_id") ON UPDATE NO ACTION ON DELETE NO ACTION
--- );
-
 CREATE TABLE "addresses"
 (
   "id"              UUID PRIMARY KEY,
@@ -252,7 +227,7 @@ CREATE TABLE "monitors"
 (
   "id"                   UUID PRIMARY KEY,
   "fl_active"            BOOLEAN                           DEFAULT TRUE,
-  "box_id"               UUID                     NULL DEFAULT NULL,
+  "box_id"               UUID                     NULL     DEFAULT NULL,
   "address_id"           UUID                     NOT NULL,
   "type"                 VARCHAR(50)              NOT NULL DEFAULT 'BASIC',
   "max_blocks"           INTEGER                  NOT NULL DEFAULT 17,
@@ -286,11 +261,10 @@ CREATE TABLE "subscriptions"
 (
   "id"              UUID PRIMARY KEY,
   "client_id"       UUID                     NOT NULL,
---   "amount"          NUMERIC(10, 2)           NOT NULL,
   "recurrence"      VARCHAR(15)              NOT NULL CHECK ("recurrence" IN ('THIRTY_DAYS', 'SIXTY_DAYS', 'NINETY_DAYS', 'MONTHLY')),
   "fl_bonus"        BOOLEAN                  NOT NULL DEFAULT FALSE,
   "status"          VARCHAR(15)              NOT NULL DEFAULT 'PENDING',
-  "fl_upgrade"  BOOLEAN                  NOT NULL DEFAULT FALSE,
+  "fl_upgrade"      BOOLEAN                  NOT NULL DEFAULT FALSE,
   "stripe_id"       VARCHAR(255)             NULL     DEFAULT NULL,
   "started_at"      TIMESTAMP WITH TIME ZONE,
   "ends_at"         TIMESTAMP WITH TIME ZONE,
@@ -305,10 +279,9 @@ CREATE TABLE "subscriptions_aud"
 (
   "id"         UUID     NOT NULL,
   "client_id"  UUID,
---   "amount"     NUMERIC(10, 2),
   "recurrence" VARCHAR(15),
   "fl_bonus"   BOOLEAN,
-  "fl_upgrade"  BOOLEAN,
+  "fl_upgrade" BOOLEAN,
   "status"     VARCHAR(15),
   "stripe_id"  VARCHAR(255),
   "audit_id"   BIGINT   NOT NULL,
@@ -431,7 +404,7 @@ CREATE TABLE "ads"
   "name"            VARCHAR(255)             NOT NULL,
   "mime_type"       VARCHAR(15)              NOT NULL,
   "client_id"       UUID                     NOT NULL,
-  "ad_request_id"   UUID                     NULL DEFAULT NULL,
+  "ad_request_id"   UUID                     NULL     DEFAULT NULL,
   "validation"      VARCHAR(15)              NOT NULL DEFAULT 'PENDING',
   "username_create" VARCHAR(255)             NULL     DEFAULT NULL,
   "username_update" VARCHAR(255)             NULL     DEFAULT NULL,
@@ -516,32 +489,13 @@ CREATE TABLE "monitors_ads"
 
 CREATE TABLE "monitors_ads_aud"
 (
-  "monitor_id"     UUID     NOT NULL,
-  "ad_id"          UUID     NOT NULL,
-  "order_index"    INTEGER,
-  "audit_id"       BIGINT   NOT NULL,
-  "audit_type"     SMALLINT NULL DEFAULT NULL,
+  "monitor_id"  UUID     NOT NULL,
+  "ad_id"       UUID     NOT NULL,
+  "order_index" INTEGER,
+  "audit_id"    BIGINT   NOT NULL,
+  "audit_type"  SMALLINT NULL DEFAULT NULL,
   CONSTRAINT "pk_tbmonitors_ads_aud" PRIMARY KEY ("monitor_id", "ad_id", "audit_id"),
   CONSTRAINT "fk_tbmonitors_ads_aud_tbaudit" FOREIGN KEY ("audit_id") REFERENCES "audit" ("audit_id") ON UPDATE NO ACTION ON DELETE NO ACTION
-);
-
-CREATE TABLE "clients_monitors"
-(
-  "monitor_id" UUID NOT NULL,
-  "client_id"  UUID NOT NULL,
-  CONSTRAINT "pk_clients_monitors" PRIMARY KEY ("monitor_id", "client_id"),
-  CONSTRAINT "fk_client_monitor" FOREIGN KEY ("client_id") REFERENCES "clients" ("id") ON UPDATE NO ACTION ON DELETE NO ACTION,
-  CONSTRAINT "fk_monitor_client" FOREIGN KEY ("monitor_id") REFERENCES "monitors" ("id") ON UPDATE NO ACTION ON DELETE NO ACTION
-);
-
-CREATE TABLE "clients_monitors_aud"
-(
-  "monitor_id" UUID     NOT NULL,
-  "client_id"  UUID     NOT NULL,
-  "audit_id"   BIGINT   NOT NULL,
-  "audit_type" SMALLINT NULL DEFAULT NULL,
-  CONSTRAINT "pk_tbclients_monitors_aud" PRIMARY KEY ("monitor_id", "client_id", "audit_id"),
-  CONSTRAINT "fk_tbclients_monitors_aud_tbaudit" FOREIGN KEY ("audit_id") REFERENCES "audit" ("audit_id") ON UPDATE NO ACTION ON DELETE NO ACTION
 );
 
 CREATE TABLE "notifications"
@@ -632,13 +586,15 @@ CREATE TABLE "subscriptions_flows"
   CONSTRAINT "fk_subscriptions_flows_client" FOREIGN KEY ("client_id") REFERENCES "clients" ("id") ON UPDATE NO ACTION ON DELETE CASCADE
 );
 
-CREATE TABLE "wishlist" (
+CREATE TABLE "wishlist"
+(
   "id"        UUID PRIMARY KEY,
   "client_id" UUID NOT NULL UNIQUE,
   CONSTRAINT "fk_wishlist_client" FOREIGN KEY ("client_id") REFERENCES "clients" ("id") ON DELETE CASCADE
 );
 
-CREATE TABLE "wishlist_monitors" (
+CREATE TABLE "wishlist_monitors"
+(
   "wishlist_id" UUID NOT NULL,
   "monitor_id"  UUID NOT NULL,
   PRIMARY KEY ("wishlist_id", "monitor_id"),
@@ -646,19 +602,20 @@ CREATE TABLE "wishlist_monitors" (
   CONSTRAINT "fk_wishlist_monitor_monitor" FOREIGN KEY ("monitor_id") REFERENCES "monitors" ("id") ON DELETE CASCADE
 );
 
-CREATE TABLE webhook_events (
-  "id" VARCHAR(255) PRIMARY KEY,
-  "type" VARCHAR(255),
+CREATE TABLE webhook_events
+(
+  "id"          VARCHAR(255) PRIMARY KEY,
+  "type"        VARCHAR(255),
   "received_at" TIMESTAMP DEFAULT now()
 );
 
-CREATE TABLE shedlock (
-    name VARCHAR(64) PRIMARY KEY,
-    lock_until TIMESTAMP(3) NOT NULL,
-    locked_at TIMESTAMP(3) NOT NULL,
-    locked_by VARCHAR(255) NOT NULL
+CREATE TABLE shedlock
+(
+  name       VARCHAR(64) PRIMARY KEY,
+  lock_until TIMESTAMP(3) NOT NULL,
+  locked_at  TIMESTAMP(3) NOT NULL,
+  locked_by  VARCHAR(255) NOT NULL
 );
-
 
 INSERT INTO "terms_conditions" (id, version, content, created_at, updated_at, username_create, username_update)
 VALUES ('eb1f62bf-9d16-45c1-be45-bd52f97dffb2',
@@ -671,25 +628,18 @@ VALUES ('eb1f62bf-9d16-45c1-be45-bd52f97dffb2',
 
 CREATE INDEX idx_email ON contacts (email);
 
--- Índice para zip_code
 CREATE INDEX idx_address_zip_code ON addresses (zip_code);
 
-
--- Índice para WebhookEventRepository.existsById
 CREATE INDEX idx_webhook_events_id ON webhook_events (id);
 
--- Índice para ClientRepository.findActiveByIdentificationNumber
 CREATE INDEX idx_clients_identification_number_status ON clients (identification_number, status);
 
--- Índice para ClientRepository.findActiveById
 CREATE INDEX idx_clients_id_status ON clients (id, status);
 
--- Índices para MonitorRepository.findNearestActiveMonitorsWithFilters
 CREATE INDEX idx_monitors_fl_active_type_size ON monitors (fl_active, type, size_in_inches);
 CREATE INDEX idx_monitors_address_id ON monitors (address_id);
 CREATE INDEX idx_addresses_lat_long ON addresses (latitude, longitude);
 
--- Índices adicionais para métodos comuns dos repositórios
 CREATE INDEX idx_ads_client_id_validation ON ads (client_id, validation);
 CREATE INDEX idx_subscriptions_client_id_status ON subscriptions (client_id, status);
 CREATE INDEX idx_subscriptions_ends_at_status ON subscriptions (ends_at, status);

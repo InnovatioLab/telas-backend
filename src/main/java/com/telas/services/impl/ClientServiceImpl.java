@@ -11,7 +11,7 @@ import com.telas.enums.CodeType;
 import com.telas.enums.DefaultStatus;
 import com.telas.enums.Role;
 import com.telas.helpers.AttachmentHelper;
-import com.telas.helpers.ClientRequestHelper;
+import com.telas.helpers.ClientHelper;
 import com.telas.infra.exceptions.BusinessRuleException;
 import com.telas.infra.exceptions.ResourceNotFoundException;
 import com.telas.infra.exceptions.UnauthorizedException;
@@ -52,7 +52,7 @@ import java.util.*;
 public class ClientServiceImpl implements ClientService {
   private final ClientRepository repository;
   private final PasswordEncoder passwordEncoder;
-  private final ClientRequestHelper helper;
+  private final ClientHelper helper;
   private final AttachmentHelper attachmentHelper;
   private final VerificationCodeService verificationCodeService;
   private final AuthenticatedUserService authenticatedUserService;
@@ -65,10 +65,11 @@ public class ClientServiceImpl implements ClientService {
   @Transactional
   public void save(ClientRequestDto request) {
     helper.validateClientRequest(request, null);
+    Owner owner = helper.getOrCreateOwner(request.getOwner());
 
-    Client client = new Client(request);
+    Client client = new Client(request, owner);
     VerificationCode verificationCode = verificationCodeService.save(CodeType.CONTACT, client);
-    verificationCode.setValidated(true);
+//    verificationCode.setValidated(true);
     client.setVerificationCode(verificationCode);
 
     if (Objects.equals(client.getBusinessName(), "Admin")) {
@@ -81,7 +82,7 @@ public class ClientServiceImpl implements ClientService {
     client.setTermCondition(actualTermCondition);
     client.setTermAcceptedAt(Instant.now());
 
-//    sendContactConfirmationEmail(client, verificationCode);
+    sendContactConfirmationEmail(client, verificationCode);
     repository.save(client);
   }
 
@@ -245,7 +246,7 @@ public class ClientServiceImpl implements ClientService {
   public void requestAdCreation(ClientAdRequestToAdminDto request) {
     Client client = authenticatedUserService.validateActiveSubscription().client();
 
-    if (client.getRole() == Role.ADMIN) {
+    if (Role.ADMIN.equals(client.getRole())) {
       return;
     }
 
@@ -270,7 +271,6 @@ public class ClientServiceImpl implements ClientService {
     Client client = findActiveEntityById(clientId);
     validateAdRequestId(request.getAdRequestId());
     AdRequest adRequest = helper.getAdRequestById(request.getAdRequestId());
-    validateAdRequestActive(adRequest);
 
     attachmentHelper.saveAttachments(List.of(request), client, adRequest);
   }
@@ -312,9 +312,9 @@ public class ClientServiceImpl implements ClientService {
   @Transactional
   public void validateAd(UUID adId, AdValidationType validation, RefusedAdRequestDto request) {
     Ad ad = helper.getAdById(adId);
-    authenticatedUserService.validateSelfOrAdmin(ad.getClient().getId());
+    authenticatedUserService.validateActiveSubscription();
 
-    Client client = authenticatedUserService.validateActiveSubscription().client();
+    Client client = ad.getClient();
 
     attachmentHelper.validateAd(ad, validation, request, client);
 
@@ -396,12 +396,6 @@ public class ClientServiceImpl implements ClientService {
   private void validateAdRequestId(UUID adRequestId) {
     if (adRequestId == null) {
       throw new BusinessRuleException(AdValidationMessages.AD_REQUEST_ID_REQUIRED);
-    }
-  }
-
-  private void validateAdRequestActive(AdRequest adRequest) {
-    if (!adRequest.isActive()) {
-      throw new BusinessRuleException(ClientValidationMessages.AD_REQUEST_NOT_ACTIVE);
     }
   }
 

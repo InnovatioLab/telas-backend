@@ -3,6 +3,7 @@ package com.telas.entities;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.telas.dtos.request.MonitorRequestDto;
 import com.telas.enums.MonitorType;
+import com.telas.enums.SubscriptionStatus;
 import com.telas.shared.audit.BaseAudit;
 import com.telas.shared.constants.SharedConstants;
 import jakarta.persistence.*;
@@ -15,7 +16,9 @@ import org.hibernate.envers.NotAudited;
 import java.io.Serial;
 import java.io.Serializable;
 import java.math.BigDecimal;
+import java.time.Instant;
 import java.util.*;
+import java.util.stream.Collectors;
 
 @Getter
 @Setter
@@ -59,13 +62,9 @@ public class Monitor extends BaseAudit implements Serializable {
   @OneToMany(mappedBy = "id.monitor", cascade = CascadeType.ALL, orphanRemoval = true)
   private Set<MonitorAd> monitorAds = new HashSet<>();
 
-  @ManyToMany
-  @JoinTable(
-          name = "clients_monitors",
-          joinColumns = @JoinColumn(name = "monitor_id"),
-          inverseJoinColumns = @JoinColumn(name = "client_id")
-  )
-  private Set<Client> clients = new HashSet<Client>();
+  @JsonIgnore
+  @ManyToMany(mappedBy = "monitors")
+  private Set<Subscription> subscriptions;
 
   @JsonIgnore
   @NotAudited
@@ -102,11 +101,31 @@ public class Monitor extends BaseAudit implements Serializable {
   }
 
   public boolean hasAvailableBlocks(int blocksWanted) {
-    return (monitorAds.size() + blocksWanted) <= maxBlocks;
+    return isWithinAdsLimit(blocksWanted) && isWithinSubscriptionsLimit(blocksWanted);
+  }
+
+  public boolean isWithinAdsLimit(int blocksWanted) {
+    return monitorAds.size() + blocksWanted <= maxBlocks;
+  }
+
+  private boolean isWithinSubscriptionsLimit(int blocksWanted) {
+    return getActiveSubscriptions().size() + blocksWanted <= maxBlocks;
+  }
+
+  public Set<Subscription> getActiveSubscriptions() {
+    Instant now = Instant.now();
+    return subscriptions.stream()
+            .filter(subscription -> SubscriptionStatus.ACTIVE.equals(subscription.getStatus())
+                                    && (subscription.getEndsAt() == null || subscription.getEndsAt().isAfter(now)))
+            .collect(Collectors.toSet());
   }
 
   public boolean clientAlreadyHasAd(Client client) {
     return getAds().stream()
             .anyMatch(ad -> ad.getClient() != null && ad.getClient().getId().equals(client.getId()));
+  }
+
+  public boolean isAbleToSendBoxRequest() {
+    return box != null && box.isActive();
   }
 }

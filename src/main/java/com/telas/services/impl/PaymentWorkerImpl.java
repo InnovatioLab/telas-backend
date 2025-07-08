@@ -2,6 +2,8 @@ package com.telas.services.impl;
 
 import com.stripe.model.*;
 import com.stripe.model.checkout.Session;
+import com.telas.entities.WebhookEvent;
+import com.telas.repositories.WebhookEventRepository;
 import com.telas.services.PaymentService;
 import com.telas.services.PaymentWorker;
 import com.telas.services.SubscriptionService;
@@ -10,6 +12,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.amqp.rabbit.annotation.RabbitListener;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 @Service
 @RequiredArgsConstructor
@@ -17,9 +20,11 @@ public class PaymentWorkerImpl implements PaymentWorker {
   private final Logger log = LoggerFactory.getLogger(PaymentWorkerImpl.class);
   private final PaymentService paymentService;
   private final SubscriptionService subscriptionService;
+  private final WebhookEventRepository webhookEventRepository;
 
   @Override
   @RabbitListener(queues = "${queue.name}")
+  @Transactional
   public void processEvent(String eventJson) {
     Event event = null;
 
@@ -64,9 +69,11 @@ public class PaymentWorkerImpl implements PaymentWorker {
       if (stripeObject instanceof Session session) {
         log.info("[WORKER]: Handling expired checkout session with ID: {}", session.getId());
         subscriptionService.handleCheckoutSessionExpired(session);
+        saveEvent(event);
       }
     }
   }
+
 
   private void handlePaymentIntent(Event event) {
     EventDataObjectDeserializer dataObjectDeserializer = event.getDataObjectDeserializer();
@@ -77,6 +84,7 @@ public class PaymentWorkerImpl implements PaymentWorker {
       if (stripeObject instanceof PaymentIntent paymentIntent) {
         log.info("[WORKER]: Handling payment intent with ID: {}", paymentIntent.getId());
         paymentService.updatePaymentStatus(paymentIntent);
+        saveEvent(event);
       }
     }
   }
@@ -90,6 +98,7 @@ public class PaymentWorkerImpl implements PaymentWorker {
       if (stripeObject instanceof Invoice invoice) {
         log.info("[WORKER]: Handling invoice payment with ID: {}", invoice.getId());
         paymentService.updatePaymentStatus(invoice);
+        saveEvent(event);
       }
     }
   }
@@ -103,6 +112,7 @@ public class PaymentWorkerImpl implements PaymentWorker {
       if (stripeObject instanceof Subscription subscription) {
         log.info("[WORKER]: Handling subscription deletion with ID: {}", subscription.getId());
         subscriptionService.cancelSubscription(subscription);
+        saveEvent(event);
       }
     }
   }
@@ -116,7 +126,13 @@ public class PaymentWorkerImpl implements PaymentWorker {
       if (stripeObject instanceof com.stripe.model.Dispute dispute) {
         log.info("[WORKER]: Handling dispute funds withdrawn with ID: {}", dispute.getId());
         paymentService.handleDisputeFundsWithdrawn(dispute);
+        saveEvent(event);
       }
     }
+  }
+
+  private void saveEvent(Event event) {
+    log.info("[WORKER]: Saving event with ID: {} to the database", event.getId());
+    webhookEventRepository.save(new WebhookEvent(event.getId(), event.getType()));
   }
 }

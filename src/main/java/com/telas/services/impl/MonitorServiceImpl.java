@@ -6,7 +6,7 @@ import com.telas.dtos.request.filters.FilterMonitorRequestDto;
 import com.telas.dtos.response.*;
 import com.telas.entities.*;
 import com.telas.enums.SubscriptionStatus;
-import com.telas.helpers.MonitorRequestHelper;
+import com.telas.helpers.MonitorHelper;
 import com.telas.infra.exceptions.BusinessRuleException;
 import com.telas.infra.exceptions.ResourceNotFoundException;
 import com.telas.infra.security.model.AuthenticatedUser;
@@ -30,13 +30,14 @@ import org.springframework.transaction.annotation.Transactional;
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.*;
+import java.util.stream.IntStream;
 
 @Service
 @RequiredArgsConstructor
 public class MonitorServiceImpl implements MonitorService {
   private final AuthenticatedUserService authenticatedUserService;
   private final MonitorRepository repository;
-  private final MonitorRequestHelper helper;
+  private final MonitorHelper helper;
 
   @Value("${stripe.product.id}")
   private String productId;
@@ -51,9 +52,8 @@ public class MonitorServiceImpl implements MonitorService {
     Monitor monitor;
 
     if (monitorId != null) {
-      List<Ad> ads = !ValidateDataUtils.isNullOrEmpty(request.getAds()) ? helper.getAds(request, monitorId) : List.of();
-      Set<Client> clients = helper.getClients(ads);
-      monitor = updateExistingMonitor(request, monitorId, authenticatedUser, address, clients, ads);
+      List<Ad> ads = !ValidateDataUtils.isNullOrEmpty(request.getAds()) ? helper.getAds(request, monitorId) : Collections.emptyList();
+      monitor = updateExistingMonitor(request, monitorId, authenticatedUser, address, ads);
     } else {
       monitor = createNewMonitor(request, authenticatedUser, address);
     }
@@ -71,27 +71,27 @@ public class MonitorServiceImpl implements MonitorService {
     }
 
     Client client = subscription.getClient();
+    List<Monitor> updatedMonitors = new ArrayList<>();
 
     subscription.getMonitors().forEach(monitor -> {
-      if (monitor.getBox() == null) {
-        return;
-      }
-
-      List<String> adNamesToRemove = monitor.getMonitorAds().stream()
-              .filter(monitorAd -> monitorAd.getAd().getClient().equals(client))
-              .map(monitorAd -> monitorAd.getAd().getName())
+      List<String> adNamesToRemove = monitor.getAds().stream()
+              .filter(ad -> ad.getClient().getId().equals(client.getId()))
+              .map(Ad::getName)
               .toList();
 
-      // Remove os anúncios e o cliente do monitor
-      monitor.getMonitorAds().removeIf(monitorAd -> adNamesToRemove.contains(monitorAd.getAd().getName()));
-      monitor.getClients().remove(client);
-
-      repository.save(monitor);
-
       if (!adNamesToRemove.isEmpty()) {
-        helper.sendBoxesMonitorsRemoveAds(monitor, adNamesToRemove);
+        monitor.getMonitorAds().removeIf(monitorAd -> adNamesToRemove.contains(monitorAd.getAd().getName()));
+        updatedMonitors.add(monitor);
+
+        if (monitor.isAbleToSendBoxRequest()) {
+          helper.sendBoxesMonitorsRemoveAds(monitor, adNamesToRemove);
+        }
       }
     });
+
+    if (!updatedMonitors.isEmpty()) {
+      repository.saveAll(updatedMonitors);
+    }
   }
 
   @Override
@@ -198,6 +198,20 @@ public class MonitorServiceImpl implements MonitorService {
     repository.delete(monitor);
   }
 
+  @Override
+  @Transactional(readOnly = true)
+  public List<MonitorValidAdResponseDto> findCurrentDisplayedAdsFromBox(UUID monitorId) {
+    authenticatedUserService.validateAdmin();
+    Monitor monitor = findEntityById(monitorId);
+    List<String> adNames = helper.getCurrentDisplayedAdsFromBox(monitor);
+
+    if (adNames.isEmpty()) {
+      return List.of();
+    }
+
+    return helper.getBoxMonitorAdsResponse(monitor, adNames);
+  }
+
   private void ensureNoActiveSubscription(Monitor monitor) {
     if (repository.existsActiveSubscriptionByMonitorId(monitor.getId())) {
       throw new BusinessRuleException(MonitorValidationMessages.MONITOR_HAS_ACTIVE_SUBSCRIPTION);
@@ -206,7 +220,6 @@ public class MonitorServiceImpl implements MonitorService {
 
   private void clearMonitorAssociations(Monitor monitor) {
     monitor.getMonitorAds().clear();
-    monitor.getClients().clear();
     monitor.setBox(null);
   }
 
@@ -240,7 +253,7 @@ public class MonitorServiceImpl implements MonitorService {
     return monitor;
   }
 
-  private Monitor updateExistingMonitor(MonitorRequestDto request, UUID monitorId, AuthenticatedUser authenticatedUser, Address address, Set<Client> clients, List<Ad> ads) throws JsonProcessingException {
+  private Monitor updateExistingMonitor(MonitorRequestDto request, UUID monitorId, AuthenticatedUser authenticatedUser, Address address, List<Ad> ads) {
     Monitor monitor = findEntityById(monitorId);
 
     if (!monitor.getAddress().getId().equals(address.getId())) {
@@ -256,29 +269,38 @@ public class MonitorServiceImpl implements MonitorService {
     CustomRevisionListener.setUsername(usernameUpdate);
     monitor.setUsernameUpdate(usernameUpdate);
 
-    updateMonitorDetails(request, monitor, clients, ads);
+    updateMonitorDetails(request, monitor, ads);
     return monitor;
   }
 
-  private void updateMonitorDetails(MonitorRequestDto request, Monitor monitor, Set<Client> clients, List<Ad> ads) {
+  private void updateMonitorDetails(MonitorRequestDto request, Monitor monitor, List<Ad> ads) {
     monitor.setType(request.getType());
     monitor.setProductId(productId);
     monitor.setLocationDescription(request.getLocationDescription());
     monitor.setSize(request.getSize());
 
-    if (!ValidateDataUtils.isNullOrEmpty(request.getAds())) {
-      monitor.getMonitorAds().clear();
+    if (ValidateDataUtils.isNullOrEmpty(ads)) {
+      return;
+    }
 
-      ads.forEach(attachment -> monitor.getMonitorAds().add(
-              new MonitorAd(request.getAds().get(ads.indexOf(attachment)), monitor, attachment)
-      ));
+    updateMonitorAds(request, monitor, ads);
+  }
 
-      monitor.getClients().clear();
-      monitor.getClients().addAll(clients);
+  private void updateMonitorAds(MonitorRequestDto request, Monitor monitor, List<Ad> ads) {
+    monitor.getMonitorAds().clear();
 
-      if (!monitor.getMonitorAds().isEmpty()) {
-        helper.sendBoxesMonitorsUpdateAds(monitor, ads);
-      }
+    if (!monitor.isWithinAdsLimit(ads.size())) {
+      throw new BusinessRuleException(MonitorValidationMessages.ADS_LIMIT_EXCEEDED + monitor.getMaxBlocks());
+    }
+
+    List<MonitorAd> monitorAds = IntStream.range(0, ads.size())
+            .mapToObj(i -> new MonitorAd(request.getAds().get(i), monitor, ads.get(i)))
+            .toList();
+
+    monitor.getMonitorAds().addAll(monitorAds);
+
+    if (monitor.isAbleToSendBoxRequest()) {
+      helper.sendBoxesMonitorsUpdateAds(monitor, ads);
     }
   }
 }

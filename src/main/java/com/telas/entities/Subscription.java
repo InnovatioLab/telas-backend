@@ -5,7 +5,6 @@ import com.telas.enums.Recurrence;
 import com.telas.enums.Role;
 import com.telas.enums.SubscriptionStatus;
 import com.telas.shared.audit.BaseAudit;
-import com.telas.shared.constants.SharedConstants;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -80,20 +79,25 @@ public class Subscription extends BaseAudit implements Serializable {
   public Subscription(Client client, Cart cart) {
     this.client = client;
     setUsernameCreate(client.getBusinessName());
-    bonus = isBonus();
-    recurrence = cart.getRecurrence();
-
     monitors.addAll(cart.getItems().stream()
             .map(CartItem::getMonitor)
             .collect(Collectors.toSet()));
+
+    bonus = isPartnerBonus();
+    recurrence = bonus ? Recurrence.MONTHLY : cart.getRecurrence();
+    status = bonus ? SubscriptionStatus.ACTIVE : SubscriptionStatus.PENDING;
+
+    if (bonus) {
+      startedAt = Instant.now();
+    }
   }
 
   public void initialize() {
     startedAt = startedAt == null ? Instant.now() : startedAt;
-    endsAt = isBonus() ? null : recurrence.calculateEndsAt(startedAt);
+    endsAt = bonus ? null : recurrence.calculateEndsAt(startedAt);
   }
 
-  public boolean isBonus() {
+  private boolean isPartnerBonus() {
     if (!Role.PARTNER.equals(client.getRole())) {
       return false;
     }
@@ -106,7 +110,17 @@ public class Subscription extends BaseAudit implements Serializable {
             .map(monitor -> monitor.getAddress().getId())
             .collect(Collectors.toSet());
 
-    return clientAddressesIds.equals(monitorAddressesIds);
+    return clientAddressesIds.containsAll(monitorAddressesIds);
+  }
+
+  public boolean ableToUpgrade() {
+    return !bonus
+           && !isUpgrade()
+           && !Recurrence.MONTHLY.equals(recurrence)
+           && SubscriptionStatus.ACTIVE.equals(status)
+           && endsAt != null
+           && endsAt.isAfter(Instant.now())
+           && monitors.stream().allMatch(monitor -> monitor.getBox() != null && monitor.getBox().isActive());
   }
 
   public BigDecimal getPaidAmount() {
@@ -114,23 +128,6 @@ public class Subscription extends BaseAudit implements Serializable {
             .filter(payment -> PaymentStatus.COMPLETED.equals(payment.getStatus()))
             .map(Payment::getAmount)
             .reduce(BigDecimal.ZERO, BigDecimal::add);
-  }
-
-  public boolean canBeUpgraded(Recurrence recurrence) {
-    if (isBonus()
-        || isUpgrade()
-        || Recurrence.MONTHLY.equals(this.recurrence)
-        || !SubscriptionStatus.ACTIVE.equals(status)
-        || endsAt == null
-        || !endsAt.isAfter(Instant.now())) {
-      return false;
-    }
-
-    if (Recurrence.MONTHLY.equals(recurrence)) {
-      long remainingTime = endsAt.getEpochSecond() - Instant.now().getEpochSecond();
-      return remainingTime <= SharedConstants.MAX_BILLING_CYCLE_ANCHOR;
-    }
-    return true;
   }
 
   public String getMonitorAddresses() {

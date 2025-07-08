@@ -1,16 +1,13 @@
 package com.telas.entities;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.SerializationFeature;
-import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import com.telas.dtos.request.ClientRequestDto;
 import com.telas.enums.AdValidationType;
 import com.telas.enums.DefaultStatus;
 import com.telas.enums.Role;
 import com.telas.enums.SubscriptionStatus;
 import com.telas.shared.audit.BaseAudit;
+import com.telas.shared.constants.SharedConstants;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -91,7 +88,7 @@ public class Client extends BaseAudit implements Serializable {
   @JoinColumn(name = "contact_id", referencedColumnName = "id", nullable = false)
   private Contact contact;
 
-  @OneToOne(cascade = CascadeType.ALL)
+  @ManyToOne(cascade = CascadeType.ALL)
   @JoinColumn(name = "owner_id", referencedColumnName = "id", nullable = false)
   private Owner owner;
 
@@ -121,14 +118,15 @@ public class Client extends BaseAudit implements Serializable {
   @OrderBy("createdAt DESC")
   private List<Notification> notifications = new ArrayList<>();
 
-  public Client(ClientRequestDto request) {
+  public Client(ClientRequestDto request, Owner owner) {
     businessName = request.getBusinessName();
     identificationNumber = request.getIdentificationNumber();
     industry = request.getIndustry();
     websiteUrl = request.getWebsiteUrl();
     status = request.getStatus();
+    this.owner = owner;
+    owner.getClients().add(this);
     contact = new Contact(request.getContact());
-    owner = new Owner(request.getOwner(), this);
     wishlist = new Wishlist(this);
 
     socialMedia = Optional.ofNullable(request.getSocialMedia())
@@ -137,7 +135,6 @@ public class Client extends BaseAudit implements Serializable {
 
     addresses = request.getAddresses().stream()
             .map(address -> new Address(address, this))
-            .peek(address -> address.setUsernameCreate(request.getBusinessName()))
             .collect(Collectors.toSet());
 
     setUsernameCreateForRelatedEntities(request.getBusinessName());
@@ -174,26 +171,21 @@ public class Client extends BaseAudit implements Serializable {
   }
 
   public boolean isFirstSubscription() {
-    return subscriptions.isEmpty();
+    return getActiveSubscriptions().size() == SharedConstants.MIN_QUANTITY_MONITOR_BLOCK;
   }
-
 
   private void setUsernameCreateForRelatedEntities(String username) {
     setUsernameCreate(username);
     contact.setUsernameCreate(username);
-    owner.setUsernameCreate(username);
-    if (socialMedia != null) {
-      socialMedia.setUsernameCreate(username);
-    }
+    owner.setUsernameCreate(Optional.ofNullable(owner.getUsernameCreate()).orElse(username));
+    Optional.ofNullable(socialMedia).ifPresent(sm -> sm.setUsernameCreate(username));
   }
 
   private void setUsernameUpdateForRelatedEntities(String username) {
     setUsernameUpdate(username);
     contact.setUsernameUpdate(username);
     owner.setUsernameUpdate(username);
-    if (socialMedia != null) {
-      socialMedia.setUsernameUpdate(username);
-    }
+    Optional.ofNullable(socialMedia).ifPresent(sm -> sm.setUsernameUpdate(username));
   }
 
   public boolean isAdmin() {
@@ -206,14 +198,6 @@ public class Client extends BaseAudit implements Serializable {
     }
 
     return subscriptions.stream().anyMatch(subscription -> SubscriptionStatus.ACTIVE.equals(subscription.getStatus()));
-  }
-
-  public String toStringMapper() throws JsonProcessingException {
-    ObjectMapper objectMapper = new ObjectMapper();
-    objectMapper.registerModule(new JavaTimeModule())
-            .configure(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS, false);
-
-    return objectMapper.writeValueAsString(this);
   }
 
   public boolean isTermsAccepted() {

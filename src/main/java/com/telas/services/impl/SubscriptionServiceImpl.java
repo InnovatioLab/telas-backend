@@ -18,7 +18,6 @@ import com.telas.infra.exceptions.BusinessRuleException;
 import com.telas.infra.exceptions.ResourceNotFoundException;
 import com.telas.infra.security.services.AuthenticatedUserService;
 import com.telas.repositories.ClientRepository;
-import com.telas.repositories.PaymentRepository;
 import com.telas.repositories.SubscriptionRepository;
 import com.telas.services.PaymentService;
 import com.telas.services.SubscriptionService;
@@ -51,7 +50,6 @@ import java.util.*;
 public class SubscriptionServiceImpl implements SubscriptionService {
   private final Logger log = LoggerFactory.getLogger(SubscriptionServiceImpl.class);
   private final SubscriptionRepository repository;
-  private final PaymentRepository paymentRepository;
   private final ClientRepository clientRepository;
   private final AuthenticatedUserService authenticatedUserService;
   private final PaymentService paymentService;
@@ -61,17 +59,19 @@ public class SubscriptionServiceImpl implements SubscriptionService {
   @Transactional
   public String save() {
     Client client = authenticatedUserService.getLoggedUser().client();
-    Cart cart = helper.getActiveCart(client);
+
+    if (Role.ADMIN.equals(client.getRole())) {
+      return null;
+    }
+
+    Cart cart = helper.getAndValidateActiveCart(client);
     Subscription subscription = new Subscription(client, cart);
 
     if (subscription.isBonus()) {
-      subscription.initialize();
-      subscription.setBonus(true);
-      subscription.setStatus(SubscriptionStatus.ACTIVE);
-      subscription.setRecurrence(Recurrence.MONTHLY);
+      log.info("Client with id: {} is eligible for a bonus subscription", client.getId());
       persistSubscriptionClient(client, subscription);
-      helper.sendFirstBuyEmail(subscription);
-      return null;
+      helper.handleBonusSubscriptionOrNonRecurringPayment(subscription);
+      return helper.getRedirectUrlAfterCreatingNewSubscription(client);
     }
 
     persistSubscriptionClient(client, subscription);
@@ -94,17 +94,8 @@ public class SubscriptionServiceImpl implements SubscriptionService {
     helper.validateSubscriptionForUpgrade(entity, recurrence);
     entity.setUpgrade(true);
     repository.save(entity);
-
     return paymentService.process(entity, recurrence);
 
-  }
-
-  @Override
-  @Transactional(readOnly = true)
-  public boolean checkIfCanBeUpgraded(UUID subscriptionId, Recurrence recurrence) {
-    Subscription entity = helper.findEntityById(subscriptionId);
-    authenticatedUserService.validateSelfOrAdmin(entity.getClient().getId());
-    return entity.canBeUpgraded(recurrence);
   }
 
   @Override
@@ -119,7 +110,7 @@ public class SubscriptionServiceImpl implements SubscriptionService {
 
     Client client = authenticatedUserService.validateSelfOrAdmin(subscription.getClient().getId()).client();
 
-    if (Recurrence.MONTHLY.equals(subscription.getRecurrence())) {
+    if (Recurrence.MONTHLY.equals(subscription.getRecurrence()) && !subscription.isBonus()) {
       handleStripeCancellation(subscription, client);
     } else {
       updateSubscriptionStatusCancelled(subscription, Instant.now(), client.getBusinessName());
@@ -158,10 +149,6 @@ public class SubscriptionServiceImpl implements SubscriptionService {
         log.info("Subscription with id: {} is active and on upgrade, setting upgrade to false.", subscriptionId);
         subscription.setUpgrade(false);
         repository.save(subscription);
-      } else if (SubscriptionStatus.PENDING.equals(subscription.getStatus())) {
-        log.info("Subscription with id: {} is pending, so it will be deleted", subscriptionId);
-        paymentRepository.deleteAll(subscription.getPayments());
-        repository.delete(subscription);
       }
     } catch (ResourceNotFoundException e) {
       log.warn("Subscription with id: {}, not found for checkout session expired.", subscriptionId);

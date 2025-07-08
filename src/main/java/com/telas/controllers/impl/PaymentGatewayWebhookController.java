@@ -3,7 +3,6 @@ package com.telas.controllers.impl;
 import com.stripe.exception.SignatureVerificationException;
 import com.stripe.model.Event;
 import com.stripe.net.Webhook;
-import com.telas.entities.WebhookEvent;
 import com.telas.repositories.WebhookEventRepository;
 import com.telas.services.MessageSender;
 import com.telas.shared.utils.ValidateDataUtils;
@@ -13,6 +12,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
@@ -26,6 +26,7 @@ public class PaymentGatewayWebhookController {
   @Value("${payment.gateway.webhook.secret}")
   private String webhookSecret;
 
+  @Transactional(readOnly = true)
   @PostMapping
   public ResponseEntity<String> handleStripeWebhook(@RequestBody String payload, @RequestHeader("Stripe-Signature") String sigHeader) {
     if (ValidateDataUtils.isNullOrEmptyString(webhookSecret) || ValidateDataUtils.isNullOrEmptyString(sigHeader)) {
@@ -46,10 +47,8 @@ public class PaymentGatewayWebhookController {
       return ResponseEntity.ok("Event already processed");
     }
 
-    log.info("[WEBHOOK CONTROLLER]: Processing event with ID: {} and type: {}", event.getId(), event.getType());
-    webhookEventRepository.save(new WebhookEvent(event.getId(), event.getType()));
 
-    log.info("[WEBHOOK CONTROLLER]: Saving event with ID: {} to the database", event.getId());
+    log.info("[WEBHOOK CONTROLLER]: Sending event with ID: {} to queue", event.getId());
     messageSender.sendEvent(event);
 
     return ResponseEntity.ok("Webhook event processed successfully");

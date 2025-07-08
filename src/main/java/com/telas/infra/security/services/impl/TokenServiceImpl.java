@@ -22,7 +22,6 @@ import java.time.LocalDateTime;
 import java.time.ZoneOffset;
 import java.util.ArrayList;
 import java.util.HashSet;
-import java.util.Map;
 import java.util.Set;
 
 @Service
@@ -40,17 +39,10 @@ public class TokenServiceImpl implements TokenService {
       Algorithm algorithm = Algorithm.HMAC256(secret);
       AuthenticatedUser user = new AuthenticatedUser(client);
 
-      Map<String, Object> payload = Map.of(
-              SharedConstants.PERMISSIONS, new ArrayList<>(getPermissions(user)),
-              "id", client.getId(),
-              "businessName", client.getBusinessName(),
-              "identificationNumber", client.getIdentificationNumber()
-      );
-
       return JWT.create()
               .withIssuer(SharedConstants.PROJECT_NAME)
               .withSubject(client.getId().toString())
-              .withClaim("permissions", new ArrayList<>(getPermissions(user)))
+              .withClaim(SharedConstants.PERMISSIONS, new ArrayList<>(getPermissions(user)))
               .withClaim("id", client.getId().toString())
               .withClaim("businessName", client.getBusinessName())
               .withClaim("identificationNumber", client.getIdentificationNumber())

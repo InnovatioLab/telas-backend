@@ -105,8 +105,9 @@ public interface MonitorRepository extends JpaRepository<Monitor, UUID>, JpaSpec
   @Query("""
               SELECT new com.telas.dtos.response.MonitorValidationResponseDto(
                   m.id,
-                  (m.active = true AND m.maxBlocks >
-                      (SELECT COUNT(*) FROM MonitorAd ma WHERE ma.id.monitor.id = m.id)),
+                  (m.active = true
+                   AND m.maxBlocks > (SELECT COUNT(*) FROM MonitorAd ma WHERE ma.id.monitor.id = m.id)
+                  ),
                   CASE WHEN EXISTS (
                       SELECT 1 FROM Subscription s
                       JOIN s.monitors sm
@@ -114,7 +115,11 @@ public interface MonitorRepository extends JpaRepository<Monitor, UUID>, JpaSpec
                         AND s.client.id = :clientId
                         AND s.status = 'ACTIVE'
                         AND (s.endsAt IS NULL OR s.endsAt > CURRENT_TIMESTAMP)
-                  ) THEN true ELSE false END
+                  ) THEN true ELSE false END,
+                  CASE
+                      WHEN (m.box IS NULL OR m.box.active = false) THEN true
+                      ELSE false
+                  END
               )
               FROM Monitor m
               WHERE m.id IN :monitorIds

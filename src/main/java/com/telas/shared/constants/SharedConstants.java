@@ -1,7 +1,5 @@
 package com.telas.shared.constants;
 
-import java.util.List;
-
 public final class SharedConstants {
   public static final String DAILY_CRON = "0 0 3 * * *";
   public static final String EXPIRY_SUBSCRIPTION_CRON = "0 0 19 * * *";
@@ -19,26 +17,22 @@ public final class SharedConstants {
   public static final String EMAIL_SUBJECT_FIRST_SUBSCRIPTION = "Your Ad service Purchase is Confirmed";
   public static final String TEMPLATE_EMAIL_SUBSCRIPTION_EXPIRING = "email_subscription_about_expire.ftlh";
   public static final String EMAIL_SUBJECT_SUBSCRIPTION_EXPIRING = "Your Ad service is about to expire – Renew Today!";
-  public static final int ZERO = 0;
 
-  public static final List<String> FORMATOS_PERMITIDOS_ANEXO = List.of("jpeg", "png");
 
   public static final String REGEX_ONLY_NUMBERS = "^\\d+$";
-  public static final String REGEX_IDENTIFICATION_NUMBER_CLIENT = "^\\d{9}$";
-  public static final String REGEX_IDENTIFICATION_NUMBER_OWNER = "^(?!666|000|9\\d{2})\\d{9}$";
   public static final String REGEX_ALPHANUMERIC = "^[A-Za-zÀ-ÿ0-9\\s]*$";
   public static final String REGEX_PASSWORD = "^[a-zA-Z0-9!@#$%^&*()_+\\-=\\[\\]{};':\"\\\\|,.<>\\/?]+$";
   public static final String REGEX_ONLY_LETTERS = "^[a-zA-ZÀ-ÖØ-öø-ÿ\\s]*$";
-  public static final String REGEX_ONLY_LETTERS_NUMBERS = "[\\p{L}0-9\\s-.,]+";
   public static final String REGEX_ZIP_CODE = "\\d{5}";
   public static final String REGEX_IP = "^((25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\\.){3}(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$";
 
   public static final String REGEX_ATTACHMENT_NAME = ".*\\.(jpg|jpeg|png|gif|svg|bmp|tiff)$";
   public static final String REGEX_ATTACHMENT_TYPE = "image/(jpg|jpeg|png|gif|svg|bmp|tiff)";
 
+  public static final int ZERO = 0;
   public static final int ATTACHMENT_LINK_EXPIRY_TIME = 7 * 24 * 60 * 60;
   public static final int MAX_ATTACHMENT_SIZE = 10 * 1024 * 1024;
-  public static final int MAX_ATTACHMENT_PER_CLIENT = 10;
+  public static final int MAX_ATTACHMENT_PER_CLIENT = 3;
   public static final int AD_DISPLAY_TIME_IN_SECONDS = 5;
   public static final int TOTAL_SECONDS_IN_A_MINUTE = 60;
 

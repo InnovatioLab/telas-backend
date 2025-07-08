@@ -20,6 +20,7 @@ import com.telas.services.NotificationService;
 import com.telas.shared.audit.CustomRevisionListener;
 import com.telas.shared.constants.SharedConstants;
 import com.telas.shared.constants.valitation.PaymentValidationMessages;
+import com.telas.shared.utils.DateUtils;
 import com.telas.shared.utils.MoneyUtils;
 import com.telas.shared.utils.ValidateDataUtils;
 import lombok.RequiredArgsConstructor;
@@ -31,8 +32,6 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.time.Instant;
-import java.time.ZoneId;
-import java.time.format.DateTimeFormatter;
 import java.util.*;
 
 @Component
@@ -274,8 +273,8 @@ public class PaymentHelper {
             : null;
 
     if (recurrence != null) {
+      subscription.setEndsAt(recurrence.calculateEndsAtUpgrade(subscription.getEndsAt(), subscription.getRecurrence()));
       subscription.setRecurrence(recurrence);
-      subscription.setEndsAt(recurrence.calculateEndsAt(subscription.getEndsAt()));
     } else {
       subscription.initialize();
     }
@@ -317,12 +316,13 @@ public class PaymentHelper {
 
     if (subscription.isUpgrade()) {
       log.info("Skipping cart inactivation for upgraded subscription: {}", subscription.getId());
+      createUpgradeSubscriptionNotification(subscription);
       subscription.setUpgrade(false);
       return;
     }
 
     if (!isRecurringPayment) {
-      handleNonRecurringPayment(subscription);
+      subscriptionHelper.handleBonusSubscriptionOrNonRecurringPayment(subscription);
     }
   }
 
@@ -341,17 +341,6 @@ public class PaymentHelper {
     }
   }
 
-  private void handleNonRecurringPayment(Subscription subscription) {
-    Client client = subscription.getClient();
-    subscriptionHelper.inactivateCart(client);
-    subscriptionHelper.deleteSubscriptionFlow(client);
-    clientRepository.save(client);
-
-    if (!subscription.isUpgrade()) {
-      sendFirstBuyEmail(subscription);
-    }
-  }
-
   @Transactional
   public void updateAuditInfo(Subscription subscription) {
     CustomRevisionListener.setUsername("Stripe Webhook");
@@ -364,24 +353,19 @@ public class PaymentHelper {
     return subscriptionHelper.getStripeSubscription(subscription);
   }
 
-  private void sendFirstBuyEmail(Subscription subscription) {
-    Map<String, String> params = new HashMap<>(Map.of(
-            "name", subscription.getClient().getBusinessName(),
-            "locations", String.join(", ", subscription.getMonitorAddresses()),
-            "startDate", formatDate(subscription.getStartedAt()),
-            "link", frontBaseUrl + "/subscription/" + subscription.getId()
-    ));
+  private void createUpgradeSubscriptionNotification(Subscription subscription) {
+    Map<String, String> params = new HashMap<>();
+    params.put("locations", subscription.getMonitorAddresses());
+    params.put("link", frontBaseUrl + "/subscriptions");
 
     if (subscription.getEndsAt() != null) {
-      params.put("endDate", formatDate(subscription.getEndsAt()));
+      params.put("endDate", DateUtils.formatInstantToString(subscription.getEndsAt()));
     }
 
-    notificationService.save(NotificationReference.FIRST_SUBSCRIPTION, subscription.getClient(), params, true);
+    notificationService.save(NotificationReference.SUBSCRIPTION_UPGRADE, subscription.getClient(), params, false);
   }
 
-  private String formatDate(Instant date) {
-    return DateTimeFormatter.ofPattern("MM/dd/yyyy")
-            .withZone(ZoneId.of(SharedConstants.ZONE_ID))
-            .format(date);
+  public String getSuccessUrl(Client client) {
+    return subscriptionHelper.getRedirectUrlAfterCreatingNewSubscription(client);
   }
 }

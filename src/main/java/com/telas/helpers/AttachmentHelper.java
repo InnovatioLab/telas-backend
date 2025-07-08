@@ -38,6 +38,7 @@ public class AttachmentHelper {
   private final NotificationService notificationService;
   private final AdRequestRepository adRequestRepository;
   private final ClientRepository clientRepository;
+  private final MonitorHelper monitorHelper;
 
   @Value("${front.base.url}")
   private String frontBaseUrl;
@@ -159,10 +160,24 @@ public class AttachmentHelper {
   }
 
   private void updateExistingAdFromRequest(Ad ad, AdRequestDto adRequest) {
+    verifyFileNameChanged(adRequest, ad);
     bucketService.deleteAttachment(AttachmentUtils.format(ad));
+    List<String> oldAdNameList = Collections.singletonList(ad.getName());
     ad.setName(adRequest.getName());
     ad.setType(adRequest.getType());
+
+    if (shouldRemoveAdFromMonitors(ad)) {
+      monitorHelper.sendBoxesMonitorsRemoveAd(ad, oldAdNameList);
+    }
+
     ad.setValidation(AdValidationType.PENDING);
+  }
+
+  private boolean shouldRemoveAdFromMonitors(Ad ad) {
+    Client client = ad.getClient();
+    return AdValidationType.APPROVED.equals(ad.getValidation())
+           && !Role.ADMIN.equals(client.getRole())
+           && !client.getActiveSubscriptions().isEmpty();
   }
 
   private <T extends AttachmentRequestDto> void handleExistingAttachment(T attachment) {

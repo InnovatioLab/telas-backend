@@ -180,11 +180,10 @@ public class PaymentServiceImpl implements PaymentService {
     Customer customer = getOrCreateCustomer(subscription);
     Map<String, String> metaData = helper.createMetaData(subscription, payment, recurrence);
 
-    String successUrl = frontBaseUrl + "/success?subscriptionId=" + subscription.getId() +
-                        (subscription.getClient().getAds().isEmpty() ? "&ads=true" : "");
+    String successUrl = helper.getSuccessUrl(subscription.getClient());
 
     boolean isSubscription = Recurrence.MONTHLY.equals(subscription.getRecurrence()) || Recurrence.MONTHLY.equals(recurrence);
-
+    
     long expiresAt = (System.currentTimeMillis() / 1000L) + 1800;
 
     SessionCreateParams.Builder paramsBuilder = SessionCreateParams.builder()

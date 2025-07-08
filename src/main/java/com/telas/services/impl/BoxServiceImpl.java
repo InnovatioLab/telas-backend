@@ -6,7 +6,7 @@ import com.telas.dtos.response.StatusMonitorsResponseDto;
 import com.telas.entities.Box;
 import com.telas.entities.Ip;
 import com.telas.entities.Monitor;
-import com.telas.helpers.BoxRequestHelper;
+import com.telas.helpers.BoxHelper;
 import com.telas.infra.exceptions.ResourceNotFoundException;
 import com.telas.infra.security.services.AuthenticatedUserService;
 import com.telas.repositories.BoxRepository;
@@ -26,7 +26,7 @@ public class BoxServiceImpl implements BoxService {
   private final BoxRepository repository;
   private final AuthenticatedUserService authenticatedUserService;
   private final MonitorRepository monitorRepository;
-  private final BoxRequestHelper helper;
+  private final BoxHelper helper;
 
   @Override
   @Transactional
@@ -42,9 +42,14 @@ public class BoxServiceImpl implements BoxService {
   }
 
   @Override
-  @Transactional(readOnly = true)
+  @Transactional
   public List<BoxMonitorAdResponseDto> getMonitorsAdsByIp(String ip) {
     Box box = findByIp(ip);
+
+    if (activateBoxIfInactive(box)) {
+      repository.save(box);
+    }
+
     return helper.getBoxMonitorAdResponse(box);
   }
 
@@ -55,6 +60,14 @@ public class BoxServiceImpl implements BoxService {
       return;
     }
     helper.checkMonitorsHealth(responseList);
+  }
+
+  private boolean activateBoxIfInactive(Box box) {
+    if (!box.isActive()) {
+      box.setActive(true);
+      return true;
+    }
+    return false;
   }
 
   private Box findById(UUID boxId) {

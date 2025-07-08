@@ -6,6 +6,8 @@ import lombok.Getter;
 
 import java.math.BigDecimal;
 import java.time.Instant;
+import java.time.LocalDate;
+import java.time.ZoneOffset;
 import java.util.List;
 
 @Getter
@@ -24,7 +26,19 @@ public enum Recurrence {
   }
 
   public Instant calculateEndsAt(Instant startedAt) {
-    return days > 0 ? startedAt.plusSeconds(days * 24 * 60 * 60) : null;
+    if (days <= 0) {
+      return null;
+    }
+    LocalDate startDate = startedAt.atZone(ZoneOffset.UTC).toLocalDate();
+    LocalDate endDate = startDate.plusDays(days);
+    return endDate.atTime(startedAt.atZone(ZoneOffset.UTC).toLocalTime()).toInstant(ZoneOffset.UTC);
+  }
+
+  public Instant calculateEndsAtUpgrade(Instant currentEndsAt, Recurrence previousRecurrence) {
+    long daysToAdd = days - previousRecurrence.days;
+    LocalDate currentDate = currentEndsAt.atZone(ZoneOffset.UTC).toLocalDate();
+    LocalDate newDate = currentDate.plusDays(daysToAdd);
+    return newDate.atTime(currentEndsAt.atZone(ZoneOffset.UTC).toLocalTime()).toInstant(ZoneOffset.UTC);
   }
 
   public void validateUpgradeTo(Recurrence target) {

@@ -8,7 +8,7 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RequestHeader;
 
 import java.util.List;
 import java.util.UUID;
@@ -38,7 +38,7 @@ public interface BoxController {
           @ApiResponse(responseCode = "422", description = "Request with invalid data."),
           @ApiResponse(responseCode = "404", description = "Some data not found."),
   })
-  ResponseEntity<?> getMonitorsAdsByIp(@RequestParam(name = "ip") String ip);
+  ResponseEntity<?> getMonitorsAdsByIp(@RequestHeader("X-Box-Ip") String ip);
 
   @Operation(summary = "Endpoint to get monitors health from the box and update monitor status", responses = {
           @ApiResponse(responseCode = "204", description = "Monitors health checked successfully."),

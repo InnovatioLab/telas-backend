@@ -43,14 +43,6 @@ public interface SubscriptionController {
   })
   ResponseEntity<?> upgradeSubscription(UUID subscriptionId, Recurrence recurrence);
 
-  @Operation(summary = "Endpoint contract to check if an one time buy subscription can be upgraded", responses = {
-          @ApiResponse(responseCode = "200", description = "Success"),
-          @ApiResponse(responseCode = "401", description = "Unauthorized."),
-          @ApiResponse(responseCode = "403", description = "Forbidden."),
-          @ApiResponse(responseCode = "404", description = "Subscription not found."),
-  })
-  ResponseEntity<?> checkIfCanBeUpgraded(UUID subscriptionId, Recurrence recurrence);
-
   @Operation(summary = "Endpoint contract to cancel a monthly and active subscription by id", responses = {
           @ApiResponse(responseCode = "204", description = "Subscription cancelled successfully."),
           @ApiResponse(responseCode = "401", description = "Unauthorized."),

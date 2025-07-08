@@ -67,6 +67,8 @@ public class Address extends BaseAudit implements Serializable {
   public Address(AddressRequestDto request, Client client) {
     this(request);
     this.client = client;
+    client.getAddresses().add(this);
+    setUsernameCreate(client.getBusinessName());
   }
 
   public Address(AddressRequestDto request) {

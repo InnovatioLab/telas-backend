@@ -36,6 +36,8 @@ public class SubscriptionMinResponseDto implements Serializable {
 
   private Long daysLeft;
 
+  private boolean ableToUpgrade;
+
   private List<SubscriptionMonitorMinResponseDto> monitors;
 
   public SubscriptionMinResponseDto(Subscription entity) {
@@ -47,6 +49,7 @@ public class SubscriptionMinResponseDto implements Serializable {
     startedAt = entity.getStartedAt();
     endsAt = entity.getEndsAt();
     daysLeft = (endsAt != null) ? Duration.between(Instant.now(), endsAt).toDays() : null;
+    ableToUpgrade = entity.ableToUpgrade();
     monitors = entity.getMonitors().stream()
             .map(SubscriptionMonitorMinResponseDto::new)
             .toList();

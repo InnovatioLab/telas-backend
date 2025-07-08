@@ -3,6 +3,7 @@ package com.telas.services.impl;
 import com.telas.dtos.request.AddressRequestDto;
 import com.telas.dtos.response.AddressFromZipCodeResponseDto;
 import com.telas.entities.Address;
+import com.telas.entities.Client;
 import com.telas.infra.exceptions.ResourceNotFoundException;
 import com.telas.repositories.AddressRepository;
 import com.telas.services.AddressService;
@@ -46,7 +47,7 @@ public class AddressServiceImpl implements AddressService {
   }
 
   @Override
-  @Transactional
+  @Transactional(readOnly = true)
   public Address findById(UUID id) {
     return repository.findById(id)
             .orElseThrow(() -> new ResourceNotFoundException(AddressValidationMessages.ADDRESS_NOT_FOUND));
@@ -55,7 +56,7 @@ public class AddressServiceImpl implements AddressService {
   @Override
   @Transactional
   public Address getOrCreateAddress(AddressRequestDto addressRequestDto) {
-    return repository.findByStreetAndCityAndStateAndZipCodeWithoutClient(
+    return repository.findByStreetAndCityAndStateAndZipCode(
             addressRequestDto.getStreet(),
             addressRequestDto.getCity(),
             addressRequestDto.getState(),
@@ -63,5 +64,21 @@ public class AddressServiceImpl implements AddressService {
     ).orElseGet(() -> save(addressRequestDto));
   }
 
+  @Override
+  @Transactional
+  public Address getOrCreateAddress(AddressRequestDto addressRequestDto, Client client) {
+    return repository.findByStreetAndCityAndStateAndZipCodeAndClientId(
+            addressRequestDto.getStreet(),
+            addressRequestDto.getCity(),
+            addressRequestDto.getState(),
+            addressRequestDto.getZipCode(),
+            client.getId()
+    ).orElseGet(() -> createAddressForClient(addressRequestDto, client));
+  }
 
+  private Address createAddressForClient(AddressRequestDto addressRequestDto, Client client) {
+    Address newAddress = new Address(addressRequestDto, client);
+    client.getAddresses().add(newAddress);
+    return newAddress;
+  }
 }
