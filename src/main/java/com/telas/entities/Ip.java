@@ -29,12 +29,15 @@ public class Ip implements Serializable {
   @Column(name = "ip_address", nullable = false)
   private String ipAddress;
 
+  @Column(name = "dns")
+  private String dns;
+
+  @JsonIgnore
+  @OneToOne(mappedBy = "ip", cascade = CascadeType.ALL)
+  private Box box;
+
   @JsonIgnore
   @Column(name = "created_at", columnDefinition = "TIMESTAMP WITHOUT TIME ZONE", nullable = false, updatable = false)
   @CreatedDate
   private Instant createdAt = Instant.now();
-
-  public Ip(String ipAddress) {
-    this.ipAddress = ipAddress;
-  }
 }

@@ -29,6 +29,7 @@ CREATE TABLE "ips"
 (
   "id"         UUID PRIMARY KEY,
   "ip_address" VARCHAR(45)              NOT NULL,
+  "dns"        VARCHAR(255)             NULL     DEFAULT NULL,
   "created_at" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT (now())
 );
 
@@ -564,19 +565,6 @@ CREATE TABLE "carts_items_aud"
   CONSTRAINT "fk_tbcarts_items_aud_tbaudit" FOREIGN KEY ("audit_id") REFERENCES "audit" ("audit_id") ON UPDATE NO ACTION ON DELETE NO ACTION
 );
 
--- Ultima tela, clica para gerar o pedido
--- Inativar o carrinho, setar subscriptions_flows como FINALIZADA, gerar a subscription e o pagamento.
--- AdRequest,
-
--- Step 0: Selecionar as telas e quantidade de blocos por tela
--- Step 1: Vai ter um resumo das telas selecionadas, da quantidade de blocos por tela, Seleciona a Recorrência e vê o valor total
--- Step 2: Concluir a Subscription e faz o pagamento na stripe
-
--- Continuando o fluxo pós compra
--- Se o pagamento foi sucedido, client faz o upload das artes e cria um AdRequest para o Admin
--- Receber o Ad para poder valida-lo ou não
--- Se o Ad for validado, o monitor é atualizado recebendo o Ad
-
 CREATE TABLE "subscriptions_flows"
 (
   "id"        UUID PRIMARY KEY,
@@ -625,6 +613,9 @@ VALUES ('eb1f62bf-9d16-45c1-be45-bd52f97dffb2',
         now(),
         'Virtual Assistant',
         'Virtual Assistant');
+
+INSERT INTO "ips" (id, ip_address)
+VALUES (gen_random_uuid(), '192.168.0.7');
 
 CREATE INDEX idx_email ON contacts (email);
 

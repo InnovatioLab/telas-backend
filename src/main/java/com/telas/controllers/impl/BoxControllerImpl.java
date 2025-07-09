@@ -23,6 +23,14 @@ public class BoxControllerImpl implements BoxController {
   private final BoxService service;
 
   @Override
+  @GetMapping
+  @SecurityRequirement(name = "jwt")
+  public ResponseEntity<?> findAll() {
+    return ResponseEntity.status(HttpStatus.OK)
+            .body(ResponseDto.fromData(service.findAll(), HttpStatus.OK, MessageCommonsConstants.FIND_ALL_SUCCESS_MESSAGE));
+  }
+
+  @Override
   @PostMapping
   @SecurityRequirement(name = "jwt")
   public ResponseEntity<?> save(@Valid @RequestBody BoxRequestDto request) {
@@ -41,7 +49,7 @@ public class BoxControllerImpl implements BoxController {
   }
 
   @Override
-  @GetMapping
+  @GetMapping("/ads")
   public ResponseEntity<?> getMonitorsAdsByIp(@RequestHeader("X-Box-Ip") String ip) {
     return ResponseEntity.status(HttpStatus.OK)
             .body(ResponseDto.fromData(service.getMonitorsAdsByIp(ip), HttpStatus.OK, MessageCommonsConstants.FIND_ID_SUCCESS_MESSAGE));

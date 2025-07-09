@@ -2,6 +2,7 @@ package com.telas.services.impl;
 
 import com.telas.dtos.request.BoxRequestDto;
 import com.telas.dtos.response.BoxMonitorAdResponseDto;
+import com.telas.dtos.response.BoxResponseDto;
 import com.telas.dtos.response.StatusMonitorsResponseDto;
 import com.telas.entities.Box;
 import com.telas.entities.Ip;
@@ -29,11 +30,21 @@ public class BoxServiceImpl implements BoxService {
   private final BoxHelper helper;
 
   @Override
+  @Transactional(readOnly = true)
+  public List<BoxResponseDto> findAll() {
+    authenticatedUserService.validateAdmin();
+
+    return repository.findAll().stream()
+            .map(BoxResponseDto::new)
+            .toList();
+  }
+
+  @Override
   @Transactional
   public void save(BoxRequestDto request, UUID boxId) {
     authenticatedUserService.validateAdmin();
 
-    Ip ip = helper.getIp(request.getIp());
+    Ip ip = helper.getIp(request.getIpId());
     List<Monitor> monitors = helper.getMonitors(request.getMonitorIds());
     Box box = (boxId != null) ? updateBox(request, boxId, ip, monitors) : createBox(request, ip, monitors);
 
@@ -76,12 +87,12 @@ public class BoxServiceImpl implements BoxService {
   }
 
   private Box findByIp(String ip) {
-    return repository.findByIp(ip)
+    return repository.findByIpAddress(ip)
             .orElseThrow(() -> new ResourceNotFoundException(BoxValidationMessages.BOX_NOT_FOUND));
   }
 
   private Box createBox(BoxRequestDto request, Ip ip, List<Monitor> monitors) {
-    helper.validateUniqueBoxByIp(request.getIp());
+    helper.validateUniqueBoxByIp(request.getIpId());
 
     if (monitors.stream().anyMatch(monitor -> monitor.getBox() != null)) {
       throw new ResourceNotFoundException(BoxValidationMessages.MONITOR_ALREADY_ASSOCIATED);
@@ -95,8 +106,8 @@ public class BoxServiceImpl implements BoxService {
   private Box updateBox(BoxRequestDto request, UUID boxId, Ip ip, List<Monitor> monitors) {
     Box box = findById(boxId);
 
-    if (!box.getIp().getIpAddress().equals(request.getIp())) {
-      helper.validateUniqueBoxByIp(request.getIp());
+    if (!box.getIp().getId().equals(request.getIpId())) {
+      helper.validateUniqueBoxByIp(request.getIpId());
       box.setIp(ip);
     }
 

@@ -114,20 +114,20 @@ public class MonitorServiceImpl implements MonitorService {
 
   @Override
   @Transactional(readOnly = true)
-  public Map<String, List<MonitorMinResponseDto>> findNearestActiveMonitors(String zipCodes, BigDecimal sizeFilter, String typeFilter, int limit) {
+  public Map<String, List<MonitorMapsResponseDto>> findNearestActiveMonitors(String zipCodes, BigDecimal sizeFilter, String typeFilter, int limit) {
     String countryCode = "US";
     List<String> zipCodeList = helper.validateZipCodeList(zipCodes);
 
-    Map<String, List<MonitorMinResponseDto>> result = new HashMap<>();
+    Map<String, List<MonitorMapsResponseDto>> result = new HashMap<>();
 
     zipCodeList.forEach(zipCode -> {
       Map<String, Double> coordinates = helper.getCoordinatesFromZipCode(zipCode, countryCode);
       double latitude = coordinates.get("latitude");
       double longitude = coordinates.get("longitude");
 
-      List<MonitorMinResponseDto> monitors = repository.findNearestActiveMonitorsWithFilters(latitude, longitude, sizeFilter, typeFilter, limit)
+      List<MonitorMapsResponseDto> monitors = repository.findNearestActiveMonitorsWithFilters(latitude, longitude, sizeFilter, typeFilter, limit)
               .stream()
-              .map(resultRow -> new MonitorMinResponseDto(
+              .map(resultRow -> new MonitorMapsResponseDto(
                       resultRow[0].toString(),
                       Boolean.parseBoolean(resultRow[1].toString()), // Ativo
                       resultRow[2].toString(), // Tipo

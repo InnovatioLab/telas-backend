@@ -4,7 +4,7 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.telas.controllers.MonitorController;
 import com.telas.dtos.request.MonitorRequestDto;
 import com.telas.dtos.request.filters.FilterMonitorRequestDto;
-import com.telas.dtos.response.MonitorMinResponseDto;
+import com.telas.dtos.response.MonitorMapsResponseDto;
 import com.telas.dtos.response.MonitorResponseDto;
 import com.telas.dtos.response.PaginationResponseDto;
 import com.telas.dtos.response.ResponseDto;
@@ -80,7 +80,7 @@ public class MonitorControllerImpl implements MonitorController {
           @RequestParam(required = false) BigDecimal size,
           @RequestParam(required = false) String type,
           @RequestParam(defaultValue = "3") int limit) {
-    Map<String, List<MonitorMinResponseDto>> monitors = service.findNearestActiveMonitors(zipCodes, size, type, limit);
+    Map<String, List<MonitorMapsResponseDto>> monitors = service.findNearestActiveMonitors(zipCodes, size, type, limit);
     String message = monitors.isEmpty() ? MessageCommonsConstants.FIND_FILTER_EMPTY_MESSAGE : MessageCommonsConstants.FIND_ALL_SUCCESS_MESSAGE;
     return ResponseEntity.status(HttpStatus.OK).body(ResponseDto.fromData(monitors, HttpStatus.OK, message));
   }

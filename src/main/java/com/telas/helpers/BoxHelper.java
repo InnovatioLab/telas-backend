@@ -39,16 +39,16 @@ public class BoxHelper {
   private final HttpClientUtil httpClient;
 
   @Transactional(readOnly = true)
-  public void validateUniqueBoxByIp(String ip) {
-    if (boxRepository.findByIp(ip).isPresent()) {
+  public void validateUniqueBoxByIp(UUID ipId) {
+    if (boxRepository.findByIp(ipId).isPresent()) {
       throw new BusinessRuleException(BoxValidationMessages.BOX_ALREADY_EXISTS_FOR_IP);
     }
   }
 
   @Transactional(readOnly = true)
-  public Ip getIp(String ip) {
-    return ipRepository.findByIpAddress(ip)
-            .orElseGet(() -> ipRepository.save(new Ip(ip)));
+  public Ip getIp(UUID ipId) {
+    return ipRepository.findById(ipId)
+            .orElseThrow(() -> new ResourceNotFoundException(BoxValidationMessages.IP_NOT_FOUND));
   }
 
   @Transactional(readOnly = true)

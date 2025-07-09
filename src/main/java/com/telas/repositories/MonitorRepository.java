@@ -75,11 +75,19 @@ public interface MonitorRepository extends JpaRepository<Monitor, UUID>, JpaSpec
                              ) / 1000 AS numeric
                          ), 2
                      ) AS distance,
-                     CASE 
-                         WHEN (SELECT COUNT(*) FROM monitors_ads ma WHERE ma.monitor_id = m.id) < m.max_blocks 
-                         THEN true 
-                         ELSE false 
-                     END AS has_available_slots,
+                     CASE
+                      WHEN
+                        (SELECT COUNT(*) FROM monitors_ads ma WHERE ma.monitor_id = m.id) < m.max_blocks
+                        AND
+                        (SELECT COUNT(*) FROM subscriptions_monitors sm
+                          JOIN subscriptions s ON sm.subscription_id = s.id
+                          WHERE sm.monitor_id = m.id
+                            AND s.status = 'ACTIVE'
+                            AND (s.ends_at IS NULL OR s.ends_at > NOW())
+                        ) < m.max_blocks
+                      THEN true
+                      ELSE false
+                    END AS has_available_slots,
                      (SELECT MIN(s.ends_at) 
                       FROM subscriptions s 
                       WHERE s.id IN (
@@ -91,6 +99,7 @@ public interface MonitorRepository extends JpaRepository<Monitor, UUID>, JpaSpec
               FROM monitors m
               JOIN addresses a ON m.address_id = a.id
               WHERE m.fl_active = TRUE
+                AND m.box_id IS NOT NULL
                 AND (:size IS NULL OR m.size_in_inches >= :size)
                 AND (:type IS NULL OR m.type = :type)
               ORDER BY distance

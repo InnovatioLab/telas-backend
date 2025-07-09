@@ -21,7 +21,7 @@ public interface MonitorService {
 
   Monitor findEntityById(UUID monitorId);
 
-  Map<String, List<MonitorMinResponseDto>> findNearestActiveMonitors(String zipCodes, BigDecimal sizeFilter, String typeFilter, int limit);
+  Map<String, List<MonitorMapsResponseDto>> findNearestActiveMonitors(String zipCodes, BigDecimal sizeFilter, String typeFilter, int limit);
 
   List<Monitor> findAllByIds(List<UUID> monitorIds);
 

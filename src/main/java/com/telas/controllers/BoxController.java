@@ -15,6 +15,13 @@ import java.util.UUID;
 
 @Tag(name = "Boxes", description = "Endpoints to manage monitors boxes")
 public interface BoxController {
+  @Operation(summary = "Endpoint to find all boxes", responses = {
+          @ApiResponse(responseCode = "200", description = "Boxes found successfully."),
+          @ApiResponse(responseCode = "401", description = "Unauthorized."),
+          @ApiResponse(responseCode = "403", description = "Forbidden."),
+  })
+  ResponseEntity<?> findAll();
+
   @Operation(summary = "Endpoint to create a box", responses = {
           @ApiResponse(responseCode = "201", description = "Box created successfully."),
           @ApiResponse(responseCode = "422", description = "Request with invalid data."),
