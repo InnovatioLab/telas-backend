@@ -12,17 +12,12 @@ import java.util.UUID;
 public interface OwnerRepository extends JpaRepository<Owner, UUID> {
   @Query("SELECT CASE WHEN COUNT(o) > 0 THEN true ELSE false END " +
          "FROM Owner o " +
-         "WHERE o.email = :email")
+         "WHERE o.email IS NOT NULL AND o.email = :email")
   boolean existsByEmail(String email);
-
-  @Query("SELECT CASE WHEN COUNT(o) > 0 THEN true ELSE false END " +
-         "FROM Owner o " +
-         "WHERE o.identificationNumber = :identificationNumber")
-  boolean existsByIdentificationNumber(String identificationNumber);
 
   @Query("SELECT o FROM Owner o WHERE o.identificationNumber = :identificationNumber")
   Optional<Owner> findByIdentificationNumber(String identificationNumber);
 
-  @Query("SELECT o FROM Owner o WHERE o.email = :email")
+  @Query("SELECT o FROM Owner o WHERE o.email IS NOT NULL AND o.email = :email")
   Optional<Owner> findByEmail(String email);
 }

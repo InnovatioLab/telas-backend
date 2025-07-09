@@ -109,18 +109,12 @@ public class ClientHelper {
       throw new BusinessRuleException(ClientValidationMessages.EMAIL_UNIQUE);
     }
 
-
     if (client != null) {
-      if (isEmailChanged(client.getContact().getEmail(), newEmail) && contactRepository.existsByEmail(newEmail)) {
-        throw new BusinessRuleException(ClientValidationMessages.EMAIL_UNIQUE);
-      }
-
       String newEmailOwner = request.getOwner().getEmail();
 
-      if (isEmailChanged(client.getOwner().getEmail(), newEmailOwner) && contactRepository.existsByEmail(newEmail)) {
+      if (isEmailChanged(client.getOwner().getEmail(), newEmailOwner) && ownerRepository.existsByEmail(newEmailOwner)) {
         throw new BusinessRuleException(ClientValidationMessages.OWNER_EMAIL_UNIQUE);
       }
-
     }
   }
 

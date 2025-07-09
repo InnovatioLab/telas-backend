@@ -57,10 +57,10 @@ public class Owner extends BaseAudit implements Serializable {
     phone = request.getPhone();
   }
 
-  public void update(OwnerRequestDto owner) {
-    firstName = owner.getFirstName();
-    lastName = owner.getLastName();
-    email = owner.getEmail();
-    phone = owner.getPhone();
+  public void update(OwnerRequestDto request) {
+    firstName = !firstName.equalsIgnoreCase(request.getFirstName()) ? request.getFirstName() : firstName;
+    lastName = request.getLastName();
+    email = request.getEmail();
+    phone = request.getPhone();
   }
 }
