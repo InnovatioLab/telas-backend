@@ -69,7 +69,7 @@ public class ClientServiceImpl implements ClientService {
 
     Client client = new Client(request, owner);
     VerificationCode verificationCode = verificationCodeService.save(CodeType.CONTACT, client);
-//    verificationCode.setValidated(true);
+    verificationCode.setValidated(true);
     client.setVerificationCode(verificationCode);
 
     if (Objects.equals(client.getBusinessName(), "Admin")) {
@@ -82,7 +82,7 @@ public class ClientServiceImpl implements ClientService {
     client.setTermCondition(actualTermCondition);
     client.setTermAcceptedAt(Instant.now());
 
-    sendContactConfirmationEmail(client, verificationCode);
+//    sendContactConfirmationEmail(client, verificationCode);
     repository.save(client);
   }
 

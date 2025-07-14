@@ -184,15 +184,15 @@ public class SubscriptionServiceImpl implements SubscriptionService {
   @Scheduled(cron = SharedConstants.EXPIRY_SUBSCRIPTION_CRON, zone = SharedConstants.ZONE_ID)
   @SchedulerLock(name = "sendSubscriptionExpirationEmailLock", lockAtLeastFor = "PT10M", lockAtMostFor = "PT30M")
   public void sendSubscriptionExpirationEmail() {
-    Instant exactDate = Instant.now().plus(15, ChronoUnit.DAYS);
+    Instant exactDate = Instant.now().plus(7, ChronoUnit.DAYS);
     List<Subscription> subscriptions = repository.findSubscriptionsExpiringExactlyOn(exactDate);
 
     if (subscriptions.isEmpty()) {
-      log.info("No subscriptions expiring in 15 days.");
+      log.info("No subscriptions expiring in 7 days.");
       return;
     }
 
-    log.info("Found {} subscriptions expiring in 15 days, sending emails.", subscriptions.size());
+    log.info("Found {} subscriptions expiring in 7 days, sending emails.", subscriptions.size());
 
     subscriptions.forEach(subscription -> {
       log.info("Sending expiration email for subscription with id: {}", subscription.getId());

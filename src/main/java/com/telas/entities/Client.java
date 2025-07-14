@@ -171,7 +171,7 @@ public class Client extends BaseAudit implements Serializable {
   }
 
   public boolean isFirstSubscription() {
-    return getActiveSubscriptions().size() == SharedConstants.MIN_QUANTITY_MONITOR_BLOCK;
+    return subscriptions.size() == SharedConstants.MIN_QUANTITY_MONITOR_BLOCK;
   }
 
   private void setUsernameCreateForRelatedEntities(String username) {

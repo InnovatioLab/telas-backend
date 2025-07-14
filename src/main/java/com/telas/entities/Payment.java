@@ -3,6 +3,7 @@ package com.telas.entities;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.telas.enums.PaymentStatus;
 import com.telas.shared.audit.BaseAudit;
+import com.telas.shared.constants.SharedConstants;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -33,7 +34,7 @@ public class Payment extends BaseAudit implements Serializable {
   private BigDecimal amount = BigDecimal.valueOf(0.00);
 
   @Column(name = "payment_method")
-  private String paymentMethod;
+  private String paymentMethod = SharedConstants.CARD;
 
   @Column(name = "currency")
   private String currency = "usd";

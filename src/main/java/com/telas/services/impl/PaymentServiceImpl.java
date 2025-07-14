@@ -183,12 +183,13 @@ public class PaymentServiceImpl implements PaymentService {
     String successUrl = helper.getSuccessUrl(subscription.getClient());
 
     boolean isSubscription = Recurrence.MONTHLY.equals(subscription.getRecurrence()) || Recurrence.MONTHLY.equals(recurrence);
-    
+
     long expiresAt = (System.currentTimeMillis() / 1000L) + 1800;
 
     SessionCreateParams.Builder paramsBuilder = SessionCreateParams.builder()
             .setMode(isSubscription ? SessionCreateParams.Mode.SUBSCRIPTION : SessionCreateParams.Mode.PAYMENT)
             .setCustomer(customer.getId())
+            .addPaymentMethodType(SessionCreateParams.PaymentMethodType.CARD)
             .setSuccessUrl(successUrl)
             .setExpiresAt(expiresAt)
             .setCancelUrl(frontBaseUrl + "/profile")
@@ -205,7 +206,7 @@ public class PaymentServiceImpl implements PaymentService {
   }
 
   private void handleFailedPayment(Payment payment) {
-    log.error("Payment failed id: {}", payment.getId());
+    log.warn("Payment failed id: {}", payment.getId());
   }
 
   private void finalizePayment(Payment payment) {

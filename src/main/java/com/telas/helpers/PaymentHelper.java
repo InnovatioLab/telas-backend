@@ -3,7 +3,6 @@ package com.telas.helpers;
 import com.stripe.exception.StripeException;
 import com.stripe.model.*;
 import com.stripe.param.CouponCreateParams;
-import com.stripe.param.InvoicePaymentListParams;
 import com.stripe.param.PriceListParams;
 import com.stripe.param.checkout.SessionCreateParams;
 import com.telas.entities.Client;
@@ -103,7 +102,7 @@ public class PaymentHelper {
             SessionCreateParams.LineItem.builder()
                     .setQuantity(1L)
                     .setPriceData(SessionCreateParams.LineItem.PriceData.builder()
-                            .setCurrency("usd")
+                            .setCurrency(SharedConstants.USD)
                             .setUnitAmount(totalPrice.multiply(BigDecimal.valueOf(100)).longValue())
                             .setProduct(productId)
                             .build())
@@ -180,36 +179,44 @@ public class PaymentHelper {
     }
   }
 
-  @Transactional
-  public void setPaymentMethodForInvoice(Invoice invoice, Payment payment) {
-    try {
-      InvoicePayment invoicePayment = InvoicePayment.list(
-              InvoicePaymentListParams.builder()
-                      .setLimit(1L)
-                      .setInvoice(invoice.getId())
-                      .build()
-      ).getData().stream().findFirst().orElse(null);
+//  @Transactional
+//  public void setPaymentMethodForInvoice(Invoice invoice, Payment payment) {
+//    try {
+//      InvoicePayment invoicePayment = InvoicePayment.list(
+//              InvoicePaymentListParams.builder()
+//                      .setLimit(1L)
+//                      .setInvoice(invoice.getId())
+//                      .build()
+//      ).getData().stream().findFirst().orElse(null);
+//
+//      if (invoicePayment == null) {
+//        return;
+//      }
+//
+//      PaymentIntent paymentIntent = PaymentIntent.retrieve(invoicePayment.getPayment().getPaymentIntent());
+//      
+//      if (paymentIntent == null) {
+//        log.warn("PaymentIntent not found for Invoice ID: {}", invoice.getId());
+//        return;
+//      }
+//      
+//      if (!ValidateDataUtils.isNullOrEmptyString(paymentIntent.getPaymentMethod())) {
+//        setPaymentMethod(paymentIntent, payment);
+//      }
+//    } catch (StripeException e) {
+//      log.error("Failed to set payment method for Invoice ID: {}, error: {}", invoice.getId(), e.getMessage());
+//    }
+//  }
 
-      if (invoicePayment == null) {
-        return;
-      }
-
-      PaymentIntent paymentIntent = PaymentIntent.retrieve(invoicePayment.getPayment().getPaymentIntent());
-      setPaymentMethod(paymentIntent, payment);
-    } catch (StripeException e) {
-      log.error("Failed to set payment method for Invoice ID: {}, error: {}", invoice.getId(), e.getMessage());
-    }
-  }
-
-  @Transactional
-  public void setPaymentMethod(PaymentIntent paymentIntent, Payment payment) {
-    try {
-      PaymentMethod paymentMethod = PaymentMethod.retrieve(paymentIntent.getPaymentMethod());
-      payment.setPaymentMethod(paymentMethod == null ? "unknown" : paymentMethod.getType().toLowerCase());
-    } catch (StripeException e) {
-      log.error("Failed to set payment method for PaymentIntent ID: {}, error: {}", paymentIntent.getId(), e.getMessage());
-    }
-  }
+//  @Transactional
+//  public void setPaymentMethod(PaymentIntent paymentIntent, Payment payment) {
+//    try {
+//      PaymentMethod paymentMethod = PaymentMethod.retrieve(paymentIntent.getPaymentMethod());
+//      payment.setPaymentMethod(paymentMethod == null ? "unknown" : paymentMethod.getType().toLowerCase());
+//    } catch (StripeException e) {
+//      log.error("Failed to set payment method for PaymentIntent ID: {}, error: {}", paymentIntent.getId(), e.getMessage());
+//    }
+//  }
 
   @Transactional
   public boolean isRecurringPayment(Subscription subscription, PaymentIntent paymentIntent) {
@@ -243,7 +250,7 @@ public class PaymentHelper {
   public void updatePaymentDetails(Payment payment, PaymentIntent paymentIntent) {
     payment.setStatus(PaymentStatus.fromStripeStatus(paymentIntent.getStatus(), null, payment));
     payment.setStripeId(paymentIntent.getId());
-    setPaymentMethod(paymentIntent, payment);
+//    setPaymentMethod(paymentIntent, payment);
 
     BigDecimal amountCharged = paymentIntent.getAmount() != null
             ? MoneyUtils.divide(BigDecimal.valueOf(paymentIntent.getAmount()), BigDecimal.valueOf(100))
@@ -256,7 +263,7 @@ public class PaymentHelper {
   public void updatePaymentDetailsFromInvoice(Payment payment, Invoice invoice) {
     payment.setStatus(PaymentStatus.fromStripeStatus(null, invoice.getStatus(), payment));
     payment.setStripeId(invoice.getId());
-    setPaymentMethodForInvoice(invoice, payment);
+//    setPaymentMethodForInvoice(invoice, payment);
 
     BigDecimal amountDue = invoice.getAmountDue() != null
             ? MoneyUtils.divide(BigDecimal.valueOf(invoice.getAmountDue()), BigDecimal.valueOf(100))
@@ -355,7 +362,7 @@ public class PaymentHelper {
 
   private void createUpgradeSubscriptionNotification(Subscription subscription) {
     Map<String, String> params = new HashMap<>();
-    params.put("locations", subscription.getMonitorAddresses());
+    params.put("locations", String.join(". ", subscription.getMonitorAddresses()));
     params.put("link", frontBaseUrl + "/subscriptions");
 
     if (subscription.getEndsAt() != null) {

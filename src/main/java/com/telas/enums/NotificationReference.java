@@ -25,7 +25,7 @@ public enum NotificationReference {
               SharedConstants.EMAIL_SUBJECT_FIRST_SUBSCRIPTION,
               SharedConstants.TEMPLATE_EMAIL_FIRST_SUBSCRIPTION,
               params,
-              "startDate",
+              params.get("startDate"),
               params.get("endDate")
       );
     }

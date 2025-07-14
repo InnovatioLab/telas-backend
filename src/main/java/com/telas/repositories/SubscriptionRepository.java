@@ -23,6 +23,6 @@ public interface SubscriptionRepository extends JpaRepository<Subscription, UUID
   @Query("SELECT s FROM Subscription s JOIN FETCH s.monitors WHERE s.endsAt IS NOT NULL AND s.endsAt < :now AND s.status = 'ACTIVE' AND s.bonus = false")
   List<Subscription> getActiveAndExpiredSubscriptions(Instant now);
 
-  @Query("SELECT s FROM Subscription s WHERE s.endsAt IS NOT NULL AND DATE(s.endsAt) = DATE(:exactDate) AND s.status = 'ACTIVE' AND s.bonus = false")
+  @Query("SELECT s FROM Subscription s WHERE s.endsAt IS NOT NULL AND DATE(s.endsAt) = DATE(:exactDate) AND s.status = 'ACTIVE' AND s.bonus = false AND s.recurrence <> 'MONTHLY'")
   List<Subscription> findSubscriptionsExpiringExactlyOn(@Param("exactDate") Instant exactDate);
 }

@@ -152,7 +152,8 @@
             </tr>
 
             <tr>
-                <td><strong>Duration:</strong> ${startDate}<#if endDate??> to ${endDate}</#if></td>
+                <td><strong>Duration:</strong> ${startDate}<#if endDate?? && endDate?has_content> to ${endDate}</#if>
+                </td>
             </tr>
             <tr>
                 <td style="padding-bottom: 10px">
