@@ -15,9 +15,9 @@ import java.util.UUID;
 @Getter
 @Setter
 @Entity
-@Table(name = "ips")
+@Table(name = "box_address")
 @NoArgsConstructor
-public class Ip implements Serializable {
+public class BoxAddress implements Serializable {
   @Serial
   private static final long serialVersionUID = 1084934057135367842L;
 
@@ -26,14 +26,17 @@ public class Ip implements Serializable {
   @Column(name = "id")
   private UUID id;
 
-  @Column(name = "ip_address", nullable = false)
-  private String ipAddress;
+  @Column(name = "ip", nullable = false, unique = true)
+  private String ip;
+
+  @Column(name = "mac", nullable = false, unique = true)
+  private String mac;
 
   @Column(name = "dns")
   private String dns;
 
   @JsonIgnore
-  @OneToOne(mappedBy = "ip", cascade = CascadeType.ALL)
+  @OneToOne(mappedBy = "boxAddress", cascade = CascadeType.ALL)
   private Box box;
 
   @JsonIgnore

@@ -4,6 +4,7 @@ import com.telas.controllers.BoxController;
 import com.telas.dtos.request.BoxRequestDto;
 import com.telas.dtos.response.ResponseDto;
 import com.telas.dtos.response.StatusMonitorsResponseDto;
+import com.telas.services.BoxAddressService;
 import com.telas.services.BoxService;
 import com.telas.shared.constants.MessageCommonsConstants;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
@@ -21,6 +22,7 @@ import java.util.UUID;
 @RequiredArgsConstructor
 public class BoxControllerImpl implements BoxController {
   private final BoxService service;
+  private final BoxAddressService boxAddressService;
 
   @Override
   @GetMapping
@@ -28,6 +30,13 @@ public class BoxControllerImpl implements BoxController {
   public ResponseEntity<?> findAll() {
     return ResponseEntity.status(HttpStatus.OK)
             .body(ResponseDto.fromData(service.findAll(), HttpStatus.OK, MessageCommonsConstants.FIND_ALL_SUCCESS_MESSAGE));
+  }
+
+  @Override
+  @GetMapping("/addresses")
+  @SecurityRequirement(name = "jwt")
+  public ResponseEntity<?> findAllAvailableAddresses() {
+    return ResponseEntity.status(HttpStatus.OK).body(ResponseDto.fromData(boxAddressService.findAll(), HttpStatus.OK, MessageCommonsConstants.FIND_ALL_SUCCESS_MESSAGE));
   }
 
   @Override
@@ -50,9 +59,9 @@ public class BoxControllerImpl implements BoxController {
 
   @Override
   @GetMapping("/ads")
-  public ResponseEntity<?> getMonitorsAdsByIp(@RequestHeader("X-Box-Ip") String ip) {
+  public ResponseEntity<?> getMonitorsAdsByIp(@RequestHeader("X-Box-Ip") String address) {
     return ResponseEntity.status(HttpStatus.OK)
-            .body(ResponseDto.fromData(service.getMonitorsAdsByIp(ip), HttpStatus.OK, MessageCommonsConstants.FIND_ID_SUCCESS_MESSAGE));
+            .body(ResponseDto.fromData(service.getMonitorsAdsByAddress(address), HttpStatus.OK, MessageCommonsConstants.FIND_ID_SUCCESS_MESSAGE));
   }
 
   @Override

@@ -38,6 +38,7 @@ public class AttachmentHelper {
   private final NotificationService notificationService;
   private final AdRequestRepository adRequestRepository;
   private final ClientRepository clientRepository;
+  private final SubscriptionHelper subscriptionHelper;
   private final MonitorHelper monitorHelper;
 
   @Value("${front.base.url}")
@@ -177,7 +178,7 @@ public class AttachmentHelper {
     Client client = ad.getClient();
     return AdValidationType.APPROVED.equals(ad.getValidation())
            && !Role.ADMIN.equals(client.getRole())
-           && !client.getActiveSubscriptions().isEmpty();
+           && !subscriptionHelper.getClientActiveSubscriptions(client.getId()).isEmpty();
   }
 
   private <T extends AttachmentRequestDto> void handleExistingAttachment(T attachment) {

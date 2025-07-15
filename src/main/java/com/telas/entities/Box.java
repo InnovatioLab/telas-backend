@@ -32,8 +32,8 @@ public class Box implements Serializable {
   private boolean active = true;
 
   @OneToOne
-  @JoinColumn(name = "ip_id", referencedColumnName = "id", nullable = false)
-  private Ip ip;
+  @JoinColumn(name = "box_address_id", referencedColumnName = "id", nullable = false)
+  private BoxAddress boxAddress;
 
   @JsonIgnore
   @Column(name = "created_at", columnDefinition = "TIMESTAMP WITHOUT TIME ZONE", nullable = false, updatable = false)
@@ -43,8 +43,8 @@ public class Box implements Serializable {
   @OneToMany(mappedBy = "box", cascade = CascadeType.ALL)
   private List<Monitor> monitors = new ArrayList<>();
 
-  public Box(Ip ip, List<Monitor> monitors) {
-    this.ip = ip;
+  public Box(BoxAddress boxAddress, List<Monitor> monitors) {
+    this.boxAddress = boxAddress;
     this.monitors.addAll(monitors);
   }
 }

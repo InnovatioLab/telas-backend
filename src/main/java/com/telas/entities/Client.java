@@ -104,7 +104,7 @@ public class Client extends BaseAudit implements Serializable {
   @OneToMany(mappedBy = "client")
   private Set<Subscription> subscriptions = new HashSet<>();
 
-  @OneToMany(mappedBy = "client", cascade = CascadeType.ALL, fetch = FetchType.EAGER)
+  @OneToMany(mappedBy = "client", cascade = CascadeType.ALL)
   private Set<Address> addresses = new HashSet<>();
 
   @OneToMany(mappedBy = "client", cascade = CascadeType.ALL)
@@ -114,8 +114,7 @@ public class Client extends BaseAudit implements Serializable {
   private Set<Ad> ads = new HashSet<>();
 
   @NotAudited
-  @OneToMany(mappedBy = "client", cascade = CascadeType.ALL, fetch = FetchType.EAGER)
-  @OrderBy("createdAt DESC")
+  @OneToMany(mappedBy = "client", cascade = CascadeType.ALL)
   private List<Notification> notifications = new ArrayList<>();
 
   public Client(ClientRequestDto request, Owner owner) {
@@ -147,20 +146,6 @@ public class Client extends BaseAudit implements Serializable {
     owner.update(request.getOwner());
     Optional.ofNullable(socialMedia).ifPresent(socialMedia -> socialMedia.update(request.getSocialMedia()));
     setUsernameUpdateForRelatedEntities(updatedBy);
-  }
-
-  public List<Subscription> getActiveSubscriptions() {
-    Instant now = Instant.now();
-    return subscriptions.stream()
-            .filter(subscription -> SubscriptionStatus.ACTIVE.equals(subscription.getStatus())
-                                    && (subscription.getEndsAt() == null || subscription.getEndsAt().isAfter(now)))
-            .toList();
-  }
-
-  public List<Monitor> getMonitorsWithActiveSubscriptions() {
-    return getActiveSubscriptions().stream()
-            .flatMap(subscription -> subscription.getMonitors().stream())
-            .toList();
   }
 
   public Ad getApprovedAd() {

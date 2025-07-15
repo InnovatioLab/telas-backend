@@ -23,8 +23,8 @@ public class BoxRequestDto implements Serializable {
   @Serial
   private static final long serialVersionUID = 2896062138730857737L;
 
-  @NotNull(message = BoxValidationMessages.IP_ID_REQUIRED)
-  private UUID ipId;
+  @NotNull(message = BoxValidationMessages.BOX_ADDRESS_ID_REQUIRED)
+  private UUID boxAddressId;
 
   @NotEmpty(message = BoxValidationMessages.MONITOR_IDS_NOT_EMPTY)
   private List<UUID> monitorIds = new ArrayList<>();

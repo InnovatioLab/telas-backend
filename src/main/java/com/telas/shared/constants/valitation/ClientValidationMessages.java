@@ -26,4 +26,5 @@ public final class ClientValidationMessages {
   public static final String MONITOR_IN_ACTIVE_SUBSCRIPTION = "Client has an active subscription for the selected monitor.";
   public static final String WISHLIST_NOT_FOUND = "Wishlist not found!";
   public static final String OWNER_EMAIL_UNIQUE = "Owner email must be unique.";
+  public static final String MONITORS_WITH_ACTIVE_SUBSCRIPTIONS_NOT_FOUND = "Monitors with active subscriptions not found.";
 }

@@ -60,7 +60,6 @@ public class ClientServiceImpl implements ClientService {
   private final TermConditionService termConditionService;
   private final AdRequestRepository adRequestRepository;
 
-
   @Override
   @Transactional
   public void save(ClientRequestDto request) {
@@ -117,7 +116,7 @@ public class ClientServiceImpl implements ClientService {
   @Transactional(readOnly = true)
   public ClientResponseDto getDataFromToken() {
     UUID clientId = authenticatedUserService.getLoggedUser().client().getId();
-    return buildClientResponse(repository.findActiveById(clientId)
+    return buildClientResponse(repository.findActiveIdFromToken(clientId)
             .orElseThrow(() -> new ResourceNotFoundException(ClientValidationMessages.USER_NOT_FOUND)));
   }
 
@@ -319,11 +318,13 @@ public class ClientServiceImpl implements ClientService {
     attachmentHelper.validateAd(ad, validation, request, client);
 
     if (AdValidationType.APPROVED.equals(validation)) {
-      List<UUID> monitorIds = client.getActiveSubscriptions().stream()
-              .flatMap(subscription -> subscription.getMonitors().stream().map(Monitor::getId))
+      List<UUID> monitorIds = helper.findClientMonitorsWithActiveSubscriptions(client.getId()).stream()
+              .map(Monitor::getId)
               .toList();
 
-      helper.addAdToMonitor(ad, monitorIds, client);
+      if (!monitorIds.isEmpty()) {
+        helper.addAdToMonitor(ad, monitorIds, client);
+      }
     }
   }
 
@@ -417,7 +418,7 @@ public class ClientServiceImpl implements ClientService {
                             criteriaBuilder.concat(root.get("owner").get("firstName"), " "),
                             root.get("owner").get("lastName"))), filter),
             criteriaBuilder.like(criteriaBuilder.lower(root.get("businessName")), filter),
-            criteriaBuilder.like(criteriaBuilder.lower(root.get("businessField")), filter),
+            criteriaBuilder.like(criteriaBuilder.lower(root.get("industry")), filter),
             criteriaBuilder.like(root.get("contact").get("email"), filter),
             criteriaBuilder.like(root.get("owner").get("email"), filter),
             criteriaBuilder.equal(root.get("contact").get("phone"), genericFilter),

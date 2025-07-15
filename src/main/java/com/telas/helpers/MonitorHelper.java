@@ -169,7 +169,7 @@ public class MonitorHelper {
 
 
   public void sendBoxesMonitorsUpdateAds(Monitor monitor, List<Ad> ads) {
-    String url = "http://" + monitor.getBox().getIp().getIpAddress() + ":5050/update-ads";
+    String url = "http://" + monitor.getBox().getBoxAddress().getIp() + ":8081/update-ads";
 
     List<UpdateBoxMonitorsAdRequestDto> dtos = ads.stream()
             .map(ad -> new UpdateBoxMonitorsAdRequestDto(
@@ -184,7 +184,7 @@ public class MonitorHelper {
   }
 
   public void sendBoxesMonitorsRemoveAds(Monitor monitor, List<String> adNamesToRemove) {
-    String url = String.format("http://%s:5050/remove-ads", monitor.getBox().getIp().getIpAddress());
+    String url = String.format("http://%s:8081/remove-ads", monitor.getBox().getBoxAddress().getIp());
     RemoveBoxMonitorsAdRequestDto dto = new RemoveBoxMonitorsAdRequestDto(monitor.getId(), adNamesToRemove);
 
     log.info("Sending request to remove ads from boxMonitorsAds for monitor with ID: {}, URL: {}", monitor.getId(), url);
@@ -193,7 +193,7 @@ public class MonitorHelper {
 
   @Transactional
   public void sendBoxesMonitorsRemoveAd(Ad ad, List<String> adNameToRemove) {
-    List<Monitor> activeMonitorsToUpdate = ad.getClient().getMonitorsWithActiveSubscriptions().stream()
+    List<Monitor> activeMonitorsToUpdate = getClientMonitorsWithActiveSubscription(ad.getClient().getId()).stream()
             .filter(monitor -> monitor.getMonitorAds().stream()
                     .anyMatch(monitorAd -> monitorAd.getAd().getId().equals(ad.getId())))
             .toList();
@@ -222,7 +222,7 @@ public class MonitorHelper {
       return;
     }
 
-    String url = "http://" + monitor.getBox().getIp().getIpAddress() + ":5050/remove-monitor/" + monitor.getId().toString();
+    String url = "http://" + monitor.getBox().getBoxAddress().getIp() + ":8081/remove-monitor/" + monitor.getId().toString();
     try {
       log.info("Sending request to remove monitor with ID: {}, URL: {}", monitor.getId(), url);
       httpClient.makeDeleteRequest(url, null);
@@ -249,7 +249,7 @@ public class MonitorHelper {
       return Collections.emptyList();
     }
 
-    String url = "http://" + monitor.getBox().getIp().getIpAddress() + ":5050/get-ads/" + monitor.getId().toString();
+    String url = "http://" + monitor.getBox().getBoxAddress().getIp() + ":8081/get-ads/" + monitor.getId().toString();
     try {
       log.info("Sending request to get current displayed ads from box for monitor with ID: {}, URL: {}", monitor.getId(), url);
       return (List<String>) httpClient.makeGetRequest(url, List.class, null);
@@ -257,5 +257,9 @@ public class MonitorHelper {
       log.error("Error while sending request to get current displayed ads from box for monitor with ID: {}, URL: {}, message: {}", monitor.getId(), url, e.getMessage());
       throw e;
     }
+  }
+
+  private List<Monitor> getClientMonitorsWithActiveSubscription(UUID clientId) {
+    return repository.findMonitorsWithActiveSubscriptionsByClientId(clientId);
   }
 }

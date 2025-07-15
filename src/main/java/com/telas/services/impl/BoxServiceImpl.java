@@ -5,7 +5,7 @@ import com.telas.dtos.response.BoxMonitorAdResponseDto;
 import com.telas.dtos.response.BoxResponseDto;
 import com.telas.dtos.response.StatusMonitorsResponseDto;
 import com.telas.entities.Box;
-import com.telas.entities.Ip;
+import com.telas.entities.BoxAddress;
 import com.telas.entities.Monitor;
 import com.telas.helpers.BoxHelper;
 import com.telas.infra.exceptions.ResourceNotFoundException;
@@ -44,9 +44,9 @@ public class BoxServiceImpl implements BoxService {
   public void save(BoxRequestDto request, UUID boxId) {
     authenticatedUserService.validateAdmin();
 
-    Ip ip = helper.getIp(request.getIpId());
+    BoxAddress boxAddress = helper.getBoxAddress(request.getBoxAddressId());
     List<Monitor> monitors = helper.getMonitors(request.getMonitorIds());
-    Box box = (boxId != null) ? updateBox(request, boxId, ip, monitors) : createBox(request, ip, monitors);
+    Box box = (boxId != null) ? updateBox(request, boxId, boxAddress, monitors) : createBox(boxAddress, monitors);
 
     repository.save(box);
     helper.sendUpdateBoxMonitorsAdsRequest(box);
@@ -54,8 +54,8 @@ public class BoxServiceImpl implements BoxService {
 
   @Override
   @Transactional
-  public List<BoxMonitorAdResponseDto> getMonitorsAdsByIp(String ip) {
-    Box box = findByIp(ip);
+  public List<BoxMonitorAdResponseDto> getMonitorsAdsByAddress(String address) {
+    Box box = findByAddress(address);
 
     if (activateBoxIfInactive(box)) {
       repository.save(box);
@@ -86,29 +86,29 @@ public class BoxServiceImpl implements BoxService {
             .orElseThrow(() -> new ResourceNotFoundException(BoxValidationMessages.BOX_NOT_FOUND));
   }
 
-  private Box findByIp(String ip) {
-    return repository.findByIpAddress(ip)
+  private Box findByAddress(String address) {
+    return repository.findByAddress(address)
             .orElseThrow(() -> new ResourceNotFoundException(BoxValidationMessages.BOX_NOT_FOUND));
   }
 
-  private Box createBox(BoxRequestDto request, Ip ip, List<Monitor> monitors) {
-    helper.validateUniqueBoxByIp(request.getIpId());
+  private Box createBox(BoxAddress boxAddress, List<Monitor> monitors) {
+    helper.validateUniqueAddress(boxAddress);
 
     if (monitors.stream().anyMatch(monitor -> monitor.getBox() != null)) {
       throw new ResourceNotFoundException(BoxValidationMessages.MONITOR_ALREADY_ASSOCIATED);
     }
 
-    Box box = new Box(ip, monitors);
+    Box box = new Box(boxAddress, monitors);
     monitors.forEach(monitor -> monitor.setBox(box));
     return box;
   }
 
-  private Box updateBox(BoxRequestDto request, UUID boxId, Ip ip, List<Monitor> monitors) {
+  private Box updateBox(BoxRequestDto request, UUID boxId, BoxAddress boxAddress, List<Monitor> monitors) {
     Box box = findById(boxId);
 
-    if (!box.getIp().getId().equals(request.getIpId())) {
-      helper.validateUniqueBoxByIp(request.getIpId());
-      box.setIp(ip);
+    if (!box.getBoxAddress().getId().equals(boxAddress.getId())) {
+      helper.validateUniqueAddress(boxAddress);
+      box.setBoxAddress(boxAddress);
     }
 
     box.setActive(request.isActive());

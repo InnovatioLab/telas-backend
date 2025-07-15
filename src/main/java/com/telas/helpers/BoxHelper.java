@@ -5,13 +5,12 @@ import com.telas.dtos.response.BoxMonitorAdResponseDto;
 import com.telas.dtos.response.MonitorAdResponseDto;
 import com.telas.dtos.response.StatusMonitorsResponseDto;
 import com.telas.entities.Box;
-import com.telas.entities.Ip;
+import com.telas.entities.BoxAddress;
 import com.telas.entities.Monitor;
 import com.telas.enums.AdValidationType;
 import com.telas.infra.exceptions.BusinessRuleException;
 import com.telas.infra.exceptions.ResourceNotFoundException;
-import com.telas.repositories.BoxRepository;
-import com.telas.repositories.IpRepository;
+import com.telas.repositories.BoxAddressRepository;
 import com.telas.repositories.MonitorRepository;
 import com.telas.services.BucketService;
 import com.telas.shared.constants.valitation.BoxValidationMessages;
@@ -32,23 +31,22 @@ import java.util.UUID;
 @RequiredArgsConstructor
 public class BoxHelper {
   private final Logger log = LoggerFactory.getLogger(BoxHelper.class);
-  private final IpRepository ipRepository;
-  private final BoxRepository boxRepository;
+  private final BoxAddressRepository boxAddressRepository;
   private final MonitorRepository monitorRepository;
   private final BucketService bucketService;
   private final HttpClientUtil httpClient;
 
   @Transactional(readOnly = true)
-  public void validateUniqueBoxByIp(UUID ipId) {
-    if (boxRepository.findByIp(ipId).isPresent()) {
-      throw new BusinessRuleException(BoxValidationMessages.BOX_ALREADY_EXISTS_FOR_IP);
+  public void validateUniqueAddress(BoxAddress boxAddress) {
+    if (boxAddress.getBox() != null) {
+      throw new BusinessRuleException(BoxValidationMessages.BOX_ADDRESS_ALREADY_ALLOCATED);
     }
   }
 
   @Transactional(readOnly = true)
-  public Ip getIp(UUID ipId) {
-    return ipRepository.findById(ipId)
-            .orElseThrow(() -> new ResourceNotFoundException(BoxValidationMessages.IP_NOT_FOUND));
+  public BoxAddress getBoxAddress(UUID boxAddressId) {
+    return boxAddressRepository.findById(boxAddressId)
+            .orElseThrow(() -> new ResourceNotFoundException(BoxValidationMessages.BOX_ADDRESS_NOT_FOUND));
   }
 
   @Transactional(readOnly = true)
@@ -115,7 +113,7 @@ public class BoxHelper {
             .toList();
 
     if (body.isEmpty()) {
-      url = "http://" + box.getIp().getIpAddress() + ":5050/create-folders";
+      url = "http://" + box.getBoxAddress().getIp() + ":8081/create-folders";
       body = box.getMonitors().stream()
               .map(monitor -> new UpdateBoxMonitorsAdRequestDto(
                       monitor.getId(),
@@ -124,7 +122,7 @@ public class BoxHelper {
               ))
               .toList();
     } else {
-      url = "http://" + box.getIp().getIpAddress() + ":5050/update-folders";
+      url = "http://" + box.getBoxAddress().getIp() + ":8081/update-folders";
     }
 
     try {

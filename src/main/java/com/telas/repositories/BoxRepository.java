@@ -18,14 +18,11 @@ public interface BoxRepository extends JpaRepository<Box, UUID> {
   @Query("SELECT b FROM Box b LEFT JOIN FETCH b.monitors")
   List<Box> findAll();
 
-  @Query("SELECT b FROM Box b LEFT JOIN FETCH b.monitors JOIN b.ip i WHERE i.id = :ipId")
-  Optional<Box> findByIp(UUID ipId);
-
-  @Query("SELECT b FROM Box b LEFT JOIN FETCH b.monitors JOIN b.ip i WHERE i.ipAddress = :ip")
-  Optional<Box> findByIpAddress(String ip);
+  @Query("SELECT b FROM Box b LEFT JOIN FETCH b.monitors JOIN b.boxAddress ba WHERE ba.ip = :address OR ba.mac = :address")
+  Optional<Box> findByAddress(String address);
 
   @Override
   @NotNull
-  @Query("SELECT b FROM Box b LEFT JOIN FETCH b.monitors JOIN b.ip i WHERE b.id = :boxId")
+  @Query("SELECT b FROM Box b LEFT JOIN FETCH b.monitors JOIN b.boxAddress ba WHERE b.id = :boxId")
   Optional<Box> findById(@NotNull @Param("boxId") UUID boxId);
 }

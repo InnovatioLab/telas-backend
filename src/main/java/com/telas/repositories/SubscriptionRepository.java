@@ -20,6 +20,15 @@ public interface SubscriptionRepository extends JpaRepository<Subscription, UUID
   @Query("SELECT s FROM Subscription s LEFT JOIN FETCH s.payments JOIN FETCH s.monitors WHERE s.id = :id")
   Optional<Subscription> findById(@NotNull UUID id);
 
+  @Query("""
+              SELECT s FROM Subscription s
+              JOIN FETCH s.monitors
+              WHERE s.client.id = :clientId
+                AND s.status = 'ACTIVE'
+                AND (s.endsAt IS NULL OR s.endsAt > CURRENT_TIMESTAMP)
+          """)
+  List<Subscription> findActiveSubscriptionsByClientId(@Param("clientId") UUID clientId);
+
   @Query("SELECT s FROM Subscription s JOIN FETCH s.monitors WHERE s.endsAt IS NOT NULL AND s.endsAt < :now AND s.status = 'ACTIVE' AND s.bonus = false")
   List<Subscription> getActiveAndExpiredSubscriptions(Instant now);
 

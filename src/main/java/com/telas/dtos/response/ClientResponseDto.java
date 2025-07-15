@@ -40,8 +40,6 @@ public final class ClientResponseDto implements Serializable {
 
   private final List<LinkResponseDto> ads;
 
-  private final List<Notification> notifications;
-
   private final Boolean termAccepted;
 
   private final int currentSubscriptionFlowStep;
@@ -59,7 +57,6 @@ public final class ClientResponseDto implements Serializable {
     addresses = entity.getAddresses();
     attachments = attachmentUrls;
     ads = adsUrls;
-    notifications = entity.getNotifications();
     termAccepted = entity.isTermsAccepted();
     currentSubscriptionFlowStep = entity.getSubscriptionFlow() != null ? entity.getSubscriptionFlow().getStep() : 0;
   }

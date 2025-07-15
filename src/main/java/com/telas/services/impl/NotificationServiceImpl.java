@@ -56,7 +56,7 @@ public class NotificationServiceImpl implements NotificationService {
   @Transactional
   public List<NotificationResponseDto> listClientNotifications(NotificationRequestDto request) {
     Client client = authenticatedUserService.getLoggedUser().client();
-    List<Notification> notifications = repository.findAllByClientOrderByCreatedAtDesc(client);
+    List<Notification> notifications = repository.findAllByClientIdOrderByCreatedAtDesc(client.getId());
 
     if (request.getIds() != null && !request.getIds().isEmpty()) {
       notifications.stream()

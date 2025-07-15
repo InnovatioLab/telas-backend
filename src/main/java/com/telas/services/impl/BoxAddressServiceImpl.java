@@ -1,9 +1,9 @@
 package com.telas.services.impl;
 
-import com.telas.dtos.response.IpResponseDto;
+import com.telas.dtos.response.BoxAddressResponseDto;
 import com.telas.infra.security.services.AuthenticatedUserService;
-import com.telas.repositories.IpRepository;
-import com.telas.services.IpService;
+import com.telas.repositories.BoxAddressRepository;
+import com.telas.services.BoxAddressService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -12,17 +12,17 @@ import java.util.List;
 
 @Service
 @RequiredArgsConstructor
-public class IpServiceImpl implements IpService {
-  private final IpRepository repository;
+public class BoxAddressServiceImpl implements BoxAddressService {
+  private final BoxAddressRepository repository;
   private final AuthenticatedUserService authenticatedUserService;
 
   @Override
   @Transactional(readOnly = true)
-  public List<IpResponseDto> findAll() {
+  public List<BoxAddressResponseDto> findAll() {
     authenticatedUserService.validateAdmin();
 
-    return repository.findAll().stream()
-            .map(IpResponseDto::new)
+    return repository.findAllAvailable().stream()
+            .map(BoxAddressResponseDto::new)
             .toList();
   }
 }

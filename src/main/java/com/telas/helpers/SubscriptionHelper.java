@@ -247,9 +247,7 @@ public class SubscriptionHelper {
             items.stream().map(item -> item.getMonitor().getId()).toList()
     ).stream().collect(Collectors.toMap(Monitor::getId, monitor -> monitor));
 
-    Set<Monitor> clientActiveMonitors = client.getActiveSubscriptions().stream()
-            .flatMap(sub -> sub.getMonitors().stream())
-            .collect(Collectors.toSet());
+    List<Monitor> clientActiveMonitors = clientHelper.findClientMonitorsWithActiveSubscriptions(client.getId());
 
     for (CartItem item : items) {
       Monitor monitor = monitors.get(item.getMonitor().getId());
@@ -258,7 +256,7 @@ public class SubscriptionHelper {
         throw new BusinessRuleException(MonitorValidationMessages.MONITOR_INACTIVE_OR_BLOCKS_UNAVAILABLE);
       }
 
-      if (clientActiveMonitors.contains(monitor)) {
+      if (!clientActiveMonitors.isEmpty() && clientActiveMonitors.contains(monitor)) {
         throw new BusinessRuleException(SubscriptionValidationMessages.CLIENT_ALREADY_HAS_ACTIVE_SUBSCRIPTION_WITH_MONITOR);
       }
 
@@ -300,5 +298,10 @@ public class SubscriptionHelper {
 
   private String buildRedirectUrl(String path) {
     return frontBaseUrl + "/" + path;
+  }
+
+  @Transactional(readOnly = true)
+  public List<Subscription> getClientActiveSubscriptions(UUID id) {
+    return repository.findActiveSubscriptionsByClientId(id);
   }
 }

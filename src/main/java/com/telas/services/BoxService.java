@@ -13,7 +13,7 @@ public interface BoxService {
 
   void save(BoxRequestDto request, UUID boxId);
 
-  List<BoxMonitorAdResponseDto> getMonitorsAdsByIp(String ip);
+  List<BoxMonitorAdResponseDto> getMonitorsAdsByAddress(String address);
 
   void checkMonitorsHealth(List<StatusMonitorsResponseDto> responseList);
 }

@@ -143,4 +143,13 @@ public interface MonitorRepository extends JpaRepository<Monitor, UUID>, JpaSpec
                 AND s.status = 'ACTIVE'
           """)
   boolean existsActiveSubscriptionByMonitorId(@Param("monitorId") UUID monitorId);
+
+  @Query("""
+              SELECT m FROM Monitor m
+              JOIN m.subscriptions s
+              WHERE s.client.id = :clientId
+                AND s.status = 'ACTIVE'
+                AND (s.endsAt IS NULL OR s.endsAt > CURRENT_TIMESTAMP)
+          """)
+  List<Monitor> findMonitorsWithActiveSubscriptionsByClientId(@Param("clientId") UUID clientId);
 }

@@ -25,21 +25,22 @@ CREATE TABLE "audit"
   CONSTRAINT "pk_tbauditoria" PRIMARY KEY ("audit_id")
 );
 
-CREATE TABLE "ips"
+CREATE TABLE "box_address"
 (
   "id"         UUID PRIMARY KEY,
-  "ip_address" VARCHAR(45)              NOT NULL,
+  "ip"         VARCHAR(45)              NOT NULL UNIQUE,
+  "mac"        VARCHAR(17)              NOT NULL UNIQUE,
   "dns"        VARCHAR(255)             NULL     DEFAULT NULL,
   "created_at" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT (now())
 );
 
 CREATE TABLE "boxes"
 (
-  "id"         UUID PRIMARY KEY,
-  "fl_active"  BOOLEAN                           DEFAULT TRUE,
-  "ip_id"      UUID                     NOT NULL,
-  "created_at" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT (now()),
-  CONSTRAINT "fk_box_ip" FOREIGN KEY ("ip_id") REFERENCES "ips" ("id") ON UPDATE NO ACTION ON DELETE NO ACTION
+  "id"             UUID PRIMARY KEY,
+  "fl_active"      BOOLEAN                           DEFAULT TRUE,
+  "box_address_id" UUID                     NOT NULL,
+  "created_at"     TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT (now()),
+  CONSTRAINT "fk_box_ip" FOREIGN KEY ("box_address_id") REFERENCES "box_address" ("id") ON UPDATE NO ACTION ON DELETE NO ACTION
 );
 
 CREATE TABLE "verification_codes"
@@ -314,7 +315,7 @@ CREATE TABLE "payments"
 (
   "id"              UUID PRIMARY KEY,
   "subscription_id" UUID                     NOT NULL,
-  "payment_method"  VARCHAR(50),
+  "payment_method"  VARCHAR(50)                       DEFAULT 'card',
   "currency"        VARCHAR(3)               NOT NULL DEFAULT 'usd',
   "stripe_id"       VARCHAR(255)             NULL     DEFAULT NULL,
   "amount"          NUMERIC(10, 2)           NOT NULL,
@@ -614,8 +615,8 @@ VALUES ('eb1f62bf-9d16-45c1-be45-bd52f97dffb2',
         'Virtual Assistant',
         'Virtual Assistant');
 
-INSERT INTO "ips" (id, ip_address)
-VALUES (gen_random_uuid(), '192.168.0.7');
+INSERT INTO "box_address" (id, ip, mac)
+VALUES (gen_random_uuid(), '192.168.0.7', '12:66:1a:9c:de:be');
 
 CREATE INDEX idx_email ON contacts (email);
 
@@ -635,7 +636,7 @@ CREATE INDEX idx_ads_client_id_validation ON ads (client_id, validation);
 CREATE INDEX idx_subscriptions_client_id_status ON subscriptions (client_id, status);
 CREATE INDEX idx_subscriptions_ends_at_status ON subscriptions (ends_at, status);
 CREATE INDEX idx_payments_stripe_id ON payments (stripe_id);
-CREATE INDEX idx_boxes_ip_id ON boxes (ip_id);
+CREATE INDEX idx_boxes_ip_id ON boxes (box_address_id);
 CREATE INDEX idx_boxes_id ON boxes (id);
 CREATE INDEX idx_monitors_box_id ON monitors (box_id);
 CREATE INDEX idx_monitors_id ON monitors (id);

@@ -22,19 +22,20 @@ public interface ClientRepository extends JpaRepository<Client, UUID>, JpaSpecif
 
   @NotNull
   @Override
-  @Query("SELECT c FROM Client c JOIN FETCH c.addresses LEFT JOIN FETCH c.attachments LEFT JOIN FETCH c.ads  WHERE c.id = :id")
+  @Query("SELECT c FROM Client c JOIN FETCH c.addresses WHERE c.id = :id")
   Optional<Client> findById(@NotNull UUID id);
 
-  @Query("SELECT c FROM Client c JOIN FETCH c.addresses LEFT JOIN FETCH c.attachments LEFT JOIN FETCH c.ads WHERE c.id = :id AND c.status = 'ACTIVE'")
+  @Query("SELECT c FROM Client c WHERE c.id = :id AND c.status = 'ACTIVE'")
   Optional<Client> findActiveById(UUID id);
+
+  @Query("SELECT c FROM Client c JOIN FETCH c.addresses LEFT JOIN c.attachments LEFT JOIN c.ads LEFT JOIN c.subscriptions WHERE c.id = :id AND c.status = 'ACTIVE'")
+  Optional<Client> findActiveIdFromToken(UUID id);
 
   @Query(value = """
           SELECT c.* 
           FROM clients c 
           INNER JOIN addresses ad ON c.id = ad.client_id 
-          LEFT JOIN attachments a ON c.id = a.client_id 
           LEFT JOIN ad_requests ar ON c.id = ar.client_id 
-          LEFT JOIN ads ads ON c.id = ads.client_id 
           WHERE c.identification_number = :identificationNumber AND c.status = 'ACTIVE'
           """, nativeQuery = true)
   Optional<Client> findActiveByIdentificationNumber(String identificationNumber);
@@ -44,9 +45,7 @@ public interface ClientRepository extends JpaRepository<Client, UUID>, JpaSpecif
           SELECT c.* 
           FROM clients c 
           INNER JOIN addresses ad ON c.id = ad.client_id 
-          LEFT JOIN attachments a ON c.id = a.client_id 
           LEFT JOIN ad_requests ar ON c.id = ar.client_id 
-          LEFT JOIN ads ads ON c.id = ads.client_id 
           WHERE c.identification_number = :identificationNumber 
           """, nativeQuery = true)
   Optional<Client> findByIdentificationNumber(String identificationNumber);

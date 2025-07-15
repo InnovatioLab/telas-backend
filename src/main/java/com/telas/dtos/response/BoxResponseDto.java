@@ -17,14 +17,14 @@ public final class BoxResponseDto implements Serializable {
 
   private final boolean active;
 
-  private final IpResponseDto ip;
+  private final BoxAddressResponseDto boxAddress;
 
   private final List<MonitorMinResponseDto> monitors;
 
   public BoxResponseDto(Box entity) {
     id = entity.getId();
     active = entity.isActive();
-    ip = new IpResponseDto(entity.getIp());
+    boxAddress = new BoxAddressResponseDto(entity.getBoxAddress());
     monitors = entity.getMonitors().stream()
             .map(MonitorMinResponseDto::new)
             .toList();

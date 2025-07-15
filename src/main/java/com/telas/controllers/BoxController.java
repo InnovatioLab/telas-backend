@@ -22,6 +22,13 @@ public interface BoxController {
   })
   ResponseEntity<?> findAll();
 
+  @Operation(summary = "Endpoint to fetch available mac addresses", responses = {
+          @ApiResponse(responseCode = "200", description = "Success."),
+          @ApiResponse(responseCode = "401", description = "Unauthorized."),
+          @ApiResponse(responseCode = "403", description = "Forbidden."),
+  })
+  ResponseEntity<?> findAllAvailableAddresses();
+
   @Operation(summary = "Endpoint to create a box", responses = {
           @ApiResponse(responseCode = "201", description = "Box created successfully."),
           @ApiResponse(responseCode = "422", description = "Request with invalid data."),
@@ -40,12 +47,12 @@ public interface BoxController {
   })
   ResponseEntity<?> update(@Valid BoxRequestDto request, UUID boxId);
 
-  @Operation(summary = "Endpoint to fetch monitors and ads data by Ip", responses = {
+  @Operation(summary = "Endpoint to fetch monitors and ads data by Ip or MacAddress", responses = {
           @ApiResponse(responseCode = "200", description = "Monitors and ads founded successfully."),
           @ApiResponse(responseCode = "422", description = "Request with invalid data."),
           @ApiResponse(responseCode = "404", description = "Some data not found."),
   })
-  ResponseEntity<?> getMonitorsAdsByIp(@RequestHeader("X-Box-Ip") String ip);
+  ResponseEntity<?> getMonitorsAdsByIp(@RequestHeader("X-Box-Ip") String address);
 
   @Operation(summary = "Endpoint to get monitors health from the box and update monitor status", responses = {
           @ApiResponse(responseCode = "204", description = "Monitors health checked successfully."),

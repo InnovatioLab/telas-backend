@@ -1,6 +1,6 @@
 package com.telas.dtos.response;
 
-import com.telas.entities.Ip;
+import com.telas.entities.BoxAddress;
 import lombok.Getter;
 
 import java.io.Serial;
@@ -8,16 +8,16 @@ import java.io.Serializable;
 import java.util.UUID;
 
 @Getter
-public final class IpResponseDto implements Serializable {
+public final class BoxAddressResponseDto implements Serializable {
   @Serial
   private static final long serialVersionUID = 5288515525105234502L;
 
   private final UUID id;
 
-  private final String ipAddress;
+  private final String mac;
 
-  public IpResponseDto(Ip entity) {
+  public BoxAddressResponseDto(BoxAddress entity) {
     id = entity.getId();
-    ipAddress = entity.getIpAddress();
+    mac = entity.getMac();
   }
 }

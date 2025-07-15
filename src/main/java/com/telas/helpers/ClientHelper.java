@@ -239,7 +239,9 @@ public class ClientHelper {
   }
 
   private boolean isMonitorEligibleForAd(Client client, Monitor monitor) {
-    if (!client.getMonitorsWithActiveSubscriptions().contains(monitor)) {
+    List<Monitor> monitorsWithActiveSubscriptions = monitorRepository.findMonitorsWithActiveSubscriptionsByClientId(client.getId());
+
+    if (!monitorsWithActiveSubscriptions.isEmpty() && !monitorsWithActiveSubscriptions.contains(monitor)) {
       log.error("Client {} does not have an active subscription for monitor {}", client.getId(), monitor.getId());
       return false;
     }
@@ -287,13 +289,13 @@ public class ClientHelper {
                       ))
                       .toList();
 
-              String url = "http://" + box.getIp().getIpAddress() + ":5050/ad";
+              String url = "http://" + box.getBoxAddress().getIp() + ":8081/ad";
 
               try {
-                log.info("Sending ad update to box IP: {}, URL: {}", box.getIp().getIpAddress(), url);
+                log.info("Sending ad update to box IP: {}, URL: {}", box.getBoxAddress().getIp(), url);
                 httpClient.makePostRequest(url, dtos, Void.class, null);
               } catch (Exception e) {
-                log.error("Error sending ad update to box IP: {}, URL: {}, message: {}", box.getIp().getIpAddress(), url, e.getMessage());
+                log.error("Error sending ad update to box IP: {}, URL: {}, message: {}", box.getBoxAddress().getIp(), url, e.getMessage());
               }
             });
   }
@@ -308,7 +310,7 @@ public class ClientHelper {
       return;
     }
 
-    if (client.getMonitorsWithActiveSubscriptions().stream().anyMatch(m -> m.getId().equals(monitorId))) {
+    if (monitorRepository.findMonitorsWithActiveSubscriptionsByClientId(client.getId()).stream().anyMatch(m -> m.getId().equals(monitorId))) {
       throw new BusinessRuleException(ClientValidationMessages.MONITOR_IN_ACTIVE_SUBSCRIPTION);
     }
 
@@ -327,5 +329,10 @@ public class ClientHelper {
 
     Owner newOwner = new Owner(owner);
     return ownerRepository.save(newOwner);
+  }
+
+  @Transactional(readOnly = true)
+  public List<Monitor> findClientMonitorsWithActiveSubscriptions(UUID id) {
+    return monitorRepository.findMonitorsWithActiveSubscriptionsByClientId(id);
   }
 }
