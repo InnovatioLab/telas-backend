@@ -59,7 +59,7 @@ public class BoxControllerImpl implements BoxController {
 
   @Override
   @GetMapping("/ads")
-  public ResponseEntity<?> getMonitorsAdsByIp(@RequestHeader("X-Box-Ip") String address) {
+  public ResponseEntity<?> getMonitorsAdsByIp(@RequestHeader("X-Box-Address") String address) {
     return ResponseEntity.status(HttpStatus.OK)
             .body(ResponseDto.fromData(service.getMonitorsAdsByAddress(address), HttpStatus.OK, MessageCommonsConstants.FIND_ID_SUCCESS_MESSAGE));
   }

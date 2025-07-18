@@ -54,7 +54,10 @@ public class BoxServiceImpl implements BoxService {
     Box box = (boxId != null) ? updateBox(request, boxId, boxAddress, monitors) : createBox(boxAddress, monitors);
 
     repository.save(box);
-    helper.sendUpdateBoxMonitorsAdsRequest(box);
+
+    if (!ValidateDataUtils.isNullOrEmpty(monitors)) {
+      helper.sendUpdateBoxMonitorsAdsRequest(box);
+    }
   }
 
   @Override
