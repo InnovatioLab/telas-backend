@@ -47,14 +47,14 @@ public interface BoxController {
   })
   ResponseEntity<?> update(@Valid BoxRequestDto request, UUID boxId);
 
-  @Operation(summary = "Endpoint to fetch monitors and ads data by Ip or MacAddress", responses = {
+  @Operation(summary = "Endpoint to fetch monitors and ads data by Ip or MacAddress, this endpoint should be accessed only by Box API", responses = {
           @ApiResponse(responseCode = "200", description = "Monitors and ads founded successfully."),
           @ApiResponse(responseCode = "422", description = "Request with invalid data."),
           @ApiResponse(responseCode = "404", description = "Some data not found."),
   })
-  ResponseEntity<?> getMonitorsAdsByIp(@RequestHeader("X-Box-Ip") String address);
+  ResponseEntity<?> getMonitorsAdsByIp(@RequestHeader("X-Box-Address") String address);
 
-  @Operation(summary = "Endpoint to get monitors health from the box and update monitor status", responses = {
+  @Operation(summary = "Endpoint to get monitors health from the box and update monitor status, this endpoint should be accessed only by Box API", responses = {
           @ApiResponse(responseCode = "204", description = "Monitors health checked successfully."),
           @ApiResponse(responseCode = "404", description = "Some data not found."),
           @ApiResponse(responseCode = "500", description = "Internal server error."),
