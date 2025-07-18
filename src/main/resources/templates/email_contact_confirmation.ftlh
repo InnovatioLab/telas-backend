@@ -110,7 +110,7 @@
             <tr>
                 <td style="padding-bottom:30px;">
                     To complete your registration and explore our features, enter the verification code below on the
-                    validation screen—or click the button for a quick confirm.
+                    validation screen.
                 </td>
             </tr>
             <tr>
@@ -128,7 +128,7 @@
             </tr>
             <tr>
                 <td style="padding-bottom:20px;">
-                    If you didn’t sign up for an Tela's account, simply ignore this email, <u>no action is needed.</u>
+                    If you didn’t sign up for an Tela's account, simply ignore this email, <u>no action is needed</u>.
                 </td>
             </tr>
             <tr>

@@ -23,6 +23,8 @@ public interface MonitorService {
 
   Map<String, List<MonitorMapsResponseDto>> findNearestActiveMonitors(String zipCodes, BigDecimal sizeFilter, String typeFilter, int limit);
 
+  List<MonitorBoxMinResponseDto> findAllMonitors();
+
   List<Monitor> findAllByIds(List<UUID> monitorIds);
 
   List<MonitorValidationResponseDto> findInvalidMonitorsDuringCheckout(List<UUID> monitorIds, UUID clientId);

@@ -2,7 +2,6 @@ package com.telas.dtos.request;
 
 
 import com.telas.shared.constants.valitation.BoxValidationMessages;
-import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.NotNull;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
@@ -26,7 +25,6 @@ public class BoxRequestDto implements Serializable {
   @NotNull(message = BoxValidationMessages.BOX_ADDRESS_ID_REQUIRED)
   private UUID boxAddressId;
 
-  @NotEmpty(message = BoxValidationMessages.MONITOR_IDS_NOT_EMPTY)
   private List<UUID> monitorIds = new ArrayList<>();
 
   private boolean active = true;

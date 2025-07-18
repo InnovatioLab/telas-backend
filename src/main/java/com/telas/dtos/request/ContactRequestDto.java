@@ -27,7 +27,7 @@ public class ContactRequestDto implements Serializable {
 
   @NotEmpty(message = ContactValidationMessages.PHONE_REQUIRED)
   @Pattern(regexp = SharedConstants.REGEX_ONLY_NUMBERS, message = ContactValidationMessages.PHONE_ONLY_NUMBERS)
-  @Size(min = 10, max = 11, message = ContactValidationMessages.PHONE_SIZE)
+  @Size(min = 11, max = 11, message = ContactValidationMessages.PHONE_SIZE)
   @JsonDeserialize(using = TrimStringDeserializer.class)
   private String phone;
 

@@ -14,10 +14,12 @@ import com.telas.repositories.BoxRepository;
 import com.telas.repositories.MonitorRepository;
 import com.telas.services.BoxService;
 import com.telas.shared.constants.valitation.BoxValidationMessages;
+import com.telas.shared.utils.ValidateDataUtils;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.Collections;
 import java.util.List;
 import java.util.UUID;
 
@@ -45,7 +47,10 @@ public class BoxServiceImpl implements BoxService {
     authenticatedUserService.validateAdmin();
 
     BoxAddress boxAddress = helper.getBoxAddress(request.getBoxAddressId());
-    List<Monitor> monitors = helper.getMonitors(request.getMonitorIds());
+    List<Monitor> monitors = ValidateDataUtils.isNullOrEmpty(request.getMonitorIds()) ?
+            Collections.emptyList() :
+            helper.getMonitors(request.getMonitorIds());
+
     Box box = (boxId != null) ? updateBox(request, boxId, boxAddress, monitors) : createBox(boxAddress, monitors);
 
     repository.save(box);
@@ -98,9 +103,7 @@ public class BoxServiceImpl implements BoxService {
       throw new ResourceNotFoundException(BoxValidationMessages.MONITOR_ALREADY_ASSOCIATED);
     }
 
-    Box box = new Box(boxAddress, monitors);
-    monitors.forEach(monitor -> monitor.setBox(box));
-    return box;
+    return new Box(boxAddress, monitors);
   }
 
   private Box updateBox(BoxRequestDto request, UUID boxId, BoxAddress boxAddress, List<Monitor> monitors) {
@@ -118,17 +121,18 @@ public class BoxServiceImpl implements BoxService {
   }
 
   private void updateMonitors(Box box, List<Monitor> monitors) {
-    List<UUID> boxMonitorIds = box.getMonitors().stream().map(Monitor::getId).toList();
     List<UUID> newMonitorIds = monitors.stream().map(Monitor::getId).toList();
 
-    box.getMonitors().forEach(monitor -> {
+    box.getMonitors().removeIf(monitor -> {
       if (!newMonitorIds.contains(monitor.getId())) {
         monitor.setBox(null);
         monitorRepository.save(monitor);
-        box.getMonitors().remove(monitor);
+        return true;
       }
+      return false;
     });
 
+    List<UUID> boxMonitorIds = box.getMonitors().stream().map(Monitor::getId).toList();
     monitors.stream()
             .filter(monitor -> !boxMonitorIds.contains(monitor.getId()))
             .forEach(monitor -> {

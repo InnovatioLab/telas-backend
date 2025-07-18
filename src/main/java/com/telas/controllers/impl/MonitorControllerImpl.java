@@ -74,6 +74,13 @@ public class MonitorControllerImpl implements MonitorController {
   }
 
   @Override
+  @GetMapping
+  @SecurityRequirement(name = "jwt")
+  public ResponseEntity<?> findAllMonitors() {
+    return ResponseEntity.status(HttpStatus.OK).body(ResponseDto.fromData(service.findAllMonitors(), HttpStatus.OK, MessageCommonsConstants.FIND_ALL_SUCCESS_MESSAGE));
+  }
+
+  @Override
   @GetMapping("/nearest")
   public ResponseEntity<?> findNearestActiveMonitors(
           @RequestParam String zipCodes,

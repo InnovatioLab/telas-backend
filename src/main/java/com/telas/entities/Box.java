@@ -1,6 +1,7 @@
 package com.telas.entities;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.telas.shared.utils.ValidateDataUtils;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -45,6 +46,11 @@ public class Box implements Serializable {
 
   public Box(BoxAddress boxAddress, List<Monitor> monitors) {
     this.boxAddress = boxAddress;
-    this.monitors.addAll(monitors);
+
+    if (!ValidateDataUtils.isNullOrEmpty(monitors)) {
+      monitors.forEach(monitor -> monitor.setBox(this));
+      this.monitors.addAll(monitors);
+    }
+
   }
 }

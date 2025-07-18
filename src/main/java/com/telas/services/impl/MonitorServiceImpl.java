@@ -147,6 +147,13 @@ public class MonitorServiceImpl implements MonitorService {
   }
 
   @Override
+  @Transactional(readOnly = true)
+  public List<MonitorBoxMinResponseDto> findAllMonitors() {
+    authenticatedUserService.validateAdmin();
+    return repository.findAllMonitorsBox();
+  }
+
+  @Override
   @Transactional
   public List<Monitor> findAllByIds(List<UUID> monitorIds) {
     return repository.findAllByIdIn(monitorIds);

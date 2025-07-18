@@ -55,6 +55,13 @@ public interface MonitorController {
   })
   ResponseEntity<?> findAllMonitorsFilters(FilterMonitorRequestDto request);
 
+  @Operation(summary = "Endpoint contract to find all monitors", responses = {
+          @ApiResponse(responseCode = "200", description = "Monitors founded successfully."),
+          @ApiResponse(responseCode = "401", description = "Unauthorized."),
+          @ApiResponse(responseCode = "403", description = "Forbidden."),
+  })
+  ResponseEntity<?> findAllMonitors();
+
   @Operation(summary = "Endpoint contract to get a list of the nearest active monitors from a list of zipCodes", responses = {
           @ApiResponse(responseCode = "200", description = "Monitors founded successfully.")
   })

@@ -1,5 +1,6 @@
 package com.telas.repositories;
 
+import com.telas.dtos.response.MonitorBoxMinResponseDto;
 import com.telas.dtos.response.MonitorValidationResponseDto;
 import com.telas.entities.Monitor;
 import org.jetbrains.annotations.NotNull;
@@ -152,4 +153,16 @@ public interface MonitorRepository extends JpaRepository<Monitor, UUID>, JpaSpec
                 AND (s.endsAt IS NULL OR s.endsAt > CURRENT_TIMESTAMP)
           """)
   List<Monitor> findMonitorsWithActiveSubscriptionsByClientId(@Param("clientId") UUID clientId);
+
+  @Query("""
+          SELECT new com.telas.dtos.response.MonitorBoxMinResponseDto(
+          m.id,
+          CASE
+                                WHEN m.box IS NOT NULL  THEN true
+                                ELSE false
+                            END
+          
+          ) FROM Monitor m
+          """)
+  List<MonitorBoxMinResponseDto> findAllMonitorsBox();
 }
