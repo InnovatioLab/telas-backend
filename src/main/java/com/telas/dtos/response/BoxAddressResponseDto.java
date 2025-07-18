@@ -16,8 +16,11 @@ public final class BoxAddressResponseDto implements Serializable {
 
   private final String mac;
 
+  private final String ip;
+
   public BoxAddressResponseDto(BoxAddress entity) {
     id = entity.getId();
     mac = entity.getMac();
+    ip = entity.getIp();
   }
 }
