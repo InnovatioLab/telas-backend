@@ -20,8 +20,20 @@ public final class MonitorMapsResponseDto implements Serializable {
   private final double longitude;
   private final boolean hasAvailableSlots;
   private final Instant estimatedSlotReleaseDate;
+  private final Integer adsDailyDisplayTimeInMinutes;
 
-  public MonitorMapsResponseDto(String id, boolean active, String type, double size, double distance, double latitude, double longitude, boolean hasAvailableSlots, Instant estimatedSlotReleaseDate) {
+  public MonitorMapsResponseDto(
+          String id,
+          boolean active,
+          String type,
+          double size,
+          double distance,
+          double latitude,
+          double longitude,
+          boolean hasAvailableSlots,
+          Instant estimatedSlotReleaseDate,
+          Integer adsDailyDisplayTimeInMinutes
+  ) {
     this.id = id;
     this.active = active;
     this.type = type;
@@ -31,5 +43,6 @@ public final class MonitorMapsResponseDto implements Serializable {
     this.longitude = longitude;
     this.hasAvailableSlots = hasAvailableSlots;
     this.estimatedSlotReleaseDate = hasAvailableSlots ? null : estimatedSlotReleaseDate;
+    this.adsDailyDisplayTimeInMinutes = adsDailyDisplayTimeInMinutes;
   }
 }

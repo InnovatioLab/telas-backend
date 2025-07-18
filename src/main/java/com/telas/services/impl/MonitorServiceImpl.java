@@ -14,6 +14,7 @@ import com.telas.infra.security.services.AuthenticatedUserService;
 import com.telas.repositories.MonitorRepository;
 import com.telas.services.MonitorService;
 import com.telas.shared.audit.CustomRevisionListener;
+import com.telas.shared.constants.SharedConstants;
 import com.telas.shared.constants.valitation.MonitorValidationMessages;
 import com.telas.shared.utils.PaginationFilterUtil;
 import com.telas.shared.utils.ValidateDataUtils;
@@ -29,6 +30,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.time.Instant;
+import java.time.LocalTime;
 import java.util.*;
 import java.util.stream.IntStream;
 
@@ -119,6 +121,7 @@ public class MonitorServiceImpl implements MonitorService {
     List<String> zipCodeList = helper.validateZipCodeList(zipCodes);
 
     Map<String, List<MonitorMapsResponseDto>> result = new HashMap<>();
+    LocalTime localTime = LocalTime.ofInstant(Instant.now(), java.time.ZoneId.of(SharedConstants.ZONE_ID));
 
     zipCodeList.forEach(zipCode -> {
       Map<String, Double> coordinates = helper.getCoordinatesFromZipCode(zipCode, countryCode);
@@ -127,17 +130,23 @@ public class MonitorServiceImpl implements MonitorService {
 
       List<MonitorMapsResponseDto> monitors = repository.findNearestActiveMonitorsWithFilters(latitude, longitude, sizeFilter, typeFilter, limit)
               .stream()
-              .map(resultRow -> new MonitorMapsResponseDto(
-                      resultRow[0].toString(),
-                      Boolean.parseBoolean(resultRow[1].toString()), // Ativo
-                      resultRow[2].toString(), // Tipo
-                      Double.parseDouble(resultRow[3].toString()), // Tamanho
-                      Double.parseDouble(resultRow[6].toString()), // Distância
-                      Double.parseDouble(resultRow[4].toString()), // Latitude
-                      Double.parseDouble(resultRow[5].toString()), // Longitude
-                      Boolean.parseBoolean(resultRow[7].toString()), // hasAvailableSlots
-                      resultRow[8] != null ? Instant.parse(resultRow[8].toString()) : null // estimatedSlotReleaseDate
-              ))
+              .map(resultRow -> {
+                int adsCount = Integer.parseInt(resultRow[9].toString());
+                int adsDailyDisplayTimeInMinutes = calculateAdsDailyDisplayTimeInMinutes(adsCount, localTime);
+
+                return new MonitorMapsResponseDto(
+                        resultRow[0].toString(),
+                        Boolean.parseBoolean(resultRow[1].toString()),
+                        resultRow[2].toString(),
+                        Double.parseDouble(resultRow[3].toString()),
+                        Double.parseDouble(resultRow[6].toString()),
+                        Double.parseDouble(resultRow[4].toString()),
+                        Double.parseDouble(resultRow[5].toString()),
+                        Boolean.parseBoolean(resultRow[7].toString()),
+                        resultRow[8] != null ? Instant.parse(resultRow[8].toString()) : null,
+                        adsDailyDisplayTimeInMinutes
+                );
+              })
               .toList();
 
       result.put(zipCode, monitors);
@@ -217,6 +226,18 @@ public class MonitorServiceImpl implements MonitorService {
     }
 
     return helper.getBoxMonitorAdsResponse(monitor, adNames);
+  }
+
+  private int calculateAdsDailyDisplayTimeInMinutes(int adsCount, LocalTime localTime) {
+    if (adsCount == 0) {
+      return 0;
+    }
+
+    int secondsOfDay = localTime.toSecondOfDay();
+    int loopDuration = adsCount * SharedConstants.AD_DISPLAY_TIME_IN_SECONDS;
+    int loops = secondsOfDay / loopDuration;
+    int totalSeconds = loops * SharedConstants.AD_DISPLAY_TIME_IN_SECONDS;
+    return totalSeconds / SharedConstants.TOTAL_SECONDS_IN_A_MINUTE;
   }
 
   private void ensureNoActiveSubscription(Monitor monitor) {
