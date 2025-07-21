@@ -344,7 +344,7 @@ public class ClientServiceImpl implements ClientService {
 
     Pageable pageable = PaginationFilterUtil.getPageable(request, order);
     Specification<Client> filter = PaginationFilterUtil.addSpecificationFilter(
-            null,
+            (root, query, criteriaBuilder) -> criteriaBuilder.notEqual(root.get("role"), Role.ADMIN),
             request.getGenericFilter(),
             this::filterClients
     );
