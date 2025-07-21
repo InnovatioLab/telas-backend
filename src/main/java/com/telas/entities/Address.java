@@ -14,6 +14,7 @@ import java.io.Serial;
 import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 import java.util.UUID;
 
 @Getter
@@ -83,14 +84,15 @@ public class Address extends BaseAudit implements Serializable {
   }
 
   public boolean hasChanged(AddressRequestDto address) {
-    return !street.equals(address.getStreet())
-           || !zipCode.equals(address.getZipCode())
-           || !city.equals(address.getCity())
-           || !state.equals(address.getState())
-           || (address.getCountry() != null && !country.equals(address.getCountry()))
-           || (address.getComplement() != null && !complement.equals(address.getComplement()))
-           || (address.getLatitude() != null && !latitude.equals(address.getLatitude()))
-           || (address.getLongitude() != null && !longitude.equals(address.getLongitude()));
+    return !Objects.equals(street, address.getStreet())
+           || !Objects.equals(zipCode, address.getZipCode())
+           || !Objects.equals(city, address.getCity())
+           || !Objects.equals(state, address.getState())
+           || !Objects.equals(country, address.getCountry())
+           || !Objects.equals(complement, address.getComplement())
+           || !Objects.equals(latitude, address.getLatitude())
+           || !Objects.equals(longitude, address.getLongitude());
+
   }
 
   public boolean hasLocation() {
