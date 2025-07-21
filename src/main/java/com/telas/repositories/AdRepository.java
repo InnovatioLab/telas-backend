@@ -15,9 +15,9 @@ import java.util.UUID;
 public interface AdRepository extends JpaRepository<Ad, UUID>, JpaSpecificationExecutor<Ad> {
   @Query("""
               SELECT ad FROM Ad ad
-              JOIN ad.client c
-              LEFT JOIN c.subscriptions s
-              LEFT JOIN s.monitors m
+              JOIN FETCH ad.client c
+              LEFT JOIN FETCH c.subscriptions s
+              LEFT JOIN FETCH s.monitors m
               WHERE (
                   c.role <> 'ADMIN'
                   AND ad.validation = :validation

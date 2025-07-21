@@ -113,17 +113,13 @@ public class MonitorHelper {
 
   @Transactional(readOnly = true)
   public List<MonitorValidAdResponseDto> getValidAdsForMonitor(Monitor monitor) {
-    Set<MonitorAd> monitorAds = monitor.getMonitorAds();
-
-    if (monitorAds.isEmpty()) {
-      return List.of();
-    }
-
     List<Ad> validAds = adRepository.findAllValidAdsForMonitor(AdValidationType.APPROVED, monitor.getId());
 
     if (validAds.isEmpty()) {
       return List.of();
     }
+
+    Set<MonitorAd> monitorAds = monitor.getMonitorAds();
 
     return validAds.stream()
             .map(ad -> new MonitorValidAdResponseDto(
