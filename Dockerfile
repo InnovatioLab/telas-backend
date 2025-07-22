@@ -73,7 +73,7 @@ ENV TZ=America/New_York
 
 WORKDIR /opt/app
 
-# Copia projeto compilado pelo JDK para ambiente JRE.
+
 COPY --from=builder /opt/app/target/*.jar ./app.jar
 
 EXPOSE 8080
