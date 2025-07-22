@@ -1,17 +1,13 @@
 # Instala git e clona projeto no ambiente da JDK.
 FROM eclipse-temurin:17-jdk-jammy AS builder
-WORKDIR /opt
-RUN apt update && apt install git -y
-
-
-WORKDIR /opt/telas
+WORKDIR /opt/app
 
 # Copia o código-fonte para o contêiner
 COPY . .
 
 # Compila o projeto.
 RUN bash ./mvnw dependency:go-offline
-RUN bash ./mvnw clean install -Dmaven.test.skip=true
+RUN bash ./mvnw clean install -DskipTests
 
 # Inicia ambiente com JRE-17.
 FROM eclipse-temurin:17-jre-jammy
@@ -73,11 +69,12 @@ ENV RABBITMQ_PASSWORD=${RABBITMQ_PASSWORD}
 ENV QUEUE_NAME=${QUEUE_NAME}
 ENV EXCHANGE_NAME=${EXCHANGE_NAME}
 ENV ROUTING_KEY=${ROUTING_KEY}
+ENV TZ=America/New_York
 
 WORKDIR /opt/app
 
 # Copia projeto compilado pelo JDK para ambiente JRE.
-COPY --from=builder /opt/telas/target/*.jar ./app.jar
+COPY --from=builder /opt/app/target/*.jar ./app.jar
 
 EXPOSE 8080
 ENTRYPOINT ["java", "-jar", "./app.jar" ]
