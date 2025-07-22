@@ -6,8 +6,6 @@ on:
 jobs:
   build:
     runs-on: self-hosted
-    environment:
-      name: production
     concurrency:
       group: deploy-${{ github.ref }}
       cancel-in-progress: true
