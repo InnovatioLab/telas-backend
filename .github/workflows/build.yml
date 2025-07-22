@@ -1,0 +1,62 @@
+name: build.yml
+on:
+  push:
+    branches: [ "main" ]
+
+jobs:
+  build:
+    runs-on: self-hosted
+    environment:
+      name: production
+    concurrency:
+      group: deploy-${{ github.ref }}
+      cancel-in-progress: true
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GHCR_TOKEN }}
+
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v4
+        with:
+          context: .
+          file: ./Dockerfile
+          push: true
+          tags: |
+            ghcr.io/innovation-lab/telas-api:latest
+          platforms: linux/amd64
+          build-args: |
+            TZ=America/New_York
+            DB_URL=${{ secrets.DB_URL }}
+            DB_USER=${{ secrets.DB_USER }}
+            DB_PASSWORD=${{ secrets.DB_PASSWORD }}
+            EMAIL_HOST=${{ secrets.EMAIL_HOST }}
+            EMAIL_PASSWORD=${{ secrets.EMAIL_PASSWORD }}
+            EMAIL_PORT=${{ secrets.EMAIL_PORT }}
+            EMAIL_USERNAME=${{ secrets.EMAIL_USERNAME }}
+            GEOLOCALIZACAO_SERVICE_KEY=${{ secrets.GEOLOCALIZACAO_SERVICE_KEY }}
+            GEOLOCALIZACAO_SERVICE_URL=${{ secrets.GEOLOCALIZACAO_SERVICE_URL }}
+            LOKI=${{ secrets.LOKI }}
+            MINIO_ACCESS_KEY=${{ secrets.MINIO_ACCESS_KEY }}
+            MINIO_BUCKET_NAME=${{ secrets.MINIO_BUCKET_NAME }}
+            MINIO_ENDPOINT=${{ secrets.MINIO_ENDPOINT }}
+            MINIO_SECRET_KEY=${{ secrets.MINIO_SECRET_KEY }}
+            MONITOR_BLOCK_PRICE=${{ secrets.MONITOR_BLOCK_PRICE }}
+            PAYMENT_GATEWAY_API_KEY=${{ secrets.PAYMENT_GATEWAY_API_KEY }}
+            PAYMENT_GATEWAY_WEBHOOK_SECRET=${{ secrets.PAYMENT_GATEWAY_WEBHOOK_SECRET }}
+            TOKEN_SECRET=${{ secrets.TOKEN_SECRET }}
+            FRONT_BASE_URL=${{ secrets.FRONT_BASE_URL }}
+            STRIPE_PRODUCT_ID=${{ secrets.STRIPE_PRODUCT_ID }}
+            RABBITMQ_HOST=${{ secrets.RABBITMQ_HOST }}
+            RABBITMQ_PORT=${{ secrets.RABBITMQ_PORT }}
+            RABBITMQ_USER=${{ secrets.RABBITMQ_USER }}
+            RABBITMQ_PASSWORD=${{ secrets.RABBITMQ_PASSWORD }}
+            QUEUE_NAME=${{ secrets.QUEUE_NAME }}
+            EXCHANGE_NAME=${{ secrets.EXCHANGE_NAME }}
+            ROUTING_KEY=${{ secrets.ROUTING_KEY }}
