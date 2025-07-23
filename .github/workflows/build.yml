@@ -18,7 +18,7 @@ jobs:
         uses: docker/login-action@v3
         with:
           registry: ghcr.io
-          username: ${{ github.actor }}
+          username: ${{ secrets.DOCKER_LOGIN }}
           password: ${{ secrets.GHCR_TOKEN }}
 
       - name: Build and push Docker image
@@ -28,7 +28,7 @@ jobs:
           file: ./Dockerfile
           push: true
           tags: |
-            ghcr.io/innovation-lab/telas-api:latest
+            ghcr.io/${{ github.actor }}/telas-api:latest
           platforms: linux/amd64
           build-args: |
             TZ=America/New_York
