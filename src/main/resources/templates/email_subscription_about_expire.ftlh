@@ -148,8 +148,8 @@
         <p style="margin: 0"><strong>The Tela's Team</strong></p>
         <p style="margin: 5px 0 0">
             Contact us at
-            <a href="mailto:support@telas.com" style="color: #131518"
-            >support@telas.com</a
+            <a href="mailto:support@telas-ads.com" style="color: #131518"
+            >support@telas-ads.com</a
             >
         </p>
     </div>

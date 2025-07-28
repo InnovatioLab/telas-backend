@@ -10,7 +10,7 @@ public final class SharedConstants {
   public static final String USD = "usd";
   public static final String CARD = "card";
 
-  public static final String EMAIL_SENDER = "victoremmanuelmn@gmail.com";
+  public static final String EMAIL_SENDER = "support@telas-ads.com";
   public static final String EMAIL_SUBJECT_CONTACT_VERIFICATION = "Registry Confirmation - Telas";
   public static final String TEMPLATE_EMAIL_CONTACT_VERIFICATION = "email_contact_confirmation.ftlh";
   public static final String TEMPLATE_EMAIL_RESET_PASSWORD = "email_reset_password.ftlh";

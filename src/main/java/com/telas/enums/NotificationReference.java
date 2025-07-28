@@ -176,7 +176,7 @@ public enum NotificationReference {
                 </div>
             </div>
             <a id="link-details" class='details link-text' href="%s">%s</a>
-            <p>Need help? Contact us anytime at support@telas.com</p>
+            <p>Need help? Contact us anytime at support@telas-ads.com</p>
             """, title, message, params.get("startDate"), endDateDiv, params.get("locations"), params.get("link"), linkText);
   }
 
