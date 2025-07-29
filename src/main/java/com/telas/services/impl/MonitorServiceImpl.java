@@ -159,7 +159,9 @@ public class MonitorServiceImpl implements MonitorService {
   @Transactional(readOnly = true)
   public List<MonitorBoxMinResponseDto> findAllMonitors() {
     authenticatedUserService.validateAdmin();
-    return repository.findAllMonitorsBox();
+    return repository.findAll().stream().
+            map(MonitorBoxMinResponseDto::new)
+            .toList();
   }
 
   @Override
@@ -306,6 +308,7 @@ public class MonitorServiceImpl implements MonitorService {
     monitor.setProductId(productId);
     monitor.setLocationDescription(request.getLocationDescription());
     monitor.setSize(request.getSize());
+    monitor.setActive(request.getActive() != null ? request.getActive() : monitor.isActive());
 
     if (ValidateDataUtils.isNullOrEmpty(ads)) {
       return;

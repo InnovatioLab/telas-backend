@@ -9,6 +9,7 @@ import lombok.Getter;
 
 import java.io.Serial;
 import java.io.Serializable;
+import java.time.Instant;
 import java.util.UUID;
 
 @Getter
@@ -32,6 +33,9 @@ public final class ClientMinResponseDto implements Serializable {
 
   private final Owner owner;
 
+  private final Instant createdAt;
+
+  private final Instant updatedAt;
 
   public ClientMinResponseDto(Client entity) {
     id = entity.getId();
@@ -42,5 +46,7 @@ public final class ClientMinResponseDto implements Serializable {
     status = entity.getStatus();
     contact = entity.getContact();
     owner = entity.getOwner();
+    createdAt = entity.getCreatedAt();
+    updatedAt = entity.getUpdatedAt();
   }
 }
