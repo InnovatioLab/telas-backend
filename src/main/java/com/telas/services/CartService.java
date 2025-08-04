@@ -14,5 +14,7 @@ public interface CartService {
   Cart findActiveByClientIdWithItens(UUID id);
 
   CartResponseDto findById(UUID id);
+
+  Object getLoggedUserCart();
 }
 

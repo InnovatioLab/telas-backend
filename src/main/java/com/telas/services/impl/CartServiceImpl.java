@@ -63,7 +63,6 @@ public class CartServiceImpl implements CartService {
 
 
     List<CartItemResponseDto> itemsResponse = saveCartItems(request, cart);
-//    repository.save(cart);
     return getCartResponse(cart, itemsResponse);
   }
 
@@ -87,6 +86,15 @@ public class CartServiceImpl implements CartService {
   public CartResponseDto findById(UUID id) {
     Cart cart = findEntityById(id);
     return getCartResponse(cart, null);
+  }
+
+  @Override
+  @Transactional(readOnly = true)
+  public Object getLoggedUserCart() {
+    Client client = authenticatedUserService.getLoggedUser().client();
+    return repository.findActiveByClientIdWithItens(client.getId())
+            .map(cart -> getCartResponse(cart, cart.getItems().stream().map(CartItemResponseDto::new).toList()))
+            .orElse(null);
   }
 
   private CartResponseDto getCartResponse(Cart cart, List<CartItemResponseDto> itemsResponse) {

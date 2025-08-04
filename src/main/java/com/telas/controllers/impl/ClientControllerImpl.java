@@ -149,7 +149,7 @@ public class ClientControllerImpl implements ClientController {
   @GetMapping("/ads-requests")
   @SecurityRequirement(name = "jwt")
   public ResponseEntity<?> findAdRequestsByFilter(FilterAdRequestDto request) {
-    PaginationResponseDto<List<AdRequestResponseDto>> response = service.findPendingAdRequest(request);
+    PaginationResponseDto<List<AdRequestAdminResponseDto>> response = service.findPendingAdRequest(request);
 
     String msg = response.getList().isEmpty() ? MessageCommonsConstants.FIND_FILTER_EMPTY_MESSAGE : MessageCommonsConstants.FIND_ALL_SUCCESS_MESSAGE;
 

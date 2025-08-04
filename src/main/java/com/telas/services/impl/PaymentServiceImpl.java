@@ -192,7 +192,7 @@ public class PaymentServiceImpl implements PaymentService {
             .addPaymentMethodType(SessionCreateParams.PaymentMethodType.CARD)
             .setSuccessUrl(successUrl)
             .setExpiresAt(expiresAt)
-            .setCancelUrl(frontBaseUrl + "/profile")
+            .setCancelUrl(frontBaseUrl + "/client")
             .setClientReferenceId(subscription.getId().toString());
 
     if (isSubscription) {

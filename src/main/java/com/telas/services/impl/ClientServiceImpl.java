@@ -356,7 +356,7 @@ public class ClientServiceImpl implements ClientService {
 
   @Override
   @Transactional(readOnly = true)
-  public PaginationResponseDto<List<AdRequestResponseDto>> findPendingAdRequest(FilterAdRequestDto request) {
+  public PaginationResponseDto<List<AdRequestAdminResponseDto>> findPendingAdRequest(FilterAdRequestDto request) {
     authenticatedUserService.validateAdmin();
     Sort order = request.setOrdering();
 
@@ -371,7 +371,7 @@ public class ClientServiceImpl implements ClientService {
     );
 
     Page<AdRequest> page = adRequestRepository.findAll(filter, pageable);
-    List<AdRequestResponseDto> response = page.stream().map(adRequest -> new AdRequestResponseDto(adRequest, attachmentHelper.getAdRequestData(adRequest))).toList();
+    List<AdRequestAdminResponseDto> response = page.stream().map(adRequest -> new AdRequestAdminResponseDto(adRequest, attachmentHelper.getAdRequestData(adRequest))).toList();
     return PaginationResponseDto.fromResult(response, (int) page.getTotalElements(), page.getTotalPages(), request.getPage());
   }
 
@@ -466,14 +466,18 @@ public class ClientServiceImpl implements ClientService {
 
   ClientResponseDto buildClientResponse(Client client) {
     List<LinkResponseDto> attachmentLinks = client.getAttachments().stream()
-            .map(attachment -> new LinkResponseDto(attachment.getId(), bucketService.getLink(AttachmentUtils.format(attachment))))
+            .map(attachment -> new LinkResponseDto(attachment.getId(), attachment.getName(), bucketService.getLink(AttachmentUtils.format(attachment))))
             .toList();
 
-    List<LinkResponseDto> advertisingAttachmentLinks = client.getAds().stream()
-            .map(attachment -> new LinkResponseDto(attachment.getId(), bucketService.getLink(AttachmentUtils.format(attachment))))
+//    return authenticatedUserService.getLoggedUser().client().getPendingAds().stream()
+//            .map(ad -> new AdResponseDto(ad, attachmentHelper.getStringLinkFromAd(ad)))
+//            .toList();
+
+    List<AdResponseDto> ads = client.getAds().stream()
+            .map(ad -> new AdResponseDto(ad, attachmentHelper.getStringLinkFromAd(ad)))
             .toList();
 
-    return new ClientResponseDto(client, attachmentLinks, advertisingAttachmentLinks);
+    return new ClientResponseDto(client, attachmentLinks, ads);
   }
 
   protected Client findActiveByIdentification(String identification) {

@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="pt-br">
+<html lang="en">
 <head>
     <title>Telas</title>
     <meta charset="UTF-8"/>

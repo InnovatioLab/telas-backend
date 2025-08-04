@@ -27,11 +27,18 @@ public interface CartController {
   })
   ResponseEntity<?> update(CartRequestDto request, UUID cartId);
 
-  @Operation(summary = "Route contract to find a cart by user ID", responses = {
+  @Operation(summary = "Route contract to find a cart by ID", responses = {
           @ApiResponse(responseCode = "200", description = "Cart successfully found."),
           @ApiResponse(responseCode = "401", description = "Authentication failed."),
           @ApiResponse(responseCode = "403", description = "No permission to perform this operation."),
           @ApiResponse(responseCode = "404", description = "Cart not found.")
   })
   ResponseEntity<?> findById(UUID id);
+
+  @Operation(summary = "Route contract to find logged user cart", responses = {
+          @ApiResponse(responseCode = "200", description = "Cart successfully found."),
+          @ApiResponse(responseCode = "401", description = "Authentication failed."),
+          @ApiResponse(responseCode = "403", description = "No permission to perform this operation.")
+  })
+  ResponseEntity<?> getLoggedUserCart();
 }

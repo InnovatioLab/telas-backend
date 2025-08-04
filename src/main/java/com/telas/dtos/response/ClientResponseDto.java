@@ -34,17 +34,23 @@ public final class ClientResponseDto implements Serializable {
 
   private final SocialMedia socialMedia;
 
+  private final AdRequestClientResponseDto adRequest;
+
   private final Set<Address> addresses;
 
   private final List<LinkResponseDto> attachments;
 
-  private final List<LinkResponseDto> ads;
+  private final List<AdResponseDto> ads;
 
-  private final Boolean termAccepted;
+  private final boolean termAccepted;
+
+  private final boolean hasActiveSubscription;
+
+  private final boolean shouldDisplayAttachments;
 
   private final int currentSubscriptionFlowStep;
 
-  public ClientResponseDto(Client entity, List<LinkResponseDto> attachmentUrls, List<LinkResponseDto> adsUrls) {
+  public ClientResponseDto(Client entity, List<LinkResponseDto> attachmentUrls, List<AdResponseDto> adsUrls) {
     id = entity.getId();
     businessName = entity.getBusinessName();
     identificationNumber = entity.getIdentificationNumber();
@@ -54,10 +60,13 @@ public final class ClientResponseDto implements Serializable {
     contact = entity.getContact();
     owner = entity.getOwner();
     socialMedia = entity.getSocialMedia();
+    adRequest = entity.getAdRequest() != null ? new AdRequestClientResponseDto(entity.getAdRequest()) : null;
     addresses = entity.getAddresses();
     attachments = attachmentUrls;
     ads = adsUrls;
     termAccepted = entity.isTermsAccepted();
     currentSubscriptionFlowStep = entity.getSubscriptionFlow() != null ? entity.getSubscriptionFlow().getStep() : 0;
+    hasActiveSubscription = entity.hasActiveSubscription();
+    shouldDisplayAttachments = !entity.getAttachments().isEmpty() || !entity.getAds().isEmpty();
   }
 }

@@ -12,6 +12,7 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
+import java.io.Serial;
 import java.io.Serializable;
 import java.util.List;
 import java.util.UUID;
@@ -22,20 +23,22 @@ import java.util.UUID;
 @NoArgsConstructor
 public class ClientAdRequestToAdminDto implements Serializable {
 
-    @NotNull(message = AdValidationMessages.ATTACHMENT_IDS_REQUIRED)
-    @NotEmpty(message = AdValidationMessages.ATTACHMENT_IDS_REQUIRED)
-    private List<UUID> attachmentIds;
+  @Serial
+  private static final long serialVersionUID = 2132868975487514316L;
+  @NotNull(message = AdValidationMessages.ATTACHMENT_IDS_REQUIRED)
+  @NotEmpty(message = AdValidationMessages.ATTACHMENT_IDS_REQUIRED)
+  private List<UUID> attachmentIds;
 
-    @NotEmpty(message = AdValidationMessages.MESSAGE_REQUIRED)
-    @JsonDeserialize(using = TrimStringDeserializer.class)
-    private String message;
+  @NotEmpty(message = AdValidationMessages.MESSAGE_REQUIRED)
+  @JsonDeserialize(using = TrimStringDeserializer.class)
+  private String message;
 
-    @Pattern(regexp = SharedConstants.REGEX_ONLY_NUMBERS, message = ContactValidationMessages.PHONE_ONLY_NUMBERS)
-    @Size(min = 10, max = 11, message = ContactValidationMessages.PHONE_SIZE)
-    @JsonDeserialize(using = TrimStringDeserializer.class)
-    private String phone;
+  @Pattern(regexp = SharedConstants.REGEX_ONLY_NUMBERS, message = ContactValidationMessages.PHONE_ONLY_NUMBERS)
+  @Size(min = 11, max = 11, message = ContactValidationMessages.PHONE_SIZE)
+  @JsonDeserialize(using = TrimStringDeserializer.class)
+  private String phone;
 
-    @Email(message = ContactValidationMessages.EMAIL_INVALID)
-    @JsonDeserialize(using = TrimStringDeserializer.class)
-    private String email;
+  @Email(message = ContactValidationMessages.EMAIL_INVALID)
+  @JsonDeserialize(using = TrimStringDeserializer.class)
+  private String email;
 }

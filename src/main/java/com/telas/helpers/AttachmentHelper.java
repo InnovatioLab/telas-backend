@@ -61,7 +61,7 @@ public class AttachmentHelper {
   private List<LinkResponseDto> getAttachmentsLinksResponseFromAdRequest(AdRequest adRequestEntity) {
     List<Attachment> attachments = getAttachmentsFromAdRequest(adRequestEntity);
     return attachments.stream()
-            .map(attachment -> new LinkResponseDto(attachment.getId(), bucketService.getLink(AttachmentUtils.format(attachment))))
+            .map(attachment -> new LinkResponseDto(attachment.getId(), attachment.getName(), bucketService.getLink(AttachmentUtils.format(attachment))))
             .toList();
   }
 
@@ -71,7 +71,7 @@ public class AttachmentHelper {
       return null;
     }
     Ad ad = adRequestEntity.getAd();
-    return new LinkResponseDto(ad.getId(), bucketService.getLink(AttachmentUtils.format(ad)));
+    return new LinkResponseDto(ad.getId(), ad.getName(), bucketService.getLink(AttachmentUtils.format(ad)));
   }
 
   @Transactional(readOnly = true)

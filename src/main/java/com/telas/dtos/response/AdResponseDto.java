@@ -14,24 +14,27 @@ import java.util.UUID;
 
 @Getter
 public final class AdResponseDto implements Serializable {
-    @Serial
-    private static final long serialVersionUID = 5288515525105234502L;
+  @Serial
+  private static final long serialVersionUID = 5288515525105234502L;
 
-    private final UUID id;
+  private final UUID id;
 
-    private final LocalDate submissionDate;
+  private final String name;
 
-    private final String link;
+  private final LocalDate submissionDate;
 
-    private final AdValidationType validation;
+  private final String link;
 
-    private final long waitingDays;
+  private final AdValidationType validation;
 
-    public AdResponseDto(Ad ad, String link) {
-        id = ad.getId();
-        submissionDate = ad.getCreatedAt().atZone(ZoneId.systemDefault()).toLocalDate();
-        this.link = link;
-        validation = ad.getValidation();
-        waitingDays = ChronoUnit.DAYS.between(ad.getCreatedAt(), Instant.now());
-    }
+  private final long waitingDays;
+
+  public AdResponseDto(Ad ad, String link) {
+    id = ad.getId();
+    name = ad.getName();
+    submissionDate = ad.getCreatedAt().atZone(ZoneId.systemDefault()).toLocalDate();
+    this.link = link;
+    validation = ad.getValidation();
+    waitingDays = ChronoUnit.DAYS.between(ad.getCreatedAt(), Instant.now());
+  }
 }

@@ -221,14 +221,12 @@ public class SubscriptionHelper {
 
   public String getRedirectUrlAfterCreatingNewSubscription(Client client) {
     if (client.getAttachments().isEmpty()) {
-      return buildRedirectUrl("attachments");
+      return buildRedirectUrl("my-telas");
     }
 
-    if (client.getAds().isEmpty()) {
-      return buildRedirectUrl("request-ad");
-    }
-
-    return buildRedirectUrl("subscriptions");
+    return client.getAds().isEmpty()
+            ? buildRedirectUrl("my-telas?ads=true")
+            : buildRedirectUrl("subscriptions");
   }
 
   private void validateCart(Cart cart) {

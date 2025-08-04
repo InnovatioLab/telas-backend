@@ -58,7 +58,7 @@ public interface ClientService {
 
   PaginationResponseDto<List<ClientMinResponseDto>> findAllFilters(ClientFilterRequestDto request);
 
-  PaginationResponseDto<List<AdRequestResponseDto>> findPendingAdRequest(FilterAdRequestDto request);
+  PaginationResponseDto<List<AdRequestAdminResponseDto>> findPendingAdRequest(FilterAdRequestDto request);
 
   void addMonitorToWishlist(UUID monitorId);
 

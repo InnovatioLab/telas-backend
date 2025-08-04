@@ -54,8 +54,8 @@ public class AdRequest extends BaseAudit implements Serializable {
   @OneToMany(mappedBy = "adRequest", cascade = CascadeType.ALL, orphanRemoval = true)
   private List<RefusedAd> refusedAds = new ArrayList<>();
 
-  @ManyToOne
-  @JoinColumn(name = "client_id", nullable = false)
+  @OneToOne
+  @JoinColumn(name = "client_id", referencedColumnName = "id", nullable = false)
   private Client client;
 
   public AdRequest(ClientAdRequestToAdminDto request, Client client, List<Attachment> attachmentList) {
