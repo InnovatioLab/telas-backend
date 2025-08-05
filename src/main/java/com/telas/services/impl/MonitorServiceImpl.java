@@ -99,8 +99,6 @@ public class MonitorServiceImpl implements MonitorService {
   @Override
   @Transactional(readOnly = true)
   public MonitorResponseDto findById(UUID monitorId) {
-    authenticatedUserService.validateAdmin();
-
     Monitor entity = repository.findById(monitorId).orElseThrow(() -> new ResourceNotFoundException(MonitorValidationMessages.MONITOR_NOT_FOUND));
 
     List<MonitorAdResponseDto> adLinks = helper.getMonitorAdsResponse(entity);

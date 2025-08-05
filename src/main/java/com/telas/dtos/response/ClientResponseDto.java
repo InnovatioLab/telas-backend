@@ -67,6 +67,6 @@ public final class ClientResponseDto implements Serializable {
     termAccepted = entity.isTermsAccepted();
     currentSubscriptionFlowStep = entity.getSubscriptionFlow() != null ? entity.getSubscriptionFlow().getStep() : 0;
     hasActiveSubscription = entity.hasActiveSubscription();
-    shouldDisplayAttachments = !entity.getAttachments().isEmpty() || !entity.getAds().isEmpty();
+    shouldDisplayAttachments = !entity.getAttachments().isEmpty() || !entity.getAds().isEmpty() || entity.hasActiveSubscription();
   }
 }
