@@ -100,10 +100,6 @@ public class Client extends BaseAudit implements Serializable {
   @OneToOne(mappedBy = "client")
   private AdRequest adRequest;
 
-  @JsonIgnore
-  @OneToOne(mappedBy = "client")
-  private Cart cart;
-
   @NotAudited
   @OneToOne(mappedBy = "client", cascade = CascadeType.ALL)
   private Wishlist wishlist;

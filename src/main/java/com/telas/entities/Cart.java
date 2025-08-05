@@ -40,7 +40,7 @@ public class Cart extends BaseAudit implements Serializable {
   @Enumerated(EnumType.STRING)
   private Recurrence recurrence;
 
-  @OneToOne
+  @ManyToOne
   @JoinColumn(name = "client_id", referencedColumnName = "id", nullable = false)
   private Client client;
 

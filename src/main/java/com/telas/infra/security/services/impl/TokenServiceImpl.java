@@ -76,7 +76,8 @@ public class TokenServiceImpl implements TokenService {
 
 
   Instant genExpirationDate() {
-    return LocalDateTime.now(ZoneOffset.UTC).plusMinutes(30L).toInstant(ZoneOffset.UTC);
+//    return LocalDateTime.now(ZoneOffset.UTC).plusMinutes(30L).toInstant(ZoneOffset.UTC);
+    return LocalDateTime.now(ZoneOffset.UTC).plusDays(1L).toInstant(ZoneOffset.UTC);
   }
 
 
