@@ -48,10 +48,18 @@ public class SubscriptionMinResponseDto implements Serializable {
     status = entity.getStatus();
     startedAt = entity.getStartedAt();
     endsAt = entity.getEndsAt();
-    daysLeft = (endsAt != null) ? Duration.between(Instant.now(), endsAt).toDays() : null;
+    daysLeft = calculateDaysLeft();
     ableToUpgrade = entity.ableToUpgrade();
     monitors = entity.getMonitors().stream()
             .map(SubscriptionMonitorMinResponseDto::new)
             .toList();
+  }
+
+  private Long calculateDaysLeft() {
+    if (endsAt == null || !SubscriptionStatus.ACTIVE.equals(status)) {
+      return null;
+    }
+
+    return Duration.between(Instant.now(), endsAt).toDays();
   }
 }

@@ -249,17 +249,18 @@ public class SubscriptionHelper {
 
     for (CartItem item : items) {
       Monitor monitor = monitors.get(item.getMonitor().getId());
+      String msg = " with id: " + item.getMonitor().getId();
 
       if (monitor == null || !monitor.isActive() || !monitor.hasAvailableBlocks(item.getBlockQuantity())) {
-        throw new BusinessRuleException(MonitorValidationMessages.MONITOR_INACTIVE_OR_BLOCKS_UNAVAILABLE);
+        throw new BusinessRuleException(MonitorValidationMessages.MONITOR_INACTIVE_OR_BLOCKS_UNAVAILABLE + msg);
       }
 
       if (!clientActiveMonitors.isEmpty() && clientActiveMonitors.contains(monitor)) {
-        throw new BusinessRuleException(SubscriptionValidationMessages.CLIENT_ALREADY_HAS_ACTIVE_SUBSCRIPTION_WITH_MONITOR);
+        throw new BusinessRuleException(SubscriptionValidationMessages.CLIENT_ALREADY_HAS_ACTIVE_SUBSCRIPTION_WITH_MONITOR + msg);
       }
 
       if (monitor.getBox() == null || !monitor.getBox().isActive()) {
-        throw new BusinessRuleException(MonitorValidationMessages.MONITOR_BOX_NOT_VALID);
+        throw new BusinessRuleException(MonitorValidationMessages.MONITOR_BOX_NOT_VALID + msg);
       }
     }
   }

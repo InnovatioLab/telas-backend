@@ -37,6 +37,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.Map;
+import java.util.Objects;
 import java.util.UUID;
 
 @Service
@@ -180,7 +181,7 @@ public class PaymentServiceImpl implements PaymentService {
     Customer customer = getOrCreateCustomer(subscription);
     Map<String, String> metaData = helper.createMetaData(subscription, payment, recurrence);
 
-    String successUrl = helper.getSuccessUrl(subscription.getClient());
+    String successUrl = Objects.isNull(recurrence) ? helper.getSuccessUrl(subscription.getClient()) : (frontBaseUrl + "/client/subscriptions");
 
     boolean isSubscription = Recurrence.MONTHLY.equals(subscription.getRecurrence()) || Recurrence.MONTHLY.equals(recurrence);
 

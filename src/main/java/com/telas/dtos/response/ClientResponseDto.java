@@ -44,7 +44,7 @@ public final class ClientResponseDto implements Serializable {
 
   private final boolean termAccepted;
 
-  private final boolean hasActiveSubscription;
+  private final boolean hasSubscription;
 
   private final boolean shouldDisplayAttachments;
 
@@ -66,7 +66,7 @@ public final class ClientResponseDto implements Serializable {
     ads = adsUrls;
     termAccepted = entity.isTermsAccepted();
     currentSubscriptionFlowStep = entity.getSubscriptionFlow() != null ? entity.getSubscriptionFlow().getStep() : 0;
-    hasActiveSubscription = entity.hasActiveSubscription();
-    shouldDisplayAttachments = !entity.getAttachments().isEmpty() || !entity.getAds().isEmpty() || entity.hasActiveSubscription();
+    hasSubscription = !entity.getSubscriptions().isEmpty();
+    shouldDisplayAttachments = !entity.getAttachments().isEmpty() || !entity.getAds().isEmpty() || !entity.getSubscriptions().isEmpty();
   }
 }
