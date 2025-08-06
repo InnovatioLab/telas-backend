@@ -28,13 +28,13 @@ public final class MonitorWishlistResponseDto implements Serializable {
 
   public MonitorWishlistResponseDto(Monitor entity) {
     id = entity.getId();
-    active = entity.isActive();
+    active = entity.isActive() && entity.isAbleToSendBoxRequest();
     type = entity.getType();
     locationDescription = entity.getLocationDescription();
     size = entity.getSize();
     fullAddress = entity.getAddress().getCoordinatesParams();
     latitude = entity.getAddress().getLatitude();
     longitude = entity.getAddress().getLongitude();
-    hasAvailableSlots = entity.getAds().size() < SharedConstants.MAX_MONITOR_ADS;
+    hasAvailableSlots = entity.hasAvailableBlocks(SharedConstants.MIN_QUANTITY_MONITOR_BLOCK);
   }
 }
