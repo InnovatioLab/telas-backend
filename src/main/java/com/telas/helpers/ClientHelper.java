@@ -2,6 +2,7 @@ package com.telas.helpers;
 
 import com.telas.dtos.request.*;
 import com.telas.entities.*;
+import com.telas.enums.AdValidationType;
 import com.telas.enums.NotificationReference;
 import com.telas.enums.Role;
 import com.telas.infra.exceptions.BusinessRuleException;
@@ -9,7 +10,7 @@ import com.telas.infra.exceptions.ResourceNotFoundException;
 import com.telas.repositories.*;
 import com.telas.services.AddressService;
 import com.telas.services.BucketService;
-import com.telas.services.GeolocationService;
+import com.telas.services.MapsService;
 import com.telas.services.NotificationService;
 import com.telas.shared.constants.SharedConstants;
 import com.telas.shared.constants.valitation.*;
@@ -40,7 +41,7 @@ public class ClientHelper {
   private final AdRepository adRepository;
   private final AdRequestRepository adRequestRepository;
   private final AddressService addressService;
-  private final GeolocationService geolocationService;
+  private final MapsService mapsService;
   private final HttpClientUtil httpClient;
   private final BucketService bucketService;
   private final NotificationService notificationService;
@@ -80,13 +81,25 @@ public class ClientHelper {
 
   @Transactional
   public void createAdRequest(ClientAdRequestToAdminDto request, Client client) {
-    List<Attachment> attachments = getAttachmentsByIds(request.getAttachmentIds());
+    List<Attachment> attachments = !request.getAttachmentIds().isEmpty() ? getAttachmentsByIds(request.getAttachmentIds()) : null;
 
-    if (attachments.stream().anyMatch(attachment -> attachment.getClient() != null && !attachment.getClient().getId().equals(client.getId()))) {
+    if (Objects.nonNull(attachments) && attachments.stream().anyMatch(attachment -> attachment.getClient() != null && !attachment.getClient().getId().equals(client.getId()))) {
       throw new BusinessRuleException(AttachmentValidationMessages.ATTACHMENTS_NOT_BELONG_TO_CLIENT);
     }
 
     AdRequest adRequest = new AdRequest(request, client, attachments);
+
+    Ad rejectedAd = client.getAds().stream()
+            .filter(ad -> AdValidationType.REJECTED.equals(ad.getValidation()))
+            .findFirst()
+            .orElse(null);
+
+    if (Objects.nonNull(rejectedAd)) {
+      adRequest.setAd(rejectedAd);
+      rejectedAd.setAdRequest(adRequest);
+      adRepository.save(rejectedAd);
+    }
+
     adRequestRepository.save(adRequest);
   }
 
@@ -158,7 +171,7 @@ public class ClientHelper {
     Address address = addressService.getOrCreateAddress(addressRequest, client);
 
     if (Role.PARTNER.equals(client.getRole()) && address.getLatitude() == null && address.getLongitude() == null) {
-      geolocationService.getAddressCoordinates(address);
+      mapsService.getAddressCoordinates(address);
     }
 
     return address;
@@ -172,7 +185,7 @@ public class ClientHelper {
       address.setUsernameUpdate(client.getBusinessName());
 
       if (address.isPartnerAddress()) {
-        geolocationService.getAddressCoordinates(address);
+        mapsService.getAddressCoordinates(address);
       }
     }
     return address;

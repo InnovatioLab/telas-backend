@@ -198,5 +198,4 @@ public class Client extends BaseAudit implements Serializable {
             .filter(ad -> AdValidationType.PENDING.equals(ad.getValidation()))
             .collect(Collectors.toList());
   }
-
 }

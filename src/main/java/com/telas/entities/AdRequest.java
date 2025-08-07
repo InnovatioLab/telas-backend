@@ -1,8 +1,9 @@
 package com.telas.entities;
 
 import com.telas.dtos.request.ClientAdRequestToAdminDto;
+import com.telas.enums.Role;
 import com.telas.shared.audit.BaseAudit;
-import com.telas.shared.constants.SharedConstants;
+import com.telas.shared.utils.ValidateDataUtils;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -11,7 +12,6 @@ import org.hibernate.envers.AuditTable;
 
 import java.io.Serial;
 import java.io.Serializable;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
@@ -33,7 +33,7 @@ public class AdRequest extends BaseAudit implements Serializable {
   @Column(name = "message", nullable = false)
   private String message;
 
-  @Column(name = "attachment_ids", nullable = false)
+  @Column(name = "attachment_ids")
   private String attachmentIds;
 
   @Column(name = "phone")
@@ -45,14 +45,8 @@ public class AdRequest extends BaseAudit implements Serializable {
   @Column(name = "active")
   private boolean isActive = true;
 
-  @Column(name = "refusal_count", nullable = false)
-  private int refusalCount = 0;
-
-  @OneToOne(mappedBy = "adRequest", cascade = CascadeType.ALL)
+  @OneToOne(mappedBy = "adRequest")
   private Ad ad;
-
-  @OneToMany(mappedBy = "adRequest", cascade = CascadeType.ALL, orphanRemoval = true)
-  private List<RefusedAd> refusedAds = new ArrayList<>();
 
   @OneToOne
   @JoinColumn(name = "client_id", referencedColumnName = "id", nullable = false)
@@ -63,7 +57,14 @@ public class AdRequest extends BaseAudit implements Serializable {
     message = request.getMessage();
     phone = request.getPhone();
     email = request.getEmail();
-    attachmentIds = attachmentList.stream().map(Attachment::getId).map(UUID::toString).reduce((a, b) -> a + "," + b).orElse("");
+
+    if (!ValidateDataUtils.isNullOrEmpty(attachmentList)) {
+      attachmentIds = attachmentList.stream()
+              .map(Attachment::getId)
+              .map(UUID::toString)
+              .reduce((a, b) -> a + "," + b)
+              .orElse("");
+    }
   }
 
   public void closeRequest() {
@@ -74,16 +75,15 @@ public class AdRequest extends BaseAudit implements Serializable {
     isActive = true;
   }
 
-  public void incrementRefusalCount() {
-    if (refusalCount <= 2) {
-      refusalCount++;
+  public void handleRefusal() {
+    long refusedCount = ad.getRefusedAds().stream()
+            .filter(refusedAd -> !Role.ADMIN.equals(refusedAd.getValidator().getRole()))
+            .count();
+
+    if (refusedCount <= 2) {
       openRequest();
     } else {
       closeRequest();
     }
-  }
-
-  public boolean canBeRefused() {
-    return refusalCount < SharedConstants.MAX_ADS_VALIDATION;
   }
 }

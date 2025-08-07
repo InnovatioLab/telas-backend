@@ -101,11 +101,7 @@ public class Ad extends BaseAudit implements Serializable {
     return Objects.equals(getId(), that.getId());
   }
 
-  public boolean canBeRejectedByAdmin() {
-    return AdValidationType.PENDING.equals(validation) && this.getRefusedAds().isEmpty();
-  }
-
-  public boolean canBeRejectedByOwner() {
-    return AdValidationType.PENDING.equals(validation) && this.getRefusedAds().size() <= SharedConstants.MAX_ADS_VALIDATION;
+  public boolean canBeRefused() {
+    return this.getRefusedAds().size() <= SharedConstants.MAX_ADS_VALIDATION;
   }
 }

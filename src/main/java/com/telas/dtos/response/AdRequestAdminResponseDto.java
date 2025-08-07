@@ -59,8 +59,8 @@ public final class AdRequestAdminResponseDto implements Serializable {
     attachments = (List<LinkResponseDto>) linkResponseData.get("attachments");
     ad = (LinkResponseDto) linkResponseData.get("ad");
 
-    refusedAds = !adRequest.getRefusedAds().isEmpty() ?
-            adRequest.getRefusedAds().stream()
+    refusedAds = !adRequest.getAd().getRefusedAds().isEmpty() ?
+            adRequest.getAd().getRefusedAds().stream()
                     .sorted((a, b) -> b.getCreatedAt().compareTo(a.getCreatedAt()))
                     .map(RefusedAdResponseDto::new)
                     .toList() : List.of();

@@ -60,6 +60,10 @@ public class AttachmentHelper {
 
 
   private List<LinkResponseDto> getAttachmentsLinksResponseFromAdRequest(AdRequest adRequestEntity) {
+    if (ValidateDataUtils.isNullOrEmptyString(adRequestEntity.getAttachmentIds())) {
+      return Collections.emptyList();
+    }
+
     List<Attachment> attachments = getAttachmentsFromAdRequest(adRequestEntity);
     return attachments.stream()
             .map(attachment -> new LinkResponseDto(attachment.getId(), attachment.getName(), bucketService.getLink(AttachmentUtils.format(attachment))))
@@ -153,14 +157,13 @@ public class AttachmentHelper {
 
   @Transactional
   public void saveAds(AdRequestDto request, Client client, AdRequest entity) {
-    Ad ad = (Role.ADMIN.equals(client.getRole()) && request.getId() != null)
+    Ad ad = (Role.ADMIN.equals(client.getRole()) && (request.getId() != null || (entity != null && entity.getAd() != null)))
             ? updateExistingAd(request, client, entity)
             : createNewAd(request, client, entity);
 
     uploadAttachment(request, ad);
     clientRepository.save(client);
   }
-
 
   private Ad createNewAd(AdRequestDto request, Client client, AdRequest adRequestEntity) {
     if (adRequestEntity != null) {
@@ -179,7 +182,10 @@ public class AttachmentHelper {
   private Ad createNewAdFromRequest(AdRequest adRequestEntity, AdRequestDto adRequest, Client admin) {
     Ad newAd = new Ad(adRequest, adRequestEntity.getClient(), adRequestEntity);
     newAd.setUsernameCreate(admin.getBusinessName());
-    newAd.getAttachments().addAll(getAttachmentsFromAdRequest(adRequestEntity));
+
+    if (!ValidateDataUtils.isNullOrEmptyString(adRequestEntity.getAttachmentIds())) {
+      newAd.getAttachments().addAll(getAttachmentsFromAdRequest(adRequestEntity));
+    }
 
     Client client = adRequestEntity.getClient();
     client.getAds().add(newAd);
@@ -247,41 +253,58 @@ public class AttachmentHelper {
             .orElseThrow(() -> new ResourceNotFoundException(AdValidationMessages.AD_NOT_FOUND));
   }
 
-
   @Transactional
-  public void validateAd(Ad entity, AdValidationType validation, RefusedAdRequestDto request, Client client) {
+  public void validateAd(Ad entity, AdValidationType validation, RefusedAdRequestDto request, Client validator) {
     if (AdValidationType.PENDING.equals(validation)) {
       throw new BusinessRuleException(AdValidationMessages.PENDING_VALIDATION_NOT_ACCEPTED);
     }
 
-    if (AdValidationType.APPROVED.equals(entity.getValidation())) {
-      return;
+    if (AdValidationType.APPROVED.equals(entity.getValidation())) return;
+
+    if (!Role.ADMIN.equals(validator.getRole())) {
+      validateValidatorPermissions(entity, validator);
     }
 
-    if (!entity.getAdRequest().canBeRefused() && AdValidationType.REJECTED.equals(validation)) {
+    if (!entity.canBeRefused() && AdValidationType.REJECTED.equals(validation)) {
       throw new BusinessRuleException(AdValidationMessages.AD_EXCEEDS_MAX_VALIDATION);
     }
 
-    CustomRevisionListener.setUsername(client.getBusinessName());
+    CustomRevisionListener.setUsername(validator.getBusinessName());
     entity.setValidation(validation);
 
     if (AdValidationType.REJECTED.equals(validation)) {
-      if (request == null) {
-        throw new BusinessRuleException(AttachmentValidationMessages.JUSTIFICATION_REQUIRED);
-      }
-      createRefusedAd(request, entity, client);
+      validateRejectionRequest(request);
+      createRefusedAd(request, entity, validator);
     }
 
-    adRequestRepository.save(entity.getAdRequest());
+    adRepository.save(entity);
   }
 
-  private void createRefusedAd(RefusedAdRequestDto request, Ad entity, Client admin) {
-    RefusedAd refusedAd = new RefusedAd(request, entity, admin);
-    refusedAd.setUsernameCreate(admin.getBusinessName());
-    entity.setUsernameUpdate(admin.getBusinessName());
+  private void validateValidatorPermissions(Ad entity, Client validator) {
+    if (!AdValidationType.PENDING.equals(entity.getValidation())) {
+      throw new BusinessRuleException(AdValidationMessages.AD_ALREADY_VALIDATED);
+    }
 
-    AdRequest adRequest = entity.getAdRequest();
-    adRequest.getRefusedAds().add(refusedAd);
-    adRequest.incrementRefusalCount();
+    if (Objects.isNull(validator.getAdRequest()) || !validator.getId().equals(entity.getClient().getId())) {
+      throw new ForbiddenException(AdValidationMessages.VALIDATION_NOT_ALLOWED);
+    }
+  }
+
+  private void validateRejectionRequest(RefusedAdRequestDto request) {
+    if (request == null) {
+      throw new BusinessRuleException(AttachmentValidationMessages.JUSTIFICATION_REQUIRED);
+    }
+  }
+
+  private void createRefusedAd(RefusedAdRequestDto request, Ad entity, Client validator) {
+    RefusedAd refusedAd = new RefusedAd(request, entity, validator);
+    refusedAd.setUsernameCreate(validator.getBusinessName());
+    entity.setUsernameUpdate(validator.getBusinessName());
+    entity.getRefusedAds().add(refusedAd);
+
+    if (Objects.nonNull(entity.getAdRequest())) {
+      entity.getAdRequest().handleRefusal();
+      adRequestRepository.save(entity.getAdRequest());
+    }
   }
 }

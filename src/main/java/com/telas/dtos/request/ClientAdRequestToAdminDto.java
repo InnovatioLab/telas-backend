@@ -6,7 +6,10 @@ import com.telas.shared.constants.SharedConstants;
 import com.telas.shared.constants.valitation.AdValidationMessages;
 import com.telas.shared.constants.valitation.ContactValidationMessages;
 import com.telas.shared.utils.TrimStringDeserializer;
-import jakarta.validation.constraints.*;
+import jakarta.validation.constraints.Email;
+import jakarta.validation.constraints.NotEmpty;
+import jakarta.validation.constraints.Pattern;
+import jakarta.validation.constraints.Size;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -14,6 +17,7 @@ import lombok.Setter;
 
 import java.io.Serial;
 import java.io.Serializable;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
@@ -25,9 +29,8 @@ public class ClientAdRequestToAdminDto implements Serializable {
 
   @Serial
   private static final long serialVersionUID = 2132868975487514316L;
-  @NotNull(message = AdValidationMessages.ATTACHMENT_IDS_REQUIRED)
-  @NotEmpty(message = AdValidationMessages.ATTACHMENT_IDS_REQUIRED)
-  private List<UUID> attachmentIds;
+
+  private List<UUID> attachmentIds = new ArrayList<>();
 
   @NotEmpty(message = AdValidationMessages.MESSAGE_REQUIRED)
   @JsonDeserialize(using = TrimStringDeserializer.class)

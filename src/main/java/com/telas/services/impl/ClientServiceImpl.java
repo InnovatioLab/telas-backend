@@ -69,7 +69,7 @@ public class ClientServiceImpl implements ClientService {
 
     Client client = new Client(request, owner);
     VerificationCode verificationCode = verificationCodeService.save(CodeType.CONTACT, client);
-//    verificationCode.setValidated(true);
+    verificationCode.setValidated(true);
     client.setVerificationCode(verificationCode);
 
     if (Objects.equals(client.getBusinessName(), "Admin")) {
@@ -78,11 +78,11 @@ public class ClientServiceImpl implements ClientService {
       client.setRole(Role.CLIENT);
     }
 
-//    TermCondition actualTermCondition = termConditionService.getActualTermCondition();
-//    client.setTermCondition(actualTermCondition);
-//    client.setTermAcceptedAt(Instant.now());
+    TermCondition actualTermCondition = termConditionService.getActualTermCondition();
+    client.setTermCondition(actualTermCondition);
+    client.setTermAcceptedAt(Instant.now());
 
-    sendContactConfirmationEmail(client, verificationCode);
+//    sendContactConfirmationEmail(client, verificationCode);
     repository.save(client);
   }
 
@@ -229,7 +229,8 @@ public class ClientServiceImpl implements ClientService {
   public void uploadAttachments(List<AttachmentRequestDto> request) {
     attachmentHelper.validate(request);
 
-    Client client = authenticatedUserService.validateActiveSubscription().client();
+//    Client client = authenticatedUserService.validateActiveSubscription().client();
+    Client client = authenticatedUserService.getLoggedUser().client();
     helper.validateAttachmentsCount(client, request);
 
     if (!client.getAttachments().isEmpty()) {
@@ -244,14 +245,23 @@ public class ClientServiceImpl implements ClientService {
   @Transactional
   @Override
   public void requestAdCreation(ClientAdRequestToAdminDto request) {
-    Client client = authenticatedUserService.validateActiveSubscription().client();
+//    Client client = authenticatedUserService.validateActiveSubscription().client();
+    Client client = authenticatedUserService.getLoggedUser().client();
 
     if (Role.ADMIN.equals(client.getRole())) {
       return;
     }
 
-    if (!client.getAds().isEmpty()) {
-      throw new BusinessRuleException(ClientValidationMessages.MAX_ADS_REACHED);
+    if (Objects.nonNull(client.getAdRequest())) {
+      throw new ForbiddenException(ClientValidationMessages.AD_REQUEST_EXISTS);
+    }
+
+    if (!client.getAds().isEmpty() && client.getAds().stream().noneMatch(ad -> AdValidationType.REJECTED.equals(ad.getValidation()))) {
+      throw new BusinessRuleException(ClientValidationMessages.AD_REQUEST_NOT_ALLOWED);
+    }
+
+    if (client.getAds().isEmpty() && request.getAttachmentIds().isEmpty()) {
+      throw new BusinessRuleException(AdValidationMessages.ATTACHMENT_IDS_REQUIRED);
     }
 
     helper.createAdRequest(request, client);
@@ -262,6 +272,7 @@ public class ClientServiceImpl implements ClientService {
   public void uploadAds(AdRequestDto request, UUID clientId) {
     request.validate();
 
+//    Client client = authenticatedUserService.validateActiveSubscription().client();
     Client client = authenticatedUserService.getLoggedUser().client();
 
     if (Role.ADMIN.equals(client.getRole()) && client.getId().equals(clientId)) {
@@ -271,7 +282,7 @@ public class ClientServiceImpl implements ClientService {
 
     if (!Role.ADMIN.equals(client.getRole())) {
       if (!client.getId().equals(clientId)) {
-        throw new UnauthorizedException(ClientValidationMessages.UNAUTHORIZED_CLIENT);
+        throw new ForbiddenException(ClientValidationMessages.UNAUTHORIZED_CLIENT);
       }
 
       if (!client.getAds().isEmpty()) {
@@ -329,21 +340,19 @@ public class ClientServiceImpl implements ClientService {
   @Transactional
   public void validateAd(UUID adId, AdValidationType validation, RefusedAdRequestDto request) {
     Ad ad = helper.getAdById(adId);
-    authenticatedUserService.validateActiveSubscription();
+//    Client validator = authenticatedUserService.validateActiveSubscription().client();
+    Client validator = authenticatedUserService.getLoggedUser().client();
+    attachmentHelper.validateAd(ad, validation, request, validator);
 
-    Client client = ad.getClient();
-
-    attachmentHelper.validateAd(ad, validation, request, client);
-
-    if (AdValidationType.APPROVED.equals(validation)) {
-      List<UUID> monitorIds = helper.findClientMonitorsWithActiveSubscriptions(client.getId()).stream()
-              .map(Monitor::getId)
-              .toList();
-
-      if (!monitorIds.isEmpty()) {
-        helper.addAdToMonitor(ad, monitorIds, client);
-      }
-    }
+//    if (AdValidationType.APPROVED.equals(validation)) {
+//      List<UUID> monitorIds = helper.findClientMonitorsWithActiveSubscriptions(client.getId()).stream()
+//              .map(Monitor::getId)
+//              .toList();
+//
+//      if (!monitorIds.isEmpty()) {
+//        helper.addAdToMonitor(ad, monitorIds, client);
+//      }
+//    }
   }
 
   @Override
