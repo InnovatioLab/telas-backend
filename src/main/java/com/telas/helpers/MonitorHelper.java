@@ -17,7 +17,7 @@ import com.telas.repositories.AdRepository;
 import com.telas.repositories.MonitorRepository;
 import com.telas.services.AddressService;
 import com.telas.services.BucketService;
-import com.telas.services.GeolocationService;
+import com.telas.services.MapsService;
 import com.telas.shared.constants.SharedConstants;
 import com.telas.shared.constants.valitation.AddressValidationMessages;
 import com.telas.shared.constants.valitation.MonitorValidationMessages;
@@ -39,7 +39,7 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class MonitorHelper {
   private final Logger log = LoggerFactory.getLogger(MonitorHelper.class);
-  private final GeolocationService geolocationService;
+  private final MapsService mapsService;
   private final AdRepository adRepository;
   private final MonitorRepository repository;
   private final AddressService addressService;
@@ -73,13 +73,13 @@ public class MonitorHelper {
 
   @Transactional
   public void setAddressCoordinates(Address address) {
-    geolocationService.getAddressCoordinates(address);
+    mapsService.getAddressCoordinates(address);
     addressService.save(address);
   }
 
   @Transactional
   public Map<String, Double> getCoordinatesFromZipCode(String zipCode, String countryCode) {
-    return geolocationService.getCoordinatesFromZipCode(zipCode, countryCode);
+    return mapsService.getCoordinatesFromZipCode(zipCode, countryCode);
   }
 
   @Transactional

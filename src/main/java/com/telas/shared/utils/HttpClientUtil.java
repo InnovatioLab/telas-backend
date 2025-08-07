@@ -55,6 +55,34 @@ public class HttpClientUtil {
     }
   }
 
+  public <T> T makePostRequestWithReturn(String url, Object body, Class<T> responseType, Map<String, String> queryParams, Map<String, String> headers) {
+    try {
+      UriComponentsBuilder uriBuilder = UriComponentsBuilder.fromHttpUrl(url);
+
+      if (queryParams != null) {
+        queryParams.forEach(uriBuilder::queryParam);
+      }
+
+      WebClient.RequestBodySpec requestBodySpec = webClient.post()
+              .uri(uriBuilder.build().toUri())
+              .contentType(MediaType.APPLICATION_JSON);
+
+      if (headers != null) {
+        requestBodySpec.headers(httpHeaders -> headers.forEach(httpHeaders::add));
+      }
+
+      return requestBodySpec
+              .bodyValue(body)
+              .retrieve()
+              .bodyToMono(responseType)
+              .block();
+    } catch (WebClientResponseException | HttpClientErrorException exception) {
+      String responseBody = ((WebClientResponseException) exception).getResponseBodyAsString();
+      log.error("Error during POST request to: {}, error: {}", url, responseBody);
+      throw new BusinessRuleException(responseBody);
+    }
+  }
+
   public <T> T makeGetRequest(String url, Class<T> responseType, Map<String, String> queryParams) {
     try {
       UriComponentsBuilder uriBuilder = UriComponentsBuilder.fromHttpUrl(url);
