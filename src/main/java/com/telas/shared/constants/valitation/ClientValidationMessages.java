@@ -27,4 +27,6 @@ public final class ClientValidationMessages {
   public static final String WISHLIST_NOT_FOUND = "Wishlist not found!";
   public static final String OWNER_EMAIL_UNIQUE = "Owner email must be unique.";
   public static final String MONITORS_WITH_ACTIVE_SUBSCRIPTIONS_NOT_FOUND = "Monitors with active subscriptions not found.";
+  public static final String UNAUTHORIZED_CLIENT = "You are not authorized to perform this action.";
+  public static final String AD_REQUEST_EXISTS = "Ad request already exists for this client, please wait for the current request to be processed.";
 }

@@ -21,6 +21,10 @@ public final class MonitorMapsResponseDto implements Serializable {
   private final boolean hasAvailableSlots;
   private final Instant estimatedSlotReleaseDate;
   private final Integer adsDailyDisplayTimeInMinutes;
+  private final String addressLocationName;
+  private final String addressLocationDescription;
+  private final String monitorLocationDescription;
+  private final String photoUrl;
 
   public MonitorMapsResponseDto(
           String id,
@@ -32,7 +36,11 @@ public final class MonitorMapsResponseDto implements Serializable {
           double longitude,
           boolean hasAvailableSlots,
           Instant estimatedSlotReleaseDate,
-          Integer adsDailyDisplayTimeInMinutes
+          Integer adsDailyDisplayTimeInMinutes,
+          String addressLocationName,
+          String addressLocationDescription,
+          String monitorLocationDescription,
+          String photoUrl
   ) {
     this.id = id;
     this.active = active;
@@ -44,5 +52,9 @@ public final class MonitorMapsResponseDto implements Serializable {
     this.hasAvailableSlots = hasAvailableSlots;
     this.estimatedSlotReleaseDate = hasAvailableSlots ? null : estimatedSlotReleaseDate;
     this.adsDailyDisplayTimeInMinutes = adsDailyDisplayTimeInMinutes;
+    this.addressLocationName = addressLocationName;
+    this.addressLocationDescription = addressLocationDescription;
+    this.monitorLocationDescription = monitorLocationDescription;
+    this.photoUrl = photoUrl;
   }
 }

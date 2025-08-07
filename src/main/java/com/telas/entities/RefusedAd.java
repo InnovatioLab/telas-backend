@@ -36,8 +36,8 @@ public class RefusedAd extends BaseAudit implements Serializable {
 
   @JsonIgnore
   @ManyToOne
-  @JoinColumn(name = "ad_request_id", referencedColumnName = "id", nullable = false)
-  private AdRequest adRequest;
+  @JoinColumn(name = "ad_id", referencedColumnName = "id", nullable = false)
+  private Ad ad;
 
   @JsonIgnore
   @ManyToOne
@@ -48,7 +48,7 @@ public class RefusedAd extends BaseAudit implements Serializable {
     justification = request.getJustification();
     description = request.getDescription();
     this.validator = validator;
-    adRequest = ad.getAdRequest();
+    this.ad = ad;
   }
 
 }

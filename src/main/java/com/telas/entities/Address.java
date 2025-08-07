@@ -56,6 +56,15 @@ public class Address extends BaseAudit implements Serializable {
   @Column(name = "longitude")
   private Double longitude;
 
+  @Column(name = "location_name")
+  private String locationName;
+
+  @Column(name = "location_description")
+  private String locationDescription;
+
+  @Column(name = "photo_url")
+  private String photoUrl;
+
   @JsonIgnore
   @ManyToOne
   @JoinColumn(name = "client_id", referencedColumnName = "id")

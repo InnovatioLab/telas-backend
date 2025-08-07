@@ -57,7 +57,11 @@ public interface MonitorRepository extends JpaRepository<Monitor, UUID>, JpaSpec
                           WHERE sm.monitor_id = m.id
                       ) 
                       AND s.recurrence != 'MONTHLY' AND s.status = 'ACTIVE') AS estimated_slot_release_date,
-                      (SELECT COUNT(*) FROM monitors_ads ma WHERE ma.monitor_id = m.id) AS ads_count
+                      (SELECT COUNT(*) FROM monitors_ads ma WHERE ma.monitor_id = m.id) AS ads_count,
+                      a.location_name,
+                      a.location_description,
+                      m.location_description,
+                      a.photo_url
               FROM monitors m
               JOIN addresses a ON m.address_id = a.id
               WHERE m.fl_active = TRUE

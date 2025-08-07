@@ -5,6 +5,7 @@ import com.telas.dtos.request.AdRequestDto;
 import com.telas.dtos.request.AttachmentRequestDto;
 import com.telas.enums.AdValidationType;
 import com.telas.shared.audit.BaseAudit;
+import com.telas.shared.constants.SharedConstants;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -14,10 +15,7 @@ import org.hibernate.envers.NotAudited;
 
 import java.io.Serial;
 import java.io.Serializable;
-import java.util.HashSet;
-import java.util.Objects;
-import java.util.Set;
-import java.util.UUID;
+import java.util.*;
 
 @Getter
 @Setter
@@ -55,6 +53,9 @@ public class Ad extends BaseAudit implements Serializable {
   @JoinColumn(name = "ad_request_id", referencedColumnName = "id")
   private AdRequest adRequest;
 
+  @OneToMany(mappedBy = "ad", cascade = CascadeType.ALL)
+  private List<RefusedAd> refusedAds = new ArrayList<>();
+
   @JsonIgnore
   @NotAudited
   @ManyToMany(fetch = FetchType.LAZY)
@@ -76,10 +77,14 @@ public class Ad extends BaseAudit implements Serializable {
   }
 
   public Ad(AdRequestDto request, Client client, AdRequest adRequest) {
-    name = request.getName();
-    type = request.getType();
-    this.client = client;
+    this(request, client);
     this.adRequest = adRequest;
+  }
+
+  public Ad(AdRequestDto request, Client client) {
+    this.name = request.getName();
+    this.type = request.getType();
+    this.client = client;
   }
 
   @Override
@@ -94,5 +99,13 @@ public class Ad extends BaseAudit implements Serializable {
     }
     Ad that = (Ad) o;
     return Objects.equals(getId(), that.getId());
+  }
+
+  public boolean canBeRejectedByAdmin() {
+    return AdValidationType.PENDING.equals(validation) && this.getRefusedAds().isEmpty();
+  }
+
+  public boolean canBeRejectedByOwner() {
+    return AdValidationType.PENDING.equals(validation) && this.getRefusedAds().size() <= SharedConstants.MAX_ADS_VALIDATION;
   }
 }

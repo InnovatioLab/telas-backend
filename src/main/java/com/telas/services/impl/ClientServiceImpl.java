@@ -13,6 +13,7 @@ import com.telas.enums.Role;
 import com.telas.helpers.AttachmentHelper;
 import com.telas.helpers.ClientHelper;
 import com.telas.infra.exceptions.BusinessRuleException;
+import com.telas.infra.exceptions.ForbiddenException;
 import com.telas.infra.exceptions.ResourceNotFoundException;
 import com.telas.infra.exceptions.UnauthorizedException;
 import com.telas.infra.security.model.AuthenticatedUser;
@@ -236,7 +237,7 @@ public class ClientServiceImpl implements ClientService {
       client.setUsernameUpdate(client.getBusinessName());
     }
 
-    attachmentHelper.saveAttachments(request, client, null);
+    attachmentHelper.saveAttachments(request, client);
     repository.save(client);
   }
 
@@ -261,17 +262,34 @@ public class ClientServiceImpl implements ClientService {
   public void uploadAds(AdRequestDto request, UUID clientId) {
     request.validate();
 
-    Client admin = authenticatedUserService.validateAdmin().client();
-    if (admin.getId().equals(clientId)) {
-      attachmentHelper.saveAdminAds(request, admin);
+    Client client = authenticatedUserService.getLoggedUser().client();
+
+    if (Role.ADMIN.equals(client.getRole()) && client.getId().equals(clientId)) {
+      attachmentHelper.saveAds(request, client, null);
       return;
     }
 
-    Client client = findActiveEntityById(clientId);
+    if (!Role.ADMIN.equals(client.getRole())) {
+      if (!client.getId().equals(clientId)) {
+        throw new UnauthorizedException(ClientValidationMessages.UNAUTHORIZED_CLIENT);
+      }
+
+      if (!client.getAds().isEmpty()) {
+        throw new BusinessRuleException(ClientValidationMessages.MAX_ADS_REACHED);
+      }
+
+      if (Objects.nonNull(client.getAdRequest())) {
+        throw new ForbiddenException(ClientValidationMessages.AD_REQUEST_EXISTS);
+      }
+
+      request.setAdRequestId(null);
+      attachmentHelper.saveAds(request, client, null);
+      return;
+    }
+
     validateAdRequestId(request.getAdRequestId());
     AdRequest adRequest = helper.getAdRequestById(request.getAdRequestId());
-
-    attachmentHelper.saveAttachments(List.of(request), client, adRequest);
+    attachmentHelper.saveAds(request, client, adRequest);
   }
 
   @Transactional

@@ -9,6 +9,7 @@ import com.telas.enums.AdValidationType;
 import com.telas.enums.NotificationReference;
 import com.telas.enums.Role;
 import com.telas.infra.exceptions.BusinessRuleException;
+import com.telas.infra.exceptions.ForbiddenException;
 import com.telas.infra.exceptions.ResourceNotFoundException;
 import com.telas.repositories.AdRepository;
 import com.telas.repositories.AdRequestRepository;
@@ -98,80 +99,30 @@ public class AttachmentHelper {
   }
 
   @Transactional
-  public <T extends AttachmentRequestDto> void saveAttachments(List<T> requestList, Client client, AdRequest adRequestEntity) {
-    for (T attachment : requestList) {
-      if (attachment.getId() == null) {
-        handleNewAttachment(attachment, client, adRequestEntity);
-      } else {
-        handleExistingAttachment(attachment);
-      }
-    }
+  public void saveAttachments(List<AttachmentRequestDto> requestList, Client client) {
+    requestList.forEach(request -> {
+      Attachment attachment = (request.getId() == null)
+              ? createNewAttachment(request, client)
+              : updateExistingAttachment(request);
+      client.getAttachments().add(attachment);
+      uploadAttachment(request, attachment);
+    });
     clientRepository.save(client);
   }
 
-  private <T extends AttachmentRequestDto> void handleNewAttachment(T attachment, Client client, AdRequest adRequestEntity) {
-    if (attachment instanceof AdRequestDto adRequest && adRequestEntity != null) {
-      Ad ad = prepareAd(adRequestEntity, adRequest, client);
-      adRequestEntity.closeRequest();
-      adRequestRepository.save(adRequestEntity);
-
-      Ad savedAd = adRepository.save(ad);
-      uploadAttachment(attachment, savedAd);
-
-      notificationService.save(
-              NotificationReference.AD_RECEIVED,
-              client,
-              Map.of("link", frontBaseUrl + "/ads/" + savedAd.getId()),
-              false
-      );
-    } else if (!(attachment instanceof AdRequestDto) && adRequestEntity == null) {
-      Attachment newAttachment = new Attachment(attachment, client);
-      newAttachment.setUsernameCreate(client.getBusinessName());
-      Attachment savedAttachment = attachmentRepository.save(newAttachment);
-      client.getAttachments().add(savedAttachment);
-
-      uploadAttachment(attachment, savedAttachment);
-    }
+  private Attachment createNewAttachment(AttachmentRequestDto request, Client client) {
+    Attachment newAttachment = new Attachment(request, client);
+    newAttachment.setUsernameCreate(client.getBusinessName());
+    return attachmentRepository.save(newAttachment);
   }
 
-  private Ad prepareAd(AdRequest adRequestEntity, AdRequestDto adRequest, Client client) {
-    Ad ad = Optional.ofNullable(adRequestEntity.getAd())
-            .orElseGet(() -> createNewAdFromRequest(adRequestEntity, adRequest));
-
-    if (adRequestEntity.getAd() != null) {
-      updateExistingAdFromRequest(ad, adRequest);
-    }
-
-    if (Role.ADMIN.equals(client.getRole())) {
-      ad.setValidation(AdValidationType.APPROVED);
-    }
-
-    return ad;
-  }
-
-  private Ad createNewAdFromRequest(AdRequest adRequestEntity, AdRequestDto adRequest) {
-    List<Attachment> attachments = getAttachmentsFromAdRequest(adRequestEntity);
-    Client adOwner = adRequestEntity.getClient();
-
-    Ad newAd = new Ad(adRequest, adOwner, adRequestEntity);
-    newAd.getAttachments().addAll(attachments);
-    adOwner.getAds().add(newAd);
-
-    return newAd;
-  }
-
-  private void updateExistingAdFromRequest(Ad ad, AdRequestDto adRequest) {
-    verifyFileNameChanged(adRequest, ad);
-    bucketService.deleteAttachment(AttachmentUtils.format(ad));
-    List<String> oldAdNameList = Collections.singletonList(ad.getName());
-    ad.setName(adRequest.getName());
-    ad.setType(adRequest.getType());
-
-    if (shouldRemoveAdFromMonitors(ad)) {
-      monitorHelper.sendBoxesMonitorsRemoveAd(ad, oldAdNameList);
-    }
-
-    ad.setValidation(AdValidationType.PENDING);
+  private Attachment updateExistingAttachment(AttachmentRequestDto request) {
+    Attachment entity = attachmentRepository.findById(request.getId())
+            .orElseThrow(() -> new ResourceNotFoundException(AttachmentValidationMessages.ATTACHMENT_NOT_FOUND));
+    bucketService.deleteAttachment(AttachmentUtils.format(entity));
+    entity.setName(request.getName());
+    entity.setType(request.getType());
+    return attachmentRepository.save(entity);
   }
 
   private boolean shouldRemoveAdFromMonitors(Ad ad) {
@@ -179,20 +130,6 @@ public class AttachmentHelper {
     return AdValidationType.APPROVED.equals(ad.getValidation())
            && !Role.ADMIN.equals(client.getRole())
            && !subscriptionHelper.getClientActiveSubscriptions(client.getId()).isEmpty();
-  }
-
-  private <T extends AttachmentRequestDto> void handleExistingAttachment(T attachment) {
-    if (!(attachment instanceof AdRequestDto)) {
-      Attachment entity = attachmentRepository.findById(attachment.getId())
-              .orElseThrow(() -> new ResourceNotFoundException(AttachmentValidationMessages.ATTACHMENT_NOT_FOUND));
-      verifyFileNameChanged(attachment, entity);
-      bucketService.deleteAttachment(AttachmentUtils.format(entity));
-      entity.setName(attachment.getName());
-      entity.setType(attachment.getType());
-
-      Attachment savedAttachment = attachmentRepository.save(entity);
-      uploadAttachment(attachment, savedAttachment);
-    }
   }
 
   private <T extends AttachmentRequestDto> void uploadAttachment(T attachment, Object entity) {
@@ -215,35 +152,101 @@ public class AttachmentHelper {
   }
 
   @Transactional
-  public void saveAdminAds(AdRequestDto request, Client admin) {
-    Ad ad = request.getId() == null ? createNewAd(request, admin) : updateExistingAd(request);
+  public void saveAds(AdRequestDto request, Client client, AdRequest entity) {
+    Ad ad = (Role.ADMIN.equals(client.getRole()) && request.getId() != null)
+            ? updateExistingAd(request, client, entity)
+            : createNewAd(request, client, entity);
+
     uploadAttachment(request, ad);
-    clientRepository.save(admin);
+    clientRepository.save(client);
   }
 
-  private Ad createNewAd(AdRequestDto request, Client admin) {
-    Ad ad = new Ad();
-    ad.setName(request.getName());
-    ad.setType(request.getType());
-    ad.setClient(admin);
-    ad.setValidation(AdValidationType.APPROVED);
 
-    Ad savedAd = adRepository.save(ad);
-    admin.getAds().add(savedAd);
-    return savedAd;
+  private Ad createNewAd(AdRequestDto request, Client client, AdRequest adRequestEntity) {
+    if (adRequestEntity != null) {
+      validateAdminRole(client);
+      return createNewAdFromRequest(adRequestEntity, request, client);
+    }
+
+    Ad ad = new Ad(request, client);
+    ad.setUsernameCreate(client.getBusinessName());
+    ad.setValidation(Role.ADMIN.equals(client.getRole()) ? AdValidationType.APPROVED : AdValidationType.PENDING);
+
+    client.getAds().add(adRepository.save(ad));
+    return ad;
   }
 
-  private Ad updateExistingAd(AdRequestDto request) {
-    Ad ad = adRepository.findById(request.getId())
-            .orElseThrow(() -> new ResourceNotFoundException(AdValidationMessages.AD_NOT_FOUND));
-    verifyFileNameChanged(request, ad);
+  private Ad createNewAdFromRequest(AdRequest adRequestEntity, AdRequestDto adRequest, Client admin) {
+    Ad newAd = new Ad(adRequest, adRequestEntity.getClient(), adRequestEntity);
+    newAd.setUsernameCreate(admin.getBusinessName());
+    newAd.getAttachments().addAll(getAttachmentsFromAdRequest(adRequestEntity));
 
-    bucketService.deleteAttachment(AttachmentUtils.format(ad));
-    ad.setName(request.getName());
-    ad.setType(request.getType());
+    Client client = adRequestEntity.getClient();
+    client.getAds().add(newAd);
+    adRequestEntity.closeRequest();
+
+    adRepository.save(newAd);
+    adRequestRepository.save(adRequestEntity);
+
+    notificationService.save(
+            NotificationReference.AD_RECEIVED,
+            client,
+            Map.of("link", frontBaseUrl + "client/my-telas/ads"),
+            false
+    );
+
+    return newAd;
+  }
+
+  private Ad updateExistingAd(AdRequestDto request, Client client, AdRequest adRequestEntity) {
+    if (adRequestEntity != null) {
+      validateAdminRole(client);
+      return updateExistingAdFromRequest(adRequestEntity.getAd(), request, client);
+    }
+
+    Ad ad = findAdById(request.getId());
+    updateAdDetails(request, ad, client);
+
+    if (shouldRemoveAdFromMonitors(ad)) {
+      monitorHelper.sendBoxesMonitorsRemoveAd(ad, Collections.singletonList(ad.getName()));
+    }
 
     return adRepository.save(ad);
   }
+
+  private Ad updateExistingAdFromRequest(Ad ad, AdRequestDto adRequest, Client admin) {
+    updateAdDetails(adRequest, ad, admin);
+
+    if (shouldRemoveAdFromMonitors(ad)) {
+      monitorHelper.sendBoxesMonitorsRemoveAd(ad, Collections.singletonList(ad.getName()));
+    }
+
+    ad.setValidation(AdValidationType.PENDING);
+    ad.getAdRequest().closeRequest();
+    adRequestRepository.save(ad.getAdRequest());
+    return adRepository.save(ad);
+  }
+
+  private void updateAdDetails(AdRequestDto request, Ad ad, Client client) {
+    verifyFileNameChanged(request, ad);
+    bucketService.deleteAttachment(AttachmentUtils.format(ad));
+    ad.setName(request.getName());
+    ad.setType(request.getType());
+    ad.setUsernameUpdate(client.getBusinessName());
+    ad.setValidation(!AdValidationType.APPROVED.equals(ad.getValidation()) ? AdValidationType.PENDING : ad.getValidation());
+  }
+
+  private void validateAdminRole(Client client) {
+    if (!Role.ADMIN.equals(client.getRole())) {
+      throw new ForbiddenException(AdValidationMessages.ADMIN_ROLE_REQUIRED);
+    }
+  }
+
+  private Ad findAdById(UUID adId) {
+    return adRepository.findById(adId)
+            .orElseThrow(() -> new ResourceNotFoundException(AdValidationMessages.AD_NOT_FOUND));
+  }
+
 
   @Transactional
   public void validateAd(Ad entity, AdValidationType validation, RefusedAdRequestDto request, Client client) {

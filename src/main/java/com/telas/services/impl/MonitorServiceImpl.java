@@ -142,7 +142,11 @@ public class MonitorServiceImpl implements MonitorService {
                         Double.parseDouble(resultRow[5].toString()),
                         Boolean.parseBoolean(resultRow[7].toString()),
                         resultRow[8] != null ? Instant.parse(resultRow[8].toString()) : null,
-                        adsDailyDisplayTimeInMinutes
+                        adsDailyDisplayTimeInMinutes,
+                        resultRow[10] != null ? resultRow[10].toString() : null,
+                        resultRow[11] != null ? resultRow[11].toString() : null,
+                        resultRow[12] != null ? resultRow[12].toString() : null,
+                        resultRow[13] != null ? resultRow[13].toString() : null
                 );
               })
               .toList();
