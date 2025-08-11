@@ -184,7 +184,9 @@ public class AttachmentHelper {
     newAd.setUsernameCreate(admin.getBusinessName());
 
     if (!ValidateDataUtils.isNullOrEmptyString(adRequestEntity.getAttachmentIds())) {
-      newAd.getAttachments().addAll(getAttachmentsFromAdRequest(adRequestEntity));
+      List<Attachment> attachments = getAttachmentsFromAdRequest(adRequestEntity);
+      adRepository.save(newAd);
+      newAd.getAttachments().addAll(attachments);
     }
 
     Client client = adRequestEntity.getClient();

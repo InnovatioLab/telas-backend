@@ -18,7 +18,6 @@ public class FilterAdRequestDto extends PaginationRequestDto {
       case "identificationNumber" -> Sort.by(Sort.Order.by("client.identificationNumber"));
       case "clientName" -> Sort.by(Sort.Order.by("client.businessName").ignoreCase());
       case "role" -> Sort.by(Sort.Order.by("client.role").ignoreCase());
-      case "refusalCount" -> Sort.by(Sort.Order.desc("refusalCount"));
       default -> Sort.by(Sort.Order.desc("createdAt"));
     };
   }

@@ -33,6 +33,9 @@ import com.telas.shared.constants.valitation.AuthValidationMessageConstants;
 import com.telas.shared.constants.valitation.ClientValidationMessages;
 import com.telas.shared.utils.AttachmentUtils;
 import com.telas.shared.utils.PaginationFilterUtil;
+import jakarta.persistence.criteria.Expression;
+import jakarta.persistence.criteria.Join;
+import jakarta.persistence.criteria.JoinType;
 import jakarta.persistence.criteria.Predicate;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -388,14 +391,23 @@ public class ClientServiceImpl implements ClientService {
     Sort order = request.setOrdering();
 
     Pageable pageable = PaginationFilterUtil.getPageable(request, order);
-    Specification<AdRequest> filter = PaginationFilterUtil.addSpecificationFilter(
-            (root, query, criteriaBuilder) -> criteriaBuilder.and(
-                    criteriaBuilder.equal(root.get("isActive"), true),
-                    criteriaBuilder.lessThan(root.get("refusalCount"), 3)
-            ),
-            request.getGenericFilter(),
-            this::filterAdRequests
-    );
+    Specification<AdRequest> filter = (root, query, criteriaBuilder) -> {
+      query.distinct(true);
+
+      Join<AdRequest, Ad> adJoin = root.join("ad", JoinType.LEFT);
+      Join<Ad, RefusedAd> refusedAdsJoin = adJoin.join("refusedAds", JoinType.LEFT);
+
+      query.groupBy(root.get("id"));
+
+      Expression<Long> refusedCount = criteriaBuilder.count(refusedAdsJoin.get("id"));
+
+      Predicate isActive = criteriaBuilder.equal(root.get("isActive"), true);
+
+      // HAVING count(refusedAds.id) <= 3
+      query.having(criteriaBuilder.le(refusedCount, 3L));
+
+      return criteriaBuilder.and(isActive);
+    };
 
     Page<AdRequest> page = adRequestRepository.findAll(filter, pageable);
     List<AdRequestAdminResponseDto> response = page.stream().map(adRequest -> new AdRequestAdminResponseDto(adRequest, attachmentHelper.getAdRequestData(adRequest))).toList();

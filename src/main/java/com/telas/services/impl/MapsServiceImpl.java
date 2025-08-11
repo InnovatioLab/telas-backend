@@ -30,6 +30,9 @@ import java.util.Map;
 public class MapsServiceImpl implements MapsService {
   private static final String API_KEY_PARAM = "key";
   private static final String ADDRESS_PARAM = "address";
+  private static final String PLACES_SEARCH_NEARBY_URL = "https://places.googleapis.com/v1/places:searchNearby";
+  private static final String PLACES_MEDIA_URL = "https://places.googleapis.com/v1/%s/media?maxWidthPx=1024&key=%s";
+  private static final String FIELD_MASK = "places.displayName,places.editorialSummary,places.photos";
   private final HttpClientUtil httpClientUtil;
   private final AddressRepository addressRepository;
 
@@ -38,6 +41,7 @@ public class MapsServiceImpl implements MapsService {
 
   @Value("${geolocalizacao.service.key}")
   private String apiKey;
+
 
   @Override
   @Transactional
@@ -49,11 +53,13 @@ public class MapsServiceImpl implements MapsService {
     address.setLocation(latitude, longitude);
     SearchNearbyRequestDto requestDto = new SearchNearbyRequestDto(latitude, longitude);
 
+    Map<String, String> PLACES_SEARCH_NEARBY_HEADERS = Map.of(
+            "X-Goog-Api-Key", this.apiKey,
+            "X-Goog-FieldMask", FIELD_MASK
+    );
+
     NearbySearchResponse apiResponse = httpClientUtil.makePostRequestWithReturn(
-            "https://places.googleapis.com/v1/places:searchNearby", requestDto, NearbySearchResponse.class, null, Map.of(
-                    "X-Goog-Api-Key", "AIzaSyBB2Jr5pIFiJw7cLozf2qrBJfpVM5KrHPk",
-                    "X-Goog-FieldMask", "places.displayName,places.editorialSummary,places.photos"
-            )
+            PLACES_SEARCH_NEARBY_URL, requestDto, NearbySearchResponse.class, null, PLACES_SEARCH_NEARBY_HEADERS
     );
 
     if (apiResponse != null && !apiResponse.getPlaces().isEmpty()) {
@@ -77,8 +83,7 @@ public class MapsServiceImpl implements MapsService {
   private void getPhotosFromPlace(Address address, NearbySearchResponse.Place place) {
     if (place.getPhotos() != null && !place.getPhotos().isEmpty()) {
       NearbySearchResponse.Photo photo = place.getPhotos().get(0);
-      String photoUrl = "https://places.googleapis.com/v1/" +
-                        photo.getName() + "/media?maxWidthPx=1024&key=" + "AIzaSyBB2Jr5pIFiJw7cLozf2qrBJfpVM5KrHPk";
+      String photoUrl = String.format(PLACES_MEDIA_URL, photo.getName(), apiKey);
 
       log.info("Fetching photo from URL: {}", photoUrl);
 
