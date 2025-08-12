@@ -2,6 +2,7 @@ package com.telas.controllers.impl;
 
 import com.telas.controllers.ClientController;
 import com.telas.dtos.request.*;
+import com.telas.dtos.request.filters.AdminFilterAdRequestDto;
 import com.telas.dtos.request.filters.ClientFilterRequestDto;
 import com.telas.dtos.request.filters.FilterAdRequestDto;
 import com.telas.dtos.response.*;
@@ -159,9 +160,10 @@ public class ClientControllerImpl implements ClientController {
   @Override
   @GetMapping("/pending-ads")
   @SecurityRequirement(name = "jwt")
-  public ResponseEntity<?> findPendingAds() {
-    List<AdResponseDto> response = service.findPendingAds();
-    String msg = response.isEmpty() ? MessageCommonsConstants.FIND_FILTER_EMPTY_MESSAGE : MessageCommonsConstants.FIND_ALL_SUCCESS_MESSAGE;
+  public ResponseEntity<?> findPendingAds(AdminFilterAdRequestDto request) {
+    PaginationResponseDto<List<PendingAdAdminValidationResponseDto>> response = service.findPendingAds(request);
+
+    String msg = response.getList().isEmpty() ? MessageCommonsConstants.FIND_FILTER_EMPTY_MESSAGE : MessageCommonsConstants.FIND_ALL_SUCCESS_MESSAGE;
     return ResponseEntity.status(HttpStatus.OK).body(ResponseDto.fromData(response, HttpStatus.OK, msg));
   }
 

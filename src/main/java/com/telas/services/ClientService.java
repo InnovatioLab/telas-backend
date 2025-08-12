@@ -1,6 +1,7 @@
 package com.telas.services;
 
 import com.telas.dtos.request.*;
+import com.telas.dtos.request.filters.AdminFilterAdRequestDto;
 import com.telas.dtos.request.filters.ClientFilterRequestDto;
 import com.telas.dtos.request.filters.FilterAdRequestDto;
 import com.telas.dtos.response.*;
@@ -50,8 +51,6 @@ public interface ClientService {
 
   void changeRoleToPartner(UUID clientId);
 
-  List<AdResponseDto> findPendingAds();
-
   void validateAd(UUID adId, AdValidationType validation, RefusedAdRequestDto request);
 
   void incrementSubscriptionFlow();
@@ -59,6 +58,8 @@ public interface ClientService {
   PaginationResponseDto<List<ClientMinResponseDto>> findAllFilters(ClientFilterRequestDto request);
 
   PaginationResponseDto<List<AdRequestAdminResponseDto>> findPendingAdRequest(FilterAdRequestDto request);
+
+  PaginationResponseDto<List<PendingAdAdminValidationResponseDto>> findPendingAds(AdminFilterAdRequestDto request);
 
   void addMonitorToWishlist(UUID monitorId);
 

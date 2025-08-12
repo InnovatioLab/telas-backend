@@ -2,6 +2,7 @@ package com.telas.services.impl;
 
 import com.telas.dtos.EmailDataDto;
 import com.telas.dtos.request.*;
+import com.telas.dtos.request.filters.AdminFilterAdRequestDto;
 import com.telas.dtos.request.filters.ClientFilterRequestDto;
 import com.telas.dtos.request.filters.FilterAdRequestDto;
 import com.telas.dtos.response.*;
@@ -20,6 +21,7 @@ import com.telas.infra.security.model.AuthenticatedUser;
 import com.telas.infra.security.model.PasswordRequestDto;
 import com.telas.infra.security.model.PasswordUpdateRequestDto;
 import com.telas.infra.security.services.AuthenticatedUserService;
+import com.telas.repositories.AdRepository;
 import com.telas.repositories.AdRequestRepository;
 import com.telas.repositories.ClientRepository;
 import com.telas.services.BucketService;
@@ -63,6 +65,7 @@ public class ClientServiceImpl implements ClientService {
   private final BucketService bucketService;
   private final TermConditionService termConditionService;
   private final AdRequestRepository adRequestRepository;
+  private final AdRepository adRepository;
 
   @Override
   @Transactional
@@ -332,14 +335,6 @@ public class ClientServiceImpl implements ClientService {
   }
 
   @Override
-  @Transactional(readOnly = true)
-  public List<AdResponseDto> findPendingAds() {
-    return authenticatedUserService.getLoggedUser().client().getPendingAds().stream()
-            .map(ad -> new AdResponseDto(ad, attachmentHelper.getStringLinkFromAd(ad)))
-            .toList();
-  }
-
-  @Override
   @Transactional
   public void validateAd(UUID adId, AdValidationType validation, RefusedAdRequestDto request) {
     Ad ad = helper.getAdById(adId);
@@ -347,15 +342,15 @@ public class ClientServiceImpl implements ClientService {
     Client validator = authenticatedUserService.getLoggedUser().client();
     attachmentHelper.validateAd(ad, validation, request, validator);
 
-//    if (AdValidationType.APPROVED.equals(validation)) {
-//      List<UUID> monitorIds = helper.findClientMonitorsWithActiveSubscriptions(client.getId()).stream()
-//              .map(Monitor::getId)
-//              .toList();
-//
-//      if (!monitorIds.isEmpty()) {
-//        helper.addAdToMonitor(ad, monitorIds, client);
-//      }
-//    }
+    if (AdValidationType.APPROVED.equals(validation)) {
+      List<UUID> monitorIds = helper.findClientMonitorsWithActiveSubscriptions(ad.getClient().getId()).stream()
+              .map(Monitor::getId)
+              .toList();
+
+      if (!monitorIds.isEmpty()) {
+        helper.addAdToMonitor(ad, monitorIds, ad.getClient());
+      }
+    }
   }
 
   @Override
@@ -391,26 +386,51 @@ public class ClientServiceImpl implements ClientService {
     Sort order = request.setOrdering();
 
     Pageable pageable = PaginationFilterUtil.getPageable(request, order);
-    Specification<AdRequest> filter = (root, query, criteriaBuilder) -> {
-      query.distinct(true);
+    Specification<AdRequest> filter = PaginationFilterUtil.addSpecificationFilter(
+            (root, query, criteriaBuilder) -> {
+              query.distinct(true);
 
-      Join<AdRequest, Ad> adJoin = root.join("ad", JoinType.LEFT);
-      Join<Ad, RefusedAd> refusedAdsJoin = adJoin.join("refusedAds", JoinType.LEFT);
+              Join<AdRequest, Ad> adJoin = root.join("ad", JoinType.LEFT);
+              Join<Ad, RefusedAd> refusedAdsJoin = adJoin.join("refusedAds", JoinType.LEFT);
 
-      query.groupBy(root.get("id"));
+              query.groupBy(root.get("id"));
 
-      Expression<Long> refusedCount = criteriaBuilder.count(refusedAdsJoin.get("id"));
+              Expression<Long> refusedCount = criteriaBuilder.count(refusedAdsJoin.get("id"));
+              Predicate isActive = criteriaBuilder.equal(root.get("isActive"), true);
 
-      Predicate isActive = criteriaBuilder.equal(root.get("isActive"), true);
-
-      // HAVING count(refusedAds.id) <= 3
-      query.having(criteriaBuilder.le(refusedCount, 3L));
-
-      return criteriaBuilder.and(isActive);
-    };
+              // HAVING count(refusedAds.id) <= 3
+              query.having(criteriaBuilder.le(refusedCount, (long) SharedConstants.MAX_ADS_VALIDATION));
+              return criteriaBuilder.and(isActive);
+            },
+            request.getGenericFilter(),
+            this::filterAdRequests
+    );
 
     Page<AdRequest> page = adRequestRepository.findAll(filter, pageable);
     List<AdRequestAdminResponseDto> response = page.stream().map(adRequest -> new AdRequestAdminResponseDto(adRequest, attachmentHelper.getAdRequestData(adRequest))).toList();
+    return PaginationResponseDto.fromResult(response, (int) page.getTotalElements(), page.getTotalPages(), request.getPage());
+  }
+
+  @Override
+  @Transactional(readOnly = true)
+  public PaginationResponseDto<List<PendingAdAdminValidationResponseDto>> findPendingAds(AdminFilterAdRequestDto request) {
+    authenticatedUserService.validateAdmin();
+
+    Pageable pageable = PaginationFilterUtil.getPageable(request, request.setOrdering());
+    Specification<Ad> filter = PaginationFilterUtil.addSpecificationFilter((root, query, criteriaBuilder) -> criteriaBuilder.and(
+                    criteriaBuilder.isNull(root.get("adRequest")),
+                    criteriaBuilder.equal(root.get("validation"), AdValidationType.PENDING),
+                    criteriaBuilder.notEqual(root.get("client").get("role"), Role.ADMIN)
+            ),
+            request.getGenericFilter(),
+            this::filterAds
+    );
+
+    Page<Ad> page = adRepository.findAll(filter, pageable);
+    List<PendingAdAdminValidationResponseDto> response = page.stream()
+            .map(ad -> new PendingAdAdminValidationResponseDto(ad, attachmentHelper.getStringLinkFromAd(ad)))
+            .toList();
+
     return PaginationResponseDto.fromResult(response, (int) page.getTotalElements(), page.getTotalPages(), request.getPage());
   }
 
@@ -472,19 +492,58 @@ public class ClientServiceImpl implements ClientService {
   Specification<AdRequest> filterAdRequests(Specification<AdRequest> specification, String genericFilter) {
     return specification.and((root, query, criteriaBuilder) -> {
       List<Predicate> predicates = new ArrayList<>();
+      String filter = "%" + genericFilter.toLowerCase() + "%";
 
       predicates.add(criteriaBuilder.like(
               criteriaBuilder.lower(root.get("client").get("businessName")),
-              "%" + genericFilter.toLowerCase() + "%"
+              filter
+      ));
+      predicates.add(criteriaBuilder.like(
+              root.get("client").get("identificationNumber"), filter
+      ));
+      predicates.add(criteriaBuilder.like(
+              root.get("client").get("contact").get("email"), filter
+      ));
+      predicates.add(criteriaBuilder.like(
+              root.get("client").get("contact").get("phone"), filter
       ));
       predicates.add(criteriaBuilder.equal(
-              root.get("client").get("identificationNumber"), genericFilter
+              root.get("client").get("role"), genericFilter
       ));
-      predicates.add(criteriaBuilder.equal(
-              root.get("client").get("contact").get("email"), genericFilter
+
+      try {
+        LocalDate submissionDate = LocalDate.parse(genericFilter);
+        predicates.add(criteriaBuilder.equal(
+                criteriaBuilder.function("date", LocalDate.class, root.get("createdAt")),
+                submissionDate
+        ));
+      } catch (DateTimeParseException ignored) {
+      }
+
+      return criteriaBuilder.or(predicates.toArray(new Predicate[0]));
+    });
+  }
+
+  Specification<Ad> filterAds(Specification<Ad> specification, String genericFilter) {
+    return specification.and((root, query, criteriaBuilder) -> {
+      List<Predicate> predicates = new ArrayList<>();
+      String filter = "%" + genericFilter.toLowerCase() + "%";
+
+      predicates.add(criteriaBuilder.like(
+              criteriaBuilder.lower(root.get("client").get("businessName")),
+              filter
       ));
-      predicates.add(criteriaBuilder.equal(
-              root.get("client").get("contact").get("phone"), genericFilter
+      predicates.add(criteriaBuilder.like(
+              root.get("client").get("identificationNumber"), filter
+      ));
+      predicates.add(criteriaBuilder.like(
+              root.get("name"), filter
+      ));
+      predicates.add(criteriaBuilder.like(
+              root.get("client").get("contact").get("email"), filter
+      ));
+      predicates.add(criteriaBuilder.like(
+              root.get("client").get("contact").get("phone"), filter
       ));
       predicates.add(criteriaBuilder.equal(
               root.get("client").get("role"), genericFilter
@@ -507,10 +566,6 @@ public class ClientServiceImpl implements ClientService {
     List<LinkResponseDto> attachmentLinks = client.getAttachments().stream()
             .map(attachment -> new LinkResponseDto(attachment.getId(), attachment.getName(), bucketService.getLink(AttachmentUtils.format(attachment))))
             .toList();
-
-//    return authenticatedUserService.getLoggedUser().client().getPendingAds().stream()
-//            .map(ad -> new AdResponseDto(ad, attachmentHelper.getStringLinkFromAd(ad)))
-//            .toList();
 
     List<AdResponseDto> ads = client.getAds().stream()
             .map(ad -> new AdResponseDto(ad, attachmentHelper.getStringLinkFromAd(ad)))
