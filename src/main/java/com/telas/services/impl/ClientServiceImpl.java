@@ -266,10 +266,6 @@ public class ClientServiceImpl implements ClientService {
       throw new BusinessRuleException(ClientValidationMessages.AD_REQUEST_NOT_ALLOWED);
     }
 
-    if (client.getAds().isEmpty() && request.getAttachmentIds().isEmpty()) {
-      throw new BusinessRuleException(AdValidationMessages.ATTACHMENT_IDS_REQUIRED);
-    }
-
     helper.createAdRequest(request, client);
   }
 

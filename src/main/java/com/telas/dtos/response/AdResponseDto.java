@@ -29,6 +29,8 @@ public final class AdResponseDto implements Serializable {
 
   private final long waitingDays;
 
+  private final boolean canBeValidatedByOwner;
+
   public AdResponseDto(Ad ad, String link) {
     id = ad.getId();
     name = ad.getName();
@@ -36,5 +38,6 @@ public final class AdResponseDto implements Serializable {
     this.link = link;
     validation = ad.getValidation();
     waitingDays = ChronoUnit.DAYS.between(ad.getCreatedAt(), Instant.now());
+    canBeValidatedByOwner = ad.getClient().getAdRequest() != null && AdValidationType.PENDING.equals(ad.getValidation());
   }
 }
