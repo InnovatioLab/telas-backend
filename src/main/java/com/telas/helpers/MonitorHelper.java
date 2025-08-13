@@ -32,7 +32,10 @@ import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.*;
+import java.util.Collections;
+import java.util.List;
+import java.util.Set;
+import java.util.UUID;
 import java.util.stream.Collectors;
 
 @Component
@@ -78,11 +81,6 @@ public class MonitorHelper {
   }
 
   @Transactional
-  public Map<String, Double> getCoordinatesFromZipCode(String zipCode, String countryCode) {
-    return mapsService.getCoordinatesFromZipCode(zipCode, countryCode);
-  }
-
-  @Transactional
   public Address getOrCreateAddress(MonitorRequestDto request) {
     Address address = (request.getAddressId() != null)
             ? addressService.findById(request.getAddressId())
@@ -96,19 +94,10 @@ public class MonitorHelper {
   }
 
   @Transactional
-  public List<String> validateZipCodeList(String zipCodes) {
-    List<String> zipCodeList = Arrays.asList(zipCodes.split(","));
-
-    if (zipCodeList.isEmpty()) {
-      throw new BusinessRuleException(MonitorValidationMessages.ZIP_CODE_LIST_EMPTY);
+  public void validateZipCodeList(String zipCode) {
+    if (!zipCode.matches(SharedConstants.REGEX_ZIP_CODE)) {
+      throw new BusinessRuleException(AddressValidationMessages.ZIP_CODE_INVALID);
     }
-
-    zipCodeList.forEach(zipCode -> {
-      if (!zipCode.matches(SharedConstants.REGEX_ZIP_CODE)) {
-        throw new BusinessRuleException(AddressValidationMessages.ZIP_CODE_LIST_INVALID);
-      }
-    });
-    return zipCodeList;
   }
 
   @Transactional(readOnly = true)

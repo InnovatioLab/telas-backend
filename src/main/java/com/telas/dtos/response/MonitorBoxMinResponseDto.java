@@ -17,10 +17,14 @@ public final class MonitorBoxMinResponseDto implements Serializable {
   private final UUID id;
   private final String fullAddress;
   private final boolean hasBox;
+  private final Double latitude;
+  private final Double longitude;
 
   public MonitorBoxMinResponseDto(Monitor entity) {
     id = entity.getId();
     fullAddress = entity.getAddress() != null ? entity.getAddress().getCoordinatesParams() : null;
     hasBox = entity.getBox() != null;
+    latitude = entity.getAddress() != null ? entity.getAddress().getLatitude() : null;
+    longitude = entity.getAddress() != null ? entity.getAddress().getLongitude() : null;
   }
 }

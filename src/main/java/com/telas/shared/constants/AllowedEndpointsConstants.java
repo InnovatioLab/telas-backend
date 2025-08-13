@@ -15,6 +15,7 @@ public class AllowedEndpointsConstants {
             "/clients/{id}",
             "/addresses/{zipCode}",
             "/boxes/ads",
+            "/monitors",
             "/swagger-ui/**",
             "/v*/api-docs/**",
             "/actuator/**",

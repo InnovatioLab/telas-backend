@@ -20,9 +20,9 @@ public interface AddressRepository extends JpaRepository<Address, UUID> {
   @Query("SELECT a FROM Address a WHERE a.zipCode = :zipCode")
   List<Address> findByZipCode(String zipCode);
 
-  @Query("SELECT a FROM Address a WHERE a.street = :street AND a.city = :city AND a.state = :state AND a.zipCode = :zipCode AND (a.client IS NULL OR a.client.role = 'PARTNER')")
+  @Query("SELECT a FROM Address a LEFT JOIN FETCH a.client c WHERE LOWER(a.street) = :street AND LOWER(a.city) = :city AND LOWER(a.state) = :state AND a.zipCode = :zipCode AND (a.client IS NULL OR c.role = 'PARTNER')")
   Optional<Address> findByStreetAndCityAndStateAndZipCode(String street, String city, String state, String zipCode);
 
-  @Query("SELECT a FROM Address a WHERE a.street = :street AND a.city = :city AND a.state = :state AND a.zipCode = :zipCode AND a.client.id = :clientId")
+  @Query("SELECT a FROM Address a JOIN FETCH a.client c WHERE LOWER(a.street) = :street AND LOWER(a.city) = :city AND LOWER(a.state) = :state AND a.zipCode = :zipCode AND c.id = :clientId")
   Optional<Address> findByStreetAndCityAndStateAndZipCodeAndClientId(String street, String city, String state, String zipCode, UUID clientId);
 }

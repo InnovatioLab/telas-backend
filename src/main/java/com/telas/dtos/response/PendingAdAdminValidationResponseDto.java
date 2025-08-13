@@ -20,6 +20,8 @@ public final class PendingAdAdminValidationResponseDto implements Serializable {
 
   private final UUID id;
 
+  private final UUID clientId;
+
   private final String name;
 
   private final String clientName;
@@ -38,6 +40,7 @@ public final class PendingAdAdminValidationResponseDto implements Serializable {
 
   public PendingAdAdminValidationResponseDto(Ad ad, String linkResponse) {
     id = ad.getId();
+    clientId = ad.getClient().getId();
     name = ad.getName();
     clientName = ad.getClient().getBusinessName();
     clientIdentificationNumber = ad.getClient().getIdentificationNumber();

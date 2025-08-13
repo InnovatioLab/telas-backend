@@ -16,5 +16,5 @@ public final class AddressValidationMessages {
   public static final String STATE_REGEX = "State must contain only letters";
   public static final String COUNTRY_REGEX = "Country must contain only letters";
   public static final String ADDRESS_NOT_FOUND = "Address not found";
-  public static final String ZIP_CODE_LIST_INVALID = "All zip codes must be have five digits.";
+  public static final String ZIP_CODE_INVALID = "Zipcode must have five digits.";
 }

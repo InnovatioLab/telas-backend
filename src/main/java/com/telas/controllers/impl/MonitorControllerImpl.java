@@ -17,9 +17,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
-import java.math.BigDecimal;
 import java.util.List;
-import java.util.Map;
 import java.util.UUID;
 
 @RestController
@@ -75,19 +73,15 @@ public class MonitorControllerImpl implements MonitorController {
 
   @Override
   @GetMapping
-  @SecurityRequirement(name = "jwt")
   public ResponseEntity<?> findAllMonitors() {
     return ResponseEntity.status(HttpStatus.OK).body(ResponseDto.fromData(service.findAllMonitors(), HttpStatus.OK, MessageCommonsConstants.FIND_ALL_SUCCESS_MESSAGE));
   }
 
   @Override
-  @GetMapping("/nearest")
-  public ResponseEntity<?> findNearestActiveMonitors(
-          @RequestParam String zipCodes,
-          @RequestParam(required = false) BigDecimal size,
-          @RequestParam(required = false) String type,
-          @RequestParam(defaultValue = "3") int limit) {
-    Map<String, List<MonitorMapsResponseDto>> monitors = service.findNearestActiveMonitors(zipCodes, size, type, limit);
+  @GetMapping("/search")
+  @SecurityRequirement(name = "jwt")
+  public ResponseEntity<?> findValidByZipCode(@RequestParam String zipCode) {
+    List<MonitorMapsResponseDto> monitors = service.findNearestActiveMonitors(zipCode);
     String message = monitors.isEmpty() ? MessageCommonsConstants.FIND_FILTER_EMPTY_MESSAGE : MessageCommonsConstants.FIND_ALL_SUCCESS_MESSAGE;
     return ResponseEntity.status(HttpStatus.OK).body(ResponseDto.fromData(monitors, HttpStatus.OK, message));
   }

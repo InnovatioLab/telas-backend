@@ -7,9 +7,7 @@ import com.telas.dtos.response.*;
 import com.telas.entities.Monitor;
 import com.telas.entities.Subscription;
 
-import java.math.BigDecimal;
 import java.util.List;
-import java.util.Map;
 import java.util.UUID;
 
 public interface MonitorService {
@@ -21,13 +19,11 @@ public interface MonitorService {
 
   Monitor findEntityById(UUID monitorId);
 
-  Map<String, List<MonitorMapsResponseDto>> findNearestActiveMonitors(String zipCodes, BigDecimal sizeFilter, String typeFilter, int limit);
+  List<MonitorMapsResponseDto> findNearestActiveMonitors(String zipCode);
 
   List<MonitorBoxMinResponseDto> findAllMonitors();
 
   List<Monitor> findAllByIds(List<UUID> monitorIds);
-
-  List<MonitorValidationResponseDto> findInvalidMonitorsDuringCheckout(List<UUID> monitorIds, UUID clientId);
 
   List<MonitorValidAdResponseDto> findValidAdsForMonitor(UUID monitorId);
 

@@ -207,7 +207,7 @@ CREATE TABLE "addresses"
   "username_update"      VARCHAR(255)             NULL     DEFAULT NULL,
   "created_at"           TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT (now()),
   "updated_at"           TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT (now()),
-  CONSTRAINT "client_address" FOREIGN KEY ("client_id") REFERENCES "clients" ("id") ON UPDATE NO ACTION ON DELETE NO ACTION
+  CONSTRAINT "client_address" FOREIGN KEY ("client_id") REFERENCES "clients" ("id") ON UPDATE NO ACTION ON DELETE CASCADE
 );
 
 CREATE TABLE "addresses_aud"
@@ -246,7 +246,7 @@ CREATE TABLE "monitors"
   "username_update"      VARCHAR(255)             NULL     DEFAULT NULL,
   "created_at"           TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT (now()),
   "updated_at"           TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT (now()),
-  CONSTRAINT "fk_monitor_address" FOREIGN KEY ("address_id") REFERENCES "addresses" ("id") ON UPDATE NO ACTION ON DELETE CASCADE
+  CONSTRAINT "fk_monitor_address" FOREIGN KEY ("address_id") REFERENCES "addresses" ("id") ON UPDATE NO ACTION ON DELETE NO ACTION
 );
 
 CREATE TABLE "monitors_aud"
@@ -280,7 +280,7 @@ CREATE TABLE "subscriptions"
   "username_update" VARCHAR(255)             NULL     DEFAULT NULL,
   "created_at"      TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT (now()),
   "updated_at"      TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT (now()),
-  CONSTRAINT "fk_subscription_client" FOREIGN KEY ("client_id") REFERENCES "clients" ("id") ON UPDATE NO ACTION ON DELETE NO ACTION
+  CONSTRAINT "fk_subscription_client" FOREIGN KEY ("client_id") REFERENCES "clients" ("id") ON UPDATE NO ACTION ON DELETE CASCADE
 );
 
 CREATE TABLE "subscriptions_aud"
@@ -386,7 +386,7 @@ CREATE TABLE "ad_requests"
   "username_update" VARCHAR(255)             NULL     DEFAULT NULL,
   "created_at"      TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT (now()),
   "updated_at"      TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT (now()),
-  CONSTRAINT "fk_ad_request_client" FOREIGN KEY ("client_id") REFERENCES "clients" ("id") ON DELETE CASCADE
+  CONSTRAINT "fk_ad_request_client" FOREIGN KEY ("client_id") REFERENCES "clients" ("id") ON UPDATE NO ACTION ON DELETE CASCADE
 );
 
 CREATE TABLE "ad_requests_aud"
@@ -445,7 +445,7 @@ CREATE TABLE "refused_ads"
   "created_at"      TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT (now()),
   "updated_at"      TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT (now()),
   CONSTRAINT "fk_refused_ads_validator" FOREIGN KEY ("validator_id") REFERENCES "clients" ("id") ON UPDATE NO ACTION ON DELETE NO ACTION,
-  CONSTRAINT "fk_refused_ads_ad" FOREIGN KEY ("ad_id") REFERENCES "ads" ("id") ON UPDATE NO ACTION ON DELETE NO ACTION
+  CONSTRAINT "fk_refused_ads_ad" FOREIGN KEY ("ad_id") REFERENCES "ads" ("id") ON UPDATE NO ACTION ON DELETE CASCADE
 );
 
 CREATE TABLE "refused_ads_aud"
@@ -583,7 +583,7 @@ CREATE TABLE "wishlist"
 (
   "id"        UUID PRIMARY KEY,
   "client_id" UUID NOT NULL UNIQUE,
-  CONSTRAINT "fk_wishlist_client" FOREIGN KEY ("client_id") REFERENCES "clients" ("id") ON DELETE CASCADE
+  CONSTRAINT "fk_wishlist_client" FOREIGN KEY ("client_id") REFERENCES "clients" ("id") ON UPDATE NO ACTION ON DELETE CASCADE
 );
 
 CREATE TABLE "wishlist_monitors"
@@ -591,8 +591,8 @@ CREATE TABLE "wishlist_monitors"
   "wishlist_id" UUID NOT NULL,
   "monitor_id"  UUID NOT NULL,
   PRIMARY KEY ("wishlist_id", "monitor_id"),
-  CONSTRAINT "fk_wishlist_monitor_wishlist" FOREIGN KEY ("wishlist_id") REFERENCES "wishlist" ("id") ON DELETE CASCADE,
-  CONSTRAINT "fk_wishlist_monitor_monitor" FOREIGN KEY ("monitor_id") REFERENCES "monitors" ("id") ON DELETE CASCADE
+  CONSTRAINT "fk_wishlist_monitor_wishlist" FOREIGN KEY ("wishlist_id") REFERENCES "wishlist" ("id") ON UPDATE NO ACTION ON DELETE CASCADE,
+  CONSTRAINT "fk_wishlist_monitor_monitor" FOREIGN KEY ("monitor_id") REFERENCES "monitors" ("id") ON UPDATE NO ACTION ON DELETE CASCADE
 );
 
 CREATE TABLE webhook_events

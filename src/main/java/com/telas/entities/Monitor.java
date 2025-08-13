@@ -3,6 +3,7 @@ package com.telas.entities;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.telas.dtos.request.MonitorRequestDto;
 import com.telas.enums.MonitorType;
+import com.telas.enums.Recurrence;
 import com.telas.enums.SubscriptionStatus;
 import com.telas.shared.audit.BaseAudit;
 import com.telas.shared.constants.SharedConstants;
@@ -17,6 +18,7 @@ import java.io.Serial;
 import java.io.Serializable;
 import java.math.BigDecimal;
 import java.time.Instant;
+import java.time.LocalTime;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -127,5 +129,29 @@ public class Monitor extends BaseAudit implements Serializable {
 
   public boolean isAbleToSendBoxRequest() {
     return box != null && box.isActive();
+  }
+
+  public Instant getEstimatedSlotReleaseDate() {
+    return getActiveSubscriptions().stream()
+            .filter(subscription -> !Recurrence.MONTHLY.equals(subscription.getRecurrence()))
+            .map(Subscription::getEndsAt)
+            .filter(Objects::nonNull)
+            .min(Comparator.naturalOrder())
+            .orElse(null);
+  }
+
+  public Integer getAdsDailyDisplayTimeInMinutes() {
+    LocalTime localTime = LocalTime.ofInstant(Instant.now(), java.time.ZoneId.of(SharedConstants.ZONE_ID));
+
+    if (monitorAds.isEmpty()) {
+      return 0;
+    }
+
+    int adsCount = monitorAds.size();
+    int secondsOfDay = localTime.toSecondOfDay();
+    int loopDuration = adsCount * SharedConstants.AD_DISPLAY_TIME_IN_SECONDS;
+    int loops = secondsOfDay / loopDuration;
+    int totalSeconds = loops * SharedConstants.AD_DISPLAY_TIME_IN_SECONDS;
+    return totalSeconds / SharedConstants.TOTAL_SECONDS_IN_A_MINUTE;
   }
 }

@@ -9,7 +9,6 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.RequestBody;
 
-import java.math.BigDecimal;
 import java.util.UUID;
 
 @Tag(name = "Monitors", description = "Endpoints to manage monitors")
@@ -56,16 +55,15 @@ public interface MonitorController {
   ResponseEntity<?> findAllMonitorsFilters(FilterMonitorRequestDto request);
 
   @Operation(summary = "Endpoint contract to find all monitors", responses = {
-          @ApiResponse(responseCode = "200", description = "Monitors founded successfully."),
-          @ApiResponse(responseCode = "401", description = "Unauthorized."),
-          @ApiResponse(responseCode = "403", description = "Forbidden."),
+          @ApiResponse(responseCode = "200", description = "Monitors founded successfully.")
   })
   ResponseEntity<?> findAllMonitors();
 
-  @Operation(summary = "Endpoint contract to get a list of the nearest active monitors from a list of zipCodes", responses = {
-          @ApiResponse(responseCode = "200", description = "Monitors founded successfully.")
+  @Operation(summary = "Endpoint contract to get a list of valid active monitors from a zipCode", responses = {
+          @ApiResponse(responseCode = "200", description = "Monitors founded successfully."),
+          @ApiResponse(responseCode = "401", description = "Unauthorized."),
   })
-  ResponseEntity<?> findNearestActiveMonitors(String zipCode, BigDecimal size, String type, int limit);
+  ResponseEntity<?> findValidByZipCode(String zipCode);
 
   @Operation(summary = "Endpoint contract to get from the box, the list of current displayed ads from monitor", responses = {
           @ApiResponse(responseCode = "200", description = "Ads founded successfully."),

@@ -57,10 +57,10 @@ public class AddressServiceImpl implements AddressService {
   @Transactional
   public Address getOrCreateAddress(AddressRequestDto addressRequestDto) {
     return repository.findByStreetAndCityAndStateAndZipCode(
-            addressRequestDto.getStreet(),
-            addressRequestDto.getCity(),
-            addressRequestDto.getState(),
-            addressRequestDto.getZipCode()
+            addressRequestDto.getStreet().trim().toLowerCase(),
+            addressRequestDto.getCity().trim().toLowerCase(),
+            addressRequestDto.getState().trim().toLowerCase(),
+            addressRequestDto.getZipCode().trim().toLowerCase()
     ).orElseGet(() -> save(addressRequestDto));
   }
 
@@ -68,10 +68,10 @@ public class AddressServiceImpl implements AddressService {
   @Transactional
   public Address getOrCreateAddress(AddressRequestDto addressRequestDto, Client client) {
     return repository.findByStreetAndCityAndStateAndZipCodeAndClientId(
-            addressRequestDto.getStreet(),
-            addressRequestDto.getCity(),
-            addressRequestDto.getState(),
-            addressRequestDto.getZipCode(),
+            addressRequestDto.getStreet().trim().toLowerCase(),
+            addressRequestDto.getCity().trim().toLowerCase(),
+            addressRequestDto.getState().trim().toLowerCase(),
+            addressRequestDto.getZipCode().trim().toLowerCase(),
             client.getId()
     ).orElseGet(() -> createAddressForClient(addressRequestDto, client));
   }

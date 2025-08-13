@@ -72,14 +72,6 @@ public class MapsServiceImpl implements MapsService {
     }
   }
 
-  @Override
-  @Transactional(readOnly = true)
-  public Map<String, Double> getCoordinatesFromZipCode(String zipCode, String countryCode) {
-    GeolocalizationResponseDto response = geolocationRequest(zipCode, countryCode);
-    validateResponse(response);
-    return Map.of("latitude", response.getLat(), "longitude", response.getLng());
-  }
-
   private void getPhotosFromPlace(Address address, NearbySearchResponse.Place place) {
     if (place.getPhotos() != null && !place.getPhotos().isEmpty()) {
       NearbySearchResponse.Photo photo = place.getPhotos().get(0);

@@ -21,6 +21,8 @@ public final class AdRequestAdminResponseDto implements Serializable {
 
   private final UUID id;
 
+  private final UUID clientId;
+
   private final String message;
 
   private final String clientName;
@@ -47,6 +49,7 @@ public final class AdRequestAdminResponseDto implements Serializable {
 
   public AdRequestAdminResponseDto(AdRequest adRequest, Map<String, Object> linkResponseData) {
     id = adRequest.getId();
+    clientId = adRequest.getClient().getId();
     message = adRequest.getMessage();
     clientName = adRequest.getClient().getBusinessName();
     clientIdentificationNumber = adRequest.getClient().getIdentificationNumber();
@@ -59,7 +62,7 @@ public final class AdRequestAdminResponseDto implements Serializable {
     attachments = (List<LinkResponseDto>) linkResponseData.get("attachments");
     ad = (LinkResponseDto) linkResponseData.get("ad");
 
-    refusedAds = !adRequest.getAd().getRefusedAds().isEmpty() ?
+    refusedAds = adRequest.getAd() != null && !adRequest.getAd().getRefusedAds().isEmpty() ?
             adRequest.getAd().getRefusedAds().stream()
                     .sorted((a, b) -> b.getCreatedAt().compareTo(a.getCreatedAt()))
                     .map(RefusedAdResponseDto::new)

@@ -14,7 +14,6 @@ import com.telas.infra.security.services.AuthenticatedUserService;
 import com.telas.repositories.MonitorRepository;
 import com.telas.services.MonitorService;
 import com.telas.shared.audit.CustomRevisionListener;
-import com.telas.shared.constants.SharedConstants;
 import com.telas.shared.constants.valitation.MonitorValidationMessages;
 import com.telas.shared.utils.PaginationFilterUtil;
 import com.telas.shared.utils.ValidateDataUtils;
@@ -29,9 +28,10 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
-import java.time.Instant;
-import java.time.LocalTime;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
+import java.util.UUID;
 import java.util.stream.IntStream;
 
 @Service
@@ -114,53 +114,17 @@ public class MonitorServiceImpl implements MonitorService {
 
   @Override
   @Transactional(readOnly = true)
-  public Map<String, List<MonitorMapsResponseDto>> findNearestActiveMonitors(String zipCodes, BigDecimal sizeFilter, String typeFilter, int limit) {
-    String countryCode = "US";
-    List<String> zipCodeList = helper.validateZipCodeList(zipCodes);
-
-    Map<String, List<MonitorMapsResponseDto>> result = new HashMap<>();
-    LocalTime localTime = LocalTime.ofInstant(Instant.now(), java.time.ZoneId.of(SharedConstants.ZONE_ID));
-
-    zipCodeList.forEach(zipCode -> {
-      Map<String, Double> coordinates = helper.getCoordinatesFromZipCode(zipCode, countryCode);
-      double latitude = coordinates.get("latitude");
-      double longitude = coordinates.get("longitude");
-
-      List<MonitorMapsResponseDto> monitors = repository.findNearestActiveMonitorsWithFilters(latitude, longitude, sizeFilter, typeFilter, limit)
-              .stream()
-              .map(resultRow -> {
-                int adsCount = Integer.parseInt(resultRow[9].toString());
-                int adsDailyDisplayTimeInMinutes = calculateAdsDailyDisplayTimeInMinutes(adsCount, localTime);
-
-                return new MonitorMapsResponseDto(
-                        resultRow[0].toString(),
-                        Boolean.parseBoolean(resultRow[1].toString()),
-                        resultRow[2].toString(),
-                        Double.parseDouble(resultRow[3].toString()),
-                        Double.parseDouble(resultRow[6].toString()),
-                        Double.parseDouble(resultRow[4].toString()),
-                        Double.parseDouble(resultRow[5].toString()),
-                        Boolean.parseBoolean(resultRow[7].toString()),
-                        resultRow[8] != null ? Instant.parse(resultRow[8].toString()) : null,
-                        adsDailyDisplayTimeInMinutes,
-                        resultRow[10] != null ? resultRow[10].toString() : null,
-                        resultRow[11] != null ? resultRow[11].toString() : null,
-                        resultRow[12] != null ? resultRow[12].toString() : null,
-                        resultRow[13] != null ? resultRow[13].toString() : null
-                );
-              })
-              .toList();
-
-      result.put(zipCode, monitors);
-    });
-
-    return result;
+  public List<MonitorMapsResponseDto> findNearestActiveMonitors(String zipCode) {
+    UUID clientId = authenticatedUserService.getLoggedUser().client().getId();
+    return repository.findAvailableMonitorsByZipCode(zipCode, clientId)
+            .stream()
+            .map(MonitorMapsResponseDto::new)
+            .toList();
   }
 
   @Override
   @Transactional(readOnly = true)
   public List<MonitorBoxMinResponseDto> findAllMonitors() {
-    authenticatedUserService.validateAdmin();
     return repository.findAll().stream().
             map(MonitorBoxMinResponseDto::new)
             .toList();
@@ -170,12 +134,6 @@ public class MonitorServiceImpl implements MonitorService {
   @Transactional
   public List<Monitor> findAllByIds(List<UUID> monitorIds) {
     return repository.findAllByIdIn(monitorIds);
-  }
-
-  @Override
-  @Transactional
-  public List<MonitorValidationResponseDto> findInvalidMonitorsDuringCheckout(List<UUID> monitorIds, UUID clientId) {
-    return repository.findInvalidMonitors(monitorIds, clientId);
   }
 
   @Override
@@ -230,18 +188,6 @@ public class MonitorServiceImpl implements MonitorService {
     }
 
     return helper.getBoxMonitorAdsResponse(monitor, adNames);
-  }
-
-  private int calculateAdsDailyDisplayTimeInMinutes(int adsCount, LocalTime localTime) {
-    if (adsCount == 0) {
-      return 0;
-    }
-
-    int secondsOfDay = localTime.toSecondOfDay();
-    int loopDuration = adsCount * SharedConstants.AD_DISPLAY_TIME_IN_SECONDS;
-    int loops = secondsOfDay / loopDuration;
-    int totalSeconds = loops * SharedConstants.AD_DISPLAY_TIME_IN_SECONDS;
-    return totalSeconds / SharedConstants.TOTAL_SECONDS_IN_A_MINUTE;
   }
 
   private void ensureNoActiveSubscription(Monitor monitor) {
