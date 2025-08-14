@@ -1,6 +1,7 @@
 package com.telas.helpers;
 
 import com.stripe.exception.StripeException;
+import com.stripe.model.Invoice;
 import com.telas.dtos.response.MonitorAdResponseDto;
 import com.telas.dtos.response.SubscriptionMonitorResponseDto;
 import com.telas.dtos.response.SubscriptionResponseDto;
@@ -302,5 +303,19 @@ public class SubscriptionHelper {
   @Transactional(readOnly = true)
   public List<Subscription> getClientActiveSubscriptions(UUID id) {
     return repository.findActiveSubscriptionsByClientId(id);
+  }
+
+  public void voidLatestInvoice(com.stripe.model.Subscription stripeSubscription) {
+    try {
+      Invoice invoice = stripeSubscription.getLatestInvoiceObject();
+      if (invoice == null) {
+        log.warn("No invoices found to void.");
+        return;
+      }
+      invoice.voidInvoice();
+      log.info("Invoice {} voided successfully.", invoice.getId());
+    } catch (StripeException e) {
+      log.error("Error when voiding the last invoice: {}", e.getMessage(), e);
+    }
   }
 }

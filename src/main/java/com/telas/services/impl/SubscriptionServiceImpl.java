@@ -134,6 +134,7 @@ public class SubscriptionServiceImpl implements SubscriptionService {
     updateSubscriptionStatusCancelled(subscription, endedAt, "Stripe Webhook");
     helper.removeMonitorAdsFromSubscription(subscription);
     notifyClientsWishList(subscription);
+    helper.voidLatestInvoice(stripeSubscription);
   }
 
   @Override
@@ -253,6 +254,7 @@ public class SubscriptionServiceImpl implements SubscriptionService {
         stripeSubscription.update(Map.of("cancel_at_period_end", true));
         log.info("Subscription with id: {} set to cancel at the end of the billing period.", subscription.getId());
       }
+
     } catch (StripeException e) {
       log.error("Error setting subscription with id: {} to cancel at period end", subscription.getId(), e);
       throw new BusinessRuleException(SubscriptionValidationMessages.RETRIEVE_STRIPE_SUBSCRIPTION_ERROR + subscription.getId());
