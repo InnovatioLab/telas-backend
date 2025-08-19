@@ -378,7 +378,7 @@ CREATE TABLE "ad_requests"
   "id"              UUID PRIMARY KEY,
   "client_id"       UUID                     NOT NULL,
   "message"         TEXT                     NOT NULL,
-  "attachment_ids"  TEXT                     NOT NULL,
+  "attachment_ids"  TEXT,
   "active"          BOOLEAN                           DEFAULT TRUE,
   "phone"           VARCHAR(11),
   "email"           VARCHAR(255),
@@ -391,10 +391,10 @@ CREATE TABLE "ad_requests"
 
 CREATE TABLE "ad_requests_aud"
 (
-  "id"             UUID     NOT NULL,
-  "client_id"      UUID     NOT NULL,
-  "message"        TEXT     NOT NULL,
-  "attachment_ids" TEXT     NOT NULL,
+  "id"             UUID,
+  "client_id"      UUID,
+  "message"        TEXT,
+  "attachment_ids" TEXT,
   "phone"          VARCHAR(11),
   "email"          VARCHAR(255),
   "active"         BOOLEAN,

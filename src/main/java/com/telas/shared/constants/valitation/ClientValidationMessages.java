@@ -21,12 +21,10 @@ public final class ClientValidationMessages {
   public static final String VALIDATION_CODE_NOT_VALIDATED = "User validation code is not validated.";
   public static final String CURRENT_EQUALS_NEW_PASSWORD = "Current password cannot be the same as the new password.";
   public static final String SOCIAL_MEDIA_REQUIRED = "At least one social media URL must be provided.";
-  public static final String AD_REQUEST_NOT_ACTIVE = "Ad request is not active.";
   public static final String MAX_ADS_REACHED = "Client has reached the maximum number of ads allowed.";
   public static final String MONITOR_IN_ACTIVE_SUBSCRIPTION = "Client has an active subscription for the selected monitor.";
   public static final String WISHLIST_NOT_FOUND = "Wishlist not found!";
   public static final String OWNER_EMAIL_UNIQUE = "Owner email must be unique.";
-  public static final String MONITORS_WITH_ACTIVE_SUBSCRIPTIONS_NOT_FOUND = "Monitors with active subscriptions not found.";
   public static final String UNAUTHORIZED_CLIENT = "You are not authorized to perform this action.";
   public static final String AD_REQUEST_EXISTS = "Ad request already exists for this client, please wait for the current request to be processed.";
   public static final String AD_REQUEST_NOT_ALLOWED = "Ad request is not allowed for this client.";
