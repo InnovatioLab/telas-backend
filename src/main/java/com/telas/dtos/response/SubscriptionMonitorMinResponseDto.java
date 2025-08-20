@@ -2,6 +2,7 @@ package com.telas.dtos.response;
 
 import com.telas.entities.Monitor;
 import lombok.Getter;
+import org.springframework.util.ObjectUtils;
 
 import java.io.Serial;
 import java.io.Serializable;
@@ -21,6 +22,6 @@ public final class SubscriptionMonitorMinResponseDto implements Serializable {
     id = monitor.getId();
     type = monitor.getType().name();
     size = monitor.getSize().doubleValue();
-    addressData = monitor.getAddress().getCoordinatesParams();
+    addressData = ObjectUtils.isEmpty(monitor.getAddress().getLocationName()) ? monitor.getAddress().getCoordinatesParams() : monitor.getAddress().getLocationName();
   }
 }

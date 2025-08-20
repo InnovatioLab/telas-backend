@@ -75,7 +75,6 @@ public class ClientServiceImpl implements ClientService {
 
     Client client = new Client(request, owner);
     VerificationCode verificationCode = verificationCodeService.save(CodeType.CONTACT, client);
-    verificationCode.setValidated(true);
     client.setVerificationCode(verificationCode);
 
     if (Objects.equals(client.getBusinessName(), "Admin")) {
@@ -84,11 +83,7 @@ public class ClientServiceImpl implements ClientService {
       client.setRole(Role.CLIENT);
     }
 
-    TermCondition actualTermCondition = termConditionService.getActualTermCondition();
-    client.setTermCondition(actualTermCondition);
-    client.setTermAcceptedAt(Instant.now());
-
-//    sendContactConfirmationEmail(client, verificationCode);
+    sendContactConfirmationEmail(client, verificationCode);
     repository.save(client);
   }
 
@@ -235,8 +230,7 @@ public class ClientServiceImpl implements ClientService {
   public void uploadAttachments(List<AttachmentRequestDto> request) {
     attachmentHelper.validate(request);
 
-//    Client client = authenticatedUserService.validateActiveSubscription().client();
-    Client client = authenticatedUserService.getLoggedUser().client();
+    Client client = authenticatedUserService.validateActiveSubscription().client();
     helper.validateAttachmentsCount(client, request);
 
     if (!client.getAttachments().isEmpty()) {
@@ -251,8 +245,7 @@ public class ClientServiceImpl implements ClientService {
   @Transactional
   @Override
   public void requestAdCreation(ClientAdRequestToAdminDto request) {
-//    Client client = authenticatedUserService.validateActiveSubscription().client();
-    Client client = authenticatedUserService.getLoggedUser().client();
+    Client client = authenticatedUserService.validateActiveSubscription().client();
 
     if (Role.ADMIN.equals(client.getRole())) {
       return;
@@ -274,8 +267,7 @@ public class ClientServiceImpl implements ClientService {
   public void uploadAds(AdRequestDto request, UUID clientId) {
     request.validate();
 
-//    Client client = authenticatedUserService.validateActiveSubscription().client();
-    Client client = authenticatedUserService.getLoggedUser().client();
+    Client client = authenticatedUserService.validateActiveSubscription().client();
 
     if (Role.ADMIN.equals(client.getRole()) && client.getId().equals(clientId)) {
       attachmentHelper.saveAds(request, client, null);
@@ -334,8 +326,7 @@ public class ClientServiceImpl implements ClientService {
   @Transactional
   public void validateAd(UUID adId, AdValidationType validation, RefusedAdRequestDto request) {
     Ad ad = helper.getAdById(adId);
-//    Client validator = authenticatedUserService.validateActiveSubscription().client();
-    Client validator = authenticatedUserService.getLoggedUser().client();
+    Client validator = authenticatedUserService.validateActiveSubscription().client();
     attachmentHelper.validateAd(ad, validation, request, validator);
 
     if (AdValidationType.APPROVED.equals(validation)) {
