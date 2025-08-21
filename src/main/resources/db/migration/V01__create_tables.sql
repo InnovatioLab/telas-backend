@@ -106,7 +106,18 @@ CREATE TABLE "terms_conditions"
 (
   "id"              UUID PRIMARY KEY,
   "version"         VARCHAR(10)              NOT NULL,
-  "content"         VARCHAR(7000)            NOT NULL,
+  "content"         TEXT                     NOT NULL,
+  "username_create" VARCHAR(255)             NULL     DEFAULT NULL,
+  "username_update" VARCHAR(255)             NULL     DEFAULT NULL,
+  "created_at"      TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT (now()),
+  "updated_at"      TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT (now())
+);
+
+CREATE TABLE "privacy_policy"
+(
+  "id"              UUID PRIMARY KEY,
+  "version"         VARCHAR(10)              NOT NULL,
+  "content"         TEXT                     NOT NULL,
   "username_create" VARCHAR(255)             NULL     DEFAULT NULL,
   "username_update" VARCHAR(255)             NULL     DEFAULT NULL,
   "created_at"      TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT (now()),
@@ -611,9 +622,216 @@ CREATE TABLE shedlock
 );
 
 INSERT INTO "terms_conditions" (id, version, content, created_at, updated_at, username_create, username_update)
-VALUES ('eb1f62bf-9d16-45c1-be45-bd52f97dffb2',
+VALUES (gen_random_uuid(),
         '0.0.1',
-        'This is a generic condition term for version 0.0.1.',
+        '<div class="content-intro">
+  These Terms of Service govern your access and use of Telas'' digital advertising services, platform, and
+  website (the "Services").
+</div>
+
+<div class="document-section">
+  <h4>1. Eligibility</h4>
+  <div class="section-content">
+    You must be 18 or older to use our Services.
+  </div>
+</div>
+
+<div class="document-section">
+  <h4>2. Account Registration</h4>
+  <div class="section-content">
+    Provide accurate info; you are responsible for account security.
+  </div>
+</div>
+
+<div class="document-section">
+  <h4>3. Use of Services</h4>
+  <div class="section-content">
+    Use lawfully; do not upload illegal or harmful content.
+  </div>
+</div>
+
+<div class="document-section">
+  <h4>4. Advertising Content</h4>
+  <div class="section-content">
+    You retain ownership, but grant Telas license to use content for Services.
+    You warrant rights to all submitted content.
+  </div>
+</div>
+
+<div class="document-section">
+  <h4>5. Payments & Subscriptions</h4>
+  <div class="section-content">
+    Fees must be paid; subscriptions renew automatically.
+  </div>
+</div>
+
+<div class="document-section">
+  <h4>6. Intellectual Property</h4>
+  <div class="section-content">
+    All IP of Services belongs to Telas or licensors.
+  </div>
+</div>
+
+<div class="document-section">
+  <h4>7. Data & Privacy</h4>
+  <div class="section-content">
+    Use is also governed by our <a href="/privacy-policy">Privacy Policy</a>.
+  </div>
+</div>
+
+<div class="document-section">
+  <h4>8. Termination</h4>
+  <div class="section-content">
+    We may suspend/terminate for violations or unpaid fees.
+  </div>
+</div>
+
+<div class="document-section">
+  <h4>9. Disclaimers</h4>
+  <div class="section-content">
+    Services provided "as is". No guarantee of results.
+  </div>
+</div>
+
+<div class="document-section">
+  <h4>10. Limitation of Liability</h4>
+    <div class="section-content">
+      <strong>Telas is not liable for indirect damages.</strong> Liability capped at 12 months fees.
+    </div>
+</div>
+
+<div class="document-section">
+  <h4>11. Indemnification</h4>
+  <div class="section-content">
+    You agree to indemnify Telas from claims arising from your use.
+  </div>
+</div>
+
+<div class="document-section">
+  <h4>12. Governing Law</h4>
+  <div class="section-content">
+    These Terms follow [Insert Jurisdiction]. Disputes resolved via arbitration or courts of [Insert Location].
+  </div>
+</div>
+
+<div class="document-section">
+  <h4>13. Changes</h4>
+  <div class="section-content">
+    We may update Terms periodically.
+  </div>
+</div>
+
+<div class="document-section">
+  <h4>14. Contact</h4>
+  <div class="contact-info">
+    <div class="contact-item company-name"><strong>Telas - Legal Department</strong></div>
+    <div class="contact-item email"><strong class="label">Email: </strong>
+              <a href="mailto:support@telas-ads.com">support@telas-ads.com </a>
+    </div>
+    <div class="contact-item address"><span class="label">Address: </span>[Insert Company Address]</div>
+  </div>
+</div>
+',
+        now(),
+        now(),
+        'Virtual Assistant',
+        'Virtual Assistant');
+
+INSERT INTO "privacy_policy" (id, version, content, created_at, updated_at, username_create, username_update)
+VALUES (gen_random_uuid(),
+        '0.0.1',
+        '<div class="content-intro">
+          Telas ("we," "our," "us") is committed to protecting your privacy. This Privacy Policy explains how we
+          collect, use, disclose, and safeguard your information when you use our digital advertising services,
+          platform, and website (collectively, the "Services").
+        </div>
+
+        <div class="document-section">
+          <h4>1. Information We Collect</h4>
+          <ul class="content-list">
+            <li>Personal Information: Name, email, phone, billing info, company details.</li>
+            <li>Usage Data: IP address, device info, browser type, usage logs.</li>
+            <li>Advertising Data: Campaign metrics, interaction data.</li>
+          </ul>
+        </div>
+
+        <div class="document-section">
+          <h4>2. How We Use Information</h4>
+          <ul class="content-list">
+            <li>Provide and improve Services.</li>
+            <li>Manage accounts, billing, and customer support.</li>
+            <li>Analyze campaign performance.</li>
+            <li>Send service updates and communications.</li>
+            <li>Comply with legal obligations.</li>
+          </ul>
+        </div>
+
+        <div class="document-section">
+          <h4>3. Sharing of Information</h4>
+          <ul class="content-list">
+            <li>With service providers.</li>
+            <li>During business transfers.</li>
+            <li>For legal compliance.</li>
+          </ul>
+        </div>
+
+        <div class="document-section">
+          <h4>4. Data Security</h4>
+          <p>We implement safeguards to protect data.
+          </p>
+        </div>
+
+        <div class="document-section">
+          <h4>5. Data Retention
+          </h4>
+          <p>We retain data only as long as necessary.
+          </p>
+        </div>
+
+        <div class="document-section">
+          <h4>6. Your Rights
+          </h4>
+          <p>Access, update, delete, or restrict use of your data by contacting us.
+          </p>
+        </div>
+
+        <div class="document-section">
+          <h4>7. Cookies & Tracking
+          </h4>
+          <p>We use cookies and similar tech; you can adjust browser settings.
+          </p>
+        </div>
+
+        <div class="document-section">
+          <h4>8. Third-Party Links
+          </h4>
+          <p>We are not responsible for external sites.
+          </p>
+        </div>
+
+        <div class="document-section">
+          <h4>9. International Data Transfers
+          </h4>
+          <p>Your data may be transferred to other countries.
+          </p>
+        </div>
+
+        <div class="document-section">
+          <h4>10. Changes to Policy</h4>
+          <p>We may update periodically; updates will be posted.</p>
+        </div>
+
+        <div class="document-section">
+          <h4>11. Contact Us</h4>
+          <div class="contact-info">
+            <div class="contact-item company-name"><strong>Telas - Privacy Office</strong></div>
+            <div class="contact-item email"><strong class="label">Email: </strong>
+              <a href="mailto:support@telas-ads.com">support@telas-ads.com </a>
+            </div>
+            <div class="contact-item address"><strong class="label">Address: </strong>[Insert Company Address]</div>
+          </div>
+        </div>
+',
         now(),
         now(),
         'Virtual Assistant',

@@ -190,7 +190,7 @@ public class Client extends BaseAudit implements Serializable {
   }
 
   public boolean isTermsAccepted() {
-    return termAcceptedAt != null;
+    return termCondition != null && termAcceptedAt != null;
   }
 
   public List<Ad> getPendingAds() {

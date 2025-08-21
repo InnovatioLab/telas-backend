@@ -301,7 +301,7 @@ public class ClientServiceImpl implements ClientService {
   @Override
   public void acceptTermsAndConditions() {
     Client client = authenticatedUserService.getLoggedUser().client();
-    TermCondition actualTermCondition = termConditionService.getActualTermCondition();
+    TermCondition actualTermCondition = termConditionService.getLastTermCondition();
     client.setTermCondition(actualTermCondition);
     client.setTermAcceptedAt(Instant.now());
     repository.save(client);

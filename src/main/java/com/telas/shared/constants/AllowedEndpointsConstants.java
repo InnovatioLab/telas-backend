@@ -22,7 +22,8 @@ public class AllowedEndpointsConstants {
             "/swagger-resources/**",
             "/docs",
             "/docs/**",
-            "/terms_conditions"
+            "/terms_conditions",
+            "/privacy-policy"
     ));
     ALLOWED_ENDPOINTS.put(HttpMethod.POST, List.of(
             "/clients",

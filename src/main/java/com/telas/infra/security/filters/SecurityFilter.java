@@ -25,68 +25,69 @@ import java.util.Arrays;
 
 @Component
 public class SecurityFilter extends OncePerRequestFilter {
-    private final TokenService tokenService;
-    private final UserDetailsService userDetailsService;
-    private final AuthenticatedUserService authenticatedUserService;
+  private final TokenService tokenService;
+  private final UserDetailsService userDetailsService;
+  private final AuthenticatedUserService authenticatedUserService;
 
-    public SecurityFilter(TokenService tokenService, UserDetailsService userDetailsService, AuthenticatedUserService authenticatedUserService) {
-        this.tokenService = tokenService;
-        this.userDetailsService = userDetailsService;
-        this.authenticatedUserService = authenticatedUserService;
+  public SecurityFilter(TokenService tokenService, UserDetailsService userDetailsService, AuthenticatedUserService authenticatedUserService) {
+    this.tokenService = tokenService;
+    this.userDetailsService = userDetailsService;
+    this.authenticatedUserService = authenticatedUserService;
+  }
+
+  @Override
+  protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain) throws ServletException, IOException {
+    String idToken = recoverToken(request);
+    String requestUri = request.getRequestURI();
+    HttpMethod requestMethod = HttpMethod.valueOf(request.getMethod());
+    boolean acceptTermsURL = "/api/clients/accept-terms-conditions".equals(requestUri);
+    boolean authenticatedURL = "/api/clients/authenticated".equals(requestUri);
+    String fixedRequest = requestUri.replace("/api", "");
+    boolean allowedURL = AllowedEndpointsConstants.isAllowedURL(requestMethod, fixedRequest);
+
+
+    if (allowedURL) {
+      filterChain.doFilter(request, response);
+      return;
     }
 
-    @Override
-    protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain) throws ServletException, IOException {
-        String idToken = recoverToken(request);
-        String requestUri = request.getRequestURI();
-        HttpMethod requestMethod = HttpMethod.valueOf(request.getMethod());
-        boolean acceptTermsURL = "/api/clients/accept-terms-conditions".equals(requestUri);
-        String fixedRequest = requestUri.replace("/api", "");
-        boolean allowedURL = AllowedEndpointsConstants.isAllowedURL(requestMethod, fixedRequest);
+    try {
+      if (idToken != null) {
+        TokenData tokenData = tokenService.validateToken(idToken);
+        UserDetails user = userDetailsService.loadUserByUsername(tokenData.getIdentificationNumber());
 
+        Authentication authentication = new UsernamePasswordAuthenticationToken(user, null, user.getAuthorities());
+        SecurityContextHolder.getContext().setAuthentication(authentication);
 
-        if (allowedURL) {
-            filterChain.doFilter(request, response);
-            return;
+        if (!acceptTermsURL && !authenticatedURL) {
+          authenticatedUserService.verifyTermsAccepted(user);
         }
+      }
 
-        try {
-            if (idToken != null) {
-                TokenData tokenData = tokenService.validateToken(idToken);
-                UserDetails user = userDetailsService.loadUserByUsername(tokenData.getIdentificationNumber());
-
-                Authentication authentication = new UsernamePasswordAuthenticationToken(user, null, user.getAuthorities());
-                SecurityContextHolder.getContext().setAuthentication(authentication);
-
-                if (!acceptTermsURL) {
-                    authenticatedUserService.verifyTermsAccepted(user);
-                }
-            }
-
-            filterChain.doFilter(request, response);
-        } catch (RuntimeException exception) {
-            String errorMessage = exception.getMessage();
-            logger.error("Exception: " + errorMessage);
-            handleException(response, HttpStatus.BAD_REQUEST, errorMessage);
-        }
-
+      filterChain.doFilter(request, response);
+    } catch (RuntimeException exception) {
+      String errorMessage = exception.getMessage();
+      logger.error("Exception: " + errorMessage);
+      handleException(response, HttpStatus.BAD_REQUEST, errorMessage);
     }
 
-    private void handleException(HttpServletResponse response, HttpStatus status, String message) throws IOException {
-        response.setStatus(status.value());
-        response.setContentType("application/json");
-        response.setCharacterEncoding("UTF-8");
-        ResponseDto<Object> obj = ResponseDto.fromData(null, status, message, Arrays.asList(message));
-        response.getWriter().write(new ObjectMapper().writeValueAsString(obj));
+  }
+
+  private void handleException(HttpServletResponse response, HttpStatus status, String message) throws IOException {
+    response.setStatus(status.value());
+    response.setContentType("application/json");
+    response.setCharacterEncoding("UTF-8");
+    ResponseDto<Object> obj = ResponseDto.fromData(null, status, message, Arrays.asList(message));
+    response.getWriter().write(new ObjectMapper().writeValueAsString(obj));
+  }
+
+  private String recoverToken(HttpServletRequest request) {
+    var authHeader = request.getHeader("Authorization");
+
+    if (authHeader == null) {
+      return null;
     }
 
-    private String recoverToken(HttpServletRequest request) {
-        var authHeader = request.getHeader("Authorization");
-
-        if (authHeader == null) {
-            return null;
-        }
-
-        return authHeader.replace("Bearer ", "");
-    }
+    return authHeader.replace("Bearer ", "");
+  }
 }
