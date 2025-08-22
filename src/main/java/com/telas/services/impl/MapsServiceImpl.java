@@ -51,6 +51,11 @@ public class MapsServiceImpl implements MapsService {
     Double latitude = response.getLat();
     Double longitude = response.getLng();
     address.setLocation(latitude, longitude);
+    addressRepository.save(address);
+    getPlaceDetails(address, latitude, longitude);
+  }
+
+  private void getPlaceDetails(Address address, Double latitude, Double longitude) {
     SearchNearbyRequestDto requestDto = new SearchNearbyRequestDto(latitude, longitude);
 
     Map<String, String> PLACES_SEARCH_NEARBY_HEADERS = Map.of(
@@ -73,38 +78,30 @@ public class MapsServiceImpl implements MapsService {
   }
 
   private void getPhotosFromPlace(Address address, NearbySearchResponse.Place place) {
-    if (place.getPhotos() != null && !place.getPhotos().isEmpty()) {
-      NearbySearchResponse.Photo photo = place.getPhotos().get(0);
-      String photoUrl = String.format(PLACES_MEDIA_URL, photo.getName(), apiKey);
+    if (place.getPhotos() == null || place.getPhotos().isEmpty()) {
+      log.warn("No photos available for place ID: {}", place.getId());
+      return;
+    }
 
-      log.info("Fetching photo from URL: {}", photoUrl);
+    String photoUrl = String.format(PLACES_MEDIA_URL, place.getPhotos().get(0).getName(), apiKey);
+    log.info("Fetching photo from URL: {}", photoUrl);
 
-      HttpClient client = HttpClient.newBuilder()
-              .followRedirects(HttpClient.Redirect.NEVER)
-              .build();
+    try {
+      HttpResponse<Void> response = HttpClient.newHttpClient()
+              .send(HttpRequest.newBuilder().uri(URI.create(photoUrl)).GET().build(), HttpResponse.BodyHandlers.discarding());
 
-      HttpRequest request = HttpRequest.newBuilder()
-              .uri(URI.create(photoUrl))
-              .GET()
-              .build();
+      log.info("Response status code: {}", response.statusCode());
 
-      HttpResponse<Void> response = null;
-
-      try {
-        response = client.send(request, HttpResponse.BodyHandlers.discarding());
-        log.info("Response status code: {}", response.statusCode());
-
-        if (response.statusCode() == 302) {
-          log.info("header: {}", response.headers().firstValue("Location"));
-          String imageUrl = response.headers().firstValue("Location").orElse(null);
-          address.setPhotoUrl(imageUrl);
-          addressRepository.save(address);
-        } else {
-          log.warn("No photos available for place ID: {}", place.getId());
-        }
-      } catch (IOException | InterruptedException e) {
-        log.error("Error while fetching photo from place: {}", e.getMessage());
+      if (response.statusCode() == 302) {
+        String imageUrl = response.headers().firstValue("Location").orElse(null);
+        log.info("Redirected to image URL: {}", imageUrl);
+        address.setPhotoUrl(imageUrl);
+        addressRepository.save(address);
+      } else {
+        log.warn("No photos available for place ID: {}", place.getId());
       }
+    } catch (IOException | InterruptedException e) {
+      log.error("Error while fetching photo from place: {}", e.getMessage());
     }
   }
 
@@ -117,10 +114,6 @@ public class MapsServiceImpl implements MapsService {
 
   GeolocalizationResponseDto geolocationRequest(Address address) {
     return fetchGeolocationData(address.getCoordinatesParams());
-  }
-
-  GeolocalizationResponseDto geolocationRequest(String zipCode, String countryCode) {
-    return fetchGeolocationData(zipCode + ", " + countryCode);
   }
 
   GeolocalizationResponseDto fetchGeolocationData(String param) {
