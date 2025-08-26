@@ -18,6 +18,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -65,6 +66,7 @@ public class NotificationServiceImpl implements NotificationService {
                 notification.setVisualized(true);
                 repository.save(notification);
               });
+      return Collections.emptyList();
     }
 
     return notifications.stream().map(NotificationResponseDto::new).toList();
