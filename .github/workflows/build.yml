@@ -42,10 +42,10 @@ jobs:
             GEOLOCALIZACAO_SERVICE_KEY=${{ secrets.GEOLOCALIZACAO_SERVICE_KEY }}
             GEOLOCALIZACAO_SERVICE_URL=${{ secrets.GEOLOCALIZACAO_SERVICE_URL }}
             LOKI=${{ secrets.LOKI }}
-            MINIO_ACCESS_KEY=${{ secrets.MINIO_ACCESS_KEY }}
-            MINIO_BUCKET_NAME=${{ secrets.MINIO_BUCKET_NAME }}
-            MINIO_ENDPOINT=${{ secrets.MINIO_ENDPOINT }}
-            MINIO_SECRET_KEY=${{ secrets.MINIO_SECRET_KEY }}
+            BUCKET_ACCESS_KEY=${{ secrets.BUCKET_ACCESS_KEY }}
+            BUCKET_NAME=${{ secrets.BUCKET_NAME }}
+            BUCKET_ENDPOINT=${{ secrets.BUCKET_ENDPOINT }}
+            BUCKET_SECRET_KEY=${{ secrets.BUCKET_SECRET_KEY }}
             MONITOR_BLOCK_PRICE=${{ secrets.MONITOR_BLOCK_PRICE }}
             PAYMENT_GATEWAY_API_KEY=${{ secrets.PAYMENT_GATEWAY_API_KEY }}
             PAYMENT_GATEWAY_WEBHOOK_SECRET=${{ secrets.PAYMENT_GATEWAY_WEBHOOK_SECRET }}

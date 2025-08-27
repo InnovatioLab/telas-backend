@@ -1,6 +1,53 @@
 version: '3'
 
 services:
+  api:
+    image: ghcr.io/${DOCKER_LOGIN}/telas-api:latest
+    environment:
+      TZ: "${TZ}"
+      DB_URL: "${DB_URL}"
+      DB_USER: "${DB_USER}"
+      DB_PASSWORD: "${DB_PASSWORD}"
+      EMAIL_HOST: "${EMAIL_HOST}"
+      EMAIL_PASSWORD: "${EMAIL_PASSWORD}"
+      EMAIL_PORT: "${EMAIL_PORT}"
+      EMAIL_USERNAME: "${EMAIL_USERNAME}"
+      GEOLOCALIZACAO_SERVICE_KEY: "${GEOLOCALIZACAO_SERVICE_KEY}"
+      GEOLOCALIZACAO_SERVICE_URL: "${GEOLOCALIZACAO_SERVICE_URL}"
+      LOKI: "${LOKI}"
+      BUCKET_ACCESS_KEY: "${BUCKET_ACCESS_KEY}"
+      BUCKET_NAME: "${BUCKET_NAME}"
+      BUCKET_ENDPOINT: "${BUCKET_ENDPOINT}"
+      BUCKET_SECRET_KEY: "${BUCKET_SECRET_KEY}"
+      MONITOR_BLOCK_PRICE: "${MONITOR_BLOCK_PRICE}"
+      PAYMENT_GATEWAY_API_KEY: "${PAYMENT_GATEWAY_API_KEY}"
+      PAYMENT_GATEWAY_WEBHOOK_SECRET: "${PAYMENT_GATEWAY_WEBHOOK_SECRET}"
+      TOKEN_SECRET: "${TOKEN_SECRET}"
+      FRONT_BASE_URL: "${FRONT_BASE_URL}"
+      STRIPE_PRODUCT_ID: "${STRIPE_PRODUCT_ID}"
+      RABBITMQ_HOST: "${RABBITMQ_HOST}"
+      RABBITMQ_PORT: "${RABBITMQ_PORT}"
+      RABBITMQ_USER: "${RABBITMQ_USER}"
+      RABBITMQ_PASSWORD: "${RABBITMQ_PASSWORD}"
+      QUEUE_NAME: "${QUEUE_NAME}"
+      EXCHANGE_NAME: "${EXCHANGE_NAME}"
+      ROUTING_KEY: "${ROUTING_KEY}"
+    ports:
+      - "8080:8080"
+    depends_on:
+      - rabbitmq
+      - loki
+      - postgres-db
+      - minio
+    networks:
+      - observability
+    restart: always
+    healthcheck:
+      test: curl --fail http://localhost:8080/api/actuator/health || exit 1
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
   postgres-db:
     container_name: telas_db
     image: postgis/postgis:latest
@@ -25,6 +72,11 @@ services:
     ports:
       - "3100:3100"
     restart: always
+    healthcheck:
+      test: wget --spider -q http://localhost:3100/ready || exit 1
+      interval: 30s
+      timeout: 10s
+      retries: 5
 
   minio:
     container_name: minio
@@ -41,7 +93,12 @@ services:
       - "9001:9001" # MinIO Console
     networks:
       - observability
-  
+    healthcheck:
+      test: curl --fail http://localhost:9000/minio/health/live || exit 1
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
   promtail:
     container_name: promtail_telas
     image: grafana/promtail:2.9.0
@@ -52,6 +109,11 @@ services:
       - observability
     restart: always
     command: -config.file=/etc/promtail/promtail-config.yml
+    healthcheck:
+      test: wget --spider -q http://localhost:9080/ready || exit 1
+      interval: 30s
+      timeout: 10s
+      retries: 5
 
   prometheus:
     container_name: prometheus_telas
@@ -66,6 +128,11 @@ services:
     ports:
       - "9090:9090"
     restart: always
+    healthcheck:
+      test: wget --spider -q http://localhost:9090/-/ready || exit 1
+      interval: 30s
+      timeout: 10s
+      retries: 5
 
   grafana:
     container_name: grafana_telas
@@ -79,7 +146,12 @@ services:
     networks:
       - observability
     restart: always
-  
+    healthcheck:
+      test: curl --fail http://localhost:3000/api/health || exit 1
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
   rabbitmq:
     image: rabbitmq:3.13-management
     hostname: rabbitmq
