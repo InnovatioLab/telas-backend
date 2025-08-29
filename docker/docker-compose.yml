@@ -1,56 +1,9 @@
 version: '3'
 
 services:
-  api:
-    image: ghcr.io/${DOCKER_LOGIN}/telas-api:latest
-    environment:
-      TZ: "${TZ}"
-      DB_URL: "${DB_URL}"
-      DB_USER: "${DB_USER}"
-      DB_PASSWORD: "${DB_PASSWORD}"
-      EMAIL_HOST: "${EMAIL_HOST}"
-      EMAIL_PASSWORD: "${EMAIL_PASSWORD}"
-      EMAIL_PORT: "${EMAIL_PORT}"
-      EMAIL_USERNAME: "${EMAIL_USERNAME}"
-      GEOLOCALIZACAO_SERVICE_KEY: "${GEOLOCALIZACAO_SERVICE_KEY}"
-      GEOLOCALIZACAO_SERVICE_URL: "${GEOLOCALIZACAO_SERVICE_URL}"
-      LOKI: "${LOKI}"
-      BUCKET_ACCESS_KEY: "${BUCKET_ACCESS_KEY}"
-      BUCKET_NAME: "${BUCKET_NAME}"
-      BUCKET_ENDPOINT: "${BUCKET_ENDPOINT}"
-      BUCKET_SECRET_KEY: "${BUCKET_SECRET_KEY}"
-      MONITOR_BLOCK_PRICE: "${MONITOR_BLOCK_PRICE}"
-      PAYMENT_GATEWAY_API_KEY: "${PAYMENT_GATEWAY_API_KEY}"
-      PAYMENT_GATEWAY_WEBHOOK_SECRET: "${PAYMENT_GATEWAY_WEBHOOK_SECRET}"
-      TOKEN_SECRET: "${TOKEN_SECRET}"
-      FRONT_BASE_URL: "${FRONT_BASE_URL}"
-      STRIPE_PRODUCT_ID: "${STRIPE_PRODUCT_ID}"
-      RABBITMQ_HOST: "${RABBITMQ_HOST}"
-      RABBITMQ_PORT: "${RABBITMQ_PORT}"
-      RABBITMQ_USER: "${RABBITMQ_USER}"
-      RABBITMQ_PASSWORD: "${RABBITMQ_PASSWORD}"
-      QUEUE_NAME: "${QUEUE_NAME}"
-      EXCHANGE_NAME: "${EXCHANGE_NAME}"
-      ROUTING_KEY: "${ROUTING_KEY}"
-    ports:
-      - "8080:8080"
-    depends_on:
-      - rabbitmq
-      - loki
-      - postgres-db
-      - minio
-    networks:
-      - observability
-    restart: always
-    healthcheck:
-      test: curl --fail http://localhost:8080/api/actuator/health || exit 1
-      interval: 30s
-      timeout: 10s
-      retries: 3
-
   postgres-db:
     container_name: telas_db
-    image: postgis/postgis:latest
+    image: postgres:16.9-alpine
     environment:
       POSTGRES_USER: "postgres"
       POSTGRES_PASSWORD: "postgres"
@@ -65,7 +18,7 @@ services:
     container_name: loki_telas
     image: grafana/loki:2.9.0
     volumes:
-      - loki_data:/loki
+      - ./loki_data:/loki
       - ./config/loki-config.yml:/etc/loki/loki-config.yml
     networks:
       - observability
@@ -87,7 +40,7 @@ services:
       MINIO_ROOT_PASSWORD: "PSEbwJezWEUObuYnbabnp9nV-UsD1qXsv9aMqxl3rcs="
     command: server /data --console-address ":9001"
     volumes:
-      - minio_data:/data
+      - ./minio_data:/data
     ports:
       - "9000:9000" # MinIO API
       - "9001:9001" # MinIO Console
@@ -122,7 +75,7 @@ services:
       application: "Prometheus"
     volumes:
       - ./config/prometheus-config.yml:/etc/prometheus/prometheus.yml
-      - prometheus_data:/prometheus
+      - ./prometheus_data:/prometheus
     networks:
       - observability
     ports:
@@ -140,7 +93,7 @@ services:
     labels:
       application: "Grafana"
     volumes:
-      - grafana_data:/var/lib/grafana
+      - ./grafana_data:/var/lib/grafana
     ports:
       - "3000:3000"
     networks:
