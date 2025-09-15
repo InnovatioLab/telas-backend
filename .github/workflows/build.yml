@@ -59,3 +59,15 @@ jobs:
             QUEUE_NAME=${{ secrets.QUEUE_NAME }}
             EXCHANGE_NAME=${{ secrets.EXCHANGE_NAME }}
             ROUTING_KEY=${{ secrets.ROUTING_KEY }}
+
+      - name: Trigger Dokploy Deployment
+        run: |
+          curl -X 'POST' \
+          '${{ secrets.DOCKPLOY_WEBHOOK_URL }}' \
+          -H 'accept: application/json' \
+          -H 'Content-Type: application/json' \
+          -H 'Authorization: Bearer ${{ secrets.DOCKPLOY_TOKEN }}' \
+          -H 'x-api-key: ${{ secrets.DOCKPLOY_TOKEN }}' \
+          -d '{
+          "applicationId": "${{ secrets.DOKPLOY_APPLICATION_ID }}"
+          }'
