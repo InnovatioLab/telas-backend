@@ -836,9 +836,6 @@ VALUES (gen_random_uuid(),
         'Virtual Assistant',
         'Virtual Assistant');
 
-INSERT INTO "box_address" (id, ip, mac)
-VALUES (gen_random_uuid(), '192.168.0.7', '12:66:1a:9c:de:be');
-
 CREATE INDEX idx_email ON contacts (email);
 
 CREATE INDEX idx_address_zip_code ON addresses (zip_code);
