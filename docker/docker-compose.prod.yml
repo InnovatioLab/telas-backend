@@ -46,19 +46,6 @@ services:
       timeout: 10s
       retries: 3
 
-  postgres-db:
-    container_name: telas_db
-    image: postgis/postgis:latest
-    environment:
-      POSTGRES_USER: "postgres"
-      POSTGRES_PASSWORD: "postgres"
-      POSTGRES_DB: "db_telas"
-    ports:
-      - "5432:5432"
-    networks:
-      - observability
-    restart: always
-
   loki:
     container_name: loki_telas
     image: grafana/loki:2.9.0
@@ -72,27 +59,6 @@ services:
     restart: always
     healthcheck:
       test: wget --spider -q http://localhost:3100/ready || exit 1
-      interval: 30s
-      timeout: 10s
-      retries: 5
-
-  minio:
-    container_name: minio
-    image: minio/minio:latest
-    restart: always
-    environment:
-      MINIO_ROOT_USER: "GAryDiMncAmCuhahv4Qr"
-      MINIO_ROOT_PASSWORD: "PSEbwJezWEUObuYnbabnp9nV-UsD1qXsv9aMqxl3rcs="
-    command: server /data --console-address ":9001"
-    volumes:
-      - minio_data:/data
-    ports:
-      - "9000:9000" # MinIO API
-      - "9001:9001" # MinIO Console
-    networks:
-      - observability
-    healthcheck:
-      test: curl --fail http://localhost:9000/minio/health/live || exit 1
       interval: 30s
       timeout: 10s
       retries: 5
