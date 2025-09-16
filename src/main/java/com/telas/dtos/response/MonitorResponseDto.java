@@ -12,26 +12,28 @@ import java.util.UUID;
 
 @Getter
 public final class MonitorResponseDto implements Serializable {
-  @Serial
-  private static final long serialVersionUID = -2929124221854520175L;
+    @Serial
+    private static final long serialVersionUID = -2929124221854520175L;
 
-  private final UUID id;
-  private final boolean active;
-  private final MonitorType type;
-  private final String locationDescription;
-  private final BigDecimal size;
-  private final AddressFromZipCodeResponseDto address;
-  private final String fullAddress;
-  private final List<MonitorAdResponseDto> adLinks;
+    private final UUID id;
+    private final boolean active;
+    private final MonitorType type;
+    private final String locationDescription;
+    private final BigDecimal size;
+    private final AddressFromZipCodeResponseDto address;
+    private final String fullAddress;
+    private final boolean canBeDeleted;
+    private final List<MonitorAdResponseDto> adLinks;
 
-  public MonitorResponseDto(Monitor entity, List<MonitorAdResponseDto> adLinks) {
-    id = entity.getId();
-    active = entity.isActive();
-    type = entity.getType();
-    locationDescription = entity.getLocationDescription();
-    size = entity.getSize();
-    address = new AddressFromZipCodeResponseDto(entity.getAddress());
-    fullAddress = entity.getAddress().getCoordinatesParams();
-    this.adLinks = adLinks;
-  }
+    public MonitorResponseDto(Monitor entity, List<MonitorAdResponseDto> adLinks) {
+        id = entity.getId();
+        active = entity.isActive();
+        type = entity.getType();
+        locationDescription = entity.getLocationDescription();
+        size = entity.getSize();
+        address = new AddressFromZipCodeResponseDto(entity.getAddress());
+        fullAddress = entity.getAddress().getCoordinatesParams();
+        canBeDeleted = entity.getActiveSubscriptions().isEmpty();
+        this.adLinks = adLinks;
+    }
 }
