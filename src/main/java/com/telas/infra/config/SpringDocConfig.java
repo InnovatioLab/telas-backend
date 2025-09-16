@@ -23,79 +23,79 @@ import java.nio.charset.StandardCharsets;
 @Configuration
 @OpenAPIDefinition
 public class SpringDocConfig {
-  @Value("classpath:springdoc-responses/responses.json")
-  private Resource jsonFile;
+    @Value("classpath:springdoc-responses/responses.json")
+    private Resource jsonFile;
 
-  @Value("${swagger.server.url}")
-  private String serverUrl;
+    @Value("${swagger.server.url}")
+    private String serverUrl;
 
-  @Bean
-  public OpenAPI customOpenAPI() throws IOException {
-    var key = "default";
+    @Bean
+    public OpenAPI customOpenAPI() throws IOException {
+        var key = "default";
 
-    ApiResponse badRequest = new ApiResponse().content(
-            new Content().addMediaType(MediaType.APPLICATION_JSON_VALUE,
-                    new io.swagger.v3.oas.models.media.MediaType().addExamples(key,
-                            new Example().value(read("badRequestResponse"))))
-    ).description("BAD REQUEST");
+        ApiResponse badRequest = new ApiResponse().content(
+                new Content().addMediaType(MediaType.APPLICATION_JSON_VALUE,
+                        new io.swagger.v3.oas.models.media.MediaType().addExamples(key,
+                                new Example().value(read("badRequestResponse"))))
+        ).description("BAD REQUEST");
 
-    ApiResponse notFound = new ApiResponse().content(
-            new Content().addMediaType(MediaType.APPLICATION_JSON_VALUE,
-                    new io.swagger.v3.oas.models.media.MediaType().addExamples(key,
-                            new Example().value(read("notFoundResponse"))))
-    ).description("NOT FOUND");
+        ApiResponse notFound = new ApiResponse().content(
+                new Content().addMediaType(MediaType.APPLICATION_JSON_VALUE,
+                        new io.swagger.v3.oas.models.media.MediaType().addExamples(key,
+                                new Example().value(read("notFoundResponse"))))
+        ).description("NOT FOUND");
 
-    ApiResponse unauthorized = new ApiResponse().content(
-            new Content().addMediaType(MediaType.APPLICATION_JSON_VALUE,
-                    new io.swagger.v3.oas.models.media.MediaType().addExamples(key,
-                            new Example().value(read("unauthorizedResponse"))))
-    ).description("UNAUTHORIZED");
+        ApiResponse unauthorized = new ApiResponse().content(
+                new Content().addMediaType(MediaType.APPLICATION_JSON_VALUE,
+                        new io.swagger.v3.oas.models.media.MediaType().addExamples(key,
+                                new Example().value(read("unauthorizedResponse"))))
+        ).description("UNAUTHORIZED");
 
-    ApiResponse forbidden = new ApiResponse().content(
-            new Content().addMediaType(MediaType.APPLICATION_JSON_VALUE,
-                    new io.swagger.v3.oas.models.media.MediaType().addExamples(key,
-                            new Example().value(read("forbiddenResponse"))))
-    ).description("FORBIDDEN");
+        ApiResponse forbidden = new ApiResponse().content(
+                new Content().addMediaType(MediaType.APPLICATION_JSON_VALUE,
+                        new io.swagger.v3.oas.models.media.MediaType().addExamples(key,
+                                new Example().value(read("forbiddenResponse"))))
+        ).description("FORBIDDEN");
 
-    ApiResponse internalServerError = new ApiResponse().content(
-            new Content().addMediaType(MediaType.APPLICATION_JSON_VALUE,
-                    new io.swagger.v3.oas.models.media.MediaType().addExamples(key,
-                            new Example().value(read("internalServerErrorResponse"))))
-    ).description("INTERNAL SERVER ERROR");
+        ApiResponse internalServerError = new ApiResponse().content(
+                new Content().addMediaType(MediaType.APPLICATION_JSON_VALUE,
+                        new io.swagger.v3.oas.models.media.MediaType().addExamples(key,
+                                new Example().value(read("internalServerErrorResponse"))))
+        ).description("INTERNAL SERVER ERROR");
 
-    var components = new Components();
+        var components = new Components();
 
-    components.addResponses("badRequest", badRequest);
-    components.addResponses("notFound", notFound);
-    components.addResponses("unauthorized", unauthorized);
-    components.addResponses("forbidden", forbidden);
-    components.addResponses("internalServerError", internalServerError);
+        components.addResponses("badRequest", badRequest);
+        components.addResponses("notFound", notFound);
+        components.addResponses("unauthorized", unauthorized);
+        components.addResponses("forbidden", forbidden);
+        components.addResponses("internalServerError", internalServerError);
 
-    components.addSecuritySchemes("jwt", new SecurityScheme()
-            .type(SecurityScheme.Type.HTTP)
-            .scheme("bearer")
-            .bearerFormat("JWT"));
+        components.addSecuritySchemes("jwt", new SecurityScheme()
+                .type(SecurityScheme.Type.HTTP)
+                .scheme("bearer")
+                .bearerFormat("JWT"));
 
-    return new OpenAPI()
-            .info(new Info()
-                    .title("Análise Vínculos - Gerenciador de Configurações - API")
-                    .description("Esta API fornece acesso a serviço de Gerenciamento de Configurações do sistema Análise de Vínculos.")
-                    .version("v1.0.0"))
-            .components(components)
-            .addServersItem(new io.swagger.v3.oas.models.servers.Server().url(serverUrl));
+        return new OpenAPI()
+                .info(new Info()
+                        .title("Telas - API")
+                        .description("This API provides access to the Telas application services.")
+                        .version("v1.0.0"))
+                .components(components)
+                .addServersItem(new io.swagger.v3.oas.models.servers.Server().url(serverUrl));
 
-  }
-
-  @Bean
-  public GroupedOpenApi producersGroup() {
-    String[] paths = {"/**"};
-    return GroupedOpenApi.builder().group("Geral").pathsToMatch(paths).build();
-  }
-
-  private String read(String key) throws IOException {
-    try (var inputStream = jsonFile.getInputStream()) {
-      String content = StreamUtils.copyToString(inputStream, StandardCharsets.UTF_8);
-      return new JSONObject(content).get(key).toString();
     }
-  }
+
+    @Bean
+    public GroupedOpenApi producersGroup() {
+        String[] paths = {"/**"};
+        return GroupedOpenApi.builder().group("Geral").pathsToMatch(paths).build();
+    }
+
+    private String read(String key) throws IOException {
+        try (var inputStream = jsonFile.getInputStream()) {
+            String content = StreamUtils.copyToString(inputStream, StandardCharsets.UTF_8);
+            return new JSONObject(content).get(key).toString();
+        }
+    }
 }
