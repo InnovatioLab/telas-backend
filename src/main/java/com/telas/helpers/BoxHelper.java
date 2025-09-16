@@ -3,7 +3,6 @@ package com.telas.helpers;
 import com.telas.dtos.request.UpdateBoxMonitorsAdRequestDto;
 import com.telas.dtos.response.BoxMonitorAdResponseDto;
 import com.telas.dtos.response.MonitorAdResponseDto;
-import com.telas.dtos.response.StatusMonitorsResponseDto;
 import com.telas.entities.Box;
 import com.telas.entities.BoxAddress;
 import com.telas.entities.Monitor;
@@ -24,115 +23,95 @@ import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
-import java.util.Objects;
 import java.util.UUID;
 
 @Component
 @RequiredArgsConstructor
 public class BoxHelper {
-  private final Logger log = LoggerFactory.getLogger(BoxHelper.class);
-  private final BoxAddressRepository boxAddressRepository;
-  private final MonitorRepository monitorRepository;
-  private final BucketService bucketService;
-  private final HttpClientUtil httpClient;
+    private final Logger log = LoggerFactory.getLogger(BoxHelper.class);
+    private final BoxAddressRepository boxAddressRepository;
+    private final MonitorRepository monitorRepository;
+    private final BucketService bucketService;
+    private final HttpClientUtil httpClient;
 
-  @Transactional(readOnly = true)
-  public void validateUniqueAddress(BoxAddress boxAddress) {
-    if (boxAddress.getBox() != null) {
-      throw new BusinessRuleException(BoxValidationMessages.BOX_ADDRESS_ALREADY_ALLOCATED);
-    }
-  }
-
-  @Transactional(readOnly = true)
-  public BoxAddress getBoxAddress(UUID boxAddressId) {
-    return boxAddressRepository.findById(boxAddressId)
-            .orElseThrow(() -> new ResourceNotFoundException(BoxValidationMessages.BOX_ADDRESS_NOT_FOUND));
-  }
-
-  @Transactional(readOnly = true)
-  public List<Monitor> getMonitors(List<UUID> monitorIds) {
-    return monitorRepository.findAllById(monitorIds);
-  }
-
-  @Transactional(readOnly = true)
-  public Monitor findMonitorById(UUID monitorId) {
-    return monitorRepository.findById(monitorId)
-            .orElseThrow(() -> new ResourceNotFoundException(MonitorValidationMessages.MONITOR_NOT_FOUND));
-  }
-
-  @Transactional(readOnly = true)
-  public List<BoxMonitorAdResponseDto> getBoxMonitorAdResponse(Box box) {
-    return box.getMonitors().stream()
-            .map(monitor -> new BoxMonitorAdResponseDto(
-                    monitor,
-                    monitor.getMonitorAds().stream()
-                            .map(monitorAd -> new MonitorAdResponseDto(
-                                    monitorAd,
-                                    bucketService.getLink(AttachmentUtils.format(monitorAd.getAd()))
-                            ))
-                            .toList()
-            ))
-            .toList();
-  }
-
-  @Transactional
-  public void checkMonitorsHealth(List<StatusMonitorsResponseDto> responseList) {
-    responseList.stream()
-            .filter(response -> response.getStatusCode() != 200)
-            .forEach(response -> {
-              if (Objects.equals(response.getErrorLevel(), "high")) {
-                Monitor monitor = findMonitorById(response.getId());
-
-                if (monitor.isActive()) {
-                  monitor.setActive(false);
-                  log.error("Monitor with ID {} is sending HIGH error level due to health check failure and will be inactivated! message: {}", monitor.getId(), response.getMessage());
-                  monitorRepository.save(monitor);
-                }
-              } else {
-                log.warn("Monitor with ID {} is sending MODERATE error level due to health check failure! message: {}", response.getId(), response.getMessage());
-              }
-            });
-  }
-
-  @Transactional
-  public void sendUpdateBoxMonitorsAdsRequest(Box box) {
-    if (!box.isActive()) {
-      return;
+    @Transactional(readOnly = true)
+    public void validateUniqueAddress(BoxAddress boxAddress) {
+        if (boxAddress.getBox() != null) {
+            throw new BusinessRuleException(BoxValidationMessages.BOX_ADDRESS_ALREADY_ALLOCATED);
+        }
     }
 
-    String url;
-    List<UpdateBoxMonitorsAdRequestDto> body = box.getMonitors().stream()
-            .flatMap(monitor -> monitor.getAds().stream()
-                    .filter(ad -> AdValidationType.APPROVED.equals(ad.getValidation()))
-                    .map(ad -> new UpdateBoxMonitorsAdRequestDto(
+    @Transactional(readOnly = true)
+    public BoxAddress getBoxAddress(UUID boxAddressId) {
+        return boxAddressRepository.findById(boxAddressId)
+                .orElseThrow(() -> new ResourceNotFoundException(BoxValidationMessages.BOX_ADDRESS_NOT_FOUND));
+    }
+
+    @Transactional(readOnly = true)
+    public List<Monitor> getMonitors(List<UUID> monitorIds) {
+        return monitorRepository.findAllById(monitorIds);
+    }
+
+    @Transactional(readOnly = true)
+    public Monitor findMonitorById(UUID monitorId) {
+        return monitorRepository.findById(monitorId)
+                .orElseThrow(() -> new ResourceNotFoundException(MonitorValidationMessages.MONITOR_NOT_FOUND));
+    }
+
+    @Transactional(readOnly = true)
+    public List<BoxMonitorAdResponseDto> getBoxMonitorAdResponse(Box box) {
+        return box.getMonitors().stream()
+                .map(monitor -> new BoxMonitorAdResponseDto(
+                        monitor,
+                        monitor.getMonitorAds().stream()
+                                .map(monitorAd -> new MonitorAdResponseDto(
+                                        monitorAd,
+                                        bucketService.getLink(AttachmentUtils.format(monitorAd.getAd()))
+                                ))
+                                .toList()
+                ))
+                .toList();
+    }
+
+    @Transactional
+    public void sendUpdateBoxMonitorsAdsRequest(Box box) {
+        if (!box.isActive()) {
+            return;
+        }
+
+        String url;
+        List<UpdateBoxMonitorsAdRequestDto> body = box.getMonitors().stream()
+                .flatMap(monitor -> monitor.getAds().stream()
+                        .filter(ad -> AdValidationType.APPROVED.equals(ad.getValidation()))
+                        .map(ad -> new UpdateBoxMonitorsAdRequestDto(
+                                monitor.getId(),
+                                ad.getName(),
+                                bucketService.getLink(AttachmentUtils.format(ad))
+                        ))
+                )
+                .toList();
+
+        if (body.isEmpty()) {
+            url = "http://" + box.getBoxAddress().getIp() + ":8081/create-folders";
+            body = box.getMonitors().stream()
+                    .map(monitor -> new UpdateBoxMonitorsAdRequestDto(
                             monitor.getId(),
-                            ad.getName(),
-                            bucketService.getLink(AttachmentUtils.format(ad))
+                            null,
+                            null
                     ))
-            )
-            .toList();
+                    .toList();
+        } else {
+            url = "http://" + box.getBoxAddress().getIp() + ":8081/update-folders";
+        }
 
-    if (body.isEmpty()) {
-      url = "http://" + box.getBoxAddress().getIp() + ":8081/create-folders";
-      body = box.getMonitors().stream()
-              .map(monitor -> new UpdateBoxMonitorsAdRequestDto(
-                      monitor.getId(),
-                      null,
-                      null
-              ))
-              .toList();
-    } else {
-      url = "http://" + box.getBoxAddress().getIp() + ":8081/update-folders";
+        try {
+            String action = url.contains("create-folders") ? "create folders" : "update folders";
+            log.info("Sending box {} request to boxId: {}, URL: {}, body: {}", action, box.getId(), url, body);
+
+            httpClient.makePostRequest(url, body, Void.class, null);
+        } catch (Exception e) {
+            String action = url.contains("create-folders") ? "create folders" : "update folders";
+            log.error("Failed to send box {} request to boxId: {}, URL: {}, body: {}, error: {}", action, box.getId(), url, body, e.getMessage());
+        }
     }
-
-    try {
-      String action = url.contains("create-folders") ? "create folders" : "update folders";
-      log.info("Sending box {} request to boxId: {}, URL: {}, body: {}", action, box.getId(), url, body);
-
-      httpClient.makePostRequest(url, body, Void.class, null);
-    } catch (Exception e) {
-      String action = url.contains("create-folders") ? "create folders" : "update folders";
-      log.error("Failed to send box {} request to boxId: {}, URL: {}, body: {}, error: {}", action, box.getId(), url, body, e.getMessage());
-    }
-  }
 }

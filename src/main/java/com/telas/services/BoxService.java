@@ -1,19 +1,19 @@
 package com.telas.services;
 
 import com.telas.dtos.request.BoxRequestDto;
+import com.telas.dtos.request.StatusBoxMonitorsRequestDto;
 import com.telas.dtos.response.BoxMonitorAdResponseDto;
 import com.telas.dtos.response.BoxResponseDto;
-import com.telas.dtos.response.StatusMonitorsResponseDto;
 
 import java.util.List;
 import java.util.UUID;
 
 public interface BoxService {
-  List<BoxResponseDto> findAll();
+    List<BoxResponseDto> findAll();
 
-  void save(BoxRequestDto request, UUID boxId);
+    void save(BoxRequestDto request, UUID boxId);
 
-  List<BoxMonitorAdResponseDto> getMonitorsAdsByAddress(String address);
+    List<BoxMonitorAdResponseDto> getMonitorsAdsByAddress(String address);
 
-  void checkMonitorsHealth(List<StatusMonitorsResponseDto> responseList);
+    void checkMonitorsHealth(StatusBoxMonitorsRequestDto request);
 }
