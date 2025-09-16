@@ -59,6 +59,7 @@ jobs:
             QUEUE_NAME=${{ secrets.QUEUE_NAME }}
             EXCHANGE_NAME=${{ secrets.EXCHANGE_NAME }}
             ROUTING_KEY=${{ secrets.ROUTING_KEY }}
+            SENDGRID_API_KEY=${{ secrets.SENDGRID_API_KEY }}
 
       - name: Trigger Dokploy Deployment
         run: |
