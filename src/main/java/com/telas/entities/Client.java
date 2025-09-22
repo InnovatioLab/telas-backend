@@ -28,174 +28,174 @@ import java.util.stream.Collectors;
 @AuditTable("clients_aud")
 @NoArgsConstructor
 public class Client extends BaseAudit implements Serializable {
-  @Serial
-  private static final long serialVersionUID = 1084934057135367842L;
+    @Serial
+    private static final long serialVersionUID = 1084934057135367842L;
 
-  @Id
-  @GeneratedValue
-  @Column(name = "id")
-  private UUID id;
+    @Id
+    @GeneratedValue
+    @Column(name = "id")
+    private UUID id;
 
-  @NotAudited
-  @Column(name = "stripe_customer_id")
-  private String stripeCustomerId;
+    @NotAudited
+    @Column(name = "stripe_customer_id")
+    private String stripeCustomerId;
 
-  @Column(name = "business_name")
-  private String businessName;
+    @Column(name = "business_name")
+    private String businessName;
 
-  @Column(name = "identification_number", nullable = false, unique = true)
-  private String identificationNumber;
+    @Column(name = "identification_number", nullable = false, unique = true)
+    private String identificationNumber;
 
-  @NotAudited
-  @Column(name = "password", columnDefinition = "TEXT")
-  private String password;
+    @NotAudited
+    @Column(name = "password", columnDefinition = "TEXT")
+    private String password;
 
-  @Column(name = "role", nullable = false)
-  @Enumerated(EnumType.STRING)
-  private Role role = Role.CLIENT;
+    @Column(name = "role", nullable = false)
+    @Enumerated(EnumType.STRING)
+    private Role role = Role.CLIENT;
 
-  @Column(name = "industry", nullable = false)
-  private String industry;
+    @Column(name = "industry", nullable = false)
+    private String industry;
 
-  @Column(name = "website_url", columnDefinition = "TEXT")
-  private String websiteUrl;
+    @Column(name = "website_url", columnDefinition = "TEXT")
+    private String websiteUrl;
 
-  @Column(name = "status", columnDefinition = "default_status", nullable = false)
-  @Enumerated(EnumType.STRING)
-  private DefaultStatus status = DefaultStatus.INACTIVE;
+    @Column(name = "status", columnDefinition = "default_status", nullable = false)
+    @Enumerated(EnumType.STRING)
+    private DefaultStatus status = DefaultStatus.INACTIVE;
 
-  @NotAudited
-  @Column(name = "term_accepted_at", columnDefinition = "TIMESTAMP WITHOUT TIME ZONE")
-  private Instant termAcceptedAt;
+    @NotAudited
+    @Column(name = "term_accepted_at", columnDefinition = "TIMESTAMP WITHOUT TIME ZONE")
+    private Instant termAcceptedAt;
 
-  @NotAudited
-  @JsonIgnore
-  @ManyToOne
-  @JoinColumn(name = "term_condition_id", referencedColumnName = "id")
-  private TermCondition termCondition;
+    @NotAudited
+    @JsonIgnore
+    @ManyToOne
+    @JoinColumn(name = "term_condition_id", referencedColumnName = "id")
+    private TermCondition termCondition;
 
-  @JsonIgnore
-  @NotAudited
-  @OneToOne
-  @JoinColumn(name = "verification_code_id", referencedColumnName = "id", nullable = false)
-  private VerificationCode verificationCode;
+    @JsonIgnore
+    @NotAudited
+    @OneToOne
+    @JoinColumn(name = "verification_code_id", referencedColumnName = "id", nullable = false)
+    private VerificationCode verificationCode;
 
-  @NotAudited
-  @OneToOne(mappedBy = "client", cascade = CascadeType.ALL)
-  private SubscriptionFlow subscriptionFlow;
+    @NotAudited
+    @OneToOne(mappedBy = "client", cascade = CascadeType.ALL)
+    private SubscriptionFlow subscriptionFlow;
 
-  @OneToOne(cascade = CascadeType.ALL)
-  @JoinColumn(name = "contact_id", referencedColumnName = "id", nullable = false)
-  private Contact contact;
+    @OneToOne(cascade = CascadeType.ALL)
+    @JoinColumn(name = "contact_id", referencedColumnName = "id", nullable = false)
+    private Contact contact;
 
-  @ManyToOne(cascade = CascadeType.ALL)
-  @JoinColumn(name = "owner_id", referencedColumnName = "id", nullable = false)
-  private Owner owner;
+    @ManyToOne(cascade = CascadeType.ALL)
+    @JoinColumn(name = "owner_id", referencedColumnName = "id", nullable = false)
+    private Owner owner;
 
-  @OneToOne(cascade = CascadeType.ALL)
-  @JoinColumn(name = "social_media_id", referencedColumnName = "id")
-  private SocialMedia socialMedia;
+    @OneToOne(cascade = CascadeType.ALL)
+    @JoinColumn(name = "social_media_id", referencedColumnName = "id")
+    private SocialMedia socialMedia;
 
-  @JsonIgnore
-  @OneToOne(mappedBy = "client")
-  private AdRequest adRequest;
+    @JsonIgnore
+    @OneToOne(mappedBy = "client")
+    private AdRequest adRequest;
 
-  @NotAudited
-  @OneToOne(mappedBy = "client", cascade = CascadeType.ALL)
-  private Wishlist wishlist;
+    @NotAudited
+    @OneToOne(mappedBy = "client", cascade = CascadeType.ALL)
+    private Wishlist wishlist;
 
-  @JsonIgnore
-  @OneToMany(mappedBy = "client")
-  private Set<Subscription> subscriptions = new HashSet<>();
+    @JsonIgnore
+    @OneToMany(mappedBy = "client")
+    private Set<Subscription> subscriptions = new HashSet<>();
 
-  @OneToMany(mappedBy = "client", cascade = CascadeType.ALL)
-  private Set<Address> addresses = new HashSet<>();
+    @OneToMany(mappedBy = "client", cascade = CascadeType.ALL, fetch = FetchType.EAGER)
+    private Set<Address> addresses = new HashSet<>();
 
-  @OneToMany(mappedBy = "client", cascade = CascadeType.ALL)
-  private Set<Attachment> attachments = new HashSet<>();
+    @OneToMany(mappedBy = "client", cascade = CascadeType.ALL)
+    private Set<Attachment> attachments = new HashSet<>();
 
-  @OneToMany(mappedBy = "client", cascade = CascadeType.ALL)
-  private Set<Ad> ads = new HashSet<>();
+    @OneToMany(mappedBy = "client", cascade = CascadeType.ALL)
+    private Set<Ad> ads = new HashSet<>();
 
-  @NotAudited
-  @OneToMany(mappedBy = "client", cascade = CascadeType.ALL)
-  private List<Notification> notifications = new ArrayList<>();
+    @NotAudited
+    @OneToMany(mappedBy = "client", cascade = CascadeType.ALL)
+    private List<Notification> notifications = new ArrayList<>();
 
-  public Client(ClientRequestDto request, Owner owner) {
-    businessName = request.getBusinessName();
-    identificationNumber = request.getIdentificationNumber();
-    industry = request.getIndustry();
-    websiteUrl = request.getWebsiteUrl();
-    status = request.getStatus();
-    this.owner = owner;
-    owner.getClients().add(this);
-    contact = new Contact(request.getContact());
-    wishlist = new Wishlist(this);
+    public Client(ClientRequestDto request, Owner owner) {
+        businessName = request.getBusinessName();
+        identificationNumber = request.getIdentificationNumber();
+        industry = request.getIndustry();
+        websiteUrl = request.getWebsiteUrl();
+        status = request.getStatus();
+        this.owner = owner;
+        owner.getClients().add(this);
+        contact = new Contact(request.getContact());
+        wishlist = new Wishlist(this);
 
-    socialMedia = Optional.ofNullable(request.getSocialMedia())
-            .map(SocialMedia::new)
-            .orElse(null);
+        socialMedia = Optional.ofNullable(request.getSocialMedia())
+                .map(SocialMedia::new)
+                .orElse(null);
 
-    addresses = request.getAddresses().stream()
-            .map(address -> new Address(address, this))
-            .collect(Collectors.toSet());
+        addresses = request.getAddresses().stream()
+                .map(address -> new Address(address, this))
+                .collect(Collectors.toSet());
 
-    setUsernameCreateForRelatedEntities(request.getBusinessName());
-  }
-
-  public void update(ClientRequestDto request, String updatedBy) {
-    industry = request.getIndustry();
-    websiteUrl = request.getWebsiteUrl();
-    contact.update(request.getContact());
-    owner.update(request.getOwner());
-    Optional.ofNullable(socialMedia).ifPresent(socialMedia -> socialMedia.update(request.getSocialMedia()));
-    setUsernameUpdateForRelatedEntities(updatedBy);
-  }
-
-  public Ad getApprovedAd() {
-    return ads.stream()
-            .filter(ad -> AdValidationType.APPROVED.equals(ad.getValidation()))
-            .findFirst()
-            .orElse(null);
-  }
-
-  public boolean isFirstSubscription() {
-    return subscriptions.size() == SharedConstants.MIN_QUANTITY_MONITOR_BLOCK;
-  }
-
-  private void setUsernameCreateForRelatedEntities(String username) {
-    setUsernameCreate(username);
-    contact.setUsernameCreate(username);
-    owner.setUsernameCreate(Optional.ofNullable(owner.getUsernameCreate()).orElse(username));
-    Optional.ofNullable(socialMedia).ifPresent(sm -> sm.setUsernameCreate(username));
-  }
-
-  private void setUsernameUpdateForRelatedEntities(String username) {
-    setUsernameUpdate(username);
-    contact.setUsernameUpdate(username);
-    owner.setUsernameUpdate(username);
-    Optional.ofNullable(socialMedia).ifPresent(sm -> sm.setUsernameUpdate(username));
-  }
-
-  public boolean isAdmin() {
-    return Role.ADMIN.equals(role);
-  }
-
-  public boolean hasActiveSubscription() {
-    if (isAdmin()) {
-      return true;
+        setUsernameCreateForRelatedEntities(request.getBusinessName());
     }
 
-    return subscriptions.stream().anyMatch(subscription -> SubscriptionStatus.ACTIVE.equals(subscription.getStatus()));
-  }
+    public void update(ClientRequestDto request, String updatedBy) {
+        industry = request.getIndustry();
+        websiteUrl = request.getWebsiteUrl();
+        contact.update(request.getContact());
+        owner.update(request.getOwner());
+        Optional.ofNullable(socialMedia).ifPresent(socialMedia -> socialMedia.update(request.getSocialMedia()));
+        setUsernameUpdateForRelatedEntities(updatedBy);
+    }
 
-  public boolean isTermsAccepted() {
-    return termCondition != null && termAcceptedAt != null;
-  }
+    public Ad getApprovedAd() {
+        return ads.stream()
+                .filter(ad -> AdValidationType.APPROVED.equals(ad.getValidation()))
+                .findFirst()
+                .orElse(null);
+    }
 
-  public List<Ad> getPendingAds() {
-    return ads.stream()
-            .filter(ad -> AdValidationType.PENDING.equals(ad.getValidation()))
-            .collect(Collectors.toList());
-  }
+    public boolean isFirstSubscription() {
+        return subscriptions.size() == SharedConstants.MIN_QUANTITY_MONITOR_BLOCK;
+    }
+
+    private void setUsernameCreateForRelatedEntities(String username) {
+        setUsernameCreate(username);
+        contact.setUsernameCreate(username);
+        owner.setUsernameCreate(Optional.ofNullable(owner.getUsernameCreate()).orElse(username));
+        Optional.ofNullable(socialMedia).ifPresent(sm -> sm.setUsernameCreate(username));
+    }
+
+    private void setUsernameUpdateForRelatedEntities(String username) {
+        setUsernameUpdate(username);
+        contact.setUsernameUpdate(username);
+        owner.setUsernameUpdate(username);
+        Optional.ofNullable(socialMedia).ifPresent(sm -> sm.setUsernameUpdate(username));
+    }
+
+    public boolean isAdmin() {
+        return Role.ADMIN.equals(role);
+    }
+
+    public boolean hasActiveSubscription() {
+        if (isAdmin()) {
+            return true;
+        }
+
+        return subscriptions.stream().anyMatch(subscription -> SubscriptionStatus.ACTIVE.equals(subscription.getStatus()));
+    }
+
+    public boolean isTermsAccepted() {
+        return termCondition != null && termAcceptedAt != null;
+    }
+
+    public List<Ad> getPendingAds() {
+        return ads.stream()
+                .filter(ad -> AdValidationType.PENDING.equals(ad.getValidation()))
+                .collect(Collectors.toList());
+    }
 }
