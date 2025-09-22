@@ -92,7 +92,7 @@ public class Client extends BaseAudit implements Serializable {
     @JoinColumn(name = "owner_id", referencedColumnName = "id", nullable = false)
     private Owner owner;
 
-    @OneToOne(cascade = CascadeType.ALL)
+    @OneToOne(cascade = CascadeType.ALL, orphanRemoval = true)
     @JoinColumn(name = "social_media_id", referencedColumnName = "id")
     private SocialMedia socialMedia;
 
@@ -148,7 +148,17 @@ public class Client extends BaseAudit implements Serializable {
         websiteUrl = request.getWebsiteUrl();
         contact.update(request.getContact());
         owner.update(request.getOwner());
-        Optional.ofNullable(socialMedia).ifPresent(socialMedia -> socialMedia.update(request.getSocialMedia()));
+
+        if (request.getSocialMedia() != null) {
+            if (socialMedia == null) {
+                socialMedia = new SocialMedia(request.getSocialMedia());
+            } else {
+                socialMedia.update(request.getSocialMedia());
+            }
+        } else {
+            socialMedia = null;
+        }
+
         setUsernameUpdateForRelatedEntities(updatedBy);
     }
 
