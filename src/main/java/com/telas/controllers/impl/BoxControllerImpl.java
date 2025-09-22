@@ -65,8 +65,8 @@ public class BoxControllerImpl implements BoxController {
 
     @Override
     @PostMapping("/health")
-    public ResponseEntity<?> checkMonitorsHealth(@RequestBody StatusBoxMonitorsRequestDto request) {
-        service.checkMonitorsHealth(request);
+    public ResponseEntity<?> updateHealth(@RequestBody StatusBoxMonitorsRequestDto request) {
+        service.updateHealth(request);
         return ResponseEntity.status(HttpStatus.NO_CONTENT)
                 .body(ResponseDto.fromData(null, HttpStatus.NO_CONTENT, null));
     }

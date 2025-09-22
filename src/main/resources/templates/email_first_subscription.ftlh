@@ -66,12 +66,12 @@
             margin: 0 auto;
             padding-left: 80px;
             font-size: 16px;
-            color: #131518;
+            color: #075473;
             box-shadow: 0px 4px 4px 0px #00000040;
         }
 
         .footer {
-            color: #131518;
+            color: #075473;
             max-width: 1300px;
             line-height: 35px;
             margin: 0 auto;
@@ -99,7 +99,7 @@
         >
             <tr class="header">
                 <td style="padding-bottom: 10px">
-                    <h3 style="color: #131518; font-weight: 500; padding-top: 20px;">
+                    <h3 style="color: #075473; font-weight: 500; padding-top: 20px;">
                         Dear<strong> ${name}</strong>
                     </h3>
                 </td>
@@ -171,7 +171,7 @@
         <p style="margin: 0"><strong>The Tela's Team</strong></p>
         <p style="margin: 5px 0 0">
             Contact us at
-            <a href="mailto:support@telas-ads.com" style="color: #131518"
+            <a href="mailto:support@telas-ads.com" style="color: #075473"
             >support@telas-ads.com</a
             >
         </p>

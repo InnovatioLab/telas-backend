@@ -15,5 +15,5 @@ public interface BoxService {
 
     List<BoxMonitorAdResponseDto> getMonitorsAdsByAddress(String address);
 
-    void checkMonitorsHealth(StatusBoxMonitorsRequestDto request);
+    void updateHealth(StatusBoxMonitorsRequestDto request);
 }

@@ -58,5 +58,5 @@ public interface BoxController {
             @ApiResponse(responseCode = "404", description = "Some data not found."),
             @ApiResponse(responseCode = "500", description = "Internal server error."),
     })
-    ResponseEntity<?> checkMonitorsHealth(@RequestBody StatusBoxMonitorsRequestDto request);
+    ResponseEntity<?> updateHealth(@RequestBody StatusBoxMonitorsRequestDto request);
 }

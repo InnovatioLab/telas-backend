@@ -15,6 +15,7 @@ import com.telas.repositories.BoxRepository;
 import com.telas.repositories.MonitorRepository;
 import com.telas.services.BoxService;
 import com.telas.shared.constants.valitation.BoxValidationMessages;
+import com.telas.shared.constants.valitation.MonitorValidationMessages;
 import com.telas.shared.utils.ValidateDataUtils;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -22,6 +23,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.Collections;
 import java.util.List;
+import java.util.Objects;
 import java.util.UUID;
 
 @Service
@@ -75,13 +77,28 @@ public class BoxServiceImpl implements BoxService {
 
     @Override
     @Transactional
-    public void checkMonitorsHealth(StatusBoxMonitorsRequestDto request) {
-        Box box = findByAddress(request.getIp());
-        box.setActive(DefaultStatus.ACTIVE.equals(request.getStatus()));
-        repository.save(box);
+    public void updateHealth(StatusBoxMonitorsRequestDto request) {
+        boolean isActive = DefaultStatus.ACTIVE.equals(request.getStatus());
 
-        box.getMonitors().forEach(monitor -> monitor.setActive(false));
-        monitorRepository.saveAll(box.getMonitors());
+        if (!ValidateDataUtils.isNullOrEmptyString(request.getIp())) {
+            Box box = findByAddress(request.getIp());
+            box.setActive(isActive);
+            repository.save(box);
+
+            box.getMonitors().forEach(monitor -> monitor.setActive(isActive));
+            monitorRepository.saveAll(box.getMonitors());
+        }
+
+        if (Objects.nonNull(request.getMonitorId())) {
+            Monitor monitor = findMonitorById(request.getMonitorId());
+            monitor.setActive(isActive);
+            monitorRepository.save(monitor);
+        }
+    }
+
+
+    private Monitor findMonitorById(UUID monitorId) {
+        return monitorRepository.findById(monitorId).orElseThrow(() -> new ResourceNotFoundException(MonitorValidationMessages.MONITOR_NOT_FOUND));
     }
 
 
