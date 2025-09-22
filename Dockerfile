@@ -1,9 +1,17 @@
 # Etapa de build
 FROM eclipse-temurin:17-jdk-jammy AS builder
+
+# Instala Maven diretamente
+RUN apt-get update && apt-get install -y maven && rm -rf /var/lib/apt/lists/*
+
 WORKDIR /opt/app
 COPY . .
-RUN bash ./mvnw dependency:go-offline
-RUN bash ./mvnw clean install -DskipTests
+
+# Baixa dependências para cache
+RUN mvn dependency:go-offline
+
+# Builda a aplicação
+RUN mvn clean install -DskipTests
 
 # Etapa de runtime
 FROM eclipse-temurin:17-jre-jammy
