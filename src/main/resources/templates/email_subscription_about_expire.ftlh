@@ -29,7 +29,7 @@
 
         h1,
         h3 {
-            color: #00763b;
+            color: #075473;
         }
 
         h1 {
@@ -38,7 +38,7 @@
         }
 
         strong {
-            color: #00763b;
+            color: #075473;
             font-weight: 600;
         }
 
@@ -66,12 +66,12 @@
             margin: 0 auto;
             padding-left: 80px;
             font-size: 16px;
-            color: #075473;
+            color: #111519;
             box-shadow: 0px 4px 4px 0px #00000040;
         }
 
         .footer {
-            color: #075473;
+            color: #111519;
             max-width: 1300px;
             line-height: 35px;
             margin: 0 auto;
@@ -99,7 +99,7 @@
         >
             <tr class="header">
                 <td style="padding-bottom: 10px">
-                    <h3 style="color: #075473; font-weight: 500; padding-top: 20px">
+                    <h3 style="color: #111519; font-weight: 500; padding-top: 20px">
                         Dear<strong> ${name}</strong>
                     </h3>
                 </td>
@@ -126,7 +126,7 @@
                 <td>
                     Visit <strong><a
                                 href="${link}"
-                                style="color: #00763b; text-decoration: none"
+                                style="color: #075473; text-decoration: none"
                         >this link</a
                         ></strong>
                     to renew your service and follow the easy renewal steps.
@@ -148,7 +148,7 @@
         <p style="margin: 0"><strong>The Tela's Team</strong></p>
         <p style="margin: 5px 0 0">
             Contact us at
-            <a href="mailto:support@telas-ads.com" style="color: #075473"
+            <a href="mailto:support@telas-ads.com" style="color: #111519"
             >support@telas-ads.com</a
             >
         </p>

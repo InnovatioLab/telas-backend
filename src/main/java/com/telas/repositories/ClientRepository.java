@@ -41,13 +41,7 @@ public interface ClientRepository extends JpaRepository<Client, UUID>, JpaSpecif
     Optional<Client> findActiveByIdentificationNumber(String identificationNumber);
 
 
-    @Query(value = """
-            SELECT c.* 
-            FROM clients c 
-            INNER JOIN addresses ad ON c.id = ad.client_id 
-            LEFT JOIN ad_requests ar ON c.id = ar.client_id 
-            WHERE c.identification_number = :identificationNumber 
-            """, nativeQuery = true)
+    @Query("SELECT c FROM Client c JOIN FETCH c.addresses LEFT JOIN c.attachments LEFT JOIN c.ads LEFT JOIN c.subscriptions WHERE c.identificationNumber = :identificationNumber")
     Optional<Client> findByIdentificationNumber(String identificationNumber);
 
     @Query("SELECT c FROM Client c WHERE c.role = 'ADMIN'")

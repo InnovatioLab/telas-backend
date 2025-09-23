@@ -5,19 +5,22 @@ import com.telas.dtos.response.AddressFromZipCodeResponseDto;
 import com.telas.entities.Address;
 import com.telas.entities.Client;
 
+import java.util.List;
 import java.util.UUID;
 
 public interface AddressService {
-  Address save(Address address);
+    Address save(Address address);
 
-  Address save(AddressRequestDto request);
+    Address save(AddressRequestDto request);
 
-  AddressFromZipCodeResponseDto findByZipCode(String zipCode);
+    void deleteMany(List<Address> addresses);
 
-  Address findById(UUID id);
+    AddressFromZipCodeResponseDto findByZipCode(String zipCode);
 
-  Address getOrCreateAddress(AddressRequestDto addressRequestDto);
+    Address findById(UUID id);
 
-  Address getOrCreateAddress(AddressRequestDto addressRequestDto, Client client);
+    Address getOrCreateAddress(AddressRequestDto addressRequestDto);
+
+    Address getOrCreateAddress(AddressRequestDto addressRequestDto, Client client);
 }
 

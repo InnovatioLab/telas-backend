@@ -28,7 +28,7 @@
         }
 
         h1, h3 {
-            color: #00763B;
+            color: #075473;
         }
 
         h1 {
@@ -37,7 +37,7 @@
         }
 
         strong {
-            color: #00763B;
+            color: #075473;
             font-weight: 600;
         }
 
@@ -65,12 +65,12 @@
             margin: 0 auto;
             padding-left: 80px;
             font-size: 16px;
-            color: #075473;
+            color: #111519;
             box-shadow: 0px 4px 4px 0px #00000040;
         }
 
         .footer {
-            color: #075473;
+            color: #111519;
             max-width: 1300px;
             line-height: 35px;
             margin: 0 auto;
@@ -114,8 +114,8 @@
                 </td>
             </tr>
             <tr>
-                <td style="text-align:center;line-height:60px;color:#00763B;border-radius:4px;">
-                    <h3 style="margin:0;font-size:22px;font-weight:700;color:#00763B;">
+                <td style="text-align:center;line-height:60px;color:#075473;border-radius:4px;">
+                    <h3 style="margin:0;font-size:22px;font-weight:700;color:#075473;">
                         ${verificationCode}
                     </h3>
                 </td>
@@ -142,7 +142,7 @@
         <p style="margin:0;">Best regards,</p>
         <p style="margin:0;"><strong>The Tela's Team</strong></p>
         <p style="margin:5px 0 0;">Contact us at
-            <a href="mailto:support@telas-ads.com" style="color: #075473;">support@telas-ads.com</a>
+            <a href="mailto:support@telas-ads.com" style="color: #111519;">support@telas-ads.com</a>
         </p>
     </div>
 </div>

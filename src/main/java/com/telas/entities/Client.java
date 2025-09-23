@@ -108,7 +108,7 @@ public class Client extends BaseAudit implements Serializable {
     @OneToMany(mappedBy = "client")
     private Set<Subscription> subscriptions = new HashSet<>();
 
-    @OneToMany(mappedBy = "client", cascade = CascadeType.ALL, fetch = FetchType.EAGER)
+    @OneToMany(mappedBy = "client", cascade = CascadeType.ALL)
     private Set<Address> addresses = new HashSet<>();
 
     @OneToMany(mappedBy = "client", cascade = CascadeType.ALL)
