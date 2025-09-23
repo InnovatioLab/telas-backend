@@ -347,7 +347,13 @@ public class ClientHelper {
     @Transactional
     public Owner getOrCreateOwner(OwnerRequestDto owner) {
         Owner existingOwner = ownerRepository.findByIdentificationNumber(owner.getIdentificationNumber())
-                .orElseGet(() -> ownerRepository.findByEmail(owner.getEmail()).orElse(null));
+                .orElseGet(() -> {
+                    String email = owner.getEmail();
+                    if (email != null && !email.isEmpty()) {
+                        return ownerRepository.findByEmail(email).orElse(null);
+                    }
+                    return null;
+                });
 
         if (existingOwner != null) {
             return existingOwner;

@@ -128,21 +128,23 @@ CREATE TABLE "owners"
   "id"                    UUID PRIMARY KEY,
   "first_name"            VARCHAR(50)              NOT NULL,
   "last_name"             VARCHAR(150)             NULL     DEFAULT NULL,
-  "email"                 VARCHAR(255) UNIQUE      NOT NULL,
+  "email"                 VARCHAR(255) NULL     DEFAULT NULL,
   "identification_number" VARCHAR(15)              NOT NULL UNIQUE,
-  "phone"                 VARCHAR(11)              NOT NULL,
+  "phone"                 VARCHAR(11)              NULL     DEFAULT NULL,
   "username_create"       VARCHAR(255)             NULL     DEFAULT NULL,
   "username_update"       VARCHAR(255)             NULL     DEFAULT NULL,
   "created_at"            TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT (now()),
   "updated_at"            TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT (now())
 );
 
+CREATE UNIQUE INDEX owners_email_unique_not_null ON owners(email) WHERE email IS NOT NULL;
+
 CREATE TABLE "owners_aud"
 (
   "id"                    UUID                NOT NULL,
   "first_name"            VARCHAR(50),
   "last_name"             VARCHAR(150),
-  "email"                 VARCHAR(255) UNIQUE NOT NULL,
+  "email"                 VARCHAR(255),
   "identification_number" VARCHAR(15),
   "phone"                 VARCHAR(11),
   "audit_id"              BIGINT              NOT NULL,

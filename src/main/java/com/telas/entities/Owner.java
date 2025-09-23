@@ -22,45 +22,45 @@ import java.util.UUID;
 @AuditTable("owners_aud")
 @NoArgsConstructor
 public class Owner extends BaseAudit implements Serializable {
-  @Serial
-  private static final long serialVersionUID = 1084934057135367842L;
+    @Serial
+    private static final long serialVersionUID = 1084934057135367842L;
 
-  @Id
-  @GeneratedValue
-  @Column(name = "id")
-  private UUID id;
+    @Id
+    @GeneratedValue
+    @Column(name = "id")
+    private UUID id;
 
-  @Column(name = "identification_number", nullable = false, unique = true)
-  private String identificationNumber;
+    @Column(name = "identification_number", nullable = false, unique = true)
+    private String identificationNumber;
 
-  @Column(name = "first_name", nullable = false)
-  private String firstName;
+    @Column(name = "first_name", nullable = false)
+    private String firstName;
 
-  @Column(name = "last_name")
-  private String lastName;
+    @Column(name = "last_name")
+    private String lastName;
 
-  @Column(name = "email", nullable = false, unique = true)
-  private String email;
+    @Column(name = "email")
+    private String email;
 
-  @Column(name = "phone")
-  private String phone;
+    @Column(name = "phone")
+    private String phone;
 
-  @JsonIgnore
-  @OneToMany(mappedBy = "owner")
-  private List<Client> clients = new ArrayList<>();
+    @JsonIgnore
+    @OneToMany(mappedBy = "owner")
+    private List<Client> clients = new ArrayList<>();
 
-  public Owner(OwnerRequestDto request) {
-    identificationNumber = request.getIdentificationNumber();
-    firstName = request.getFirstName();
-    lastName = request.getLastName();
-    email = request.getEmail();
-    phone = request.getPhone();
-  }
+    public Owner(OwnerRequestDto request) {
+        identificationNumber = request.getIdentificationNumber();
+        firstName = request.getFirstName();
+        lastName = request.getLastName();
+        email = request.getEmail();
+        phone = request.getPhone();
+    }
 
-  public void update(OwnerRequestDto request) {
-    firstName = !firstName.equalsIgnoreCase(request.getFirstName()) ? request.getFirstName() : firstName;
-    lastName = request.getLastName();
-    email = request.getEmail();
-    phone = request.getPhone();
-  }
+    public void update(OwnerRequestDto request) {
+        firstName = !firstName.equalsIgnoreCase(request.getFirstName()) ? request.getFirstName() : firstName;
+        lastName = request.getLastName();
+        email = request.getEmail();
+        phone = request.getPhone();
+    }
 }
