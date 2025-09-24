@@ -73,6 +73,7 @@ public class HttpClientUtil {
         } catch (WebClientResponseException | HttpClientErrorException exception) {
             log.error("Error during POST request to: {}, error: {}", url, exception.getMessage());
             handleException(exception);
+            return null;
         }
     }
 
