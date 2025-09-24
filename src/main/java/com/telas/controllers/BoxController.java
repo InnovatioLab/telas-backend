@@ -2,6 +2,7 @@ package com.telas.controllers;
 
 import com.telas.dtos.request.BoxRequestDto;
 import com.telas.dtos.request.StatusBoxMonitorsRequestDto;
+import io.swagger.v3.oas.annotations.Hidden;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -46,6 +47,7 @@ public interface BoxController {
     })
     ResponseEntity<?> update(@Valid BoxRequestDto request, UUID boxId);
 
+    @Hidden
     @Operation(summary = "Endpoint to fetch monitors and ads data by Ip or MacAddress, this endpoint should be accessed only by Box API", responses = {
             @ApiResponse(responseCode = "200", description = "Monitors and ads founded successfully."),
             @ApiResponse(responseCode = "422", description = "Request with invalid data."),
@@ -53,6 +55,7 @@ public interface BoxController {
     })
     ResponseEntity<?> getMonitorsAdsByIp(@RequestHeader("X-Box-Address") String address);
 
+    @Hidden
     @Operation(summary = "Endpoint to update box and monitors health, this endpoint should be accessed only by Box API", responses = {
             @ApiResponse(responseCode = "204", description = "Monitors health checked successfully."),
             @ApiResponse(responseCode = "404", description = "Some data not found."),
