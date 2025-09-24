@@ -49,6 +49,8 @@ public class ClientHelper {
     @Value("${front.base.url}")
     private String frontBaseUrl;
 
+    @Value("${TOKEN_SECRET}")
+    private String API_KEY;
 
     @Transactional(readOnly = true)
     public void validateClientRequest(ClientRequestDto request, Client client) {
@@ -323,12 +325,14 @@ public class ClientHelper {
                             .toList();
 
                     String url = "http://" + box.getBoxAddress().getIp() + ":8081/ad";
+                    Map<String, String> headers = Map.of("X-API-KEY", API_KEY);
 
                     try {
                         log.info("Sending ad update to box IP: {}, URL: {}", box.getBoxAddress().getIp(), url);
-                        httpClient.makePostRequest(url, dtos, Void.class, null);
+                        httpClient.makePostRequest(url, dtos, Void.class, null, headers);
                     } catch (Exception e) {
                         log.error("Error sending ad update to box IP: {}, URL: {}, message: {}", box.getBoxAddress().getIp(), url, e.getMessage());
+                        throw e;
                     }
                 });
     }

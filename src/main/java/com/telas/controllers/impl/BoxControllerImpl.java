@@ -23,6 +23,7 @@ public class BoxControllerImpl implements BoxController {
     private final BoxService service;
     private final BoxAddressService boxAddressService;
 
+
     @Override
     @GetMapping
     @SecurityRequirement(name = "jwt")
@@ -70,4 +71,6 @@ public class BoxControllerImpl implements BoxController {
         return ResponseEntity.status(HttpStatus.NO_CONTENT)
                 .body(ResponseDto.fromData(null, HttpStatus.NO_CONTENT, null));
     }
+
+
 }

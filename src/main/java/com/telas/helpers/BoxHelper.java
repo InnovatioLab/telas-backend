@@ -19,10 +19,12 @@ import com.telas.shared.utils.HttpClientUtil;
 import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 @Component
@@ -33,6 +35,9 @@ public class BoxHelper {
     private final MonitorRepository monitorRepository;
     private final BucketService bucketService;
     private final HttpClientUtil httpClient;
+
+    @Value("${TOKEN_SECRET}")
+    private String API_KEY;
 
     @Transactional(readOnly = true)
     public void validateUniqueAddress(BoxAddress boxAddress) {
@@ -107,11 +112,13 @@ public class BoxHelper {
         try {
             String action = url.contains("create-folders") ? "create folders" : "update folders";
             log.info("Sending box {} request to boxId: {}, URL: {}, body: {}", action, box.getId(), url, body);
+            Map<String, String> headers = Map.of("X-API-KEY", API_KEY);
 
-            httpClient.makePostRequest(url, body, Void.class, null);
+            httpClient.makePostRequest(url, body, Void.class, null, headers);
         } catch (Exception e) {
             String action = url.contains("create-folders") ? "create folders" : "update folders";
             log.error("Failed to send box {} request to boxId: {}, URL: {}, body: {}, error: {}", action, box.getId(), url, body, e.getMessage());
+            throw e;
         }
     }
 }
