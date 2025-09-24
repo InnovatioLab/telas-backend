@@ -3,12 +3,10 @@ package com.telas.dtos.request;
 
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import com.telas.dtos.validation.ValidSSN;
-import com.telas.infra.exceptions.BusinessRuleException;
 import com.telas.shared.constants.SharedConstants;
 import com.telas.shared.constants.valitation.ContactValidationMessages;
 import com.telas.shared.constants.valitation.OwnerValidationMessages;
 import com.telas.shared.utils.TrimStringDeserializer;
-import com.telas.shared.utils.ValidateDataUtils;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.Pattern;
@@ -52,10 +50,4 @@ public class OwnerRequestDto implements Serializable {
     @Email(message = ContactValidationMessages.EMAIL_INVALID)
     @JsonDeserialize(using = TrimStringDeserializer.class)
     private String email;
-
-    public void validate() {
-        if (ValidateDataUtils.isNullOrEmptyString(phone) && ValidateDataUtils.isNullOrEmptyString(email)) {
-            throw new BusinessRuleException(OwnerValidationMessages.CONTACT_REQUIRED);
-        }
-    }
 }

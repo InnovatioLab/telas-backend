@@ -144,8 +144,15 @@ public class ClientHelper {
     }
 
     private boolean isEmailChanged(String currentEmail, String newEmail) {
+        if (currentEmail == null && newEmail == null) {
+            return false;
+        }
+        if (currentEmail == null || newEmail == null) {
+            return true;
+        }
         return !currentEmail.equals(newEmail);
     }
+
 
     private boolean isIdNumberChanged(String currentId, String newId) {
         return !currentId.equals(newId);

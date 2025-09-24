@@ -27,48 +27,45 @@ import java.util.List;
 @AllArgsConstructor
 @NoArgsConstructor
 public class ClientRequestDto implements Serializable {
-  @Serial
-  private static final long serialVersionUID = -3963846843873646628L;
+    @Serial
+    private static final long serialVersionUID = -3963846843873646628L;
 
-  @NotEmpty(message = ClientValidationMessages.BUSINESS_NAME_REQUIRED)
-  @Size(max = 255, message = ClientValidationMessages.BUSINESS_NAME_SIZE)
-  @JsonDeserialize(using = TrimStringDeserializer.class)
-  private String businessName;
+    @NotEmpty(message = ClientValidationMessages.BUSINESS_NAME_REQUIRED)
+    @Size(max = 255, message = ClientValidationMessages.BUSINESS_NAME_SIZE)
+    @JsonDeserialize(using = TrimStringDeserializer.class)
+    private String businessName;
 
-  @ValidEIN
-  @JsonDeserialize(using = TrimStringDeserializer.class)
-  private String identificationNumber;
+    @ValidEIN
+    @JsonDeserialize(using = TrimStringDeserializer.class)
+    private String identificationNumber;
 
-  @NotEmpty(message = ClientValidationMessages.INDUSTRY_REQUIRED)
-  @Pattern(regexp = SharedConstants.REGEX_ONLY_LETTERS, message = ClientValidationMessages.INDUSTRY_REGEX)
-  @Size(max = 50, message = ClientValidationMessages.INDUSTRY_SIZE)
-  @JsonDeserialize(using = TrimStringDeserializer.class)
-  private String industry;
+    @NotEmpty(message = ClientValidationMessages.INDUSTRY_REQUIRED)
+    @Pattern(regexp = SharedConstants.REGEX_ONLY_LETTERS, message = ClientValidationMessages.INDUSTRY_REGEX)
+    @Size(max = 50, message = ClientValidationMessages.INDUSTRY_SIZE)
+    @JsonDeserialize(using = TrimStringDeserializer.class)
+    private String industry;
 
-  @URL(message = "Invalid Website URL")
-  @JsonDeserialize(using = TrimStringDeserializer.class)
-  private String websiteUrl;
+    @URL(message = "Invalid Website URL")
+    @JsonDeserialize(using = TrimStringDeserializer.class)
+    private String websiteUrl;
 
-  private DefaultStatus status = DefaultStatus.INACTIVE;
+    private DefaultStatus status = DefaultStatus.INACTIVE;
 
-  @NotNull(message = ClientValidationMessages.CONTACT_REQUIRED)
-  private @Valid ContactRequestDto contact;
+    @NotNull(message = ClientValidationMessages.CONTACT_REQUIRED)
+    private @Valid ContactRequestDto contact;
 
-  @NotNull(message = ClientValidationMessages.OWNER_REQUIRED)
-  private @Valid OwnerRequestDto owner;
+    @NotNull(message = ClientValidationMessages.OWNER_REQUIRED)
+    private @Valid OwnerRequestDto owner;
 
-  @NotNull(message = ClientValidationMessages.ADDRESSES_REQUIRED)
-  @NotEmpty(message = ClientValidationMessages.ADDRESSES_REQUIRED)
-  private @Valid List<AddressRequestDto> addresses;
+    @NotNull(message = ClientValidationMessages.ADDRESSES_REQUIRED)
+    @NotEmpty(message = ClientValidationMessages.ADDRESSES_REQUIRED)
+    private @Valid List<AddressRequestDto> addresses;
 
-  private SocialMediaRequestDto socialMedia;
+    private SocialMediaRequestDto socialMedia;
 
-  public void validate() {
-    owner.validate();
-
-    if (socialMedia != null) {
-      socialMedia.validate();
+    public void validate() {
+        if (socialMedia != null) {
+            socialMedia.validate();
+        }
     }
-  }
-
 }
