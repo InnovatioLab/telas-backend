@@ -140,7 +140,7 @@
     </div>
     <div class="footer" style="padding-top: 40px;">
         <p style="margin:0;">Best regards,</p>
-        <p style="margin:0;"><strong>The Tela's Team</strong></p>
+        <p style="margin:0;"><strong>The Telas Team</strong></p>
         <p style="margin:5px 0 0;">Contact us at
             <a href="mailto:support@telas-ads.com" style="color: #111519;">support@telas-ads.com</a>
         </p>

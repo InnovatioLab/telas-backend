@@ -185,21 +185,26 @@ public class SubscriptionServiceImpl implements SubscriptionService {
     @Scheduled(cron = SharedConstants.EXPIRY_SUBSCRIPTION_CRON, zone = SharedConstants.ZONE_ID)
     @SchedulerLock(name = "sendSubscriptionExpirationEmailLock", lockAtLeastFor = "PT10M", lockAtMostFor = "PT30M")
     public void sendSubscriptionExpirationEmail() {
-        Instant exactDate = Instant.now().plus(15, ChronoUnit.DAYS);
-        List<Subscription> subscriptions = repository.findSubscriptionsExpiringExactlyOn(exactDate);
+        Instant fifteenDays = Instant.now().plus(15, ChronoUnit.DAYS);
+        Instant now = Instant.now();
+        List<Subscription> subscriptionsReminder = repository.findSubscriptionsExpiringExactlyOn(fifteenDays);
+        List<Subscription> subscriptionsExpiringToday = repository.findSubscriptionsExpiringExactlyOn(now);
 
-        if (subscriptions.isEmpty()) {
-            log.info("No subscriptions expiring in 15 days.");
-            return;
+        if (!subscriptionsReminder.isEmpty()) {
+            log.info("Found {} subscriptions expiring in 15 days, sending reminder emails.", subscriptionsReminder.size());
+            subscriptionsReminder.forEach(helper::sendSubscriptionAboutToExpiryEmail);
         }
 
-        log.info("Found {} subscriptions expiring in 15 days, sending emails.", subscriptions.size());
+        if (!subscriptionsExpiringToday.isEmpty()) {
+            log.info("Found {} subscriptions expiring today, sending last day emails.", subscriptionsExpiringToday.size());
+            subscriptionsExpiringToday.forEach(helper::sendSubscriptionExpiryTodayEmail);
+        }
 
-        subscriptions.forEach(subscription -> {
-            log.info("Sending expiration email for subscription with id: {}", subscription.getId());
-            helper.sendSubscriptionAboutToExpiryEmail(subscription);
-        });
+        if (subscriptionsReminder.isEmpty() && subscriptionsExpiringToday.isEmpty()) {
+            log.info("No subscriptions expiring in 15 days or today.");
+        }
     }
+
 
     @Override
     @Transactional(readOnly = true)

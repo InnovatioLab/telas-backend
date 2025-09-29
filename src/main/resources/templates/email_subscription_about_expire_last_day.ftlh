@@ -100,52 +100,61 @@
             <tr class="header">
                 <td style="padding-bottom: 10px">
                     <h3 style="color: #111519; font-weight: 500; padding-top: 20px">
-                        Dear<strong> ${name}</strong>
+                        Hi<strong> ${name}</strong>
                     </h3>
                 </td>
             </tr>
             <tr>
                 <td style="padding-bottom: 10px">
-                    We hope you’ve enjoyed your Ad service with Telas. We wanted to
-                    remind you that your current service is set to expire soon.
+                    Today marks the <strong>last day</strong> of your Telas advertising service. After tonight, your ads
+                    will no
+                    longer appear on our in-store screens.
                 </td>
             </tr>
             <tr>
-                <td><strong>Service End Date:</strong> ${endDate}</td>
-            </tr>
-            <tr>
-                <td>
-                    To ensure uninterrupted access and continued benefits, we
-                    recommend renewing your service before the expiration date.
+                <td style="padding-bottom: 10px">
+                    That means your brand will lose:
                 </td>
             </tr>
             <tr>
-                <td style="font-weight: 600; padding-top: 10px;">How to Renew:</td>
+                <td>1. Direct exposure to ready-to-buy shoppers.</td>
             </tr>
             <tr>
-                <td>
-                    Visit <strong><a
+                <td>2. Consistent daily impressions.</td>
+            </tr>
+            <tr>
+                <td style="padding-bottom: 10px">3. The competitive edge you’ve built this month.</td>
+            </tr>
+            <tr>
+                <td style="padding-bottom: 10px">
+                    Don’t let your momentum fade. Renew your <strong>Telas subscription today</strong> and keep your
+                    business visible where it matters most.
+                </td>
+            </tr>
+            <tr>
+                <td style="padding-bottom: 10px">
+                    <strong><a
                                 href="${link}"
                                 style="color: #075473; text-decoration: none"
-                        >this link</a
+                        >Renew Now</a
                         ></strong>
-                    to renew your service and follow the easy renewal steps.
+                    — this is your last chance to stay on screen without interruption.
+                </td>
+            </tr>
+            <tr>
+                <td style="padding-bottom: 10px">
+                    Thank you for choosing Telas — we’d love to keep helping your business grow.
                 </td>
             </tr>
             <tr>
                 <td>If you have any questions, our team is available to help!</td>
             </tr>
-            <tr>
-                <td>
-                    Thank you for choosing Telas. We look forward to continue serving
-                    you!
-                </td>
-            </tr>
+
         </table>
     </div>
     <div class="footer" style="padding-top: 10px">
         <p style="margin: 0">Best regards,</p>
-        <p style="margin: 0"><strong>The Tela's Team</strong></p>
+        <p style="margin: 0"><strong>The Telas Team</strong></p>
         <p style="margin: 5px 0 0">
             Contact us at
             <a href="mailto:support@telas-ads.com" style="color: #111519"

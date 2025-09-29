@@ -99,70 +99,66 @@
         >
             <tr class="header">
                 <td style="padding-bottom: 10px">
-                    <h3 style="color: #111519; font-weight: 500; padding-top: 20px;">
-                        Dear<strong> ${name}</strong>
+                    <h3 style="color: #111519; font-weight: 500; padding-top: 20px">
+                        Hi<strong> ${name}</strong>
                     </h3>
                 </td>
             </tr>
             <tr>
-                <td style="padding-bottom: 20px">
-                    Thank you for your recent purchase of Ad Service with Telas! We’re
-                    delighted to have you as a customer and look forward to delivering
-                    an excellent experience.
-                </td>
-            </tr>
-            <tr>
-                <td style="font-weight: 600">What Happens Next:</td>
-            </tr>
-            <tr>
-                <td>1. Login to your account and upload the necessary files.</td>
-            </tr>
-            <tr>
-                <td>
-                    2. Once we have all the information needed, we'll start working on
-                    your digital Ad.
-                </td>
-            </tr>
-            <tr>
-                <td>
-                    3. Telas will have 24-48 hours to create your Ad for review.
-                </td>
-            </tr>
-            <tr>
-                <td>
-                    4. You have three opportunities to review and change your Ad
-                    before it becomes the final Ad.
+                <td style="padding-bottom: 10px">
+                    We hope you’ve enjoyed your first month with <strong>Telas</strong>. Your ads have already been seen
+                    by
+                    customers right where buying decisions happen—inside their favorite stores.
                 </td>
             </tr>
             <tr>
                 <td style="padding-bottom: 10px">
-                    5. Once Ad is approved, Telas will have 24 hours to upload the Ad
-                    to the purchased display location(s).
-                </td>
-            </tr>
-
-            <tr>
-                <td style="padding-bottom: 10px; font-weight: 600">
-                    Order Details:
-                </td>
-            </tr>
-
-            <tr>
-                <td><strong>Services:</strong> ${locations}</td>
-            </tr>
-
-            <tr>
-                <td><strong>Duration:</strong> ${startDate}<#if endDate?? && endDate?has_content> to ${endDate}</#if>
+                    Here’s why continuing with a <strong>subscription plan</strong> makes sense:
                 </td>
             </tr>
             <tr>
-                <td style="padding-bottom: 10px">
-                    Thank you for choosing Telas. We’re here to help every step of the
-                    way!
+                <td><strong>1. Consistent Visibility: </strong>Repetition builds memory. The longer your ads run, the
+                    more
+                    your brand stays top-of-mind.
+                </td>
+            </tr>
+            <tr>
+                <td><strong>2. Local Reach: </strong>Telas put your business directly in front of your community, not
+                    lost
+                    in the noise of social media.
+                </td>
+            </tr>
+            <tr>
+                <td style="padding-bottom: 10px"><strong>3. Affordable Growth: </strong>With our flexible subscription
+                    plans, you can maintain exposure
+                    month after month at predictable costs.
+                </td>
+            </tr>
+            <tr>
+                <td style="padding-bottom: 10px">Your current one-month service ends on <strong>${endDate}</strong>.
+                    Don’t miss out on
+                    the brand awareness
+                    you’ve already started building.
+                </td>
+            </tr>
+            <tr>
+                <td>
+                    <strong><a
+                                href="${link}"
+                                style="color: #075473; text-decoration: none"
+                        >Renew Now</a
+                        ></strong>
+                    to keep your business in front of customers.
                 </td>
             </tr>
             <tr>
                 <td>If you have any questions, our team is available to help!</td>
+            </tr>
+            <tr>
+                <td>
+                    Thank you for choosing Telas. We look forward to continue serving
+                    you!
+                </td>
             </tr>
         </table>
     </div>
