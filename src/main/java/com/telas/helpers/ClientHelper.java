@@ -299,7 +299,7 @@ public class ClientHelper {
         Map<String, String> params = Map.of(
                 "adId", approvedAd.getId().toString(),
                 "monitorId", monitor.getId().toString(),
-                "link", frontBaseUrl + "/monitors/" + monitor.getId()
+                "link", frontBaseUrl + "/admin/screens"
         );
 
         clientRepository.findAllAdmins().forEach(admin ->

@@ -23,6 +23,7 @@ import com.telas.shared.utils.DateUtils;
 import com.telas.shared.utils.MoneyUtils;
 import com.telas.shared.utils.ValidateDataUtils;
 import lombok.RequiredArgsConstructor;
+import org.apache.commons.lang3.ObjectUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
@@ -273,7 +274,7 @@ public class PaymentHelper {
     @Transactional
     public void handleCompletedPayment(Subscription subscription, Payment payment, PaymentIntent paymentIntent) {
         String recurrenceStr = paymentIntent.getMetadata().get("recurrence");
-        Recurrence recurrence = (recurrenceStr != null && subscription.isUpgrade())
+        Recurrence recurrence = ObjectUtils.isNotEmpty(recurrenceStr)
                 ? Recurrence.valueOf(recurrenceStr)
                 : null;
 
@@ -283,11 +284,13 @@ public class PaymentHelper {
             return;
         }
 
-        subscription.setEndsAt(recurrence.calculateEndsAtUpgradeRenew(subscription.getEndsAt(), subscription.getRecurrence()));
 
         if (recurrence.equals(subscription.getRecurrence())) {
+            subscription.setEndsAt(recurrence.calculateEndsAtRenew(subscription));
             createRenewSubscriptionNotification(subscription);
         } else {
+            subscription.setEndsAt(recurrence.calculateEndsAtUpgrade(subscription.getEndsAt(), subscription.getRecurrence()));
+            subscription.setRecurrence(recurrence);
             subscription.setUpgrade(false);
             createUpgradeSubscriptionNotification(subscription);
         }
@@ -308,15 +311,18 @@ public class PaymentHelper {
 
 
         String recurrenceStr = invoice.getParent().getSubscriptionDetails().getMetadata().get("recurrence");
+
         if (!ValidateDataUtils.isNullOrEmptyString(recurrenceStr) && subscription.isUpgrade()) {
             Recurrence recurrence = Recurrence.valueOf(recurrenceStr);
             if (Recurrence.MONTHLY.equals(recurrence)) {
                 subscription.setRecurrence(recurrence);
+                subscription.setUpgrade(false);
                 subscription.setEndsAt(null);
+                createUpgradeSubscriptionNotification(subscription);
             }
+        } else {
+            handleSuccessfulPayment(payment, isRecurringPayment);
         }
-
-        handleSuccessfulPayment(payment, isRecurringPayment);
     }
 
     private void handleSuccessfulPayment(Payment payment, boolean isRecurringPayment) {
@@ -326,9 +332,8 @@ public class PaymentHelper {
 
         if (!isRecurringPayment) {
             subscriptionHelper.handleNonRecurringPayment(subscription);
+            updateClientWishlist(subscription);
         }
-
-        updateClientWishlist(subscription);
     }
 
     private void updateClientWishlist(Subscription subscription) {

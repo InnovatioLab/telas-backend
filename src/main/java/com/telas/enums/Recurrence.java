@@ -1,5 +1,6 @@
 package com.telas.enums;
 
+import com.telas.entities.Subscription;
 import com.telas.infra.exceptions.BusinessRuleException;
 import com.telas.shared.constants.valitation.SubscriptionValidationMessages;
 import lombok.Getter;
@@ -34,11 +35,18 @@ public enum Recurrence {
         return endDate.atTime(startedAt.atZone(ZoneOffset.UTC).toLocalTime()).toInstant(ZoneOffset.UTC);
     }
 
-    public Instant calculateEndsAtUpgradeRenew(Instant currentEndsAt, Recurrence previousRecurrence) {
+    public Instant calculateEndsAtUpgrade(Instant currentEndsAt, Recurrence previousRecurrence) {
         long daysToAdd = days - previousRecurrence.days;
         LocalDate currentDate = currentEndsAt.atZone(ZoneOffset.UTC).toLocalDate();
         LocalDate newDate = currentDate.plusDays(daysToAdd);
         return newDate.atTime(currentEndsAt.atZone(ZoneOffset.UTC).toLocalTime()).toInstant(ZoneOffset.UTC);
+    }
+
+    public Instant calculateEndsAtRenew(Subscription entity) {
+        long daysToAdd = entity.getRecurrence().days;
+        LocalDate previousEndsAtDate = entity.getEndsAt().atZone(ZoneOffset.UTC).toLocalDate();
+        LocalDate newDate = previousEndsAtDate.plusDays(daysToAdd);
+        return newDate.atTime(entity.getEndsAt().atZone(ZoneOffset.UTC).toLocalTime()).toInstant(ZoneOffset.UTC);
     }
 
     public void validateUpgradeTo(Recurrence target) {

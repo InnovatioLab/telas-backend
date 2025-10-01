@@ -15,7 +15,8 @@ public enum NotificationReference {
                     "Your plan is now active.",
                     params,
                     createEndDateDiv(params.get("endDate")),
-                    "Upload your attachments"
+                    "Upload your attachments",
+                    true
             );
         }
 
@@ -38,7 +39,8 @@ public enum NotificationReference {
                     "Your plan is now active.",
                     params,
                     createEndDateDiv(params.get("endDate")),
-                    "Manage yours subscriptions"
+                    "Manage yours subscriptions",
+                    true
             );
         }
 
@@ -55,7 +57,8 @@ public enum NotificationReference {
                     "Thank you for renewing your subscription.",
                     params,
                     createEndDateDiv(params.get("endDate"), "New End Date"),
-                    "Manage yours subscriptions"
+                    "Manage yours subscriptions",
+                    false
             );
         }
 
@@ -72,7 +75,8 @@ public enum NotificationReference {
                     "Thank you for upgrading your subscription.",
                     params,
                     createEndDateDiv(params.get("endDate"), "New End Date"),
-                    "Manage yours subscriptions"
+                    "Manage yours subscriptions",
+                    false
             );
         }
 
@@ -200,15 +204,19 @@ public enum NotificationReference {
                 """, label, endDate);
     }
 
-    private static String formatNotificationMessage(String title, String message, Map<String, String> params, String endDateDiv, String linkText) {
+    private static String formatNotificationMessage(String title, String message, Map<String, String> params, String endDateDiv, String linkText, boolean showStartDate) {
+        String startDateDiv = showStartDate ? String.format("""
+                <div class="field">
+                    <span class="label-campo">Start Date: </span>
+                    <span class="valor-campo white-space-nowrap"> %s</span>
+                </div>
+                """, params.get("startDate")) : "";
+
         return String.format("""
                 <div class="informacoes">
                     <h4 id="notification-title" class="notification-title">%s</h4>
                     <p>%s</p>
-                    <div class="field">
-                        <span class="label-campo">Start Date: </span>
-                        <span class="valor-campo white-space-nowrap"> %s</span>
-                    </div>
+                    %s
                     %s
                     <div class="field">
                         <span class="label-campo">Services: </span>
@@ -217,8 +225,9 @@ public enum NotificationReference {
                 </div>
                 <a id="link-details" class='details link-text' href="%s">%s</a>
                 <p>Need help? Contact us anytime at support@telas-ads.com</p>
-                """, title, message, params.get("startDate"), endDateDiv, params.get("locations"), params.get("link"), linkText);
+                """, title, message, startDateDiv, endDateDiv, params.get("locations"), params.get("link"), linkText);
     }
+
 
     private static EmailDataDto createEmailData(String subject, String template, Map<String, String> params, String startDate, String endDate) {
         EmailDataDto emailData = new EmailDataDto();
