@@ -126,6 +126,15 @@ public class Subscription extends BaseAudit implements Serializable {
                 && monitors.stream().allMatch(monitor -> monitor.getBox() != null && monitor.getBox().isActive());
     }
 
+    public boolean ableToRenew() {
+        return !bonus
+                && !Recurrence.MONTHLY.equals(recurrence)
+                && SubscriptionStatus.ACTIVE.equals(status)
+                && endsAt != null
+                && endsAt.isAfter(Instant.now())
+                && monitors.stream().allMatch(monitor -> monitor.getBox() != null && monitor.getBox().isActive());
+    }
+
     public BigDecimal getPaidAmount() {
         return payments.stream()
                 .filter(payment -> PaymentStatus.COMPLETED.equals(payment.getStatus()))

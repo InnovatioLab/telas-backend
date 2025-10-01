@@ -17,49 +17,52 @@ import java.util.UUID;
 @Getter
 @Setter
 public class SubscriptionMinResponseDto implements Serializable {
-  @Serial
-  private static final long serialVersionUID = -2929124221854520175L;
+    @Serial
+    private static final long serialVersionUID = -2929124221854520175L;
 
-  private UUID id;
+    private UUID id;
 
-  private BigDecimal amount;
+    private BigDecimal amount;
 
-  private Recurrence recurrence;
+    private Recurrence recurrence;
 
-  private boolean bonus;
+    private boolean bonus;
 
-  private SubscriptionStatus status;
+    private SubscriptionStatus status;
 
-  private Instant startedAt;
+    private Instant startedAt;
 
-  private Instant endsAt;
+    private Instant endsAt;
 
-  private Long daysLeft;
+    private Long daysLeft;
 
-  private boolean ableToUpgrade;
+    private boolean ableToUpgrade;
 
-  private List<SubscriptionMonitorMinResponseDto> monitors;
+    private boolean ableToRenew;
 
-  public SubscriptionMinResponseDto(Subscription entity) {
-    id = entity.getId();
-    amount = entity.getPaidAmount();
-    recurrence = entity.getRecurrence();
-    bonus = entity.isBonus();
-    status = entity.getStatus();
-    startedAt = entity.getStartedAt();
-    endsAt = entity.getEndsAt();
-    daysLeft = calculateDaysLeft();
-    ableToUpgrade = entity.ableToUpgrade();
-    monitors = entity.getMonitors().stream()
-            .map(SubscriptionMonitorMinResponseDto::new)
-            .toList();
-  }
+    private List<SubscriptionMonitorMinResponseDto> monitors;
 
-  private Long calculateDaysLeft() {
-    if (endsAt == null || !SubscriptionStatus.ACTIVE.equals(status)) {
-      return null;
+    public SubscriptionMinResponseDto(Subscription entity) {
+        id = entity.getId();
+        amount = entity.getPaidAmount();
+        recurrence = entity.getRecurrence();
+        bonus = entity.isBonus();
+        status = entity.getStatus();
+        startedAt = entity.getStartedAt();
+        endsAt = entity.getEndsAt();
+        daysLeft = calculateDaysLeft();
+        ableToUpgrade = entity.ableToUpgrade();
+        ableToRenew = entity.ableToRenew();
+        monitors = entity.getMonitors().stream()
+                .map(SubscriptionMonitorMinResponseDto::new)
+                .toList();
     }
 
-    return Duration.between(Instant.now(), endsAt).toDays();
-  }
+    private Long calculateDaysLeft() {
+        if (endsAt == null || !SubscriptionStatus.ACTIVE.equals(status)) {
+            return null;
+        }
+
+        return Duration.between(Instant.now(), endsAt).toDays();
+    }
 }

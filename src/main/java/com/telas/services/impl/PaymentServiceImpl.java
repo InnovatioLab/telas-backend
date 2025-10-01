@@ -219,8 +219,12 @@ public class PaymentServiceImpl implements PaymentService {
     private Customer getOrCreateCustomer(Subscription subscription) throws StripeException {
         Client client = subscription.getClient();
 
-        if (client.getStripeCustomerId() != null) {
-            return Customer.retrieve(client.getStripeCustomerId());
+        if (Objects.nonNull(client.getStripeCustomerId())) {
+            try {
+                return Customer.retrieve(client.getStripeCustomerId());
+            } catch (StripeException e) {
+                log.warn("Failed to retrieve Customer from Stripe, creating new one.");
+            }
         }
 
         String email = client.getContact().getEmail();
