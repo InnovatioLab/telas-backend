@@ -200,7 +200,6 @@ public class MonitorHelper {
             httpClient.makePostRequest(url, body, Void.class, null, headers);
         } catch (Exception e) {
             log.error("Error while sending request with monitorID: {}, URL: {}, message: {}", monitorId, url, e.getMessage());
-            throw e;
         }
     }
 
@@ -217,7 +216,6 @@ public class MonitorHelper {
             httpClient.makeDeleteRequest(url, null, headers);
         } catch (Exception e) {
             log.error("Error while sending request to remove monitor with ID: {}, URL: {}, message: {}", monitor.getId(), url, e.getMessage());
-            throw e;
         }
     }
 

@@ -17,21 +17,21 @@ import java.util.UUID;
 @RequestMapping(value = "notifications")
 @RequiredArgsConstructor
 public class NotificationControllerImpl implements NotificationController {
-  private final NotificationService service;
+    private final NotificationService service;
 
-  @Override
-  @GetMapping
-  @SecurityRequirement(name = "jwt")
-  public ResponseEntity<?> listClientNotifications(@RequestBody NotificationRequestDto request) {
-    return ResponseEntity.status(HttpStatus.OK)
-            .body(ResponseDto.fromData(service.listClientNotifications(request), HttpStatus.OK, MessageCommonsConstants.FIND_ALL_SUCCESS_MESSAGE));
-  }
+    @Override
+    @GetMapping
+    @SecurityRequirement(name = "jwt")
+    public ResponseEntity<?> listClientNotifications(@RequestBody(required = false) NotificationRequestDto request) {
+        return ResponseEntity.status(HttpStatus.OK)
+                .body(ResponseDto.fromData(service.listClientNotifications(request), HttpStatus.OK, MessageCommonsConstants.FIND_ALL_SUCCESS_MESSAGE));
+    }
 
-  @Override
-  @GetMapping("/{id}")
-  @SecurityRequirement(name = "jwt")
-  public ResponseEntity<?> findById(@PathVariable(name = "id") UUID notificationId) {
-    return ResponseEntity.status(HttpStatus.OK)
-            .body(ResponseDto.fromData(service.findById(notificationId), HttpStatus.OK, MessageCommonsConstants.FIND_ID_SUCCESS_MESSAGE));
-  }
+    @Override
+    @GetMapping("/{id}")
+    @SecurityRequirement(name = "jwt")
+    public ResponseEntity<?> findById(@PathVariable(name = "id") UUID notificationId) {
+        return ResponseEntity.status(HttpStatus.OK)
+                .body(ResponseDto.fromData(service.findById(notificationId), HttpStatus.OK, MessageCommonsConstants.FIND_ID_SUCCESS_MESSAGE));
+    }
 }

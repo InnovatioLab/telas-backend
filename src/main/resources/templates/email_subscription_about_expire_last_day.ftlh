@@ -135,7 +135,7 @@
                 <td style="padding-bottom: 10px">
                     <strong><a
                                 href="${link}"
-                                style="color: #075473; text-decoration: none"
+                                style="color: #075473;"
                         >Renew Now</a
                         ></strong>
                     — this is your last chance to stay on screen without interruption.

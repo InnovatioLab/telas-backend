@@ -3,6 +3,7 @@ package com.telas.infra.exceptions;
 import com.fasterxml.jackson.databind.exc.InvalidFormatException;
 import com.stripe.exception.StripeException;
 import com.telas.dtos.response.ResponseDto;
+import jakarta.persistence.OptimisticLockException;
 import org.springframework.context.support.DefaultMessageSourceResolvable;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpHeaders;
@@ -27,181 +28,192 @@ import java.util.stream.Collectors;
 
 @RestControllerAdvice
 public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
-  @ExceptionHandler({DataIntegrityViolationException.class})
-  @ResponseStatus(HttpStatus.CONFLICT)
-  public ResponseEntity<?> handlePSQLException(DataIntegrityViolationException ex, WebRequest request) {
-    logger.error(" =========== DataIntegrityViolationException =========== " + ex.getMostSpecificCause().getMessage());
-    ResponseDto<Object> obj = ResponseDto.fromData(null, HttpStatus.CONFLICT, GlobalExceptionConstants.PSQL_ERROR_MESSAGE, Arrays.asList(ex.getMostSpecificCause().getMessage()));
-    return handleExceptionInternal(ex, obj, new HttpHeaders(), HttpStatus.CONFLICT, request);
-  }
-
-  @Override
-  @ResponseStatus(HttpStatus.BAD_REQUEST)
-  protected ResponseEntity<Object> handleMissingServletRequestParameter(
-          MissingServletRequestParameterException ex, HttpHeaders headers, HttpStatusCode status, WebRequest request) {
-    logger.error(" =============== MissingServletRequestParameterException ==========================");
-
-    String field = ex.getParameterName();
-    String error = GlobalExceptionConstants.MANDATORY_PARAMETER_NOT_PROVIDED + ex.getParameterName();
-
-    ResponseDto<Object> res = ResponseDto.fromData(null, HttpStatus.BAD_REQUEST, error, Arrays.asList(field));
-    return handleExceptionInternal(ex, res, headers, HttpStatus.BAD_REQUEST, request);
-  }
-
-  @Override
-  @ResponseStatus(HttpStatus.BAD_REQUEST)
-  protected ResponseEntity<Object> handleMethodArgumentNotValid(
-          MethodArgumentNotValidException ex, HttpHeaders headers, HttpStatusCode status, WebRequest request) {
-    logger.error(" =============== DTO fields that failed validation ==========================");
-
-    List<String> erros = ex.getBindingResult().getFieldErrors().stream()
-            .map(DefaultMessageSourceResolvable::getDefaultMessage)
-            .toList();
-
-    ResponseDto<Object> res = ResponseDto.fromData(null, HttpStatus.BAD_REQUEST,
-            GlobalExceptionConstants.CHECK_FIELDS_MESSAGE, erros);
-
-    return handleExceptionInternal(ex, res, headers, HttpStatus.BAD_REQUEST, request);
-  }
-
-  @Override
-  @ResponseStatus(HttpStatus.BAD_REQUEST)
-  protected ResponseEntity<Object> handleMaxUploadSizeExceededException(MaxUploadSizeExceededException ex, HttpHeaders headers, HttpStatusCode status, WebRequest request) {
-    logger.error(" =============== MaxUploadSizeExceededException ==========================");
-
-    String field = GlobalExceptionConstants.ATTACHMENT;
-    String error = GlobalExceptionConstants.FILE_MAX_SIZE;
-
-    ResponseDto<Object> res = ResponseDto.fromData(null, HttpStatus.BAD_REQUEST, error, Arrays.asList(field));
-    return handleExceptionInternal(ex, res, headers, HttpStatus.BAD_REQUEST, request);
-  }
-
-  @Override
-  @ResponseStatus(HttpStatus.BAD_REQUEST)
-  protected ResponseEntity<Object> handleHttpMessageNotReadable(
-          HttpMessageNotReadableException ex, HttpHeaders headers, HttpStatusCode status, WebRequest request) {
-
-    Throwable rootCause = ex.getRootCause();
-    if (rootCause instanceof InvalidFormatException) {
-      logger.error(" =============== HttpMessageNotReadableException validation ENUM ==========================");
-
-      InvalidFormatException invalidFormatException = (InvalidFormatException) rootCause;
-      String invalidValue = invalidFormatException.getValue().toString();
-      String enumType = invalidFormatException.getTargetType().getSimpleName();
-      List<String> enumValues = Arrays.stream(invalidFormatException.getTargetType().getEnumConstants())
-              .map(Object::toString)
-              .collect(Collectors.toList());
-
-      String errorMessage = String.format(
-              GlobalExceptionConstants.INVALID_VALUE_MESSAGE,
-              enumType, invalidValue, enumValues);
-
-      ResponseDto<Object> res = ResponseDto.fromData(null, HttpStatus.BAD_REQUEST, errorMessage);
-      return handleExceptionInternal(ex, res, headers, HttpStatus.BAD_REQUEST, request);
-    } else if (rootCause instanceof DateTimeParseException) {
-      logger.error(" =============== HttpMessageNotReadableException validation LocalDate or LocalDateTime ==========================");
-
-      DateTimeParseException dateTimeParseException = (DateTimeParseException) rootCause;
-      String invalidValue = dateTimeParseException.getParsedString();
-      String errorMessage = GlobalExceptionConstants.INVALID_DATE_FORMAT_MESSAGE + invalidValue + ". ";
-
-      if (ex.getLocalizedMessage().contains("LocalDate")) {
-        errorMessage += GlobalExceptionConstants.EXPECTED_DATE_FORMAT_MESSAGE;
-      } else {
-        errorMessage += GlobalExceptionConstants.USE_APPROPRIATE_FORMATS_MESSAGE;
-      }
-
-      ResponseDto<Object> res = ResponseDto.fromData(null, HttpStatus.BAD_REQUEST, errorMessage);
-      return handleExceptionInternal(ex, res, headers, HttpStatus.BAD_REQUEST, request);
+    @ExceptionHandler({DataIntegrityViolationException.class})
+    @ResponseStatus(HttpStatus.CONFLICT)
+    public ResponseEntity<?> handlePSQLException(DataIntegrityViolationException ex, WebRequest request) {
+        logger.error(" =========== DataIntegrityViolationException =========== " + ex.getMostSpecificCause().getMessage());
+        ResponseDto<Object> obj = ResponseDto.fromData(null, HttpStatus.CONFLICT, GlobalExceptionConstants.PSQL_ERROR_MESSAGE, Arrays.asList(ex.getMostSpecificCause().getMessage()));
+        return handleExceptionInternal(ex, obj, new HttpHeaders(), HttpStatus.CONFLICT, request);
     }
 
-    return handleExceptionInternal(ex, null, headers, HttpStatus.BAD_REQUEST, request);
-  }
+    @Override
+    @ResponseStatus(HttpStatus.BAD_REQUEST)
+    protected ResponseEntity<Object> handleMissingServletRequestParameter(
+            MissingServletRequestParameterException ex, HttpHeaders headers, HttpStatusCode status, WebRequest request) {
+        logger.error(" =============== MissingServletRequestParameterException ==========================");
 
-  @ExceptionHandler({BusinessRuleException.class})
-  @ResponseStatus(HttpStatus.UNPROCESSABLE_ENTITY)
-  public ResponseEntity<?> handleBusinessRuleException(BusinessRuleException ex, WebRequest request) {
-    logger.error(" =============== BusinessRuleException ==========================");
+        String field = ex.getParameterName();
+        String error = GlobalExceptionConstants.MANDATORY_PARAMETER_NOT_PROVIDED + ex.getParameterName();
 
-    String field = ex.getMessage();
-    String error = ex.getMessage();
+        ResponseDto<Object> res = ResponseDto.fromData(null, HttpStatus.BAD_REQUEST, error, Arrays.asList(field));
+        return handleExceptionInternal(ex, res, headers, HttpStatus.BAD_REQUEST, request);
+    }
 
-    ResponseDto<Object> obj = ResponseDto.fromData(null, HttpStatus.UNPROCESSABLE_ENTITY, error, Arrays.asList(field));
-    return handleExceptionInternal(ex, obj, new HttpHeaders(), HttpStatus.UNPROCESSABLE_ENTITY, request);
-  }
+    @Override
+    @ResponseStatus(HttpStatus.BAD_REQUEST)
+    protected ResponseEntity<Object> handleMethodArgumentNotValid(
+            MethodArgumentNotValidException ex, HttpHeaders headers, HttpStatusCode status, WebRequest request) {
+        logger.error(" =============== DTO fields that failed validation ==========================");
 
-  @ExceptionHandler({ResourceNotFoundException.class})
-  @ResponseStatus(HttpStatus.NOT_FOUND)
-  public ResponseEntity<?> handleResourceNotFoundException(ResourceNotFoundException ex, WebRequest request) {
-    logger.error(" =============== ResourceNotFoundException ==========================");
+        List<String> erros = ex.getBindingResult().getFieldErrors().stream()
+                .map(DefaultMessageSourceResolvable::getDefaultMessage)
+                .toList();
 
-    String field = GlobalExceptionConstants.RESOURCE_NOT_FOUND_MESSAGE;
-    String error = ex.getMessage();
+        ResponseDto<Object> res = ResponseDto.fromData(null, HttpStatus.BAD_REQUEST,
+                GlobalExceptionConstants.CHECK_FIELDS_MESSAGE, erros);
 
-    ResponseDto<Object> obj = ResponseDto.fromData(null, HttpStatus.NOT_FOUND, error, Arrays.asList(field));
-    return handleExceptionInternal(ex, obj, new HttpHeaders(), HttpStatus.NOT_FOUND, request);
-  }
+        return handleExceptionInternal(ex, res, headers, HttpStatus.BAD_REQUEST, request);
+    }
 
-  @ExceptionHandler({UnauthorizedException.class})
-  @ResponseStatus(HttpStatus.UNAUTHORIZED)
-  public ResponseEntity<?> handleUnauthorizedException(UnauthorizedException ex, WebRequest request) {
-    logger.error(" =============== UnauthorizedException ==========================");
+    @Override
+    @ResponseStatus(HttpStatus.BAD_REQUEST)
+    protected ResponseEntity<Object> handleMaxUploadSizeExceededException(MaxUploadSizeExceededException ex, HttpHeaders headers, HttpStatusCode status, WebRequest request) {
+        logger.error(" =============== MaxUploadSizeExceededException ==========================");
 
-    String field = GlobalExceptionConstants.AUTHENTICATION_ERROR_MESSAGE;
-    String error = ex.getMessage();
+        String field = GlobalExceptionConstants.ATTACHMENT;
+        String error = GlobalExceptionConstants.FILE_MAX_SIZE;
 
-    ResponseDto<Object> obj = ResponseDto.fromData(null, HttpStatus.UNAUTHORIZED, error, Arrays.asList(field));
-    return handleExceptionInternal(ex, obj, new HttpHeaders(), HttpStatus.UNAUTHORIZED, request);
-  }
+        ResponseDto<Object> res = ResponseDto.fromData(null, HttpStatus.BAD_REQUEST, error, Arrays.asList(field));
+        return handleExceptionInternal(ex, res, headers, HttpStatus.BAD_REQUEST, request);
+    }
 
-  @ExceptionHandler({ForbiddenException.class})
-  @ResponseStatus(HttpStatus.FORBIDDEN)
-  public ResponseEntity<?> handleForbiddenException(ForbiddenException ex, WebRequest request) {
-    logger.error(" =============== ForbiddenException ==========================");
+    @Override
+    @ResponseStatus(HttpStatus.BAD_REQUEST)
+    protected ResponseEntity<Object> handleHttpMessageNotReadable(
+            HttpMessageNotReadableException ex, HttpHeaders headers, HttpStatusCode status, WebRequest request) {
 
-    String field = ex.getMessage();
-    String error = ex.getMessage();
+        Throwable rootCause = ex.getRootCause();
+        if (rootCause instanceof InvalidFormatException) {
+            logger.error(" =============== HttpMessageNotReadableException validation ENUM ==========================");
 
-    ResponseDto<Object> obj = ResponseDto.fromData(null, HttpStatus.FORBIDDEN, error, Arrays.asList(field));
-    return handleExceptionInternal(ex, obj, new HttpHeaders(), HttpStatus.FORBIDDEN, request);
-  }
+            InvalidFormatException invalidFormatException = (InvalidFormatException) rootCause;
+            String invalidValue = invalidFormatException.getValue().toString();
+            String enumType = invalidFormatException.getTargetType().getSimpleName();
+            List<String> enumValues = Arrays.stream(invalidFormatException.getTargetType().getEnumConstants())
+                    .map(Object::toString)
+                    .collect(Collectors.toList());
 
-  @ExceptionHandler({InvalidQueryParamsException.class})
-  @ResponseStatus(HttpStatus.BAD_REQUEST)
-  public ResponseEntity<?> handleInvalidQueryParamsException(InvalidQueryParamsException ex, WebRequest request) {
-    logger.error(" =============== InvalidQueryParamsException ==========================");
+            String errorMessage = String.format(
+                    GlobalExceptionConstants.INVALID_VALUE_MESSAGE,
+                    enumType, invalidValue, enumValues);
 
-    String error = ex.getMessage();
+            ResponseDto<Object> res = ResponseDto.fromData(null, HttpStatus.BAD_REQUEST, errorMessage);
+            return handleExceptionInternal(ex, res, headers, HttpStatus.BAD_REQUEST, request);
+        } else if (rootCause instanceof DateTimeParseException) {
+            logger.error(" =============== HttpMessageNotReadableException validation LocalDate or LocalDateTime ==========================");
 
-    ResponseDto<Object> obj = ResponseDto.fromData(
-            null,
-            HttpStatus.BAD_REQUEST,
-            error,
-            Arrays.asList("Invalid QueryParams")
-    );
-    return handleExceptionInternal(ex, obj, new HttpHeaders(), HttpStatus.BAD_REQUEST, request);
-  }
+            DateTimeParseException dateTimeParseException = (DateTimeParseException) rootCause;
+            String invalidValue = dateTimeParseException.getParsedString();
+            String errorMessage = GlobalExceptionConstants.INVALID_DATE_FORMAT_MESSAGE + invalidValue + ". ";
 
-  @ExceptionHandler({MethodArgumentTypeMismatchException.class})
-  @ResponseStatus(HttpStatus.BAD_REQUEST)
-  public ResponseEntity<?> handleMethodArgumentTypeMismatchException(MethodArgumentTypeMismatchException ex, WebRequest request) {
-    logger.error(" =============== MethodArgumentTypeMismatchException ==========================");
+            if (ex.getLocalizedMessage().contains("LocalDate")) {
+                errorMessage += GlobalExceptionConstants.EXPECTED_DATE_FORMAT_MESSAGE;
+            } else {
+                errorMessage += GlobalExceptionConstants.USE_APPROPRIATE_FORMATS_MESSAGE;
+            }
 
-    String error = GlobalExceptionConstants.INVALID_PARAMETER_TYPE_MESSAGE + ex.getName();
+            ResponseDto<Object> res = ResponseDto.fromData(null, HttpStatus.BAD_REQUEST, errorMessage);
+            return handleExceptionInternal(ex, res, headers, HttpStatus.BAD_REQUEST, request);
+        }
 
-    ResponseDto<Object> obj = ResponseDto.fromData(null, HttpStatus.BAD_REQUEST, error);
+        return handleExceptionInternal(ex, null, headers, HttpStatus.BAD_REQUEST, request);
+    }
 
-    return handleExceptionInternal(ex, obj, new HttpHeaders(), HttpStatus.BAD_REQUEST, request);
-  }
+    @ExceptionHandler({BusinessRuleException.class})
+    @ResponseStatus(HttpStatus.UNPROCESSABLE_ENTITY)
+    public ResponseEntity<?> handleBusinessRuleException(BusinessRuleException ex, WebRequest request) {
+        logger.error(" =============== BusinessRuleException ==========================");
 
-  @ExceptionHandler({StripeException.class})
-  @ResponseStatus(HttpStatus.BAD_REQUEST)
-  public ResponseEntity<?> handleStripeException(StripeException ex, WebRequest request) {
-    logger.error(" =============== StripeException ==========================");
+        String field = ex.getMessage();
+        String error = ex.getMessage();
 
-    String error = "Error during payment process: " + ex.getMessage();
-    ResponseDto<Object> obj = ResponseDto.fromData(null, HttpStatus.BAD_REQUEST, error, List.of(ex.getMessage()));
+        ResponseDto<Object> obj = ResponseDto.fromData(null, HttpStatus.UNPROCESSABLE_ENTITY, error, Arrays.asList(field));
+        return handleExceptionInternal(ex, obj, new HttpHeaders(), HttpStatus.UNPROCESSABLE_ENTITY, request);
+    }
 
-    return handleExceptionInternal(ex, obj, new HttpHeaders(), HttpStatus.BAD_REQUEST, request);
-  }
+    @ExceptionHandler({ResourceNotFoundException.class})
+    @ResponseStatus(HttpStatus.NOT_FOUND)
+    public ResponseEntity<?> handleResourceNotFoundException(ResourceNotFoundException ex, WebRequest request) {
+        logger.error(" =============== ResourceNotFoundException ==========================");
+
+        String field = GlobalExceptionConstants.RESOURCE_NOT_FOUND_MESSAGE;
+        String error = ex.getMessage();
+
+        ResponseDto<Object> obj = ResponseDto.fromData(null, HttpStatus.NOT_FOUND, error, Arrays.asList(field));
+        return handleExceptionInternal(ex, obj, new HttpHeaders(), HttpStatus.NOT_FOUND, request);
+    }
+
+    @ExceptionHandler({UnauthorizedException.class})
+    @ResponseStatus(HttpStatus.UNAUTHORIZED)
+    public ResponseEntity<?> handleUnauthorizedException(UnauthorizedException ex, WebRequest request) {
+        logger.error(" =============== UnauthorizedException ==========================");
+
+        String field = GlobalExceptionConstants.AUTHENTICATION_ERROR_MESSAGE;
+        String error = ex.getMessage();
+
+        ResponseDto<Object> obj = ResponseDto.fromData(null, HttpStatus.UNAUTHORIZED, error, Arrays.asList(field));
+        return handleExceptionInternal(ex, obj, new HttpHeaders(), HttpStatus.UNAUTHORIZED, request);
+    }
+
+    @ExceptionHandler({ForbiddenException.class})
+    @ResponseStatus(HttpStatus.FORBIDDEN)
+    public ResponseEntity<?> handleForbiddenException(ForbiddenException ex, WebRequest request) {
+        logger.error(" =============== ForbiddenException ==========================");
+
+        String field = ex.getMessage();
+        String error = ex.getMessage();
+
+        ResponseDto<Object> obj = ResponseDto.fromData(null, HttpStatus.FORBIDDEN, error, Arrays.asList(field));
+        return handleExceptionInternal(ex, obj, new HttpHeaders(), HttpStatus.FORBIDDEN, request);
+    }
+
+    @ExceptionHandler({InvalidQueryParamsException.class})
+    @ResponseStatus(HttpStatus.BAD_REQUEST)
+    public ResponseEntity<?> handleInvalidQueryParamsException(InvalidQueryParamsException ex, WebRequest request) {
+        logger.error(" =============== InvalidQueryParamsException ==========================");
+
+        String error = ex.getMessage();
+
+        ResponseDto<Object> obj = ResponseDto.fromData(
+                null,
+                HttpStatus.BAD_REQUEST,
+                error,
+                Arrays.asList("Invalid QueryParams")
+        );
+        return handleExceptionInternal(ex, obj, new HttpHeaders(), HttpStatus.BAD_REQUEST, request);
+    }
+
+    @ExceptionHandler({MethodArgumentTypeMismatchException.class})
+    @ResponseStatus(HttpStatus.BAD_REQUEST)
+    public ResponseEntity<?> handleMethodArgumentTypeMismatchException(MethodArgumentTypeMismatchException ex, WebRequest request) {
+        logger.error(" =============== MethodArgumentTypeMismatchException ==========================");
+
+        String error = GlobalExceptionConstants.INVALID_PARAMETER_TYPE_MESSAGE + ex.getName();
+
+        ResponseDto<Object> obj = ResponseDto.fromData(null, HttpStatus.BAD_REQUEST, error);
+
+        return handleExceptionInternal(ex, obj, new HttpHeaders(), HttpStatus.BAD_REQUEST, request);
+    }
+
+    @ExceptionHandler({StripeException.class})
+    @ResponseStatus(HttpStatus.BAD_REQUEST)
+    public ResponseEntity<?> handleStripeException(StripeException ex, WebRequest request) {
+        logger.error(" =============== StripeException ==========================");
+
+        String error = "Error during payment process: " + ex.getMessage();
+        ResponseDto<Object> obj = ResponseDto.fromData(null, HttpStatus.BAD_REQUEST, error, List.of(ex.getMessage()));
+
+        return handleExceptionInternal(ex, obj, new HttpHeaders(), HttpStatus.BAD_REQUEST, request);
+    }
+
+    @ExceptionHandler({OptimisticLockException.class})
+    @ResponseStatus(HttpStatus.CONFLICT)
+    public ResponseEntity<?> handleOptimisticLockException(OptimisticLockException ex, WebRequest request) {
+        logger.warn(" =============== OptimisticLockException ==========================");
+
+        String error = "Optimistic concurrency failure";
+        ResponseDto<Object> obj = ResponseDto.fromData(null, HttpStatus.CONFLICT, error, List.of(ex.getMessage()));
+
+        return handleExceptionInternal(ex, obj, new HttpHeaders(), HttpStatus.CONFLICT, request);
+    }
 }

@@ -11,21 +11,23 @@ import java.util.List;
 import java.util.UUID;
 
 public interface SubscriptionService {
-  String save();
+    String save();
 
-  SubscriptionResponseDto findById(UUID subscriptionId);
+    SubscriptionResponseDto findById(UUID subscriptionId);
 
-  String upgradeSubscription(UUID subscriptionId, Recurrence recurrence);
+    String upgradeSubscription(UUID subscriptionId, Recurrence recurrence);
 
-  void cancelSubscription(UUID subscriptionId);
+    String renewSubscription(UUID subscriptionId);
 
-  void cancelSubscription(com.stripe.model.Subscription stripeSubscription);
+    void cancelSubscription(UUID subscriptionId);
 
-  void handleCheckoutSessionExpired(Session session);
+    void cancelSubscription(com.stripe.model.Subscription stripeSubscription);
 
-  void removeAdsFromExpiredSubscriptions();
+    void handleCheckoutSessionExpired(Session session);
 
-  void sendSubscriptionExpirationEmail();
+    void removeAdsFromExpiredSubscriptions();
 
-  PaginationResponseDto<List<SubscriptionMinResponseDto>> findClientSubscriptionsFilters(SubscriptionFilterRequestDto request);
+    void sendSubscriptionExpirationEmail();
+
+    PaginationResponseDto<List<SubscriptionMinResponseDto>> findClientSubscriptionsFilters(SubscriptionFilterRequestDto request);
 }

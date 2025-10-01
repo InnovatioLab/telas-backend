@@ -18,22 +18,22 @@ import java.time.Instant;
 @Table(name = "webhook_events")
 @NoArgsConstructor
 public class WebhookEvent implements Serializable {
-  @Serial
-  private static final long serialVersionUID = 1084934057135367842L;
+    @Serial
+    private static final long serialVersionUID = 1084934057135367842L;
 
-  @Id
-  @Column(name = "id")
-  private String id;
+    @Id
+    @Column(name = "id")
+    private String id;
 
-  @Column(name = "type")
-  private String type;
+    @Column(name = "type")
+    private String type;
 
-  @Column(name = "received_at", nullable = false)
-  private Instant receivedAt;
+    @Column(name = "received_at", nullable = false)
+    private Instant receivedAt;
 
-  public WebhookEvent(String id, String type) {
-    this.id = id;
-    this.type = type;
-    receivedAt = Instant.now();
-  }
+    public WebhookEvent(String id, String type) {
+        this.id = id;
+        this.type = type;
+        receivedAt = Instant.now();
+    }
 }

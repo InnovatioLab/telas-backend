@@ -47,6 +47,23 @@ public enum NotificationReference {
             return null;
         }
     },
+    SUBSCRIPTION_RENEWAL {
+        @Override
+        public String getNotificationMessage(Map<String, String> params) {
+            return formatNotificationMessage(
+                    "Subscription Successfully Renewed!",
+                    "Thank you for renewing your subscription.",
+                    params,
+                    createEndDateDiv(params.get("endDate"), "New End Date"),
+                    "Manage yours subscriptions"
+            );
+        }
+
+        @Override
+        public EmailDataDto getEmailData(Map<String, String> params) {
+            return null;
+        }
+    },
     SUBSCRIPTION_UPGRADE {
         @Override
         public String getNotificationMessage(Map<String, String> params) {
@@ -209,6 +226,7 @@ public enum NotificationReference {
         emailData.setTemplate(template);
         emailData.getParams().put("name", params.get("name"));
         emailData.getParams().put("locations", params.get("locations"));
+        emailData.getParams().put("link", params.get("link"));
         emailData.getParams().put("startDate", startDate);
         emailData.getParams().put("endDate", ObjectUtils.isEmpty(endDate) ? "" : endDate);
         return emailData;

@@ -21,49 +21,56 @@ import java.util.UUID;
 @RequestMapping(value = "subscriptions")
 @RequiredArgsConstructor
 public class SubscriptionControllerImpl implements SubscriptionController {
-  private final SubscriptionService service;
+    private final SubscriptionService service;
 
-  @Override
-  @PostMapping
-  @SecurityRequirement(name = "jwt")
-  public ResponseEntity<?> save() {
-    return ResponseEntity.status(HttpStatus.CREATED).body(ResponseDto.fromData(service.save(), HttpStatus.CREATED, MessageCommonsConstants.SAVE_SUCCESS_MESSAGE));
-  }
+    @Override
+    @PostMapping
+    @SecurityRequirement(name = "jwt")
+    public ResponseEntity<?> save() {
+        return ResponseEntity.status(HttpStatus.CREATED).body(ResponseDto.fromData(service.save(), HttpStatus.CREATED, MessageCommonsConstants.SAVE_SUCCESS_MESSAGE));
+    }
 
-  @Override
-  @GetMapping("/filters")
-  @SecurityRequirement(name = "jwt")
-  public ResponseEntity<?> findClientSubscriptionsFilters(SubscriptionFilterRequestDto request) {
-    PaginationResponseDto<List<SubscriptionMinResponseDto>> response = service.findClientSubscriptionsFilters(request);
+    @Override
+    @GetMapping("/filters")
+    @SecurityRequirement(name = "jwt")
+    public ResponseEntity<?> findClientSubscriptionsFilters(SubscriptionFilterRequestDto request) {
+        PaginationResponseDto<List<SubscriptionMinResponseDto>> response = service.findClientSubscriptionsFilters(request);
 
-    String msg = response.getList().isEmpty() ? MessageCommonsConstants.FIND_FILTER_EMPTY_MESSAGE : MessageCommonsConstants.FIND_ALL_SUCCESS_MESSAGE;
+        String msg = response.getList().isEmpty() ? MessageCommonsConstants.FIND_FILTER_EMPTY_MESSAGE : MessageCommonsConstants.FIND_ALL_SUCCESS_MESSAGE;
 
-    return ResponseEntity.status(HttpStatus.OK).body(ResponseDto.fromData(response, HttpStatus.OK, msg));
-  }
+        return ResponseEntity.status(HttpStatus.OK).body(ResponseDto.fromData(response, HttpStatus.OK, msg));
+    }
 
 
-  @Override
-  @GetMapping("/{id}")
-  @SecurityRequirement(name = "jwt")
-  public ResponseEntity<?> findById(@PathVariable(name = "id") UUID subscriptionId) {
-    return ResponseEntity.status(HttpStatus.OK)
-            .body(ResponseDto.fromData(service.findById(subscriptionId), HttpStatus.OK, MessageCommonsConstants.FIND_ID_SUCCESS_MESSAGE));
-  }
+    @Override
+    @GetMapping("/{id}")
+    @SecurityRequirement(name = "jwt")
+    public ResponseEntity<?> findById(@PathVariable(name = "id") UUID subscriptionId) {
+        return ResponseEntity.status(HttpStatus.OK)
+                .body(ResponseDto.fromData(service.findById(subscriptionId), HttpStatus.OK, MessageCommonsConstants.FIND_ID_SUCCESS_MESSAGE));
+    }
 
-  @Override
-  @PatchMapping("/upgrade/{id}")
-  @SecurityRequirement(name = "jwt")
-  public ResponseEntity<?> upgradeSubscription(
-          @PathVariable(name = "id") UUID subscriptionId,
-          @RequestParam(name = "recurrence") Recurrence recurrence) {
-    return ResponseEntity.status(HttpStatus.OK).body(ResponseDto.fromData(service.upgradeSubscription(subscriptionId, recurrence), HttpStatus.OK, MessageCommonsConstants.UPDATE_SUCCESS_MESSAGE));
-  }
+    @Override
+    @PatchMapping("/renew/{id}")
+    @SecurityRequirement(name = "jwt")
+    public ResponseEntity<?> renewSubscription(@PathVariable(name = "id") UUID subscriptionId) {
+        return ResponseEntity.status(HttpStatus.OK).body(ResponseDto.fromData(service.renewSubscription(subscriptionId), HttpStatus.OK, MessageCommonsConstants.UPDATE_SUCCESS_MESSAGE));
+    }
 
-  @Override
-  @DeleteMapping("/{id}")
-  @SecurityRequirement(name = "jwt")
-  public ResponseEntity<?> cancelSubscription(@PathVariable(name = "id") UUID subscriptionId) {
-    service.cancelSubscription(subscriptionId);
-    return ResponseEntity.status(HttpStatus.NO_CONTENT).body(ResponseDto.fromData(null, HttpStatus.NO_CONTENT, MessageCommonsConstants.SUBSCRIPTION_CANCELLED_SUCCESS_MESSAGE));
-  }
+    @Override
+    @PatchMapping("/upgrade/{id}")
+    @SecurityRequirement(name = "jwt")
+    public ResponseEntity<?> upgradeSubscription(
+            @PathVariable(name = "id") UUID subscriptionId,
+            @RequestParam(name = "recurrence") Recurrence recurrence) {
+        return ResponseEntity.status(HttpStatus.OK).body(ResponseDto.fromData(service.upgradeSubscription(subscriptionId, recurrence), HttpStatus.OK, MessageCommonsConstants.UPDATE_SUCCESS_MESSAGE));
+    }
+
+    @Override
+    @DeleteMapping("/{id}")
+    @SecurityRequirement(name = "jwt")
+    public ResponseEntity<?> cancelSubscription(@PathVariable(name = "id") UUID subscriptionId) {
+        service.cancelSubscription(subscriptionId);
+        return ResponseEntity.status(HttpStatus.NO_CONTENT).body(ResponseDto.fromData(null, HttpStatus.NO_CONTENT, MessageCommonsConstants.SUBSCRIPTION_CANCELLED_SUCCESS_MESSAGE));
+    }
 }

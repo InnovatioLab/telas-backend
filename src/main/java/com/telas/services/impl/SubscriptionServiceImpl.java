@@ -42,7 +42,6 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.format.DateTimeParseException;
-import java.time.temporal.ChronoUnit;
 import java.util.*;
 
 @Service
@@ -70,7 +69,7 @@ public class SubscriptionServiceImpl implements SubscriptionService {
         if (subscription.isBonus()) {
             log.info("Client with id: {} is eligible for a bonus subscription", client.getId());
             persistSubscriptionClient(client, subscription);
-            helper.handleBonusSubscriptionOrNonRecurringPayment(subscription);
+            helper.handleNonRecurringPayment(subscription);
             return helper.getRedirectUrlAfterCreatingNewSubscription(client);
         }
 
@@ -96,6 +95,20 @@ public class SubscriptionServiceImpl implements SubscriptionService {
         repository.save(entity);
         return paymentService.process(entity, recurrence);
 
+    }
+
+    @Override
+    @Transactional
+    public String renewSubscription(UUID subscriptionId) {
+        Client client = authenticatedUserService.getLoggedUser().client();
+        if (Role.ADMIN.equals(client.getRole())) {
+            return null;
+        }
+
+        Subscription entity = helper.findEntityById(subscriptionId);
+        authenticatedUserService.validateSelfOrAdmin(entity.getClient().getId());
+        helper.validateSubscriptionForRenewal(entity, client);
+        return paymentService.process(entity, entity.getRecurrence());
     }
 
     @Override
@@ -135,6 +148,7 @@ public class SubscriptionServiceImpl implements SubscriptionService {
         helper.removeMonitorAdsFromSubscription(subscription);
         notifyClientsWishList(subscription);
         helper.voidLatestInvoice(stripeSubscription);
+
     }
 
     @Override
@@ -185,10 +199,15 @@ public class SubscriptionServiceImpl implements SubscriptionService {
     @Scheduled(cron = SharedConstants.EXPIRY_SUBSCRIPTION_CRON, zone = SharedConstants.ZONE_ID)
     @SchedulerLock(name = "sendSubscriptionExpirationEmailLock", lockAtLeastFor = "PT10M", lockAtMostFor = "PT30M")
     public void sendSubscriptionExpirationEmail() {
-        Instant fifteenDays = Instant.now().plus(15, ChronoUnit.DAYS);
+        LocalDate today = LocalDate.now();
+        LocalDate in15Days = today.plusDays(15);
+
         Instant now = Instant.now();
-        List<Subscription> subscriptionsReminder = repository.findSubscriptionsExpiringExactlyOn(fifteenDays);
-        List<Subscription> subscriptionsExpiringToday = repository.findSubscriptionsExpiringExactlyOn(now);
+        Instant tomorrow = now.plusSeconds(SharedConstants.TOTAL_SECONDS_IN_A_DAY);
+
+        List<Subscription> subscriptionsReminder = repository.findSubscriptionsExpiringIn15Days(java.sql.Date.valueOf(in15Days));
+        List<Subscription> subscriptionsExpiringToday = repository.findSubscriptionsExpiringInNext24Hours(now, tomorrow);
+
 
         if (!subscriptionsReminder.isEmpty()) {
             log.info("Found {} subscriptions expiring in 15 days, sending reminder emails.", subscriptionsReminder.size());

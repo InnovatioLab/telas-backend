@@ -332,7 +332,6 @@ public class ClientHelper {
                         httpClient.makePostRequest(url, dtos, Void.class, null, headers);
                     } catch (Exception e) {
                         log.error("Error sending ad update to box IP: {}, URL: {}, message: {}", box.getBoxAddress().getIp(), url, e.getMessage());
-                        throw e;
                     }
                 });
     }

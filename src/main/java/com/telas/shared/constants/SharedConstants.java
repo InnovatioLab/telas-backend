@@ -38,6 +38,8 @@ public final class SharedConstants {
     public static final int MAX_ATTACHMENT_PER_CLIENT = 5;
     public static final int AD_DISPLAY_TIME_IN_SECONDS = 5;
     public static final int TOTAL_SECONDS_IN_A_MINUTE = 60;
+    public static final int TOTAL_SECONDS_IN_A_DAY = 24 * 60 * 60;
+
 
     public static final int MAX_MONITOR_ADS = 17;
     public static final int MAX_ADS_VALIDATION = 3;

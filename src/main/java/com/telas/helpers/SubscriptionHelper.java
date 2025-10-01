@@ -129,7 +129,7 @@ public class SubscriptionHelper {
     }
 
     @Transactional
-    public void handleBonusSubscriptionOrNonRecurringPayment(Subscription subscription) {
+    public void handleNonRecurringPayment(Subscription subscription) {
         Client client = subscription.getClient();
         inactivateCart(client);
         deleteSubscriptionFlow(client);
@@ -144,33 +144,60 @@ public class SubscriptionHelper {
         createNewSubscriptionNotification(subscription);
     }
 
-    @Transactional(readOnly = true)
+    @Transactional
     public void validateSubscriptionForUpgrade(Subscription entity, Recurrence recurrence) {
         if (entity.isBonus()) {
             throw new BusinessRuleException(SubscriptionValidationMessages.SUBSCRIPTION_UPGRADE_NOT_ALLOWED_FOR_BONUS);
-        }
-
-        entity.getRecurrence().validateUpgradeTo(recurrence);
-
-        boolean isExpired = entity.getEndsAt() != null && !entity.getEndsAt().isAfter(Instant.now());
-        boolean isInactive = !SubscriptionStatus.ACTIVE.equals(entity.getStatus());
-
-        if (isInactive || isExpired) {
-            throw new BusinessRuleException(SubscriptionValidationMessages.SUBSCRIPTION_UPGRADE_NOT_ALLOWED_FOR_NON_ACTIVE_OR_EXPIRED);
         }
 
         if (entity.isUpgrade()) {
             throw new BusinessRuleException(SubscriptionValidationMessages.SUBSCRIPTION_ALREADY_ON_UPGRADE);
         }
 
-        if (Recurrence.MONTHLY.equals(recurrence) && entity.getEndsAt() != null) {
-            long remainingTime = entity.getEndsAt().getEpochSecond() - Instant.now().getEpochSecond();
+        entity.getRecurrence().validateUpgradeTo(recurrence);
 
-            if (remainingTime > SharedConstants.MAX_BILLING_CYCLE_ANCHOR) {
-                throw new BusinessRuleException(SubscriptionValidationMessages.SUBSCRIPTION_UPGRADE_NOT_ALLOWED_FOR_SHORT_BILLING_CYCLE);
-            }
+        if (isInactiveOrExpired(entity)) {
+            throw new BusinessRuleException(SubscriptionValidationMessages.SUBSCRIPTION_UPGRADE_NOT_ALLOWED_FOR_NON_ACTIVE_OR_EXPIRED);
+        }
+
+        if (Recurrence.MONTHLY.equals(recurrence) && hasExcessiveRemainingTime(entity)) {
+            throw new BusinessRuleException(SubscriptionValidationMessages.SUBSCRIPTION_UPGRADE_NOT_ALLOWED_FOR_SHORT_BILLING_CYCLE);
         }
     }
+
+    @Transactional
+    public void validateSubscriptionForRenewal(Subscription entity, Client client) {
+        if (entity.isBonus()) {
+            throw new BusinessRuleException(SubscriptionValidationMessages.SUBSCRIPTION_RENEW_NOT_ALLOWED_FOR_BONUS);
+        }
+
+        if (Recurrence.MONTHLY.equals(entity.getRecurrence())) {
+            throw new BusinessRuleException(SubscriptionValidationMessages.SUBSCRIPTION_RENEW_NOT_ALLOWED_FOR_MONTHLY);
+        }
+
+        if (isInactiveOrExpired(entity)) {
+            throw new BusinessRuleException(SubscriptionValidationMessages.SUBSCRIPTION_UPGRADE_NOT_ALLOWED_FOR_NON_ACTIVE_OR_EXPIRED);
+        }
+
+        if (entity.isUpgrade()) {
+            entity.setUpgrade(false);
+        }
+    }
+
+    private boolean isInactiveOrExpired(Subscription entity) {
+        boolean isExpired = entity.getEndsAt() != null && !entity.getEndsAt().isAfter(Instant.now());
+        boolean isInactive = !SubscriptionStatus.ACTIVE.equals(entity.getStatus());
+        return isInactive || isExpired;
+    }
+
+    private boolean hasExcessiveRemainingTime(Subscription entity) {
+        if (entity.getEndsAt() == null) {
+            return false;
+        }
+        long remainingTime = entity.getEndsAt().getEpochSecond() - Instant.now().getEpochSecond();
+        return remainingTime > SharedConstants.MAX_BILLING_CYCLE_ANCHOR;
+    }
+
 
     @Transactional
     public void sendSubscriptionAboutToExpiryEmail(Subscription subscription) {

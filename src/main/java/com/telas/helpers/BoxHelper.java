@@ -118,7 +118,6 @@ public class BoxHelper {
         } catch (Exception e) {
             String action = url.contains("create-folders") ? "create folders" : "update folders";
             log.error("Failed to send box {} request to boxId: {}, URL: {}, body: {}, error: {}", action, box.getId(), url, body, e.getMessage());
-            throw e;
         }
     }
 }
