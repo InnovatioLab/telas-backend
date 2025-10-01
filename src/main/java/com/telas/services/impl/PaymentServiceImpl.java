@@ -194,7 +194,7 @@ public class PaymentServiceImpl implements PaymentService {
                 .setSuccessUrl(successUrl)
                 .setExpiresAt(expiresAt)
                 .setCancelUrl(frontBaseUrl + "/client")
-                .setClientReferenceId(subscription.getId().toString());
+                .setClientReferenceId(subscription.getClient().getId().toString());
 
         if (isSubscription) {
             helper.configureSubscriptionParams(paramsBuilder, subscription, metaData, recurrence);

@@ -42,8 +42,8 @@ public class OwnerRequestDto implements Serializable {
     @JsonDeserialize(using = TrimStringDeserializer.class)
     private String lastName;
 
-    @Size(min = 10, max = 11, message = ContactValidationMessages.PHONE_SIZE)
     @Pattern(regexp = SharedConstants.REGEX_ONLY_NUMBERS, message = ContactValidationMessages.PHONE_ONLY_NUMBERS)
+    @Size(min = 10, max = 10, message = ContactValidationMessages.PHONE_SIZE)
     @JsonDeserialize(using = TrimStringDeserializer.class)
     private String phone;
 

@@ -376,7 +376,7 @@ public class PaymentHelper {
     private Map<String, String> buildNotificationParams(Subscription subscription) {
         Map<String, String> params = new HashMap<>();
         params.put("locations", String.join(". ", subscription.getMonitorAddresses()));
-        params.put("link", frontBaseUrl + "/client/subscriptions");
+        params.put("link", getSuccessUrl(subscription.getClient()));
 
         if (subscription.getEndsAt() != null) {
             params.put("endDate", DateUtils.formatInstantToString(subscription.getEndsAt()));

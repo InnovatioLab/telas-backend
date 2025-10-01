@@ -22,17 +22,17 @@ import java.io.Serializable;
 @AllArgsConstructor
 @NoArgsConstructor
 public class ContactRequestDto implements Serializable {
-  @Serial
-  private static final long serialVersionUID = -3963846843873646628L;
+    @Serial
+    private static final long serialVersionUID = -3963846843873646628L;
 
-  @NotEmpty(message = ContactValidationMessages.PHONE_REQUIRED)
-  @Pattern(regexp = SharedConstants.REGEX_ONLY_NUMBERS, message = ContactValidationMessages.PHONE_ONLY_NUMBERS)
-  @Size(min = 11, max = 11, message = ContactValidationMessages.PHONE_SIZE)
-  @JsonDeserialize(using = TrimStringDeserializer.class)
-  private String phone;
+    @NotEmpty(message = ContactValidationMessages.PHONE_REQUIRED)
+    @Pattern(regexp = SharedConstants.REGEX_ONLY_NUMBERS, message = ContactValidationMessages.PHONE_ONLY_NUMBERS)
+    @Size(min = 10, max = 10, message = ContactValidationMessages.PHONE_SIZE)
+    @JsonDeserialize(using = TrimStringDeserializer.class)
+    private String phone;
 
-  @NotEmpty(message = ContactValidationMessages.EMAIL_REQUIRED)
-  @Email(message = ContactValidationMessages.EMAIL_INVALID)
-  @JsonDeserialize(using = TrimStringDeserializer.class)
-  private String email;
+    @NotEmpty(message = ContactValidationMessages.EMAIL_REQUIRED)
+    @Email(message = ContactValidationMessages.EMAIL_INVALID)
+    @JsonDeserialize(using = TrimStringDeserializer.class)
+    private String email;
 }
