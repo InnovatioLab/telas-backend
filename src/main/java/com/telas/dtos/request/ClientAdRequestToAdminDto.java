@@ -27,21 +27,21 @@ import java.util.UUID;
 @NoArgsConstructor
 public class ClientAdRequestToAdminDto implements Serializable {
 
-  @Serial
-  private static final long serialVersionUID = 2132868975487514316L;
+    @Serial
+    private static final long serialVersionUID = 2132868975487514316L;
 
-  private List<UUID> attachmentIds = new ArrayList<>();
+    private List<UUID> attachmentIds = new ArrayList<>();
 
-  @NotEmpty(message = AdValidationMessages.MESSAGE_REQUIRED)
-  @JsonDeserialize(using = TrimStringDeserializer.class)
-  private String message;
+    @NotEmpty(message = AdValidationMessages.MESSAGE_REQUIRED)
+    @JsonDeserialize(using = TrimStringDeserializer.class)
+    private String message;
 
-  @Pattern(regexp = SharedConstants.REGEX_ONLY_NUMBERS, message = ContactValidationMessages.PHONE_ONLY_NUMBERS)
-  @Size(min = 11, max = 11, message = ContactValidationMessages.PHONE_SIZE)
-  @JsonDeserialize(using = TrimStringDeserializer.class)
-  private String phone;
+    @Pattern(regexp = SharedConstants.REGEX_ONLY_NUMBERS, message = ContactValidationMessages.PHONE_ONLY_NUMBERS)
+    @Size(min = 10, max = 10, message = ContactValidationMessages.PHONE_SIZE)
+    @JsonDeserialize(using = TrimStringDeserializer.class)
+    private String phone;
 
-  @Email(message = ContactValidationMessages.EMAIL_INVALID)
-  @JsonDeserialize(using = TrimStringDeserializer.class)
-  private String email;
+    @Email(message = ContactValidationMessages.EMAIL_INVALID)
+    @JsonDeserialize(using = TrimStringDeserializer.class)
+    private String email;
 }

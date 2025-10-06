@@ -14,39 +14,42 @@ import java.util.UUID;
 
 @Getter
 public final class ClientMinResponseDto implements Serializable {
-  @Serial
-  private static final long serialVersionUID = 5288515525105234502L;
+    @Serial
+    private static final long serialVersionUID = 5288515525105234502L;
 
-  private final UUID id;
+    private final UUID id;
 
-  private final String businessName;
+    private final String businessName;
 
-  private final String identificationNumber;
+    private final String identificationNumber;
 
-  private final Role role;
+    private final Role role;
 
-  private final String industry;
+    private final String industry;
 
-  private final DefaultStatus status;
+    private final String websiteUrl;
 
-  private final Contact contact;
+    private final DefaultStatus status;
 
-  private final Owner owner;
+    private final Contact contact;
 
-  private final Instant createdAt;
+    private final Owner owner;
 
-  private final Instant updatedAt;
+    private final Instant createdAt;
 
-  public ClientMinResponseDto(Client entity) {
-    id = entity.getId();
-    businessName = entity.getBusinessName();
-    identificationNumber = entity.getIdentificationNumber();
-    role = entity.getRole();
-    industry = entity.getIndustry();
-    status = entity.getStatus();
-    contact = entity.getContact();
-    owner = entity.getOwner();
-    createdAt = entity.getCreatedAt();
-    updatedAt = entity.getUpdatedAt();
-  }
+    private final Instant updatedAt;
+
+    public ClientMinResponseDto(Client entity) {
+        id = entity.getId();
+        businessName = entity.getBusinessName();
+        identificationNumber = entity.getIdentificationNumber();
+        role = entity.getRole();
+        industry = entity.getIndustry();
+        websiteUrl = entity.getWebsiteUrl();
+        status = entity.getStatus();
+        contact = entity.getContact();
+        owner = entity.getOwner();
+        createdAt = entity.getCreatedAt();
+        updatedAt = entity.getUpdatedAt();
+    }
 }

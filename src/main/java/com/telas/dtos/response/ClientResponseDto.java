@@ -13,60 +13,63 @@ import java.util.UUID;
 
 @Getter
 public final class ClientResponseDto implements Serializable {
-  @Serial
-  private static final long serialVersionUID = 5288515525105234502L;
+    @Serial
+    private static final long serialVersionUID = 5288515525105234502L;
 
-  private final UUID id;
+    private final UUID id;
 
-  private final String businessName;
+    private final String businessName;
 
-  private final String identificationNumber;
+    private final String identificationNumber;
 
-  private final Role role;
+    private final Role role;
 
-  private final String industry;
+    private final String industry;
 
-  private final DefaultStatus status;
+    private final String websiteUrl;
 
-  private final Contact contact;
+    private final DefaultStatus status;
 
-  private final Owner owner;
+    private final Contact contact;
 
-  private final SocialMedia socialMedia;
+    private final Owner owner;
 
-  private final AdRequestClientResponseDto adRequest;
+    private final SocialMedia socialMedia;
 
-  private final Set<Address> addresses;
+    private final AdRequestClientResponseDto adRequest;
 
-  private final List<LinkResponseDto> attachments;
+    private final Set<Address> addresses;
 
-  private final List<AdResponseDto> ads;
+    private final List<LinkResponseDto> attachments;
 
-  private final boolean termAccepted;
+    private final List<AdResponseDto> ads;
 
-  private final boolean hasSubscription;
+    private final boolean termAccepted;
 
-  private final boolean shouldDisplayAttachments;
+    private final boolean hasSubscription;
 
-  private final int currentSubscriptionFlowStep;
+    private final boolean shouldDisplayAttachments;
 
-  public ClientResponseDto(Client entity, List<LinkResponseDto> attachmentUrls, List<AdResponseDto> adsUrls) {
-    id = entity.getId();
-    businessName = entity.getBusinessName();
-    identificationNumber = entity.getIdentificationNumber();
-    role = entity.getRole();
-    industry = entity.getIndustry();
-    status = entity.getStatus();
-    contact = entity.getContact();
-    owner = entity.getOwner();
-    socialMedia = entity.getSocialMedia();
-    adRequest = entity.getAdRequest() != null ? new AdRequestClientResponseDto(entity.getAdRequest()) : null;
-    addresses = entity.getAddresses();
-    attachments = attachmentUrls;
-    ads = adsUrls;
-    termAccepted = entity.isTermsAccepted();
-    currentSubscriptionFlowStep = entity.getSubscriptionFlow() != null ? entity.getSubscriptionFlow().getStep() : 0;
-    hasSubscription = !entity.getSubscriptions().isEmpty();
-    shouldDisplayAttachments = !entity.getAttachments().isEmpty() || !entity.getAds().isEmpty() || !entity.getSubscriptions().isEmpty();
-  }
+    private final int currentSubscriptionFlowStep;
+
+    public ClientResponseDto(Client entity, List<LinkResponseDto> attachmentUrls, List<AdResponseDto> adsUrls) {
+        id = entity.getId();
+        businessName = entity.getBusinessName();
+        identificationNumber = entity.getIdentificationNumber();
+        role = entity.getRole();
+        industry = entity.getIndustry();
+        websiteUrl = entity.getWebsiteUrl();
+        status = entity.getStatus();
+        contact = entity.getContact();
+        owner = entity.getOwner();
+        socialMedia = entity.getSocialMedia();
+        adRequest = entity.getAdRequest() != null ? new AdRequestClientResponseDto(entity.getAdRequest()) : null;
+        addresses = entity.getAddresses();
+        attachments = attachmentUrls;
+        ads = adsUrls;
+        termAccepted = entity.isTermsAccepted();
+        currentSubscriptionFlowStep = entity.getSubscriptionFlow() != null ? entity.getSubscriptionFlow().getStep() : 0;
+        hasSubscription = !entity.getSubscriptions().isEmpty();
+        shouldDisplayAttachments = !entity.getAttachments().isEmpty() || !entity.getAds().isEmpty() || !entity.getSubscriptions().isEmpty();
+    }
 }
