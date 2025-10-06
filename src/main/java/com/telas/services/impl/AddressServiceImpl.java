@@ -63,10 +63,10 @@ public class AddressServiceImpl implements AddressService {
     @Transactional
     public Address getOrCreateAddress(AddressRequestDto addressRequestDto) {
         return repository.findByStreetAndCityAndStateAndZipCode(
-                addressRequestDto.getStreet().trim().toLowerCase(),
-                addressRequestDto.getCity().trim().toLowerCase(),
-                addressRequestDto.getState().trim().toLowerCase(),
-                addressRequestDto.getZipCode().trim().toLowerCase()
+                addressRequestDto.getStreet().toLowerCase(),
+                addressRequestDto.getCity().toLowerCase(),
+                addressRequestDto.getState().toLowerCase(),
+                addressRequestDto.getZipCode().toLowerCase()
         ).orElseGet(() -> save(addressRequestDto));
     }
 
@@ -74,10 +74,10 @@ public class AddressServiceImpl implements AddressService {
     @Transactional
     public Address getOrCreateAddress(AddressRequestDto addressRequestDto, Client client) {
         return repository.findByStreetAndCityAndStateAndZipCodeAndClientId(
-                addressRequestDto.getStreet().trim().toLowerCase(),
-                addressRequestDto.getCity().trim().toLowerCase(),
-                addressRequestDto.getState().trim().toLowerCase(),
-                addressRequestDto.getZipCode().trim().toLowerCase(),
+                addressRequestDto.getStreet().toLowerCase(),
+                addressRequestDto.getCity().toLowerCase(),
+                addressRequestDto.getState().toLowerCase(),
+                addressRequestDto.getZipCode().toLowerCase(),
                 client.getId()
         ).orElseGet(() -> createAddressForClient(addressRequestDto, client));
     }

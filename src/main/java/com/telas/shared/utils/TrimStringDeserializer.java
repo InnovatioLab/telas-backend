@@ -10,6 +10,11 @@ public class TrimStringDeserializer extends JsonDeserializer<String> {
     @Override
     public String deserialize(JsonParser p, DeserializationContext ctxt) throws IOException {
         String value = p.getValueAsString();
-        return ValidateDataUtils.isNullOrEmptyString(value) ? null : value.trim();
+
+        if (ValidateDataUtils.isNullOrEmptyString(value)) {
+            return null;
+        }
+
+        return value.trim().replaceAll("\\s{2,}", " ");
     }
 }

@@ -52,7 +52,7 @@ public class BoxServiceImpl implements BoxService {
         BoxAddress boxAddress = helper.getBoxAddress(request.getBoxAddressId());
         List<Monitor> monitors = ValidateDataUtils.isNullOrEmpty(request.getMonitorIds()) ?
                 Collections.emptyList() :
-                helper.getMonitors(request.getMonitorIds());
+                helper.getMonitorsWithSameAddress(request.getMonitorIds());
 
         Box box = (boxId != null) ? updateBox(request, boxId, boxAddress, monitors) : createBox(boxAddress, monitors);
 

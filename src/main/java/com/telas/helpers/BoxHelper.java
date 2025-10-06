@@ -23,9 +23,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.List;
-import java.util.Map;
-import java.util.UUID;
+import java.util.*;
 
 @Component
 @RequiredArgsConstructor
@@ -53,9 +51,25 @@ public class BoxHelper {
     }
 
     @Transactional(readOnly = true)
-    public List<Monitor> getMonitors(List<UUID> monitorIds) {
-        return monitorRepository.findAllById(monitorIds);
+    public List<Monitor> getMonitorsWithSameAddress(List<UUID> monitorIds) {
+        List<Monitor> monitors = monitorRepository.findAllById(monitorIds);
+
+        if (monitors.isEmpty()) {
+            return Collections.emptyList();
+        }
+
+        UUID addressId = monitors.get(0).getAddress().getId();
+
+        boolean monitorsDifferentAddresses = monitors.stream()
+                .anyMatch(monitor -> !Objects.equals(monitor.getAddress().getId(), addressId));
+
+        if (monitorsDifferentAddresses) {
+            throw new BusinessRuleException(BoxValidationMessages.MONITORS_DIFFERENT_ADDRESSES);
+        }
+
+        return monitors;
     }
+
 
     @Transactional(readOnly = true)
     public Monitor findMonitorById(UUID monitorId) {
