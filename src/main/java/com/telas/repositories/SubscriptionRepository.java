@@ -56,4 +56,7 @@ public interface SubscriptionRepository extends JpaRepository<Subscription, UUID
             @Param("tomorrow") Instant tomorrow
     );
 
+    @Query("SELECT CASE WHEN COUNT(s) > 0 THEN true ELSE false END FROM Subscription s WHERE s.client.id = :clientId")
+    boolean existsByClientId(UUID clientId);
+
 }

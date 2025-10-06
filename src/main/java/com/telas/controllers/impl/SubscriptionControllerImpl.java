@@ -1,5 +1,6 @@
 package com.telas.controllers.impl;
 
+import com.stripe.exception.StripeException;
 import com.telas.controllers.SubscriptionController;
 import com.telas.dtos.request.filters.SubscriptionFilterRequestDto;
 import com.telas.dtos.response.PaginationResponseDto;
@@ -48,6 +49,14 @@ public class SubscriptionControllerImpl implements SubscriptionController {
     public ResponseEntity<?> findById(@PathVariable(name = "id") UUID subscriptionId) {
         return ResponseEntity.status(HttpStatus.OK)
                 .body(ResponseDto.fromData(service.findById(subscriptionId), HttpStatus.OK, MessageCommonsConstants.FIND_ID_SUCCESS_MESSAGE));
+    }
+
+    @Override
+    @GetMapping("/customer-portal")
+    @SecurityRequirement(name = "jwt")
+    public ResponseEntity<?> getCustomerPortalUrl() throws StripeException {
+        return ResponseEntity.status(HttpStatus.OK)
+                .body(ResponseDto.fromData(service.generateCustomerPortalSession(), HttpStatus.OK, MessageCommonsConstants.FIND_ID_SUCCESS_MESSAGE));
     }
 
     @Override

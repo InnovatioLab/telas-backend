@@ -1,5 +1,6 @@
 package com.telas.controllers;
 
+import com.stripe.exception.StripeException;
 import com.telas.dtos.request.filters.SubscriptionFilterRequestDto;
 import com.telas.enums.Recurrence;
 import io.swagger.v3.oas.annotations.Operation;
@@ -33,6 +34,13 @@ public interface SubscriptionController {
             @ApiResponse(responseCode = "404", description = "Subscription not found."),
     })
     ResponseEntity<?> findById(UUID subscriptionId);
+
+    @Operation(summary = "Endpoint contract get stripe customer portal URL", responses = {
+            @ApiResponse(responseCode = "200", description = "Success."),
+            @ApiResponse(responseCode = "401", description = "Unauthorized."),
+            @ApiResponse(responseCode = "403", description = "Forbidden."),
+    })
+    ResponseEntity<?> getCustomerPortalUrl() throws StripeException;
 
     @Operation(summary = "Endpoint contract to renew a one time buy subscription by id", responses = {
             @ApiResponse(responseCode = "200", description = "Subscription successfully renewed."),

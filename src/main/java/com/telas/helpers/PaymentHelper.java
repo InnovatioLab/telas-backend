@@ -222,7 +222,7 @@ public class PaymentHelper {
     @Transactional
     public boolean isRecurringPayment(Subscription subscription, PaymentIntent paymentIntent) {
         String recurrenceStr = paymentIntent.getMetadata().get("recurrence");
-        Recurrence recurrence = !ValidateDataUtils.isNullOrEmptyString(recurrenceStr) && subscription.isUpgrade()
+        Recurrence recurrence = !ValidateDataUtils.isNullOrEmptyString(recurrenceStr)
                 ? Recurrence.valueOf(recurrenceStr)
                 : null;
 
@@ -376,7 +376,7 @@ public class PaymentHelper {
     private Map<String, String> buildNotificationParams(Subscription subscription) {
         Map<String, String> params = new HashMap<>();
         params.put("locations", String.join(". ", subscription.getMonitorAddresses()));
-        params.put("link", getSuccessUrl(subscription.getClient()));
+        params.put("link", "/client/subscriptions/" + subscription.getId());
 
         if (subscription.getEndsAt() != null) {
             params.put("endDate", DateUtils.formatInstantToString(subscription.getEndsAt()));

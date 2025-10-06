@@ -20,7 +20,6 @@ public final class ClientValidationMessages {
     public static final String DIFFERENT_PASSWORDS = "Passwords do not match.";
     public static final String VALIDATION_CODE_NOT_VALIDATED = "User validation code is not validated.";
     public static final String CURRENT_EQUALS_NEW_PASSWORD = "Current password cannot be the same as the new password.";
-    public static final String SOCIAL_MEDIA_REQUIRED = "At least one social media URL must be provided.";
     public static final String MAX_ADS_REACHED = "Client has reached the maximum number of ads allowed.";
     public static final String MONITOR_IN_ACTIVE_SUBSCRIPTION = "Client has an active subscription for the selected monitor.";
     public static final String WISHLIST_NOT_FOUND = "Wishlist not found!";

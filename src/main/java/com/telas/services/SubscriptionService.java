@@ -1,5 +1,6 @@
 package com.telas.services;
 
+import com.stripe.exception.StripeException;
 import com.stripe.model.checkout.Session;
 import com.telas.dtos.request.filters.SubscriptionFilterRequestDto;
 import com.telas.dtos.response.PaginationResponseDto;
@@ -12,6 +13,8 @@ import java.util.UUID;
 
 public interface SubscriptionService {
     String save();
+
+    String generateCustomerPortalSession() throws StripeException;
 
     SubscriptionResponseDto findById(UUID subscriptionId);
 

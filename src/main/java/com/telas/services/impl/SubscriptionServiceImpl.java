@@ -94,13 +94,23 @@ public class SubscriptionServiceImpl implements SubscriptionService {
         entity.setUpgrade(true);
         repository.save(entity);
         return paymentService.process(entity, recurrence);
+    }
 
+    @Override
+    public String generateCustomerPortalSession() throws StripeException {
+        Client client = authenticatedUserService.getLoggedUser().client();
+
+        if (Role.ADMIN.equals(client.getRole())) {
+            return null;
+        }
+        return helper.generateCustomerPortalSession(client);
     }
 
     @Override
     @Transactional
     public String renewSubscription(UUID subscriptionId) {
         Client client = authenticatedUserService.getLoggedUser().client();
+
         if (Role.ADMIN.equals(client.getRole())) {
             return null;
         }
@@ -295,6 +305,7 @@ public class SubscriptionServiceImpl implements SubscriptionService {
             predicates.add(criteriaBuilder.like(criteriaBuilder.lower(root.get("recurrence")), filter));
 
             addDatePredicates(predicates, criteriaBuilder, root, genericFilter);
+            addIdPredicate(predicates, criteriaBuilder, root, genericFilter);
             return criteriaBuilder.or(predicates.toArray(new Predicate[0]));
         });
     }
@@ -305,6 +316,14 @@ public class SubscriptionServiceImpl implements SubscriptionService {
             predicates.add(criteriaBuilder.equal(criteriaBuilder.function("date", LocalDate.class, root.get("startedAt")), date));
             predicates.add(criteriaBuilder.equal(criteriaBuilder.function("date", LocalDate.class, root.get("endsAt")), date));
         } catch (DateTimeParseException ignored) {
+        }
+    }
+
+    private void addIdPredicate(List<Predicate> predicates, CriteriaBuilder criteriaBuilder, Root<Subscription> root, String genericFilter) {
+        try {
+            UUID id = UUID.fromString(genericFilter);
+            predicates.add(criteriaBuilder.equal(root.get("id"), id));
+        } catch (IllegalArgumentException ignored) {
         }
     }
 

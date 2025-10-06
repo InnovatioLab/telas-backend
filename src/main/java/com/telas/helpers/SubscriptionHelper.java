@@ -2,6 +2,8 @@ package com.telas.helpers;
 
 import com.stripe.exception.StripeException;
 import com.stripe.model.Invoice;
+import com.stripe.model.billingportal.Session;
+import com.stripe.param.billingportal.SessionCreateParams;
 import com.telas.dtos.response.MonitorAdResponseDto;
 import com.telas.dtos.response.SubscriptionMonitorResponseDto;
 import com.telas.dtos.response.SubscriptionResponseDto;
@@ -10,6 +12,7 @@ import com.telas.enums.NotificationReference;
 import com.telas.enums.Recurrence;
 import com.telas.enums.SubscriptionStatus;
 import com.telas.infra.exceptions.BusinessRuleException;
+import com.telas.infra.exceptions.ForbiddenException;
 import com.telas.infra.exceptions.ResourceNotFoundException;
 import com.telas.repositories.SubscriptionFlowRepository;
 import com.telas.repositories.SubscriptionRepository;
@@ -32,6 +35,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.util.ObjectUtils;
 
 import java.time.Instant;
 import java.util.*;
@@ -203,7 +207,7 @@ public class SubscriptionHelper {
     public void sendSubscriptionAboutToExpiryEmail(Subscription subscription) {
         Map<String, String> params = new HashMap<>(Map.of(
                 "name", subscription.getClient().getBusinessName(),
-                "link", buildRedirectUrl("subscriptions"),
+                "link", buildRedirectUrl("subscriptions/" + subscription.getId()),
                 "endDate", DateUtils.formatInstantToString(subscription.getEndsAt())
         ));
 
@@ -214,7 +218,7 @@ public class SubscriptionHelper {
     public void sendSubscriptionExpiryTodayEmail(Subscription subscription) {
         Map<String, String> params = new HashMap<>(Map.of(
                 "name", subscription.getClient().getBusinessName(),
-                "link", buildRedirectUrl("subscriptions")
+                "link", buildRedirectUrl("subscriptions/" + subscription.getId())
         ));
 
         notificationService.save(NotificationReference.SUBSCRIPTION_ABOUT_TO_EXPIRY_LAST_DAY, subscription.getClient(), params, true);
@@ -324,7 +328,7 @@ public class SubscriptionHelper {
         Map<String, String> params = new HashMap<>(Map.of(
                 "locations", String.join(". ", subscription.getMonitorAddresses()),
                 "startDate", DateUtils.formatInstantToString(subscription.getStartedAt()),
-                "link", getRedirectUrlAfterCreatingNewSubscription(subscription.getClient())
+                "link", "/client/subscriptions/" + subscription.getId()
         ));
 
         if (subscription.getEndsAt() != null) {
@@ -343,9 +347,12 @@ public class SubscriptionHelper {
         return repository.findActiveSubscriptionsByClientId(id);
     }
 
+    @Transactional
     public void voidLatestInvoice(com.stripe.model.Subscription stripeSubscription) {
         try {
-            Invoice invoice = stripeSubscription.getLatestInvoiceObject();
+            Invoice invoice = stripeSubscription.getLatestInvoiceObject() != null
+                    ? stripeSubscription.getLatestInvoiceObject()
+                    : Invoice.retrieve(stripeSubscription.getLatestInvoice());
             if (invoice == null) {
                 log.warn("No invoices found to void.");
                 return;
@@ -355,5 +362,30 @@ public class SubscriptionHelper {
         } catch (StripeException e) {
             log.error("Error when voiding the last invoice: {}", e.getMessage(), e);
         }
+    }
+
+    @Transactional
+    public String generateCustomerPortalSession(Client client) throws StripeException {
+        if (!repository.existsByClientId(client.getId())) {
+            throw new ForbiddenException(SubscriptionValidationMessages.CLIENT_WITHOUT_SUBSCRIPTIONS);
+        }
+
+        if (ObjectUtils.isEmpty(client.getStripeCustomerId())) {
+            throw new ForbiddenException(SubscriptionValidationMessages.CLIENT_WITHOUT_STRIPE_ID);
+        }
+
+        try {
+            SessionCreateParams params = SessionCreateParams.builder()
+                    .setCustomer(client.getStripeCustomerId())
+                    .setReturnUrl(buildRedirectUrl("subscriptions"))
+                    .build();
+
+            Session session = Session.create(params);
+            return session.getUrl();
+        } catch (StripeException e) {
+            log.error("Error when creating customer portal session for customerId: {}, error: {}", client.getStripeCustomerId(), e.getMessage());
+            throw e;
+        }
+
     }
 }
