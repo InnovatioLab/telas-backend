@@ -3,6 +3,7 @@ package com.telas.dtos.request;
 
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import com.telas.dtos.validation.ValidEIN;
+import com.telas.dtos.validation.ValidUrl;
 import com.telas.enums.DefaultStatus;
 import com.telas.shared.constants.SharedConstants;
 import com.telas.shared.constants.valitation.ClientValidationMessages;
@@ -16,7 +17,6 @@ import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
-import org.hibernate.validator.constraints.URL;
 
 import java.io.Serial;
 import java.io.Serializable;
@@ -45,7 +45,8 @@ public class ClientRequestDto implements Serializable {
     @JsonDeserialize(using = TrimStringDeserializer.class)
     private String industry;
 
-    @URL(message = "Invalid Website URL")
+    @ValidUrl(message = "Invalid website URL format")
+    @Size(max = 255, message = ClientValidationMessages.WEBSITE_URL_SIZE)
     @JsonDeserialize(using = TrimStringDeserializer.class)
     private String websiteUrl;
 
