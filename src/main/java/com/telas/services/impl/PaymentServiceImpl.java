@@ -2,20 +2,16 @@ package com.telas.services.impl;
 
 import com.stripe.exception.StripeException;
 import com.stripe.model.Customer;
-import com.stripe.model.CustomerSearchResult;
 import com.stripe.model.Invoice;
 import com.stripe.model.PaymentIntent;
 import com.stripe.model.checkout.Session;
-import com.stripe.param.CustomerCreateParams;
-import com.stripe.param.CustomerSearchParams;
 import com.stripe.param.checkout.SessionCreateParams;
-import com.telas.entities.Address;
-import com.telas.entities.Client;
 import com.telas.entities.Payment;
 import com.telas.entities.Subscription;
 import com.telas.enums.PaymentStatus;
 import com.telas.enums.Recurrence;
 import com.telas.enums.SubscriptionStatus;
+import com.telas.helpers.ClientHelper;
 import com.telas.helpers.PaymentHelper;
 import com.telas.infra.exceptions.BusinessRuleException;
 import com.telas.infra.exceptions.ResourceNotFoundException;
@@ -48,6 +44,7 @@ public class PaymentServiceImpl implements PaymentService {
     private final SubscriptionRepository subscriptionRepository;
     private final ClientRepository clientRepository;
     private final PaymentHelper helper;
+    private final ClientHelper clientHelper;
 
     @Value("${front.base.url}")
     private String frontBaseUrl;
@@ -178,7 +175,7 @@ public class PaymentServiceImpl implements PaymentService {
     }
 
     private String generateSession(Subscription subscription, Payment payment, Recurrence recurrence) throws StripeException {
-        Customer customer = getOrCreateCustomer(subscription);
+        Customer customer = clientHelper.getOrCreateCustomer(subscription);
         Map<String, String> metaData = helper.createMetaData(subscription, payment, recurrence);
 
         String successUrl = Objects.isNull(recurrence) ? helper.getSuccessUrl(subscription.getClient()) : (frontBaseUrl + "/client/subscriptions");
@@ -214,48 +211,6 @@ public class PaymentServiceImpl implements PaymentService {
         log.info("Finalizing payment update with id: {} and status: {}, attached to subscription with id: {}", payment.getId(), payment.getStatus(), payment.getSubscription().getId());
         subscriptionRepository.save(payment.getSubscription());
         repository.save(payment);
-    }
-
-    private Customer getOrCreateCustomer(Subscription subscription) throws StripeException {
-        Client client = subscription.getClient();
-
-        if (Objects.nonNull(client.getStripeCustomerId())) {
-            try {
-                return Customer.retrieve(client.getStripeCustomerId());
-            } catch (StripeException e) {
-                log.warn("Failed to retrieve Customer from Stripe, creating new one.");
-            }
-        }
-
-        String email = client.getContact().getEmail();
-        CustomerSearchResult result = Customer.search(
-                CustomerSearchParams.builder()
-                        .setQuery("email:'" + email + "'")
-                        .build()
-        );
-
-        Address clientAddress = client.getAddresses().stream().findFirst().orElse(null);
-
-        Customer customer = result.getData().isEmpty()
-                ? Customer.create(CustomerCreateParams.builder()
-                .setEmail(email)
-                .setName(client.getBusinessName())
-                .setPhone(client.getContact().getPhone())
-                .setAddress(CustomerCreateParams.Address.builder()
-                        .setLine1(clientAddress != null ? clientAddress.getStreet() : null)
-                        .setLine2(clientAddress != null ? clientAddress.getComplement() : null)
-                        .setCity(clientAddress != null ? clientAddress.getCity() : null)
-                        .setState(clientAddress != null ? clientAddress.getState() : null)
-                        .setPostalCode(clientAddress != null ? clientAddress.getZipCode() : null)
-                        .setCountry(clientAddress != null ? clientAddress.getCountry() : null)
-                        .build())
-                .build())
-                : result.getData().get(0);
-
-        client.setStripeCustomerId(customer.getId());
-        clientRepository.save(client);
-
-        return customer;
     }
 
     private Payment getPaymentFromIntent(PaymentIntent paymentIntent) {

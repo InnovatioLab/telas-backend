@@ -1,5 +1,10 @@
 package com.telas.helpers;
 
+import com.stripe.exception.StripeException;
+import com.stripe.model.Customer;
+import com.stripe.model.CustomerSearchResult;
+import com.stripe.param.CustomerCreateParams;
+import com.stripe.param.CustomerSearchParams;
 import com.telas.dtos.request.*;
 import com.telas.entities.*;
 import com.telas.enums.AdValidationType;
@@ -252,6 +257,39 @@ public class ClientHelper {
         }
     }
 
+    @Transactional
+    public Customer getOrCreateCustomer(Subscription subscription) throws StripeException {
+        return getOrCreateCustomer(subscription.getClient());
+    }
+
+    @Transactional
+    public Customer getOrCreateCustomer(Client client) throws StripeException {
+        if (Objects.nonNull(client.getStripeCustomerId())) {
+            try {
+                return Customer.retrieve(client.getStripeCustomerId());
+            } catch (StripeException e) {
+                log.warn("Failed to retrieve Customer from Stripe, creating new one.");
+            }
+        }
+
+        String email = client.getContact().getEmail();
+        CustomerSearchResult result = Customer.search(
+                CustomerSearchParams.builder()
+                        .setQuery("email:'" + email + "'")
+                        .build()
+        );
+
+        Address clientAddress = client.getAddresses().stream().findFirst().orElse(null);
+
+        Customer customer = result.getData().isEmpty()
+                ? createCustomer(client, clientAddress)
+                : result.getData().get(0);
+
+        client.setStripeCustomerId(customer.getId());
+        clientRepository.save(client);
+        return customer;
+    }
+
     private List<Monitor> processMonitorsForAd(Collection<Monitor> monitors, Ad ad, Client client) {
         List<Monitor> monitorsToUpdate = new ArrayList<>();
 
@@ -376,5 +414,21 @@ public class ClientHelper {
     @Transactional(readOnly = true)
     public List<Monitor> findClientMonitorsWithActiveSubscriptions(UUID id) {
         return monitorRepository.findMonitorsWithActiveSubscriptionsByClientId(id);
+    }
+
+    private Customer createCustomer(Client client, Address address) throws StripeException {
+        return Customer.create(CustomerCreateParams.builder()
+                .setEmail(client.getContact().getEmail())
+                .setName(client.getBusinessName())
+                .setPhone(client.getContact().getPhone())
+                .setAddress(CustomerCreateParams.Address.builder()
+                        .setLine1(address != null ? address.getStreet() : null)
+                        .setLine2(address != null ? address.getComplement() : null)
+                        .setCity(address != null ? address.getCity() : null)
+                        .setState(address != null ? address.getState() : null)
+                        .setPostalCode(address != null ? address.getZipCode() : null)
+                        .setCountry(address != null ? address.getCountry() : null)
+                        .build())
+                .build());
     }
 }

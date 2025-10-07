@@ -1,6 +1,7 @@
 package com.telas.helpers;
 
 import com.stripe.exception.StripeException;
+import com.stripe.model.Customer;
 import com.stripe.model.Invoice;
 import com.stripe.model.billingportal.Session;
 import com.stripe.param.billingportal.SessionCreateParams;
@@ -375,15 +376,16 @@ public class SubscriptionHelper {
         }
 
         try {
+            Customer customer = clientHelper.getOrCreateCustomer(client);
             SessionCreateParams params = SessionCreateParams.builder()
-                    .setCustomer(client.getStripeCustomerId())
+                    .setCustomer(customer.getId())
                     .setReturnUrl(buildRedirectUrl("subscriptions"))
                     .build();
 
             Session session = Session.create(params);
             return session.getUrl();
         } catch (StripeException e) {
-            log.error("Error when creating customer portal session for customerId: {}, error: {}", client.getStripeCustomerId(), e.getMessage());
+            log.error("Error when creating customer portal session for clientStripeCustomerId: {}, error: {}", client.getStripeCustomerId(), e.getMessage());
             throw e;
         }
 

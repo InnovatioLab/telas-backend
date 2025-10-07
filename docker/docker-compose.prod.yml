@@ -1,51 +1,6 @@
 version: '3'
 
 services:
-  api:
-    image: ghcr.io/${DOCKER_LOGIN}/telas-api:latest
-    environment:
-      TZ: "${TZ}"
-      DB_URL: "${DB_URL}"
-      DB_USER: "${DB_USER}"
-      DB_PASSWORD: "${DB_PASSWORD}"
-      EMAIL_HOST: "${EMAIL_HOST}"
-      EMAIL_PASSWORD: "${EMAIL_PASSWORD}"
-      EMAIL_PORT: "${EMAIL_PORT}"
-      EMAIL_USERNAME: "${EMAIL_USERNAME}"
-      GEOLOCALIZACAO_SERVICE_KEY: "${GEOLOCALIZACAO_SERVICE_KEY}"
-      GEOLOCALIZACAO_SERVICE_URL: "${GEOLOCALIZACAO_SERVICE_URL}"
-      LOKI: "${LOKI}"
-      BUCKET_ACCESS_KEY: "${BUCKET_ACCESS_KEY}"
-      BUCKET_NAME: "${BUCKET_NAME}"
-      BUCKET_ENDPOINT: "${BUCKET_ENDPOINT}"
-      BUCKET_SECRET_KEY: "${BUCKET_SECRET_KEY}"
-      MONITOR_BLOCK_PRICE: "${MONITOR_BLOCK_PRICE}"
-      PAYMENT_GATEWAY_API_KEY: "${PAYMENT_GATEWAY_API_KEY}"
-      PAYMENT_GATEWAY_WEBHOOK_SECRET: "${PAYMENT_GATEWAY_WEBHOOK_SECRET}"
-      TOKEN_SECRET: "${TOKEN_SECRET}"
-      FRONT_BASE_URL: "${FRONT_BASE_URL}"
-      STRIPE_PRODUCT_ID: "${STRIPE_PRODUCT_ID}"
-      RABBITMQ_HOST: "${RABBITMQ_HOST}"
-      RABBITMQ_PORT: "${RABBITMQ_PORT}"
-      RABBITMQ_USER: "${RABBITMQ_USER}"
-      RABBITMQ_PASSWORD: "${RABBITMQ_PASSWORD}"
-      QUEUE_NAME: "${QUEUE_NAME}"
-      EXCHANGE_NAME: "${EXCHANGE_NAME}"
-      ROUTING_KEY: "${ROUTING_KEY}"
-    ports:
-      - "8080:8080"
-    depends_on:
-      - rabbitmq
-      - loki
-    networks:
-      - observability
-    restart: always
-    healthcheck:
-      test: curl --fail http://localhost:8080/api/actuator/health || exit 1
-      interval: 30s
-      timeout: 10s
-      retries: 3
-
   loki:
     container_name: loki_telas
     image: grafana/loki:2.9.0
