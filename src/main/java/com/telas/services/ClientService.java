@@ -15,53 +15,53 @@ import java.util.List;
 import java.util.UUID;
 
 public interface ClientService {
-  void save(ClientRequestDto request);
+    void save(ClientRequestDto request);
 
-  ClientResponseDto findById(UUID id);
+    ClientResponseDto findById(UUID id);
 
-  ClientResponseDto findByIdentificationNumber(String identification);
+    ClientResponseDto findByEmailUnprotected(String email);
 
-  Client findActiveEntityById(UUID id);
+    Client findActiveEntityById(UUID id);
 
-  Client findEntityById(UUID id);
+    Client findEntityById(UUID id);
 
-  ClientResponseDto getDataFromToken();
+    ClientResponseDto getDataFromToken();
 
-  void validateCode(String identification, String codigo);
+    void validateCode(String email, String codigo);
 
-  void resendCode(String identification);
+    void resendCode(String email);
 
-  void createPassword(String identification, PasswordRequestDto request);
+    void createPassword(String email, PasswordRequestDto request);
 
-  void sendResetPasswordCode(String identification);
+    void sendResetPasswordCode(String email);
 
-  void resetPassword(String identificationNumber, PasswordRequestDto request);
+    void resetPassword(String email, PasswordRequestDto request);
 
-  void updatePassword(PasswordUpdateRequestDto request, AuthenticatedUser authClient);
+    void updatePassword(PasswordUpdateRequestDto request, AuthenticatedUser authClient);
 
-  void update(ClientRequestDto request, UUID id);
+    void update(ClientRequestDto request, UUID id);
 
-  void uploadAttachments(List<AttachmentRequestDto> request);
+    void uploadAttachments(List<AttachmentRequestDto> request);
 
-  void requestAdCreation(ClientAdRequestToAdminDto request);
+    void requestAdCreation(ClientAdRequestToAdminDto request);
 
-  void uploadAds(AdRequestDto request, UUID clientId);
+    void uploadAds(AdRequestDto request, UUID clientId);
 
-  void acceptTermsAndConditions();
+    void acceptTermsAndConditions();
 
-  void changeRoleToPartner(UUID clientId);
+    void changeRoleToPartner(UUID clientId);
 
-  void validateAd(UUID adId, AdValidationType validation, RefusedAdRequestDto request);
+    void validateAd(UUID adId, AdValidationType validation, RefusedAdRequestDto request);
 
-  void incrementSubscriptionFlow();
+    void incrementSubscriptionFlow();
 
-  PaginationResponseDto<List<ClientMinResponseDto>> findAllFilters(ClientFilterRequestDto request);
+    PaginationResponseDto<List<ClientMinResponseDto>> findAllFilters(ClientFilterRequestDto request);
 
-  PaginationResponseDto<List<AdRequestAdminResponseDto>> findPendingAdRequest(FilterAdRequestDto request);
+    PaginationResponseDto<List<AdRequestAdminResponseDto>> findPendingAdRequest(FilterAdRequestDto request);
 
-  PaginationResponseDto<List<PendingAdAdminValidationResponseDto>> findPendingAds(AdminFilterAdRequestDto request);
+    PaginationResponseDto<List<PendingAdAdminValidationResponseDto>> findPendingAds(AdminFilterAdRequestDto request);
 
-  void addMonitorToWishlist(UUID monitorId);
+    void addMonitorToWishlist(UUID monitorId);
 
-  WishlistResponseDto getWishlistMonitors();
+    WishlistResponseDto getWishlistMonitors();
 }

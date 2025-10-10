@@ -2,7 +2,6 @@ package com.telas.dtos.request;
 
 
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
-import com.telas.dtos.validation.ValidEIN;
 import com.telas.dtos.validation.ValidUrl;
 import com.telas.enums.DefaultStatus;
 import com.telas.shared.constants.SharedConstants;
@@ -35,11 +34,6 @@ public class ClientRequestDto implements Serializable {
     @JsonDeserialize(using = TrimStringDeserializer.class)
     private String businessName;
 
-    @ValidEIN
-    @JsonDeserialize(using = TrimStringDeserializer.class)
-    private String identificationNumber;
-
-    @NotEmpty(message = ClientValidationMessages.INDUSTRY_REQUIRED)
     @Pattern(regexp = SharedConstants.REGEX_ONLY_LETTERS, message = ClientValidationMessages.INDUSTRY_REGEX)
     @Size(max = 50, message = ClientValidationMessages.INDUSTRY_SIZE)
     @JsonDeserialize(using = TrimStringDeserializer.class)
@@ -54,9 +48,6 @@ public class ClientRequestDto implements Serializable {
 
     @NotNull(message = ClientValidationMessages.CONTACT_REQUIRED)
     private @Valid ContactRequestDto contact;
-
-    @NotNull(message = ClientValidationMessages.OWNER_REQUIRED)
-    private @Valid OwnerRequestDto owner;
 
     @NotNull(message = ClientValidationMessages.ADDRESSES_REQUIRED)
     @NotEmpty(message = ClientValidationMessages.ADDRESSES_REQUIRED)

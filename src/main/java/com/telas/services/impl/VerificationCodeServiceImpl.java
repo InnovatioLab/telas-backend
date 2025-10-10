@@ -20,39 +20,40 @@ import java.util.Random;
 @Service
 @RequiredArgsConstructor
 public class VerificationCodeServiceImpl implements VerificationCodeService {
-  private final VerificationCodeRepository repository;
-  private final EmailService emailService;
-  private final Random random = new Random();
+    private final VerificationCodeRepository repository;
+    private final EmailService emailService;
+    private final Random random = new Random();
 
-  @Override
-  @Transactional
-  public VerificationCode save(CodeType type, Client client) {
-    Instant expiresAt = Instant.now().plus(Duration.ofMinutes(15));
-    VerificationCode verificationCode = new VerificationCode(generateCode(), expiresAt, type);
-    return repository.save(verificationCode);
-  }
-
-  @Override
-  @Transactional
-  public void validate(Client client, String code) {
-    Instant now = Instant.now();
-    Instant expiresAt = client.getVerificationCode().getExpiresAt();
-    boolean invalidCode = !client.getVerificationCode().getCode().equals(code);
-    boolean expiredCode = now.isAfter(expiresAt);
-
-    if (invalidCode || expiredCode) {
-      throw new BusinessRuleException(ClientValidationMessages.INVALID_OR_EXPIRED_CODE);
+    @Override
+    @Transactional
+    public VerificationCode save(CodeType type, Client client) {
+        Instant expiresAt = Instant.now().plus(Duration.ofMinutes(15));
+        VerificationCode verificationCode = new VerificationCode(generateCode(), expiresAt, type);
+        repository.save(verificationCode);
+        return verificationCode;
     }
 
-    client.getVerificationCode().setValidated(true);
-  }
+    @Override
+    @Transactional
+    public void validate(Client client, String code) {
+        Instant now = Instant.now();
+        Instant expiresAt = client.getVerificationCode().getExpiresAt();
+        boolean invalidCode = !client.getVerificationCode().getCode().equals(code);
+        boolean expiredCode = now.isAfter(expiresAt);
 
-  @Override
-  public void send(EmailDataDto emailData) {
-    emailService.send(emailData);
-  }
+        if (invalidCode || expiredCode) {
+            throw new BusinessRuleException(ClientValidationMessages.INVALID_OR_EXPIRED_CODE);
+        }
 
-  String generateCode() {
-    return String.format("%06d", random.nextInt(100000));
-  }
+        client.getVerificationCode().setValidated(true);
+    }
+
+    @Override
+    public void send(EmailDataDto emailData) {
+        emailService.send(emailData);
+    }
+
+    String generateCode() {
+        return String.format("%06d", random.nextInt(100000));
+    }
 }

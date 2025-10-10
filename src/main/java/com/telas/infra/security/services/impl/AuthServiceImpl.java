@@ -1,6 +1,5 @@
 package com.telas.infra.security.services.impl;
 
-import com.telas.entities.Client;
 import com.telas.infra.exceptions.BusinessRuleException;
 import com.telas.infra.exceptions.UnauthorizedException;
 import com.telas.infra.security.model.AuthenticatedUser;
@@ -50,14 +49,14 @@ public class AuthServiceImpl implements AuthService {
 
     @Transactional
     @Override
-    public void sendPasswordRecoveryCode(String identificationNumber) {
-        clientService.sendResetPasswordCode(identificationNumber);
+    public void sendPasswordRecoveryCode(String email) {
+        clientService.sendResetPasswordCode(email);
     }
 
     @Transactional
     @Override
-    public void resetPassword(String identificationNumber, PasswordRequestDto request) {
-        clientService.resetPassword(identificationNumber, request);
+    public void resetPassword(String email, PasswordRequestDto request) {
+        clientService.resetPassword(email, request);
     }
 
     @Transactional
@@ -65,9 +64,6 @@ public class AuthServiceImpl implements AuthService {
     public void updatePassword(PasswordUpdateRequestDto request) {
         request.validate();
         AuthenticatedUser authClient = authenticatedUserService.getLoggedUser();
-        Client client = authClient.client();
-
-
         clientService.updatePassword(request, authClient);
     }
 }

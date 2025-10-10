@@ -27,64 +27,64 @@ import java.util.Set;
 @Service
 @RequiredArgsConstructor
 public class TokenServiceImpl implements TokenService {
-  private final Logger log = LogManager.getLogger(TokenServiceImpl.class);
+    private final Logger log = LogManager.getLogger(TokenServiceImpl.class);
 
-  @Value("${api.security.token.secret}")
-  private String secret;
+    @Value("${api.security.token.secret}")
+    private String secret;
 
-  @Override
-  @Transactional
-  public String generateToken(Client client) {
-    try {
-      Algorithm algorithm = Algorithm.HMAC256(secret);
-      AuthenticatedUser user = new AuthenticatedUser(client);
+    @Override
+    @Transactional
+    public String generateToken(Client client) {
+        try {
+            Algorithm algorithm = Algorithm.HMAC256(secret);
+            AuthenticatedUser user = new AuthenticatedUser(client);
 
-      return JWT.create()
-              .withIssuer(SharedConstants.PROJECT_NAME)
-              .withSubject(client.getId().toString())
-              .withClaim(SharedConstants.PERMISSIONS, new ArrayList<>(getPermissions(user)))
-              .withClaim("id", client.getId().toString())
-              .withClaim("businessName", client.getBusinessName())
-              .withClaim("identificationNumber", client.getIdentificationNumber())
-              .withExpiresAt(genExpirationDate())
-              .sign(algorithm);
-    } catch (JWTCreationException ex) {
-      log.error("Error while generating JWT token, message: {}", ex.getMessage());
-      throw new JWTCreationException(AuthValidationMessageConstants.ERROR_TOKEN_GENERATION, ex);
+            return JWT.create()
+                    .withIssuer(SharedConstants.PROJECT_NAME)
+                    .withSubject(client.getId().toString())
+                    .withClaim(SharedConstants.PERMISSIONS, new ArrayList<>(getPermissions(user)))
+                    .withClaim("id", client.getId().toString())
+                    .withClaim("businessName", client.getBusinessName())
+                    .withClaim("email", client.getContact().getEmail())
+                    .withExpiresAt(genExpirationDate())
+                    .sign(algorithm);
+        } catch (JWTCreationException ex) {
+            log.error("Error while generating JWT token, message: {}", ex.getMessage());
+            throw new JWTCreationException(AuthValidationMessageConstants.ERROR_TOKEN_GENERATION, ex);
+        }
     }
-  }
 
-  @Override
-  @Transactional
-  public TokenData validateToken(String token) {
-    try {
-      Algorithm algorithm = Algorithm.HMAC256(secret);
-      var decodedJWT = JWT.require(algorithm)
-              .withIssuer(SharedConstants.PROJECT_NAME)
-              .build()
-              .verify(token);
+    @Override
+    @Transactional
+    public TokenData validateToken(String token) {
+        try {
+            Algorithm algorithm = Algorithm.HMAC256(secret);
+            var decodedJWT = JWT.require(algorithm)
+                    .withIssuer(SharedConstants.PROJECT_NAME)
+                    .build()
+                    .verify(token);
 
-      Long id = decodedJWT.getClaim("id").asLong();
-      String identificationNumber = decodedJWT.getClaim("identificationNumber").asString();
+            Long id = decodedJWT.getClaim("id").asLong();
+            String email = decodedJWT.getClaim("email").asString();
 
-      return new TokenData(id, identificationNumber);
-    } catch (JWTVerificationException ex) {
-      log.error("Error while verifying JWT token, message: {}", ex.getMessage());
-      return null;
+            return new TokenData(id, email);
+        } catch (JWTVerificationException ex) {
+            log.error("Error while verifying JWT token, message: {}", ex.getMessage());
+            return null;
+        }
     }
-  }
 
 
-  Instant genExpirationDate() {
-    return LocalDateTime.now(ZoneOffset.UTC).plusMinutes(30L).toInstant(ZoneOffset.UTC);
-  }
+    Instant genExpirationDate() {
+        return LocalDateTime.now(ZoneOffset.UTC).plusMinutes(30L).toInstant(ZoneOffset.UTC);
+    }
 
 
-  Set<String> getPermissions(AuthenticatedUser authenticatedUser) {
-    Set<String> set = new HashSet<>();
-    authenticatedUser.getAuthorities().forEach(permission ->
-            set.add(String.valueOf(permission))
-    );
-    return set;
-  }
+    Set<String> getPermissions(AuthenticatedUser authenticatedUser) {
+        Set<String> set = new HashSet<>();
+        authenticatedUser.getAuthorities().forEach(permission ->
+                set.add(String.valueOf(permission))
+        );
+        return set;
+    }
 }

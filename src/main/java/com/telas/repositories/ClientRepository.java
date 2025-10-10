@@ -15,11 +15,6 @@ import java.util.UUID;
 
 @Repository
 public interface ClientRepository extends JpaRepository<Client, UUID>, JpaSpecificationExecutor<Client> {
-    @Query("SELECT CASE WHEN COUNT(c) > 0 THEN true ELSE false END " +
-            "FROM Client c " +
-            "WHERE c.identificationNumber = :identificationNumber")
-    boolean existsByIdentificationNumber(String identificationNumber);
-
     @NotNull
     @Override
     @Query("SELECT c FROM Client c JOIN FETCH c.addresses WHERE c.id = :id")
@@ -31,18 +26,8 @@ public interface ClientRepository extends JpaRepository<Client, UUID>, JpaSpecif
     @Query("SELECT c FROM Client c JOIN FETCH c.addresses LEFT JOIN c.attachments LEFT JOIN c.ads LEFT JOIN c.subscriptions WHERE c.id = :id AND c.status = 'ACTIVE'")
     Optional<Client> findActiveIdFromToken(UUID id);
 
-    @Query(value = """
-            SELECT c.* 
-            FROM clients c 
-            INNER JOIN addresses ad ON c.id = ad.client_id 
-            LEFT JOIN ad_requests ar ON c.id = ar.client_id 
-            WHERE c.identification_number = :identificationNumber AND c.status = 'ACTIVE'
-            """, nativeQuery = true)
-    Optional<Client> findActiveByIdentificationNumber(String identificationNumber);
-
-
-    @Query("SELECT c FROM Client c JOIN FETCH c.addresses LEFT JOIN c.attachments LEFT JOIN c.ads LEFT JOIN c.subscriptions WHERE c.identificationNumber = :identificationNumber")
-    Optional<Client> findByIdentificationNumber(String identificationNumber);
+    @Query("SELECT c FROM Client c JOIN FETCH c.addresses LEFT JOIN c.attachments LEFT JOIN c.ads LEFT JOIN c.subscriptions WHERE c.contact.email = :email")
+    Optional<Client> findByEmail(String email);
 
     @Query("SELECT c FROM Client c WHERE c.role = 'ADMIN'")
     List<Client> findAllAdmins();

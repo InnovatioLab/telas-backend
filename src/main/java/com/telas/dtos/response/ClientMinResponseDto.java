@@ -2,7 +2,6 @@ package com.telas.dtos.response;
 
 import com.telas.entities.Client;
 import com.telas.entities.Contact;
-import com.telas.entities.Owner;
 import com.telas.enums.DefaultStatus;
 import com.telas.enums.Role;
 import lombok.Getter;
@@ -21,8 +20,6 @@ public final class ClientMinResponseDto implements Serializable {
 
     private final String businessName;
 
-    private final String identificationNumber;
-
     private final Role role;
 
     private final String industry;
@@ -33,8 +30,6 @@ public final class ClientMinResponseDto implements Serializable {
 
     private final Contact contact;
 
-    private final Owner owner;
-
     private final Instant createdAt;
 
     private final Instant updatedAt;
@@ -42,13 +37,11 @@ public final class ClientMinResponseDto implements Serializable {
     public ClientMinResponseDto(Client entity) {
         id = entity.getId();
         businessName = entity.getBusinessName();
-        identificationNumber = entity.getIdentificationNumber();
         role = entity.getRole();
         industry = entity.getIndustry();
         websiteUrl = entity.getWebsiteUrl();
         status = entity.getStatus();
         contact = entity.getContact();
-        owner = entity.getOwner();
         createdAt = entity.getCreatedAt();
         updatedAt = entity.getUpdatedAt();
     }

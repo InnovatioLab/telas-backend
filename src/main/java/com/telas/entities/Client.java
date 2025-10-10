@@ -43,9 +43,6 @@ public class Client extends BaseAudit implements Serializable {
     @Column(name = "business_name")
     private String businessName;
 
-    @Column(name = "identification_number", nullable = false, unique = true)
-    private String identificationNumber;
-
     @NotAudited
     @Column(name = "password", columnDefinition = "TEXT")
     private String password;
@@ -54,7 +51,7 @@ public class Client extends BaseAudit implements Serializable {
     @Enumerated(EnumType.STRING)
     private Role role = Role.CLIENT;
 
-    @Column(name = "industry", nullable = false)
+    @Column(name = "industry")
     private String industry;
 
     @Column(name = "website_url", columnDefinition = "TEXT")
@@ -88,16 +85,12 @@ public class Client extends BaseAudit implements Serializable {
     @JoinColumn(name = "contact_id", referencedColumnName = "id", nullable = false)
     private Contact contact;
 
-    @ManyToOne(cascade = CascadeType.ALL)
-    @JoinColumn(name = "owner_id", referencedColumnName = "id", nullable = false)
-    private Owner owner;
-
     @OneToOne(cascade = CascadeType.ALL, orphanRemoval = true)
     @JoinColumn(name = "social_media_id", referencedColumnName = "id")
     private SocialMedia socialMedia;
 
     @JsonIgnore
-    @OneToOne(mappedBy = "client")
+    @OneToOne(mappedBy = "client", cascade = CascadeType.ALL)
     private AdRequest adRequest;
 
     @NotAudited
@@ -121,14 +114,11 @@ public class Client extends BaseAudit implements Serializable {
     @OneToMany(mappedBy = "client", cascade = CascadeType.ALL)
     private List<Notification> notifications = new ArrayList<>();
 
-    public Client(ClientRequestDto request, Owner owner) {
+    public Client(ClientRequestDto request) {
         businessName = request.getBusinessName();
-        identificationNumber = request.getIdentificationNumber();
         industry = request.getIndustry();
         websiteUrl = request.getWebsiteUrl();
         status = request.getStatus();
-        this.owner = owner;
-        owner.getClients().add(this);
         contact = new Contact(request.getContact());
         wishlist = new Wishlist(this);
 
@@ -147,7 +137,6 @@ public class Client extends BaseAudit implements Serializable {
         industry = request.getIndustry();
         websiteUrl = request.getWebsiteUrl();
         contact.update(request.getContact());
-        owner.update(request.getOwner());
 
         if (request.getSocialMedia() != null) {
             if (socialMedia == null) {
@@ -176,14 +165,12 @@ public class Client extends BaseAudit implements Serializable {
     private void setUsernameCreateForRelatedEntities(String username) {
         setUsernameCreate(username);
         contact.setUsernameCreate(username);
-        owner.setUsernameCreate(Optional.ofNullable(owner.getUsernameCreate()).orElse(username));
         Optional.ofNullable(socialMedia).ifPresent(sm -> sm.setUsernameCreate(username));
     }
 
     private void setUsernameUpdateForRelatedEntities(String username) {
         setUsernameUpdate(username);
         contact.setUsernameUpdate(username);
-        owner.setUsernameUpdate(username);
         Optional.ofNullable(socialMedia).ifPresent(sm -> sm.setUsernameUpdate(username));
     }
 

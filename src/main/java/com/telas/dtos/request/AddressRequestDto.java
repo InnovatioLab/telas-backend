@@ -22,44 +22,44 @@ import java.util.UUID;
 @AllArgsConstructor
 @NoArgsConstructor
 public class AddressRequestDto implements Serializable {
-  @Serial
-  private static final long serialVersionUID = -3963846843873646628L;
+    @Serial
+    private static final long serialVersionUID = -3963846843873646628L;
 
-  private UUID id;
+    private UUID id;
 
-  @NotEmpty(message = AddressValidationMessages.STREET_REQUIRED)
-  @Size(max = 100, message = AddressValidationMessages.STREET_SIZE)
-  @JsonDeserialize(using = TrimStringDeserializer.class)
-  private String street;
+    @NotEmpty(message = AddressValidationMessages.STREET_REQUIRED)
+    @Size(max = 100, message = AddressValidationMessages.STREET_SIZE)
+    @JsonDeserialize(using = TrimStringDeserializer.class)
+    private String street;
 
-  @NotEmpty(message = AddressValidationMessages.ZIP_CODE_REQUIRED)
-  @Size(min = 5, max = 5, message = AddressValidationMessages.ZIP_CODE_SIZE)
-  @Pattern(regexp = SharedConstants.REGEX_ONLY_NUMBERS, message = AddressValidationMessages.ZIP_CODE_REGEX)
-  @JsonDeserialize(using = TrimStringDeserializer.class)
-  private String zipCode;
+    @NotEmpty(message = AddressValidationMessages.ZIP_CODE_REQUIRED)
+    @Size(min = 5, max = 5, message = AddressValidationMessages.ZIP_CODE_SIZE)
+    @Pattern(regexp = SharedConstants.REGEX_ONLY_NUMBERS, message = AddressValidationMessages.ZIP_CODE_REGEX)
+    @JsonDeserialize(using = TrimStringDeserializer.class)
+    private String zipCode;
 
-  @NotEmpty(message = AddressValidationMessages.CITY_REQUIRED)
-  @Size(max = 50, message = AddressValidationMessages.CITY_SIZE)
-  @Pattern(regexp = SharedConstants.REGEX_ALPHANUMERIC, message = AddressValidationMessages.CITY_REGEX)
-  @JsonDeserialize(using = TrimStringDeserializer.class)
-  private String city;
+    @NotEmpty(message = AddressValidationMessages.CITY_REQUIRED)
+    @Size(max = 50, message = AddressValidationMessages.CITY_SIZE)
+    @Pattern(regexp = SharedConstants.REGEX_ALPHANUMERIC, message = AddressValidationMessages.CITY_REGEX)
+    @JsonDeserialize(using = TrimStringDeserializer.class)
+    private String city;
 
-  @NotEmpty(message = AddressValidationMessages.STATE_REQUIRED)
-  @Size(min = 2, max = 2, message = AddressValidationMessages.STATE_SIZE)
-  @Pattern(regexp = SharedConstants.REGEX_ONLY_LETTERS, message = AddressValidationMessages.STATE_REGEX)
-  @JsonDeserialize(using = TrimStringDeserializer.class)
-  private String state;
+    @NotEmpty(message = AddressValidationMessages.STATE_REQUIRED)
+    @Size(min = 2, max = 2, message = AddressValidationMessages.STATE_SIZE)
+    @Pattern(regexp = SharedConstants.REGEX_ONLY_LETTERS, message = AddressValidationMessages.STATE_REGEX)
+    @JsonDeserialize(using = TrimStringDeserializer.class)
+    private String state;
 
-  @Size(max = 100, message = AddressValidationMessages.COUNTRY_SIZE)
-  @Pattern(regexp = SharedConstants.REGEX_ONLY_LETTERS, message = AddressValidationMessages.COUNTRY_REGEX)
-  @JsonDeserialize(using = TrimStringDeserializer.class)
-  private String country;
+    @Size(max = 50, message = AddressValidationMessages.COUNTRY_SIZE)
+    @Pattern(regexp = SharedConstants.REGEX_ONLY_LETTERS, message = AddressValidationMessages.COUNTRY_REGEX)
+    @JsonDeserialize(using = TrimStringDeserializer.class)
+    private String country;
 
-  @Size(max = 100, message = AddressValidationMessages.COMPLEMENT_SIZE)
-  @JsonDeserialize(using = TrimStringDeserializer.class)
-  private String complement;
+    @Size(max = 100, message = AddressValidationMessages.ADDRESS2_SIZE)
+    @JsonDeserialize(using = TrimStringDeserializer.class)
+    private String address2;
 
-  private Double latitude;
+    private Double latitude;
 
-  private Double longitude;
+    private Double longitude;
 }

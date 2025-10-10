@@ -10,48 +10,48 @@ import java.util.Collection;
 import java.util.List;
 
 public record AuthenticatedUser(Client client) implements UserDetails {
-  @Override
-  public Collection<? extends GrantedAuthority> getAuthorities() {
-    return List.of();
-  }
+    @Override
+    public Collection<? extends GrantedAuthority> getAuthorities() {
+        return List.of();
+    }
 
-  @JsonIgnore
-  @Override
-  public String getPassword() {
-    return client.getPassword();
-  }
+    @JsonIgnore
+    @Override
+    public String getPassword() {
+        return client.getPassword();
+    }
 
-  @Override
-  public String getUsername() {
-    return client.getIdentificationNumber();
-  }
+    @Override
+    public String getUsername() {
+        return client.getContact().getEmail();
+    }
 
-  @Override
-  public boolean isAccountNonExpired() {
-    return true;
-  }
+    @Override
+    public boolean isAccountNonExpired() {
+        return true;
+    }
 
-  @Override
-  public boolean isAccountNonLocked() {
-    return true;
-  }
+    @Override
+    public boolean isAccountNonLocked() {
+        return true;
+    }
 
-  @Override
-  public boolean isCredentialsNonExpired() {
-    return true;
-  }
+    @Override
+    public boolean isCredentialsNonExpired() {
+        return true;
+    }
 
-  @JsonIgnore
-  @Override
-  public boolean isEnabled() {
-    return DefaultStatus.ACTIVE.equals(client.getStatus());
-  }
+    @JsonIgnore
+    @Override
+    public boolean isEnabled() {
+        return DefaultStatus.ACTIVE.equals(client.getStatus());
+    }
 
-  public boolean isAdmin() {
-    return client.isAdmin();
-  }
+    public boolean isAdmin() {
+        return client.isAdmin();
+    }
 
-  public boolean isTermsAccepted() {
-    return client.isTermsAccepted();
-  }
+    public boolean isTermsAccepted() {
+        return client.isTermsAccepted();
+    }
 }

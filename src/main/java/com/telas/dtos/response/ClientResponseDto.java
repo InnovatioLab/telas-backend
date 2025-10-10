@@ -1,6 +1,9 @@
 package com.telas.dtos.response;
 
-import com.telas.entities.*;
+import com.telas.entities.Address;
+import com.telas.entities.Client;
+import com.telas.entities.Contact;
+import com.telas.entities.SocialMedia;
 import com.telas.enums.DefaultStatus;
 import com.telas.enums.Role;
 import lombok.Getter;
@@ -20,8 +23,6 @@ public final class ClientResponseDto implements Serializable {
 
     private final String businessName;
 
-    private final String identificationNumber;
-
     private final Role role;
 
     private final String industry;
@@ -31,8 +32,6 @@ public final class ClientResponseDto implements Serializable {
     private final DefaultStatus status;
 
     private final Contact contact;
-
-    private final Owner owner;
 
     private final SocialMedia socialMedia;
 
@@ -55,13 +54,11 @@ public final class ClientResponseDto implements Serializable {
     public ClientResponseDto(Client entity, List<LinkResponseDto> attachmentUrls, List<AdResponseDto> adsUrls) {
         id = entity.getId();
         businessName = entity.getBusinessName();
-        identificationNumber = entity.getIdentificationNumber();
         role = entity.getRole();
         industry = entity.getIndustry();
         websiteUrl = entity.getWebsiteUrl();
         status = entity.getStatus();
         contact = entity.getContact();
-        owner = entity.getOwner();
         socialMedia = entity.getSocialMedia();
         adRequest = entity.getAdRequest() != null ? new AdRequestClientResponseDto(entity.getAdRequest()) : null;
         addresses = entity.getAddresses();

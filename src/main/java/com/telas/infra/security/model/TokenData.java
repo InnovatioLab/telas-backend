@@ -7,5 +7,5 @@ import lombok.Getter;
 @AllArgsConstructor
 public class TokenData {
     private Long id;
-    private String identificationNumber;
+    private String email;
 }

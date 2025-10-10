@@ -1,5 +1,6 @@
 package com.telas.infra.security.services.impl;
 
+import com.telas.enums.DefaultStatus;
 import com.telas.infra.security.model.AuthenticatedUser;
 import com.telas.repositories.ClientRepository;
 import com.telas.shared.constants.valitation.ClientValidationMessages;
@@ -17,8 +18,9 @@ public class UserDetailsServiceImpl implements UserDetailsService {
 
     @Override
     @Transactional(readOnly = true)
-    public UserDetails loadUserByUsername(String identificationNumber) throws UsernameNotFoundException {
-        return clientRepository.findActiveByIdentificationNumber(identificationNumber)
+    public UserDetails loadUserByUsername(String email) throws UsernameNotFoundException {
+        return clientRepository.findByEmail(email)
+                .filter(data -> DefaultStatus.ACTIVE.equals(data.getStatus()))
                 .map(AuthenticatedUser::new)
                 .orElseThrow(() -> new UsernameNotFoundException(ClientValidationMessages.USER_NOT_FOUND));
 

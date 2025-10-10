@@ -10,9 +10,9 @@ import org.springframework.validation.annotation.Validated;
 public interface AuthService {
     String login(@Validated LoginRequestDto requestDto) throws JsonProcessingException;
 
-    void sendPasswordRecoveryCode(String identificationNumber);
+    void sendPasswordRecoveryCode(String email);
 
-    void resetPassword(String identificationNumber, @Valid PasswordRequestDto request);
+    void resetPassword(String email, @Valid PasswordRequestDto request);
 
     void updatePassword(@Valid PasswordUpdateRequestDto request);
 }

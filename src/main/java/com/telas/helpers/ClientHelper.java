@@ -38,7 +38,6 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class ClientHelper {
     private final Logger log = LoggerFactory.getLogger(ClientHelper.class);
-    private final OwnerRepository ownerRepository;
     private final ClientRepository clientRepository;
     private final MonitorRepository monitorRepository;
     private final ContactRepository contactRepository;
@@ -60,7 +59,6 @@ public class ClientHelper {
     @Transactional(readOnly = true)
     public void validateClientRequest(ClientRequestDto request, Client client) {
         request.validate();
-        verifyUniqueIdentificationNumber(request, client);
         verifyUniqueEmail(request, client);
     }
 
@@ -68,21 +66,6 @@ public class ClientHelper {
     public void verifyValidationCode(Client client) {
         if (!client.getVerificationCode().isValidated()) {
             throw new BusinessRuleException(ClientValidationMessages.VALIDATION_CODE_NOT_VALIDATED);
-        }
-    }
-
-    @Transactional(readOnly = true)
-    public void validateIdentification(String identification) {
-        if (ValidateDataUtils.isNullOrEmptyString(identification)) {
-            throw new BusinessRuleException(OwnerValidationMessages.IDENTIFICATION_NUMBER_REQUIRED);
-        }
-
-        if (!ValidateDataUtils.containsOnlyNumbers(identification)) {
-            throw new BusinessRuleException(OwnerValidationMessages.IDENTIFICATION_NUMBER_REGEX);
-        }
-
-        if (identification.length() != 9) {
-            throw new BusinessRuleException(OwnerValidationMessages.IDENTIFICATION_NUMBER_SIZE);
         }
     }
 
@@ -121,49 +104,33 @@ public class ClientHelper {
         return attachmentRepository.findByIdIn(attachmentsIds).orElseThrow(() -> new ResourceNotFoundException(AttachmentValidationMessages.ATTACHMENTS_NOT_FOUND));
     }
 
+//    void verifyUniqueEmail(ClientRequestDto request, Client client) {
+//        String newEmail = request.getContact().getEmail();
+//
+//        if (client == null && contactRepository.existsByEmail(newEmail)) {
+//            throw new BusinessRuleException(ClientValidationMessages.EMAIL_UNIQUE);
+//        }
+//
+//        if (client != null) {
+//            if (!client.getContact().getEmail().equals(newEmail) && contactRepository.existsByEmail(newEmail)) {
+//                throw new BusinessRuleException(ClientValidationMessages.EMAIL_UNIQUE);
+//            }
+//        }
+//    }
+
     void verifyUniqueEmail(ClientRequestDto request, Client client) {
         String newEmail = request.getContact().getEmail();
 
+        if (contactRepository.existsByEmail(newEmail)) {
+            boolean isNewClient = client == null;
+            boolean isEmailChanged = client != null && !client.getContact().getEmail().equals(newEmail);
 
-        if (client == null && contactRepository.existsByEmail(newEmail)) {
-            throw new BusinessRuleException(ClientValidationMessages.EMAIL_UNIQUE);
-        }
-
-        if (client != null) {
-            String newEmailOwner = request.getOwner().getEmail();
-
-            if (isEmailChanged(client.getOwner().getEmail(), newEmailOwner) && ownerRepository.existsByEmail(newEmailOwner)) {
-                throw new BusinessRuleException(ClientValidationMessages.OWNER_EMAIL_UNIQUE);
+            if (isNewClient || isEmailChanged) {
+                throw new BusinessRuleException(ClientValidationMessages.EMAIL_UNIQUE);
             }
         }
     }
 
-    void verifyUniqueIdentificationNumber(ClientRequestDto request, Client client) {
-        String newIdNumber = request.getIdentificationNumber();
-
-        if (client == null && clientRepository.existsByIdentificationNumber(newIdNumber)) {
-            throw new BusinessRuleException(ClientValidationMessages.IDENTIFICATION_NUMBER_UNIQUE);
-        }
-
-        if (client != null && isIdNumberChanged(client.getIdentificationNumber(), newIdNumber) && clientRepository.existsByIdentificationNumber(newIdNumber)) {
-            throw new BusinessRuleException(ClientValidationMessages.IDENTIFICATION_NUMBER_UNIQUE);
-        }
-    }
-
-    private boolean isEmailChanged(String currentEmail, String newEmail) {
-        if (currentEmail == null && newEmail == null) {
-            return false;
-        }
-        if (currentEmail == null || newEmail == null) {
-            return true;
-        }
-        return !currentEmail.equals(newEmail);
-    }
-
-
-    private boolean isIdNumberChanged(String currentId, String newId) {
-        return !currentId.equals(newId);
-    }
 
     @Transactional(readOnly = true)
     public Ad getAdById(UUID adId) {
@@ -392,25 +359,6 @@ public class ClientHelper {
         clientRepository.save(client);
     }
 
-    @Transactional
-    public Owner getOrCreateOwner(OwnerRequestDto owner) {
-        Owner existingOwner = ownerRepository.findByIdentificationNumber(owner.getIdentificationNumber())
-                .orElseGet(() -> {
-                    String email = owner.getEmail();
-                    if (email != null && !email.isEmpty()) {
-                        return ownerRepository.findByEmail(email).orElse(null);
-                    }
-                    return null;
-                });
-
-        if (existingOwner != null) {
-            return existingOwner;
-        }
-
-        Owner newOwner = new Owner(owner);
-        return ownerRepository.save(newOwner);
-    }
-
     @Transactional(readOnly = true)
     public List<Monitor> findClientMonitorsWithActiveSubscriptions(UUID id) {
         return monitorRepository.findMonitorsWithActiveSubscriptionsByClientId(id);
@@ -423,7 +371,7 @@ public class ClientHelper {
                 .setPhone(client.getContact().getPhone())
                 .setAddress(CustomerCreateParams.Address.builder()
                         .setLine1(address != null ? address.getStreet() : null)
-                        .setLine2(address != null ? address.getComplement() : null)
+                        .setLine2(address != null ? address.getAddress2() : null)
                         .setCity(address != null ? address.getCity() : null)
                         .setState(address != null ? address.getState() : null)
                         .setPostalCode(address != null ? address.getZipCode() : null)
@@ -431,4 +379,16 @@ public class ClientHelper {
                         .build())
                 .build());
     }
+
+    @Transactional
+    public void validateEmail(String email) {
+        if (ValidateDataUtils.isNullOrEmptyString(email)) {
+            throw new BusinessRuleException(ContactValidationMessages.EMAIL_REQUIRED);
+        }
+
+        if (!email.matches("^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}$")) {
+            throw new BusinessRuleException(ContactValidationMessages.EMAIL_INVALID);
+        }
+    }
+
 }

@@ -194,6 +194,7 @@ public class PaymentServiceImpl implements PaymentService {
                 .setClientReferenceId(subscription.getClient().getId().toString());
 
         if (isSubscription) {
+            metaData.put("invoice_description", "Invoice payment for your Tela's Subscription for monitors: " + subscription.getMonitorAddresses());
             helper.configureSubscriptionParams(paramsBuilder, subscription, metaData, recurrence);
         } else {
             helper.configurePaymentParams(paramsBuilder, subscription, customer, metaData, recurrence);

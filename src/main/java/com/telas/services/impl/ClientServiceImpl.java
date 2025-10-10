@@ -71,9 +71,8 @@ public class ClientServiceImpl implements ClientService {
     @Transactional
     public void save(ClientRequestDto request) {
         helper.validateClientRequest(request, null);
-        Owner owner = helper.getOrCreateOwner(request.getOwner());
 
-        Client client = new Client(request, owner);
+        Client client = new Client(request);
         VerificationCode verificationCode = verificationCodeService.save(CodeType.CONTACT, client);
         client.setVerificationCode(verificationCode);
 
@@ -95,8 +94,8 @@ public class ClientServiceImpl implements ClientService {
 
     @Override
     @Transactional(readOnly = true)
-    public ClientResponseDto findByIdentificationNumber(String identification) {
-        return repository.findByIdentificationNumber(identification)
+    public ClientResponseDto findByEmailUnprotected(String email) {
+        return repository.findByEmail(email)
                 .map(this::buildClientResponse)
                 .orElseThrow(() -> new ResourceNotFoundException(ClientValidationMessages.USER_NOT_FOUND));
     }
@@ -124,18 +123,18 @@ public class ClientServiceImpl implements ClientService {
 
     @Override
     @Transactional
-    public void validateCode(String identification, String codigo) {
-        helper.validateIdentification(identification);
-        Client client = findByIdentification(identification);
+    public void validateCode(String email, String codigo) {
+        helper.validateEmail(email);
+        Client client = findByEmail(email);
         verificationCodeService.validate(client, codigo);
         repository.save(client);
     }
 
     @Override
-    @Transactional(readOnly = true)
-    public void resendCode(String identification) {
-        helper.validateIdentification(identification);
-        Client client = findByIdentification(identification);
+    @Transactional
+    public void resendCode(String email) {
+        helper.validateEmail(email);
+        Client client = findByEmail(email);
         VerificationCode verificationCode = verificationCodeService.save(CodeType.CONTACT, client);
         client.setVerificationCode(verificationCode);
         repository.save(client);
@@ -150,10 +149,10 @@ public class ClientServiceImpl implements ClientService {
 
     @Override
     @Transactional
-    public void createPassword(String identification, PasswordRequestDto request) {
+    public void createPassword(String email, PasswordRequestDto request) {
         request.validate();
-        helper.validateIdentification(identification);
-        Client client = findByIdentification(identification);
+        helper.validateEmail(email);
+        Client client = findByEmail(email);
 
         if (!DefaultStatus.ACTIVE.equals(client.getStatus())) {
             helper.verifyValidationCode(client);
@@ -166,9 +165,9 @@ public class ClientServiceImpl implements ClientService {
 
     @Override
     @Transactional(readOnly = true)
-    public void sendResetPasswordCode(String identification) {
-        helper.validateIdentification(identification);
-        Client client = findActiveByIdentification(identification);
+    public void sendResetPasswordCode(String email) {
+//        helper.validateEmail(identification);
+        Client client = findActiveByEmail(email);
 
         VerificationCode verificationCode = verificationCodeService.save(CodeType.PASSWORD, client);
         client.setVerificationCode(verificationCode);
@@ -184,10 +183,9 @@ public class ClientServiceImpl implements ClientService {
 
     @Override
     @Transactional
-    public void resetPassword(String identificationNumber, PasswordRequestDto request) {
+    public void resetPassword(String email, PasswordRequestDto request) {
         request.validate();
-        helper.validateIdentification(identificationNumber);
-        Client client = findActiveByIdentification(identificationNumber);
+        Client client = findActiveByEmail(email);
 
         if (!CodeType.PASSWORD.equals(client.getVerificationCode().getCodeType())) {
             throw new BusinessRuleException(AuthValidationMessageConstants.INVALID_CODE_TYPE_FOR_PASSWORD_UPDATE);
@@ -464,18 +462,10 @@ public class ClientServiceImpl implements ClientService {
         String filter = "%" + genericFilter.toLowerCase() + "%";
 
         return specification.and((root, query, criteriaBuilder) -> criteriaBuilder.or(
-                criteriaBuilder.like(criteriaBuilder.lower(
-                        criteriaBuilder.concat(
-                                criteriaBuilder.concat(root.get("owner").get("firstName"), " "),
-                                root.get("owner").get("lastName"))), filter),
                 criteriaBuilder.like(criteriaBuilder.lower(root.get("businessName")), filter),
                 criteriaBuilder.like(criteriaBuilder.lower(root.get("industry")), filter),
                 criteriaBuilder.like(root.get("contact").get("email"), filter),
-                criteriaBuilder.like(root.get("owner").get("email"), filter),
                 criteriaBuilder.equal(root.get("contact").get("phone"), genericFilter),
-                criteriaBuilder.equal(root.get("owner").get("phone"), genericFilter),
-                criteriaBuilder.like(root.get("identificationNumber"), filter),
-                criteriaBuilder.like(root.get("owner").get("identificationNumber"), filter),
                 criteriaBuilder.equal(root.get("status"), genericFilter),
                 criteriaBuilder.equal(root.get("role"), genericFilter)
         ));
@@ -489,9 +479,6 @@ public class ClientServiceImpl implements ClientService {
             predicates.add(criteriaBuilder.like(
                     criteriaBuilder.lower(root.get("client").get("businessName")),
                     filter
-            ));
-            predicates.add(criteriaBuilder.like(
-                    root.get("client").get("identificationNumber"), filter
             ));
             predicates.add(criteriaBuilder.like(
                     root.get("client").get("contact").get("email"), filter
@@ -524,9 +511,6 @@ public class ClientServiceImpl implements ClientService {
             predicates.add(criteriaBuilder.like(
                     criteriaBuilder.lower(root.get("client").get("businessName")),
                     filter
-            ));
-            predicates.add(criteriaBuilder.like(
-                    root.get("client").get("identificationNumber"), filter
             ));
             predicates.add(criteriaBuilder.like(
                     root.get("name"), filter
@@ -566,13 +550,14 @@ public class ClientServiceImpl implements ClientService {
         return new ClientResponseDto(client, attachmentLinks, ads);
     }
 
-    protected Client findActiveByIdentification(String identification) {
-        return repository.findActiveByIdentificationNumber(identification)
+    protected Client findActiveByEmail(String email) {
+        return repository.findByEmail(email)
+                .filter(client -> DefaultStatus.ACTIVE.equals(client.getStatus()))
                 .orElseThrow(() -> new ResourceNotFoundException(ClientValidationMessages.USER_NOT_FOUND));
     }
 
-    protected Client findByIdentification(String identification) {
-        return repository.findByIdentificationNumber(identification)
+    protected Client findByEmail(String email) {
+        return repository.findByEmail(email)
                 .orElseThrow(() -> new ResourceNotFoundException(ClientValidationMessages.USER_NOT_FOUND));
     }
 }

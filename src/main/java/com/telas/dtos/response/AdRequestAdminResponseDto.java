@@ -16,56 +16,53 @@ import java.util.UUID;
 
 @Getter
 public final class AdRequestAdminResponseDto implements Serializable {
-  @Serial
-  private static final long serialVersionUID = 5288515525105234502L;
+    @Serial
+    private static final long serialVersionUID = 5288515525105234502L;
 
-  private final UUID id;
+    private final UUID id;
 
-  private final UUID clientId;
+    private final UUID clientId;
 
-  private final String message;
+    private final String message;
 
-  private final String clientName;
+    private final String clientName;
 
-  private final String clientIdentificationNumber;
+    private final Role clientRole;
 
-  private final Role clientRole;
+    private final String phone;
 
-  private final String phone;
+    private final String email;
 
-  private final String email;
+    private final boolean isActive;
 
-  private final boolean isActive;
+    private final LocalDate submissionDate;
 
-  private final LocalDate submissionDate;
+    private final long waitingDays;
 
-  private final long waitingDays;
+    private final List<RefusedAdResponseDto> refusedAds;
 
-  private final List<RefusedAdResponseDto> refusedAds;
+    private final List<LinkResponseDto> attachments;
 
-  private final List<LinkResponseDto> attachments;
+    private final LinkResponseDto ad;
 
-  private final LinkResponseDto ad;
+    public AdRequestAdminResponseDto(AdRequest adRequest, Map<String, Object> linkResponseData) {
+        id = adRequest.getId();
+        clientId = adRequest.getClient().getId();
+        message = adRequest.getMessage();
+        clientName = adRequest.getClient().getBusinessName();
+        clientRole = adRequest.getClient().getRole();
+        phone = adRequest.getPhone();
+        email = adRequest.getEmail();
+        isActive = adRequest.isActive();
+        submissionDate = adRequest.getCreatedAt().atZone(ZoneId.systemDefault()).toLocalDate();
+        waitingDays = ChronoUnit.DAYS.between(adRequest.getCreatedAt(), Instant.now());
+        attachments = (List<LinkResponseDto>) linkResponseData.get("attachments");
+        ad = (LinkResponseDto) linkResponseData.get("ad");
 
-  public AdRequestAdminResponseDto(AdRequest adRequest, Map<String, Object> linkResponseData) {
-    id = adRequest.getId();
-    clientId = adRequest.getClient().getId();
-    message = adRequest.getMessage();
-    clientName = adRequest.getClient().getBusinessName();
-    clientIdentificationNumber = adRequest.getClient().getIdentificationNumber();
-    clientRole = adRequest.getClient().getRole();
-    phone = adRequest.getPhone();
-    email = adRequest.getEmail();
-    isActive = adRequest.isActive();
-    submissionDate = adRequest.getCreatedAt().atZone(ZoneId.systemDefault()).toLocalDate();
-    waitingDays = ChronoUnit.DAYS.between(adRequest.getCreatedAt(), Instant.now());
-    attachments = (List<LinkResponseDto>) linkResponseData.get("attachments");
-    ad = (LinkResponseDto) linkResponseData.get("ad");
-
-    refusedAds = adRequest.getAd() != null && !adRequest.getAd().getRefusedAds().isEmpty() ?
-            adRequest.getAd().getRefusedAds().stream()
-                    .sorted((a, b) -> b.getCreatedAt().compareTo(a.getCreatedAt()))
-                    .map(RefusedAdResponseDto::new)
-                    .toList() : List.of();
-  }
+        refusedAds = adRequest.getAd() != null && !adRequest.getAd().getRefusedAds().isEmpty() ?
+                adRequest.getAd().getRefusedAds().stream()
+                        .sorted((a, b) -> b.getCreatedAt().compareTo(a.getCreatedAt()))
+                        .map(RefusedAdResponseDto::new)
+                        .toList() : List.of();
+    }
 }

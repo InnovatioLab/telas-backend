@@ -13,9 +13,10 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
-
+@Validated
 @RestController
 @RequestMapping(value = "auth")
 @RequiredArgsConstructor
@@ -29,9 +30,9 @@ public class AuthControllerImpl implements AuthController {
     }
 
     @Override
-    @PostMapping(value = "/recovery-password/{identificationNumber}")
-    public ResponseEntity<?> sendPasswordRecoveryCode(@PathVariable(name = "identificationNumber") String identificationNumber) {
-        authService.sendPasswordRecoveryCode(identificationNumber);
+    @PostMapping(value = "/recovery-password/{email}")
+    public ResponseEntity<?> sendPasswordRecoveryCode(@PathVariable(name = "email") String email) {
+        authService.sendPasswordRecoveryCode(email);
         return ResponseEntity.status(HttpStatus.CREATED).body(ResponseDto.fromData(null, HttpStatus.CREATED, MessageCommonsConstants.CODE_SENT_SUCCESS_MESSAGE));
     }
 
@@ -44,9 +45,9 @@ public class AuthControllerImpl implements AuthController {
     }
 
     @Override
-    @PatchMapping("/reset-password/{identificationNumber}")
-    public ResponseEntity<?> resetPassword(@PathVariable(name = "identificationNumber") String identificationNumber, @Valid @RequestBody PasswordRequestDto request) {
-        authService.resetPassword(identificationNumber, request);
+    @PatchMapping("/reset-password/{email}")
+    public ResponseEntity<?> resetPassword(@PathVariable(name = "email") String email, @Valid @RequestBody PasswordRequestDto request) {
+        authService.resetPassword(email, request);
         return ResponseEntity.status(HttpStatus.OK).body(ResponseDto.fromData(null, HttpStatus.OK, MessageCommonsConstants.PASSWORD_RESET_SUCCESS_MESSAGE));
     }
 }

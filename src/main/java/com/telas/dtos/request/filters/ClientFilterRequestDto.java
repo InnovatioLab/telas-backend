@@ -15,7 +15,6 @@ public class ClientFilterRequestDto extends PaginationRequestDto {
 
     public Sort setOrdering() {
         return switch (getSortBy()) {
-            case "identificationNumber" -> Sort.by(Sort.Order.by("identificationNumber"));
             case "role" -> Sort.by(Sort.Order.by("role").ignoreCase());
             case "industry" -> Sort.by(Sort.Order.by("industry").ignoreCase());
             case "status" -> Sort.by(Sort.Order.by("status").ignoreCase());
