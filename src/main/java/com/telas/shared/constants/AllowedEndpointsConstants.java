@@ -11,7 +11,7 @@ public class AllowedEndpointsConstants {
 
     static {
         ALLOWED_ENDPOINTS.put(HttpMethod.GET, List.of(
-                "/clients/{email}",
+                "/clients/identification/**",
                 "/clients/{id}",
                 "/addresses/{zipCode}",
                 "/boxes/ads",
@@ -27,16 +27,16 @@ public class AllowedEndpointsConstants {
         ));
         ALLOWED_ENDPOINTS.put(HttpMethod.POST, List.of(
                 "/clients",
-                "/clients/resend-code/{email}",
+                "/clients/resend-code/**",
                 "/webhook",
                 "/auth/login",
-                "/auth/recovery-password/{email}",
+                "/auth/recovery-password/**",
                 "/boxes/health"
         ));
         ALLOWED_ENDPOINTS.put(HttpMethod.PATCH, List.of(
-                "/clients/create-password/{email}",
-                "/clients/validate-code/{email}",
-                "/auth/reset-password/{email}"
+                "/clients/create-password/**",
+                "/clients/validate-code/**",
+                "/auth/reset-password/**"
         ));
     }
 

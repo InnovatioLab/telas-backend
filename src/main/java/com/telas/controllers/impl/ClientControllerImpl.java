@@ -67,7 +67,7 @@ public class ClientControllerImpl implements ClientController {
     }
 
     @Override
-    @GetMapping("/{email}")
+    @GetMapping("/identification/{email}")
     public ResponseEntity<?> findByEmail(@PathVariable(name = "email") String email) {
         return ResponseEntity.status(HttpStatus.OK)
                 .body(ResponseDto.fromData(service.findByEmailUnprotected(email), HttpStatus.OK, MessageCommonsConstants.FIND_ID_SUCCESS_MESSAGE));
