@@ -48,8 +48,8 @@ public class AllowedEndpointsConstants {
     }
 
     public static boolean isAllowedURL(HttpMethod method, String uri) {
+        String normalizedUri = uri.replaceAll("/\\d+", "/*").replaceAll("/[a-f0-9\\-]{36}", "/*").replaceAll("\\{\\w+}", "*");
         return ALLOWED_ENDPOINTS.getOrDefault(method, List.of()).stream()
-                .map(allowedUri -> allowedUri.replaceAll("\\{\\w+\\}", "[^/]+"))
-                .anyMatch(regex -> uri.matches("^" + regex + "$"));
+                .anyMatch(allowedUri -> allowedUri.replaceAll("\\{\\w+}", "*").equals(normalizedUri));
     }
 }
