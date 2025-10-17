@@ -11,25 +11,25 @@ import java.util.List;
 import java.util.UUID;
 
 public interface MonitorService {
-  void save(MonitorRequestDto requestDto, UUID monitorId) throws JsonProcessingException;
+    void save(MonitorRequestDto requestDto, UUID monitorId) throws JsonProcessingException;
 
-  void removeMonitorAdsFromSubscription(Subscription subscription);
+    void removeMonitorAdsFromSubscription(Subscription subscription);
 
-  MonitorResponseDto findById(UUID monitorId);
+    MonitorResponseDto findById(UUID monitorId);
 
-  Monitor findEntityById(UUID monitorId);
+    Monitor findEntityById(UUID monitorId);
 
-  List<MonitorMapsResponseDto> findNearestActiveMonitors(String zipCode);
+    List<MonitorMapsResponseDto> findNearestActiveMonitors(String zipCode);
 
-  List<MonitorBoxMinResponseDto> findAllMonitors();
+    List<MonitorsBoxMinResponseDto> findAllMonitors();
 
-  List<Monitor> findAllByIds(List<UUID> monitorIds);
+    List<Monitor> findAllByIds(List<UUID> monitorIds);
 
-  List<MonitorValidAdResponseDto> findValidAdsForMonitor(UUID monitorId);
+    List<MonitorValidAdResponseDto> findValidAdsForMonitor(UUID monitorId);
 
-  PaginationResponseDto<List<MonitorResponseDto>> findAllByFilters(FilterMonitorRequestDto request);
+    PaginationResponseDto<List<MonitorResponseDto>> findAllByFilters(FilterMonitorRequestDto request);
 
-  void delete(UUID monitorId);
+    void delete(UUID monitorId);
 
-  List<MonitorValidAdResponseDto> findCurrentDisplayedAdsFromBox(UUID monitorId);
+    List<MonitorValidAdResponseDto> findCurrentDisplayedAdsFromBox(UUID monitorId);
 }
