@@ -126,6 +126,7 @@ networks:
     driver: bridge
 
 volumes:
+
   loki_data:
     driver: local
   prometheus_data:
