@@ -78,6 +78,9 @@ public class ClientServiceImpl implements ClientService {
 
         if (Objects.equals(client.getBusinessName(), "Admin")) {
             client.setRole(Role.ADMIN);
+            TermCondition actualTermCondition = termConditionService.getLastTermCondition();
+            client.setTermCondition(actualTermCondition);
+            client.setTermAcceptedAt(Instant.now());
         } else {
             client.setRole(Role.CLIENT);
         }
@@ -159,12 +162,6 @@ public class ClientServiceImpl implements ClientService {
             String hashedPass = passwordEncoder.encode(request.getPassword());
             client.setPassword(hashedPass);
             client.setStatus(DefaultStatus.ACTIVE);
-
-            if (Role.ADMIN.equals(client.getRole())) {
-                TermCondition actualTermCondition = termConditionService.getLastTermCondition();
-                client.setTermCondition(actualTermCondition);
-                client.setTermAcceptedAt(Instant.now());
-            }
 
             repository.save(client);
         }
