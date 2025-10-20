@@ -159,6 +159,13 @@ public class ClientServiceImpl implements ClientService {
             String hashedPass = passwordEncoder.encode(request.getPassword());
             client.setPassword(hashedPass);
             client.setStatus(DefaultStatus.ACTIVE);
+
+            if (Role.ADMIN.equals(client.getRole())) {
+                TermCondition actualTermCondition = termConditionService.getLastTermCondition();
+                client.setTermCondition(actualTermCondition);
+                client.setTermAcceptedAt(Instant.now());
+            }
+
             repository.save(client);
         }
     }
@@ -166,7 +173,7 @@ public class ClientServiceImpl implements ClientService {
     @Override
     @Transactional(readOnly = true)
     public void sendResetPasswordCode(String email) {
-//        helper.validateEmail(identification);
+        helper.validateEmail(email);
         Client client = findActiveByEmail(email);
 
         VerificationCode verificationCode = verificationCodeService.save(CodeType.PASSWORD, client);
@@ -388,7 +395,6 @@ public class ClientServiceImpl implements ClientService {
                     Expression<Long> refusedCount = criteriaBuilder.count(refusedAdsJoin.get("id"));
                     Predicate isActive = criteriaBuilder.equal(root.get("isActive"), true);
 
-                    // HAVING count(refusedAds.id) <= 3
                     query.having(criteriaBuilder.le(refusedCount, (long) SharedConstants.MAX_ADS_VALIDATION));
                     return criteriaBuilder.and(isActive);
                 },

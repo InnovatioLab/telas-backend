@@ -54,14 +54,20 @@ public class SecurityFilter extends OncePerRequestFilter {
         try {
             if (idToken != null) {
                 TokenData tokenData = tokenService.validateToken(idToken);
-                UserDetails user = userDetailsService.loadUserByUsername(tokenData.getEmail());
 
-                Authentication authentication = new UsernamePasswordAuthenticationToken(user, null, user.getAuthorities());
-                SecurityContextHolder.getContext().setAuthentication(authentication);
+                if (tokenData != null) {
+                    UserDetails user = userDetailsService.loadUserByUsername(tokenData.getEmail());
+                    Authentication authentication = new UsernamePasswordAuthenticationToken(user, null, user.getAuthorities());
+                    SecurityContextHolder.getContext().setAuthentication(authentication);
 
-                if (!acceptTermsURL && !authenticatedURL) {
-                    authenticatedUserService.verifyTermsAccepted(user);
+                    if (!acceptTermsURL && !authenticatedURL) {
+                        authenticatedUserService.verifyTermsAccepted(user);
+                    }
+                } else {
+                    SecurityContextHolder.clearContext();
                 }
+            } else {
+                SecurityContextHolder.clearContext();
             }
 
             filterChain.doFilter(request, response);
@@ -73,7 +79,8 @@ public class SecurityFilter extends OncePerRequestFilter {
 
     }
 
-    private void handleException(HttpServletResponse response, HttpStatus status, String message) throws IOException {
+    private void handleException(HttpServletResponse response, HttpStatus status, String message) throws
+            IOException {
         response.setStatus(status.value());
         response.setContentType("application/json");
         response.setCharacterEncoding("UTF-8");
