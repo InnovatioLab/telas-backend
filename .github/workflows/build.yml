@@ -60,6 +60,7 @@ jobs:
             EXCHANGE_NAME=${{ secrets.EXCHANGE_NAME }}
             ROUTING_KEY=${{ secrets.ROUTING_KEY }}
             SENDGRID_API_KEY=${{ secrets.SENDGRID_API_KEY }}
+            LOKI_URL=${{ secrets.LOKI_URL }}
 
       - name: Trigger Dokploy Deployment
         run: |
