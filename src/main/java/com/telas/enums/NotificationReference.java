@@ -218,9 +218,9 @@ public enum NotificationReference {
                     <p>%s</p>
                     %s
                     %s
-                    <div class="field">
-                        <span class="field-label">Services: </span>
-                        <span class="field-value"> %s</span>
+                    <div class="field flex-column">
+                        <span class="field-label">Services:</span>
+                        <span class="field-value">%s</span>
                     </div>
                 </div>
                 <a id="link-details" class='details link-text' href="%s">%s</a>
