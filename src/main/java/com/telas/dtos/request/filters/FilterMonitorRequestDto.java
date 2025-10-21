@@ -11,14 +11,13 @@ import org.springframework.data.domain.Sort;
 @NoArgsConstructor
 @AllArgsConstructor
 public class FilterMonitorRequestDto extends PaginationRequestDto {
-  private String genericFilter;
+    private String genericFilter;
 
-  public Sort setOrdering() {
-    return switch (getSortBy()) {
-      case "size" -> Sort.by(Sort.Order.by("size"));
-      case "type" -> Sort.by(Sort.Order.by("type").ignoreCase());
-      case "address" -> Sort.by(Sort.Order.by("address.street").ignoreCase());
-      default -> Sort.by(Sort.Order.desc("active"));
-    };
-  }
+    public Sort setOrdering() {
+        return switch (getSortBy()) {
+            case "type" -> Sort.by(Sort.Order.by("type").ignoreCase());
+            case "address" -> Sort.by(Sort.Order.by("address.street").ignoreCase());
+            default -> Sort.by(Sort.Order.desc("active"));
+        };
+    }
 }

@@ -27,7 +27,6 @@ import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -225,12 +224,6 @@ public class MonitorServiceImpl implements MonitorService {
 
             Predicate addressPredicate = helper.createAddressPredicate(criteriaBuilder, root, filter);
             predicates.add(addressPredicate);
-
-            try {
-                predicates.add(criteriaBuilder.equal(root.get("size"), new BigDecimal(genericFilter)));
-            } catch (NumberFormatException ignored) {
-            }
-
             return criteriaBuilder.or(predicates.toArray(new Predicate[0]));
         });
     }
@@ -266,7 +259,6 @@ public class MonitorServiceImpl implements MonitorService {
         monitor.setType(request.getType());
         monitor.setProductId(productId);
         monitor.setLocationDescription(request.getLocationDescription());
-        monitor.setSize(request.getSize());
         monitor.setActive(request.getActive() != null ? request.getActive() : monitor.isActive());
 
         if (ValidateDataUtils.isNullOrEmpty(ads)) {

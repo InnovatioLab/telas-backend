@@ -12,27 +12,24 @@ import java.util.UUID;
 @Getter
 @Setter
 public final class SubscriptionMonitorResponseDto implements Serializable {
-  @Serial
-  private static final long serialVersionUID = -7144327643566339527L;
+    @Serial
+    private static final long serialVersionUID = -7144327643566339527L;
 
-  private UUID id;
-  private String type;
-  private double size;
-  private String addressData;
-  private List<MonitorAdResponseDto> adLinks;
+    private UUID id;
+    private String type;
+    private String addressData;
+    private List<MonitorAdResponseDto> adLinks;
 
-  public SubscriptionMonitorResponseDto(Monitor monitor) {
-    id = monitor.getId();
-    type = monitor.getType().name();
-    size = monitor.getSize().doubleValue();
-    addressData = monitor.getAddress().getCoordinatesParams();
-  }
+    public SubscriptionMonitorResponseDto(Monitor monitor) {
+        id = monitor.getId();
+        type = monitor.getType().name();
+        addressData = monitor.getAddress().getCoordinatesParams();
+    }
 
-  public SubscriptionMonitorResponseDto(Monitor monitor, List<MonitorAdResponseDto> adLinks) {
-    id = monitor.getId();
-    type = monitor.getType().name();
-    size = monitor.getSize().doubleValue();
-    addressData = monitor.getAddress().getCoordinatesParams();
-    this.adLinks = adLinks;
-  }
+    public SubscriptionMonitorResponseDto(Monitor monitor, List<MonitorAdResponseDto> adLinks) {
+        id = monitor.getId();
+        type = monitor.getType().name();
+        addressData = monitor.getAddress().getCoordinatesParams();
+        this.adLinks = adLinks;
+    }
 }

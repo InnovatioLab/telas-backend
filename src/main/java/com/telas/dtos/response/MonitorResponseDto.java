@@ -6,7 +6,6 @@ import lombok.Getter;
 
 import java.io.Serial;
 import java.io.Serializable;
-import java.math.BigDecimal;
 import java.util.List;
 import java.util.UUID;
 
@@ -19,7 +18,6 @@ public final class MonitorResponseDto implements Serializable {
     private final boolean active;
     private final MonitorType type;
     private final String locationDescription;
-    private final BigDecimal size;
     private final AddressFromZipCodeResponseDto address;
     private final String fullAddress;
     private final boolean canBeDeleted;
@@ -30,7 +28,6 @@ public final class MonitorResponseDto implements Serializable {
         active = entity.isActive();
         type = entity.getType();
         locationDescription = entity.getLocationDescription();
-        size = entity.getSize();
         address = new AddressFromZipCodeResponseDto(entity.getAddress());
         fullAddress = entity.getAddress().getCoordinatesParams();
         canBeDeleted = entity.getActiveSubscriptions().isEmpty();
