@@ -56,10 +56,8 @@ public class PaymentWorkerImpl implements PaymentWorker {
             }
         } catch (OptimisticLockException | OptimisticLockingFailureException ex) {
             log.warn("Optimistic lock during processing eventId={}, error: {}", event != null ? event.getId() : "unknown", ex.getMessage());
-            return;
         } catch (DataIntegrityViolationException ex) {
             log.warn("DataIntegrityViolationException - Webhook event already processed by another instance with eventId={}, IGNORING, error: {}", event != null ? event.getId() : "unknown", ex.getMessage());
-            return;
         } catch (Exception ex) {
             log.error("Error during worker event processing, event with ID {}: {}", event != null ? event.getId() : "unknown", ex.getMessage());
             throw ex;

@@ -94,7 +94,7 @@ public enum NotificationReference {
                         <p>We hope you’ve enjoyed your Ad service with Telas. We wanted to remind you that your current service is set to expire soon.</p>
                         <div class="field">
                             <span id="attachment-name" class="field-label">Service End Date: </span>
-                            <span class="field-value overflow-hidden white-space-nowrap">%s</span>
+                            <span class="field-value">%s</span>
                         </div>
                     </div>
                     <p>To continue enjoying our services without interruption, please visit this <a id="link-details" class='details link-text' href="%s">link</a> and renew your subscription before the end date.</p>
@@ -198,8 +198,8 @@ public enum NotificationReference {
         }
         return String.format("""
                 <div class="field">
-                    <span class="label-campo">%s: </span>
-                    <span class="valor-campo white-space-nowrap"> %s</span>
+                    <span class="field-label">%s: </span>
+                    <span class="field-value"> %s</span>
                 </div>
                 """, label, endDate);
     }
@@ -207,8 +207,8 @@ public enum NotificationReference {
     private static String formatNotificationMessage(String title, String message, Map<String, String> params, String endDateDiv, String linkText, boolean showStartDate) {
         String startDateDiv = showStartDate ? String.format("""
                 <div class="field">
-                    <span class="label-campo">Start Date: </span>
-                    <span class="valor-campo white-space-nowrap"> %s</span>
+                    <span class="field-label">Start Date: </span>
+                    <span class="field-value"> %s</span>
                 </div>
                 """, params.get("startDate")) : "";
 
@@ -219,8 +219,8 @@ public enum NotificationReference {
                     %s
                     %s
                     <div class="field">
-                        <span class="label-campo">Services: </span>
-                        <span class="valor-campo white-space-nowrap"> %s</span>
+                        <span class="field-label">Services: </span>
+                        <span class="field-value"> %s</span>
                     </div>
                 </div>
                 <a id="link-details" class='details link-text' href="%s">%s</a>

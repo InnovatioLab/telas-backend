@@ -228,7 +228,7 @@ public class SubscriptionHelper {
     public void sendFirstBuyEmail(Subscription subscription) {
         Map<String, String> params = new HashMap<>(Map.of(
                 "name", subscription.getClient().getBusinessName(),
-                "locations", String.join(". ", subscription.getMonitorAddresses()),
+                "locations", String.join(".<br/>", subscription.getMonitorAddresses()),
                 "startDate", DateUtils.formatInstantToString(subscription.getStartedAt()),
                 "link", getRedirectUrlAfterCreatingNewSubscription(subscription.getClient())
         ));
@@ -327,7 +327,7 @@ public class SubscriptionHelper {
 
     private void createNewSubscriptionNotification(Subscription subscription) {
         Map<String, String> params = new HashMap<>(Map.of(
-                "locations", String.join(". ", subscription.getMonitorAddresses()),
+                "locations", String.join(".<br/>", subscription.getMonitorAddresses()),
                 "startDate", DateUtils.formatInstantToString(subscription.getStartedAt()),
                 "link", "/client/subscriptions/" + subscription.getId()
         ));
