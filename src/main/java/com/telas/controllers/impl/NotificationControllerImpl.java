@@ -1,7 +1,6 @@
 package com.telas.controllers.impl;
 
 import com.telas.controllers.NotificationController;
-import com.telas.dtos.request.NotificationRequestDto;
 import com.telas.dtos.response.ResponseDto;
 import com.telas.services.NotificationService;
 import com.telas.shared.constants.MessageCommonsConstants;
@@ -11,6 +10,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
 import java.util.UUID;
 
 @RestController
@@ -22,9 +22,9 @@ public class NotificationControllerImpl implements NotificationController {
     @Override
     @GetMapping
     @SecurityRequirement(name = "jwt")
-    public ResponseEntity<?> listClientNotifications(@RequestBody(required = false) NotificationRequestDto request) {
+    public ResponseEntity<?> listClientNotifications(@RequestParam(name = "ids", required = false) List<UUID> ids) {
         return ResponseEntity.status(HttpStatus.OK)
-                .body(ResponseDto.fromData(service.listClientNotifications(request), HttpStatus.OK, MessageCommonsConstants.FIND_ALL_SUCCESS_MESSAGE));
+                .body(ResponseDto.fromData(service.listClientNotifications(ids), HttpStatus.OK, MessageCommonsConstants.FIND_ALL_SUCCESS_MESSAGE));
     }
 
     @Override

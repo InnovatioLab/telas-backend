@@ -1,7 +1,6 @@
 package com.telas.services.impl;
 
 import com.telas.dtos.EmailDataDto;
-import com.telas.dtos.request.NotificationRequestDto;
 import com.telas.dtos.response.NotificationResponseDto;
 import com.telas.entities.Client;
 import com.telas.entities.Notification;
@@ -56,13 +55,13 @@ public class NotificationServiceImpl implements NotificationService {
 
     @Override
     @Transactional
-    public List<NotificationResponseDto> listClientNotifications(NotificationRequestDto request) {
+    public List<NotificationResponseDto> listClientNotifications(List<UUID> ids) {
         Client client = authenticatedUserService.getLoggedUser().client();
         List<Notification> notifications = repository.findAllByClientIdOrderByCreatedAtDesc(client.getId());
 
-        if (Objects.nonNull(request) && !ValidateDataUtils.isNullOrEmpty(request.getIds())) {
+        if (Objects.nonNull(ids) && !ValidateDataUtils.isNullOrEmpty(ids)) {
             notifications.stream()
-                    .filter(notification -> request.getIds().contains(notification.getId()))
+                    .filter(notification -> ids.contains(notification.getId()))
                     .forEach(notification -> {
                         notification.setVisualized(true);
                         repository.save(notification);

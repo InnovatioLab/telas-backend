@@ -89,7 +89,7 @@ public enum NotificationReference {
         @Override
         public String getNotificationMessage(Map<String, String> params) {
             return String.format("""
-                    <div class="info">
+                    <div class="informacoes">
                         <h4 id="notification-title" class="notification-title">15 Days Before Expiration</h4>
                         <p>We hope you’ve enjoyed your Ad service with Telas. We wanted to remind you that your current service is set to expire soon.</p>
                         <div class="field">
@@ -116,7 +116,7 @@ public enum NotificationReference {
         @Override
         public String getNotificationMessage(Map<String, String> params) {
             return String.format("""
-                    <div class="info">
+                    <div class="informacoes">
                         <h4 id="notification-title" class="notification-title">Last Day of Service!</h4>
                         <p>Today marks the last day of your Telas advertising service.</p>
                     </div>
@@ -139,7 +139,7 @@ public enum NotificationReference {
         @Override
         public String getNotificationMessage(Map<String, String> params) {
             return String.format("""
-                    <div class="info">
+                    <div class="informacoes">
                         <h4 id="notification-title" class="notification-title">You received a new Ad!</h4>
                         <p>Please visit this <a id="link-details" class='details link-text' href="%s">link</a> to validate it and start to use your service!</p>
                     </div>
@@ -155,7 +155,7 @@ public enum NotificationReference {
         @Override
         public String getNotificationMessage(Map<String, String> params) {
             return String.format("""
-                    <div class="info">
+                    <div class="informacoes">
                         <h4 id="notification-title" class="notification-title">A monitor in your wishlist is now Available!</h4>
                     </div>
                     <a id="link-details" class='details link-text' href="%s">View Details</a>
@@ -171,7 +171,7 @@ public enum NotificationReference {
         @Override
         public String getNotificationMessage(Map<String, String> params) {
             return String.format("""
-                            <div class="info">
+                            <div class="informacoes">
                                 <h4 id="notification-title" class="notification-title">An approved ad cannot be sent to the monitor!</h4>
                                 <p>Due to lack of space, the ad with id: %s of a customer with an active subscription cannot be sent to the monitor with id: %s.</p>
                             </div>
