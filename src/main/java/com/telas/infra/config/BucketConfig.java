@@ -16,34 +16,34 @@ import java.net.URI;
 @Configuration
 @RequiredArgsConstructor
 public class BucketConfig {
-  @Bean
-  @Profile("dev")
-  public MinioClient minioClient(BucketConfigProperties bucketConfig) {
-    return MinioClient.builder()
-            .endpoint(bucketConfig.getEndpoint())
-            .credentials(bucketConfig.getAccessKey(), bucketConfig.getSecretKey())
-            .build();
-  }
+    @Bean
+    @Profile("dev")
+    public MinioClient minioClient() {
+        return MinioClient.builder()
+                .endpoint("http://127.0.0.1:9000")
+                .credentials("GAryDiMncAmCuhahv4Qr", "PSEbwJezWEUObuYnbabnp9nV-UsD1qXsv9aMqxl3rcs=")
+                .build();
+    }
 
-  @Bean
-  @Profile("prod")
-  public S3Client s3Client(BucketConfigProperties bucketConfig) {
-    return S3Client.builder()
-            .endpointOverride(URI.create(bucketConfig.getEndpoint()))
-            .region(Region.US_EAST_1)
-            .credentialsProvider(StaticCredentialsProvider.create(
-                    AwsBasicCredentials.create(bucketConfig.getAccessKey(), bucketConfig.getSecretKey())))
-            .build();
-  }
+    @Bean
+    @Profile("prod")
+    public S3Client s3Client(BucketConfigProperties bucketConfig) {
+        return S3Client.builder()
+                .endpointOverride(URI.create(bucketConfig.getEndpoint()))
+                .region(Region.US_EAST_1)
+                .credentialsProvider(StaticCredentialsProvider.create(
+                        AwsBasicCredentials.create(bucketConfig.getAccessKey(), bucketConfig.getSecretKey())))
+                .build();
+    }
 
-  @Bean
-  @Profile("prod")
-  public S3Presigner s3Presigner(BucketConfigProperties bucketConfig) {
-    return S3Presigner.builder()
-            .endpointOverride(URI.create(bucketConfig.getEndpoint()))
-            .region(Region.US_EAST_1)
-            .credentialsProvider(StaticCredentialsProvider.create(
-                    AwsBasicCredentials.create(bucketConfig.getAccessKey(), bucketConfig.getSecretKey())))
-            .build();
-  }
+    @Bean
+    @Profile("prod")
+    public S3Presigner s3Presigner(BucketConfigProperties bucketConfig) {
+        return S3Presigner.builder()
+                .endpointOverride(URI.create(bucketConfig.getEndpoint()))
+                .region(Region.US_EAST_1)
+                .credentialsProvider(StaticCredentialsProvider.create(
+                        AwsBasicCredentials.create(bucketConfig.getAccessKey(), bucketConfig.getSecretKey())))
+                .build();
+    }
 }

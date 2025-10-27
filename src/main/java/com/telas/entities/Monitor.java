@@ -127,12 +127,15 @@ public class Monitor extends BaseAudit implements Serializable {
     }
 
     public Instant getEstimatedSlotReleaseDate() {
-        return getActiveSubscriptions().stream()
-                .filter(subscription -> !Recurrence.MONTHLY.equals(subscription.getRecurrence()))
-                .map(Subscription::getEndsAt)
-                .filter(Objects::nonNull)
-                .min(Comparator.naturalOrder())
-                .orElse(null);
+        if (getActiveSubscriptions().size() <= maxBlocks) {
+            return getActiveSubscriptions().stream()
+                    .filter(sub -> !Recurrence.MONTHLY.equals(sub.getRecurrence()))
+                    .map(Subscription::getEndsAt)
+                    .filter(Objects::nonNull)
+                    .min(Comparator.naturalOrder())
+                    .orElse(null);
+        }
+        return null;
     }
 
     public Integer getAdsDailyDisplayTimeInMinutes() {
