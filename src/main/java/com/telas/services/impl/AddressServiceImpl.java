@@ -2,6 +2,7 @@ package com.telas.services.impl;
 
 import com.telas.dtos.request.AddressRequestDto;
 import com.telas.dtos.response.AddressFromZipCodeResponseDto;
+import com.telas.dtos.response.NearbySearchResponse;
 import com.telas.entities.Address;
 import com.telas.entities.Client;
 import com.telas.infra.exceptions.ResourceNotFoundException;
@@ -32,6 +33,23 @@ public class AddressServiceImpl implements AddressService {
         Address address = new Address(request);
         repository.save(address);
         return address;
+    }
+
+    @Override
+    @Transactional
+    public void saveAddressUpdates(Address address, Double latitude, Double longitude, NearbySearchResponse.Place place, String photoUrl) {
+        address.setLocation(latitude, longitude);
+
+        if (place != null) {
+            address.setLocationName(place.getDisplayName().getText());
+            address.setLocationDescription(place.getEditorialSummary() != null ? place.getEditorialSummary().getText() : null);
+        }
+
+        if (photoUrl != null) {
+            address.setPhotoUrl(photoUrl);
+        }
+
+        repository.save(address);
     }
 
     @Transactional

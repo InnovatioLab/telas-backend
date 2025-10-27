@@ -2,6 +2,7 @@ package com.telas.services;
 
 import com.telas.dtos.request.AddressRequestDto;
 import com.telas.dtos.response.AddressFromZipCodeResponseDto;
+import com.telas.dtos.response.NearbySearchResponse;
 import com.telas.entities.Address;
 import com.telas.entities.Client;
 
@@ -12,6 +13,9 @@ public interface AddressService {
     Address save(Address address);
 
     Address save(AddressRequestDto request);
+
+    void saveAddressUpdates(Address address, Double latitude, Double longitude,
+                            NearbySearchResponse.Place place, String photoUrl);
 
     void deleteMany(List<Address> addresses);
 
