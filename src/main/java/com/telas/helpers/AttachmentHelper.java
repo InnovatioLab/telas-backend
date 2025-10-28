@@ -187,6 +187,7 @@ public class AttachmentHelper {
             List<Attachment> attachments = getAttachmentsFromAdRequest(adRequestEntity);
             adRepository.save(newAd);
             newAd.getAttachments().addAll(attachments);
+
         }
 
         Client client = adRequestEntity.getClient();
