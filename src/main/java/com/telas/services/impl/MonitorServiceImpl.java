@@ -215,7 +215,6 @@ public class MonitorServiceImpl implements MonitorService {
         return specification.and((root, query, criteriaBuilder) -> {
             String filter = "%" + genericFilter.toLowerCase() + "%";
             List<Predicate> predicates = new ArrayList<>();
-            predicates.add(criteriaBuilder.like(criteriaBuilder.lower(root.get("type")), filter));
 
 
             if ("true".equalsIgnoreCase(genericFilter) || "false".equalsIgnoreCase(genericFilter)) {
@@ -256,7 +255,6 @@ public class MonitorServiceImpl implements MonitorService {
     }
 
     private void updateMonitorDetails(MonitorRequestDto request, Monitor monitor, List<Ad> ads) {
-        monitor.setType(request.getType());
         monitor.setProductId(productId);
         monitor.setLocationDescription(request.getLocationDescription());
         monitor.setActive(request.getActive() != null ? request.getActive() : monitor.isActive());

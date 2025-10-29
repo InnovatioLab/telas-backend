@@ -17,12 +17,11 @@ public final class ClientValidationMessages {
     public static final String DIFFERENT_PASSWORDS = "Passwords do not match.";
     public static final String VALIDATION_CODE_NOT_VALIDATED = "User validation code is not validated.";
     public static final String CURRENT_EQUALS_NEW_PASSWORD = "Current password cannot be the same as the new password.";
-    public static final String MAX_ADS_REACHED = "Client has reached the maximum number of ads allowed.";
+    public static final String MAX_ADS_REACHED = "Client has reached the maximum amount ads allowed.";
     public static final String MONITOR_IN_ACTIVE_SUBSCRIPTION = "Client has an active subscription for the selected monitor.";
     public static final String WISHLIST_NOT_FOUND = "Wishlist not found!";
-    public static final String UNAUTHORIZED_CLIENT = "You are not authorized to perform this action.";
     public static final String AD_REQUEST_EXISTS = "Ad request already exists for this client, please wait for the current request to be processed.";
-    public static final String AD_REQUEST_NOT_ALLOWED = "Ad request is not allowed for this client.";
     public static final String WEBSITE_URL_SIZE = "Website URL must be less than 255 characters.";
-
+    public static final String CLIENT_ALREADY_HAS_AD_REQUEST = "Client already has an pending AdRequest.";
+    public static final String AD_REQUEST_NOT_FOUND = "Client does not have an AdRequest.";
 }

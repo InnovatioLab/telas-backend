@@ -214,11 +214,9 @@ CREATE TABLE "monitors"
     "fl_active"            BOOLEAN                           DEFAULT TRUE,
     "box_id"               UUID NULL     DEFAULT NULL,
     "address_id"           UUID                     NOT NULL,
-    "type"                 VARCHAR(50)              NOT NULL DEFAULT 'BASIC',
     "max_blocks"           INTEGER                  NOT NULL DEFAULT 17,
     "product_id"           VARCHAR(255)             NOT NULL,
     "location_description" VARCHAR(255) NULL     DEFAULT NULL,
-    "size_in_inches"       NUMERIC(5, 2)            NOT NULL DEFAULT 0.00,
     "username_create"      VARCHAR(255) NULL     DEFAULT NULL,
     "username_update"      VARCHAR(255) NULL     DEFAULT NULL,
     "created_at"           TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT (now()),
@@ -234,8 +232,6 @@ CREATE TABLE "monitors_aud"
     "max_blocks"           INTEGER,
     "product_id"           VARCHAR(255),
     "location_description" VARCHAR(255),
-    "type"                 VARCHAR(50),
-    "size_in_inches"       NUMERIC(5, 2),
     "audit_id"             BIGINT NOT NULL,
     "audit_type"           SMALLINT NULL DEFAULT NULL,
     CONSTRAINT "pk_tbmonitors_aud" PRIMARY KEY ("id", "audit_id"),
@@ -415,13 +411,11 @@ CREATE TABLE "refused_ads"
     "id"              UUID PRIMARY KEY,
     "justification"   VARCHAR(100)             NOT NULL,
     "description"     VARCHAR(255) NULL     DEFAULT NULL,
-    "validator_id"    UUID                     NOT NULL,
     "ad_id"           UUID                     NOT NULL,
     "username_create" VARCHAR(255) NULL     DEFAULT NULL,
     "username_update" VARCHAR(255) NULL     DEFAULT NULL,
     "created_at"      TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT (now()),
     "updated_at"      TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT (now()),
-    CONSTRAINT "fk_refused_ads_validator" FOREIGN KEY ("validator_id") REFERENCES "clients" ("id") ON UPDATE NO ACTION ON DELETE NO ACTION,
     CONSTRAINT "fk_refused_ads_ad" FOREIGN KEY ("ad_id") REFERENCES "ads" ("id") ON UPDATE NO ACTION ON DELETE CASCADE
 );
 
@@ -430,7 +424,6 @@ CREATE TABLE "refused_ads_aud"
     "id"            UUID   NOT NULL,
     "justification" VARCHAR(100),
     "description"   VARCHAR(255),
-    "validator_id"  UUID,
     "ad_id"         UUID,
     "audit_id"      BIGINT NOT NULL,
     "audit_type"    SMALLINT NULL DEFAULT NULL,
@@ -849,7 +842,6 @@ CREATE INDEX idx_webhook_events_id ON webhook_events (id);
 
 CREATE INDEX idx_clients_id_status ON clients (id, status);
 
-CREATE INDEX idx_monitors_fl_active_type_size ON monitors (fl_active, type, size_in_inches);
 CREATE INDEX idx_monitors_address_id ON monitors (address_id);
 CREATE INDEX idx_addresses_lat_long ON addresses (latitude, longitude);
 

@@ -1,7 +1,9 @@
 package com.telas.services;
 
-import com.telas.dtos.request.*;
-import com.telas.dtos.request.filters.AdminFilterAdRequestDto;
+import com.telas.dtos.request.AttachmentRequestDto;
+import com.telas.dtos.request.ClientAdRequestToAdminDto;
+import com.telas.dtos.request.ClientRequestDto;
+import com.telas.dtos.request.RefusedAdRequestDto;
 import com.telas.dtos.request.filters.ClientFilterRequestDto;
 import com.telas.dtos.request.filters.FilterAdRequestDto;
 import com.telas.dtos.response.*;
@@ -45,7 +47,7 @@ public interface ClientService {
 
     void requestAdCreation(ClientAdRequestToAdminDto request);
 
-    void uploadAds(AdRequestDto request, UUID clientId);
+    void uploadAds(AttachmentRequestDto request, UUID clientId);
 
     void acceptTermsAndConditions();
 
@@ -58,8 +60,6 @@ public interface ClientService {
     PaginationResponseDto<List<ClientMinResponseDto>> findAllFilters(ClientFilterRequestDto request);
 
     PaginationResponseDto<List<AdRequestAdminResponseDto>> findPendingAdRequest(FilterAdRequestDto request);
-
-    PaginationResponseDto<List<PendingAdAdminValidationResponseDto>> findPendingAds(AdminFilterAdRequestDto request);
 
     void addMonitorToWishlist(UUID monitorId);
 

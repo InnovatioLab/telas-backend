@@ -33,3 +33,8 @@ build/
 .vscode/
 docker/.env
 .env
+/docker/grafana_data
+/docker/prometheus_data
+/docker/loki_data
+/docker/minio_data
+/docker/minio_data/**

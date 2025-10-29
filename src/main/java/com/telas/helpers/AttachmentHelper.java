@@ -1,6 +1,5 @@
 package com.telas.helpers;
 
-import com.telas.dtos.request.AdRequestDto;
 import com.telas.dtos.request.AttachmentRequestDto;
 import com.telas.dtos.request.RefusedAdRequestDto;
 import com.telas.dtos.response.LinkResponseDto;
@@ -129,13 +128,6 @@ public class AttachmentHelper {
         return attachmentRepository.save(entity);
     }
 
-    private boolean shouldRemoveAdFromMonitors(Ad ad) {
-        Client client = ad.getClient();
-        return AdValidationType.APPROVED.equals(ad.getValidation())
-                && !Role.ADMIN.equals(client.getRole())
-                && !subscriptionHelper.getClientActiveSubscriptions(client.getId()).isEmpty();
-    }
-
     private <T extends AttachmentRequestDto> void uploadAttachment(T attachment, Object entity) {
         if (entity instanceof Ad || entity instanceof Attachment) {
             bucketService.upload(
@@ -156,45 +148,43 @@ public class AttachmentHelper {
     }
 
     @Transactional
-    public void saveAds(AdRequestDto request, Client client, AdRequest entity) {
-        Ad ad = (Role.ADMIN.equals(client.getRole()) && (request.getId() != null || (entity != null && entity.getAd() != null)))
-                ? updateExistingAd(request, client, entity)
-                : createNewAd(request, client, entity);
+    public void saveAds(AttachmentRequestDto request, Client client) {
+        Ad ad = Role.ADMIN.equals(client.getRole())
+                ? (request.getId() == null ? createNewAd(request, client) : updateExistingAd(request))
+                : (client.getAdRequest().getAd() == null ? createNewAdFromRequest(client.getAdRequest(), request) : updateExistingAdFromRequest(client.getAdRequest().getAd(), request));
 
         uploadAttachment(request, ad);
         clientRepository.save(client);
     }
 
-    private Ad createNewAd(AdRequestDto request, Client client, AdRequest adRequestEntity) {
-        if (adRequestEntity != null) {
-            validateAdminRole(client);
-            return createNewAdFromRequest(adRequestEntity, request, client);
-        }
-
+    private Ad createNewAd(AttachmentRequestDto request, Client client) {
         Ad ad = new Ad(request, client);
-        ad.setUsernameCreate(client.getBusinessName());
-        ad.setValidation(Role.ADMIN.equals(client.getRole()) ? AdValidationType.APPROVED : AdValidationType.PENDING);
-
-        client.getAds().add(adRepository.save(ad));
-        return ad;
+        setAdValidationDuringUpdate(ad);
+        Ad savedAd = adRepository.save(ad);
+        client.getAds().add(savedAd);
+        return savedAd;
     }
 
-    private Ad createNewAdFromRequest(AdRequest adRequestEntity, AdRequestDto adRequest, Client admin) {
-        Ad newAd = new Ad(adRequest, adRequestEntity.getClient(), adRequestEntity);
-        newAd.setUsernameCreate(admin.getBusinessName());
+    private Ad updateExistingAd(AttachmentRequestDto request) {
+        Ad ad = findAdById(request.getId());
+        return adRepository.save(updateAdDetails(request, ad));
+    }
 
-        if (!ValidateDataUtils.isNullOrEmptyString(adRequestEntity.getAttachmentIds())) {
-            List<Attachment> attachments = getAttachmentsFromAdRequest(adRequestEntity);
+    private Ad createNewAdFromRequest(AdRequest entity, AttachmentRequestDto request) {
+        Client client = entity.getClient();
+        Ad newAd = new Ad(request, client, entity);
+
+        if (!ValidateDataUtils.isNullOrEmptyString(entity.getAttachmentIds())) {
+            List<Attachment> attachments = getAttachmentsFromAdRequest(entity);
             adRepository.save(newAd);
             newAd.getAttachments().addAll(attachments);
         }
 
-        Client client = adRequestEntity.getClient();
         client.getAds().add(newAd);
-        adRequestEntity.closeRequest();
+        entity.closeRequest();
 
         adRepository.save(newAd);
-        adRequestRepository.save(adRequestEntity);
+        adRequestRepository.save(entity);
 
         notificationService.save(
                 NotificationReference.AD_RECEIVED,
@@ -206,48 +196,54 @@ public class AttachmentHelper {
         return newAd;
     }
 
-    private Ad updateExistingAd(AdRequestDto request, Client client, AdRequest adRequestEntity) {
-        if (adRequestEntity != null) {
-            validateAdminRole(client);
-            return updateExistingAdFromRequest(adRequestEntity.getAd(), request, client);
-        }
-
-        Ad ad = findAdById(request.getId());
-        updateAdDetails(request, ad, client);
+    private Ad updateExistingAdFromRequest(Ad ad, AttachmentRequestDto adRequest) {
+        updateAdDetails(adRequest, ad);
 
         if (shouldRemoveAdFromMonitors(ad)) {
             monitorHelper.sendBoxesMonitorsRemoveAd(ad, Collections.singletonList(ad.getName()));
         }
 
-        return adRepository.save(ad);
-    }
-
-    private Ad updateExistingAdFromRequest(Ad ad, AdRequestDto adRequest, Client admin) {
-        updateAdDetails(adRequest, ad, admin);
-
-        if (shouldRemoveAdFromMonitors(ad)) {
-            monitorHelper.sendBoxesMonitorsRemoveAd(ad, Collections.singletonList(ad.getName()));
-        }
-
-        ad.setValidation(AdValidationType.PENDING);
         ad.getAdRequest().closeRequest();
         adRequestRepository.save(ad.getAdRequest());
-        return adRepository.save(ad);
+
+        if (!ad.canBeRefused()) {
+            ad.getRefusedAds().remove(0);
+        }
+
+        adRepository.save(ad);
+
+        notificationService.save(
+                NotificationReference.AD_RECEIVED,
+                ad.getClient(),
+                Map.of("link", frontBaseUrl + "/client/my-telas?ads=true"),
+                false
+        );
+
+        return ad;
     }
 
-    private void updateAdDetails(AdRequestDto request, Ad ad, Client client) {
+    private Ad updateAdDetails(AttachmentRequestDto request, Ad ad) {
         verifyFileNameChanged(request, ad);
         bucketService.deleteAttachment(AttachmentUtils.format(ad));
         ad.setName(request.getName());
         ad.setType(request.getType());
-        ad.setUsernameUpdate(client.getBusinessName());
-        ad.setValidation(!AdValidationType.APPROVED.equals(ad.getValidation()) ? AdValidationType.PENDING : ad.getValidation());
+        setAdValidationDuringUpdate(ad);
+        return ad;
     }
 
-    private void validateAdminRole(Client client) {
-        if (!Role.ADMIN.equals(client.getRole())) {
-            throw new ForbiddenException(AdValidationMessages.ADMIN_ROLE_REQUIRED);
+    private void setAdValidationDuringUpdate(Ad entity) {
+        if (Role.ADMIN.equals(entity.getClient().getRole())) {
+            entity.setValidation(AdValidationType.APPROVED);
+            return;
         }
+        entity.setValidation(AdValidationType.PENDING);
+    }
+
+    private boolean shouldRemoveAdFromMonitors(Ad ad) {
+        Client client = ad.getClient();
+        return AdValidationType.APPROVED.equals(ad.getValidation())
+                && !Role.ADMIN.equals(client.getRole())
+                && !subscriptionHelper.getClientActiveSubscriptions(client.getId()).isEmpty();
     }
 
     private Ad findAdById(UUID adId) {
@@ -256,7 +252,7 @@ public class AttachmentHelper {
     }
 
     @Transactional
-    public void validateAd(Ad entity, AdValidationType validation, RefusedAdRequestDto request, Client validator) {
+    public void validateAd(Ad entity, AdValidationType validation, RefusedAdRequestDto request) {
         if (AdValidationType.PENDING.equals(validation)) {
             throw new BusinessRuleException(AdValidationMessages.PENDING_VALIDATION_NOT_ACCEPTED);
         }
@@ -265,20 +261,18 @@ public class AttachmentHelper {
             return;
         }
 
-        if (!Role.ADMIN.equals(validator.getRole())) {
-            validateValidatorPermissions(entity, validator);
-        }
+        validateValidatorPermissions(entity, entity.getClient());
 
         if (!entity.canBeRefused() && AdValidationType.REJECTED.equals(validation)) {
             throw new BusinessRuleException(AdValidationMessages.AD_EXCEEDS_MAX_VALIDATION);
         }
 
-        CustomRevisionListener.setUsername(validator.getBusinessName());
+        CustomRevisionListener.setUsername(entity.getClient().getBusinessName());
         entity.setValidation(validation);
 
         if (AdValidationType.REJECTED.equals(validation)) {
             validateRejectionRequest(request);
-            createRefusedAd(request, entity, validator);
+            createRefusedAd(request, entity);
         }
 
         adRepository.save(entity);
@@ -289,7 +283,7 @@ public class AttachmentHelper {
             throw new BusinessRuleException(AdValidationMessages.AD_ALREADY_VALIDATED);
         }
 
-        if (Objects.isNull(validator.getAdRequest()) || !validator.getId().equals(entity.getClient().getId())) {
+        if (!validator.getId().equals(entity.getClient().getId())) {
             throw new ForbiddenException(AdValidationMessages.VALIDATION_NOT_ALLOWED);
         }
     }
@@ -300,15 +294,16 @@ public class AttachmentHelper {
         }
     }
 
-    private void createRefusedAd(RefusedAdRequestDto request, Ad entity, Client validator) {
-        RefusedAd refusedAd = new RefusedAd(request, entity, validator);
-        refusedAd.setUsernameCreate(validator.getBusinessName());
-        entity.setUsernameUpdate(validator.getBusinessName());
+    private void createRefusedAd(RefusedAdRequestDto request, Ad entity) {
+        RefusedAd refusedAd = new RefusedAd(request, entity);
+        entity.setUsernameUpdate(entity.getClient().getBusinessName());
         entity.getRefusedAds().add(refusedAd);
+        entity.getAdRequest().handleRefusal();
+        adRequestRepository.save(entity.getAdRequest());
 
-        if (Objects.nonNull(entity.getAdRequest())) {
-            entity.getAdRequest().handleRefusal();
-            adRequestRepository.save(entity.getAdRequest());
-        }
+//        if (Objects.nonNull(entity.getAdRequest())) {
+//            entity.getAdRequest().handleRefusal();
+//            adRequestRepository.save(entity.getAdRequest());
+//        }
     }
 }

@@ -16,19 +16,16 @@ public final class SubscriptionMonitorResponseDto implements Serializable {
     private static final long serialVersionUID = -7144327643566339527L;
 
     private UUID id;
-    private String type;
     private String addressData;
     private List<MonitorAdResponseDto> adLinks;
 
     public SubscriptionMonitorResponseDto(Monitor monitor) {
         id = monitor.getId();
-        type = monitor.getType().name();
         addressData = monitor.getAddress().getCoordinatesParams();
     }
 
     public SubscriptionMonitorResponseDto(Monitor monitor, List<MonitorAdResponseDto> adLinks) {
         id = monitor.getId();
-        type = monitor.getType().name();
         addressData = monitor.getAddress().getCoordinatesParams();
         this.adLinks = adLinks;
     }

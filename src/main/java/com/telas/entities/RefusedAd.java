@@ -20,35 +20,30 @@ import java.util.UUID;
 @AuditTable("refused_ads_aud")
 @NoArgsConstructor
 public class RefusedAd extends BaseAudit implements Serializable {
-  @Serial
-  private static final long serialVersionUID = 7994322371461512045L;
+    @Serial
+    private static final long serialVersionUID = 7994322371461512045L;
 
-  @Id
-  @GeneratedValue
-  @Column(name = "id")
-  private UUID id;
+    @Id
+    @GeneratedValue
+    @Column(name = "id")
+    private UUID id;
 
-  @Column(name = "justification", nullable = false)
-  private String justification;
+    @Column(name = "justification", nullable = false)
+    private String justification;
 
-  @Column(name = "description")
-  private String description;
+    @Column(name = "description")
+    private String description;
 
-  @JsonIgnore
-  @ManyToOne
-  @JoinColumn(name = "ad_id", referencedColumnName = "id", nullable = false)
-  private Ad ad;
+    @JsonIgnore
+    @ManyToOne
+    @JoinColumn(name = "ad_id", referencedColumnName = "id", nullable = false)
+    private Ad ad;
 
-  @JsonIgnore
-  @ManyToOne
-  @JoinColumn(name = "validator_id", referencedColumnName = "id", nullable = false)
-  private Client validator;
-
-  public RefusedAd(RefusedAdRequestDto request, Ad ad, Client validator) {
-    justification = request.getJustification();
-    description = request.getDescription();
-    this.validator = validator;
-    this.ad = ad;
-  }
+    public RefusedAd(RefusedAdRequestDto request, Ad ad) {
+        justification = request.getJustification();
+        description = request.getDescription();
+        this.ad = ad;
+        setUsernameCreate(ad.getClient().getBusinessName());
+    }
 
 }

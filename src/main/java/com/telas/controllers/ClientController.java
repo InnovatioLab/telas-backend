@@ -1,7 +1,9 @@
 package com.telas.controllers;
 
-import com.telas.dtos.request.*;
-import com.telas.dtos.request.filters.AdminFilterAdRequestDto;
+import com.telas.dtos.request.AttachmentRequestDto;
+import com.telas.dtos.request.ClientAdRequestToAdminDto;
+import com.telas.dtos.request.ClientRequestDto;
+import com.telas.dtos.request.RefusedAdRequestDto;
 import com.telas.dtos.request.filters.ClientFilterRequestDto;
 import com.telas.dtos.request.filters.FilterAdRequestDto;
 import com.telas.enums.AdValidationType;
@@ -100,7 +102,7 @@ public interface ClientController {
             @ApiResponse(responseCode = "403", description = "Forbidden."),
             @ApiResponse(responseCode = "404", description = "Some data not found."),
     })
-    ResponseEntity<?> uploadAd(@Valid AdRequestDto request, UUID clientId);
+    ResponseEntity<?> uploadAd(@Valid AttachmentRequestDto request, UUID clientId);
 
     @Operation(summary = "Endpoint contract to get paginated clients from filters", responses = {
             @ApiResponse(responseCode = "200", description = "Records found successfully."),
@@ -132,14 +134,6 @@ public interface ClientController {
             @ApiResponse(responseCode = "404", description = "Some data not found."),
     })
     ResponseEntity<?> findAdRequestsByFilter(FilterAdRequestDto request);
-
-    @Operation(summary = "Endpoint contract find pending ads to ADMIN validate", responses = {
-            @ApiResponse(responseCode = "200", description = "Pending ads founded successfully."),
-            @ApiResponse(responseCode = "401", description = "Unauthorized."),
-            @ApiResponse(responseCode = "403", description = "Forbidden."),
-            @ApiResponse(responseCode = "404", description = "Some data not found."),
-    })
-    ResponseEntity<?> findPendingAds(AdminFilterAdRequestDto request);
 
     @Operation(summary = "Endpoint contract to validate an ad", responses = {
             @ApiResponse(responseCode = "200", description = "Ad validated successfully."),

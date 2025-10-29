@@ -1,7 +1,6 @@
 package com.telas.dtos.response;
 
 import com.telas.entities.Monitor;
-import com.telas.enums.MonitorType;
 import com.telas.enums.SubscriptionStatus;
 import com.telas.shared.constants.SharedConstants;
 import lombok.Getter;
@@ -18,7 +17,6 @@ public final class MonitorWishlistResponseDto implements Serializable {
 
     private final UUID id;
     private final boolean active;
-    private final MonitorType type;
     private final String locationDescription;
     private final String addressLocationName;
     private final String addressLocationDescription;
@@ -33,7 +31,6 @@ public final class MonitorWishlistResponseDto implements Serializable {
     public MonitorWishlistResponseDto(Monitor entity) {
         id = entity.getId();
         active = entity.isActive() && entity.isAbleToSendBoxRequest();
-        type = entity.getType();
         locationDescription = entity.getLocationDescription();
         addressLocationName = entity.getAddress().getLocationName();
         addressLocationDescription = entity.getAddress().getLocationDescription();

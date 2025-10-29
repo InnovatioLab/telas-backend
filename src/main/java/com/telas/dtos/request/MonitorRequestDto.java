@@ -3,7 +3,6 @@ package com.telas.dtos.request;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
-import com.telas.enums.MonitorType;
 import com.telas.infra.exceptions.BusinessRuleException;
 import com.telas.shared.constants.SharedConstants;
 import com.telas.shared.constants.valitation.MonitorValidationMessages;
@@ -39,8 +38,6 @@ public class MonitorRequestDto implements Serializable {
     @Size(max = SharedConstants.TAMANHO_NOME_ANEXO, message = MonitorValidationMessages.LOCATION_DESCRIPTION_SIZE)
     @JsonDeserialize(using = TrimStringDeserializer.class)
     private String locationDescription;
-
-    private MonitorType type = MonitorType.BASIC;
 
     private Boolean active;
 

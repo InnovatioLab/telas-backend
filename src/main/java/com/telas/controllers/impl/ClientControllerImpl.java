@@ -1,11 +1,16 @@
 package com.telas.controllers.impl;
 
 import com.telas.controllers.ClientController;
-import com.telas.dtos.request.*;
-import com.telas.dtos.request.filters.AdminFilterAdRequestDto;
+import com.telas.dtos.request.AttachmentRequestDto;
+import com.telas.dtos.request.ClientAdRequestToAdminDto;
+import com.telas.dtos.request.ClientRequestDto;
+import com.telas.dtos.request.RefusedAdRequestDto;
 import com.telas.dtos.request.filters.ClientFilterRequestDto;
 import com.telas.dtos.request.filters.FilterAdRequestDto;
-import com.telas.dtos.response.*;
+import com.telas.dtos.response.AdRequestAdminResponseDto;
+import com.telas.dtos.response.ClientMinResponseDto;
+import com.telas.dtos.response.PaginationResponseDto;
+import com.telas.dtos.response.ResponseDto;
 import com.telas.enums.AdValidationType;
 import com.telas.infra.security.model.PasswordRequestDto;
 import com.telas.services.ClientService;
@@ -111,7 +116,7 @@ public class ClientControllerImpl implements ClientController {
     @Override
     @PostMapping("/ads/{id}")
     @SecurityRequirement(name = "jwt")
-    public ResponseEntity<?> uploadAd(@Valid @RequestBody AdRequestDto request, @PathVariable(name = "id") UUID clientId) {
+    public ResponseEntity<?> uploadAd(@Valid @RequestBody AttachmentRequestDto request, @PathVariable(name = "id") UUID clientId) {
         service.uploadAds(request, clientId);
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(ResponseDto.fromData(null, HttpStatus.CREATED, MessageCommonsConstants.UPLOAD_SUCCESS_MESSAGE));
@@ -154,16 +159,6 @@ public class ClientControllerImpl implements ClientController {
 
         String msg = response.getList().isEmpty() ? MessageCommonsConstants.FIND_FILTER_EMPTY_MESSAGE : MessageCommonsConstants.FIND_ALL_SUCCESS_MESSAGE;
 
-        return ResponseEntity.status(HttpStatus.OK).body(ResponseDto.fromData(response, HttpStatus.OK, msg));
-    }
-
-    @Override
-    @GetMapping("/pending-ads")
-    @SecurityRequirement(name = "jwt")
-    public ResponseEntity<?> findPendingAds(AdminFilterAdRequestDto request) {
-        PaginationResponseDto<List<PendingAdAdminValidationResponseDto>> response = service.findPendingAds(request);
-
-        String msg = response.getList().isEmpty() ? MessageCommonsConstants.FIND_FILTER_EMPTY_MESSAGE : MessageCommonsConstants.FIND_ALL_SUCCESS_MESSAGE;
         return ResponseEntity.status(HttpStatus.OK).body(ResponseDto.fromData(response, HttpStatus.OK, msg));
     }
 

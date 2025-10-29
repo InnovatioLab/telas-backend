@@ -2,7 +2,6 @@ package com.telas.entities;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.telas.dtos.request.MonitorRequestDto;
-import com.telas.enums.MonitorType;
 import com.telas.enums.Recurrence;
 import com.telas.enums.SubscriptionStatus;
 import com.telas.shared.audit.BaseAudit;
@@ -39,10 +38,6 @@ public class Monitor extends BaseAudit implements Serializable {
     @Column(name = "fl_active", nullable = false)
     private boolean active = true;
 
-    @Column(name = "type", nullable = false)
-    @Enumerated(EnumType.STRING)
-    private MonitorType type = MonitorType.BASIC;
-
     @Column(name = "location_description")
     private String locationDescription;
 
@@ -72,7 +67,6 @@ public class Monitor extends BaseAudit implements Serializable {
 
     public Monitor(MonitorRequestDto request, Address address, String productId) {
         this.productId = productId;
-        type = request.getType();
         locationDescription = request.getLocationDescription();
         this.address = address;
     }

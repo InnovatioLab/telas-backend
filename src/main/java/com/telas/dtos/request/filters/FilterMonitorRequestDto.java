@@ -14,10 +14,9 @@ public class FilterMonitorRequestDto extends PaginationRequestDto {
     private String genericFilter;
 
     public Sort setOrdering() {
-        return switch (getSortBy()) {
-            case "type" -> Sort.by(Sort.Order.by("type").ignoreCase());
-            case "address" -> Sort.by(Sort.Order.by("address.street").ignoreCase());
-            default -> Sort.by(Sort.Order.desc("active"));
-        };
+        return "address".equals(getSortBy())
+                ? Sort.by(Sort.Order.by("address.street").ignoreCase())
+                : Sort.by(Sort.Order.desc("active"));
     }
+
 }

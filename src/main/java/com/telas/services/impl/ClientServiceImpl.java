@@ -1,8 +1,10 @@
 package com.telas.services.impl;
 
 import com.telas.dtos.EmailDataDto;
-import com.telas.dtos.request.*;
-import com.telas.dtos.request.filters.AdminFilterAdRequestDto;
+import com.telas.dtos.request.AttachmentRequestDto;
+import com.telas.dtos.request.ClientAdRequestToAdminDto;
+import com.telas.dtos.request.ClientRequestDto;
+import com.telas.dtos.request.RefusedAdRequestDto;
 import com.telas.dtos.request.filters.ClientFilterRequestDto;
 import com.telas.dtos.request.filters.FilterAdRequestDto;
 import com.telas.dtos.response.*;
@@ -21,7 +23,6 @@ import com.telas.infra.security.model.AuthenticatedUser;
 import com.telas.infra.security.model.PasswordRequestDto;
 import com.telas.infra.security.model.PasswordUpdateRequestDto;
 import com.telas.infra.security.services.AuthenticatedUserService;
-import com.telas.repositories.AdRepository;
 import com.telas.repositories.AdRequestRepository;
 import com.telas.repositories.ClientRepository;
 import com.telas.services.BucketService;
@@ -65,7 +66,6 @@ public class ClientServiceImpl implements ClientService {
     private final BucketService bucketService;
     private final TermConditionService termConditionService;
     private final AdRequestRepository adRequestRepository;
-    private final AdRepository adRepository;
 
     @Override
     @Transactional
@@ -262,8 +262,8 @@ public class ClientServiceImpl implements ClientService {
             throw new ForbiddenException(ClientValidationMessages.AD_REQUEST_EXISTS);
         }
 
-        if (!client.getAds().isEmpty() && client.getAds().stream().noneMatch(ad -> AdValidationType.REJECTED.equals(ad.getValidation()))) {
-            throw new BusinessRuleException(ClientValidationMessages.AD_REQUEST_NOT_ALLOWED);
+        if (!client.getAds().isEmpty()) {
+            throw new BusinessRuleException(ClientValidationMessages.MAX_ADS_REACHED);
         }
 
         helper.createAdRequest(request, client);
@@ -271,37 +271,23 @@ public class ClientServiceImpl implements ClientService {
 
     @Transactional
     @Override
-    public void uploadAds(AdRequestDto request, UUID clientId) {
+    public void uploadAds(AttachmentRequestDto request, UUID clientId) {
         request.validate();
 
-        Client client = authenticatedUserService.validateActiveSubscription().client();
+        Client admin = authenticatedUserService.validateAdmin().client();
 
-        if (Role.ADMIN.equals(client.getRole()) && client.getId().equals(clientId)) {
-            attachmentHelper.saveAds(request, client, null);
+        if (admin.getId().equals(clientId)) {
+            attachmentHelper.saveAds(request, admin);
             return;
         }
 
-        if (!Role.ADMIN.equals(client.getRole())) {
-            if (!client.getId().equals(clientId)) {
-                throw new ForbiddenException(ClientValidationMessages.UNAUTHORIZED_CLIENT);
-            }
+        Client client = findActiveEntityById(clientId);
 
-            if (!client.getAds().isEmpty()) {
-                throw new BusinessRuleException(ClientValidationMessages.MAX_ADS_REACHED);
-            }
-
-            if (Objects.nonNull(client.getAdRequest())) {
-                throw new ForbiddenException(ClientValidationMessages.AD_REQUEST_EXISTS);
-            }
-
-            request.setAdRequestId(null);
-            attachmentHelper.saveAds(request, client, null);
-            return;
+        if (Objects.isNull(client.getAdRequest())) {
+            throw new ResourceNotFoundException(ClientValidationMessages.AD_REQUEST_NOT_FOUND);
         }
 
-        validateAdRequestId(request.getAdRequestId());
-        AdRequest adRequest = helper.getAdRequestById(request.getAdRequestId());
-        attachmentHelper.saveAds(request, client, adRequest);
+        attachmentHelper.saveAds(request, client);
     }
 
     @Transactional
@@ -333,8 +319,7 @@ public class ClientServiceImpl implements ClientService {
     @Transactional
     public void validateAd(UUID adId, AdValidationType validation, RefusedAdRequestDto request) {
         Ad ad = helper.getAdById(adId);
-        Client validator = authenticatedUserService.validateActiveSubscription().client();
-        attachmentHelper.validateAd(ad, validation, request, validator);
+        attachmentHelper.validateAd(ad, validation, request);
 
         if (AdValidationType.APPROVED.equals(validation)) {
             List<UUID> monitorIds = helper.findClientMonitorsWithActiveSubscriptions(ad.getClient().getId()).stream()
@@ -405,29 +390,6 @@ public class ClientServiceImpl implements ClientService {
     }
 
     @Override
-    @Transactional(readOnly = true)
-    public PaginationResponseDto<List<PendingAdAdminValidationResponseDto>> findPendingAds(AdminFilterAdRequestDto request) {
-        authenticatedUserService.validateAdmin();
-
-        Pageable pageable = PaginationFilterUtil.getPageable(request, request.setOrdering());
-        Specification<Ad> filter = PaginationFilterUtil.addSpecificationFilter((root, query, criteriaBuilder) -> criteriaBuilder.and(
-                        criteriaBuilder.isNull(root.get("adRequest")),
-                        criteriaBuilder.equal(root.get("validation"), AdValidationType.PENDING),
-                        criteriaBuilder.notEqual(root.get("client").get("role"), Role.ADMIN)
-                ),
-                request.getGenericFilter(),
-                this::filterAds
-        );
-
-        Page<Ad> page = adRepository.findAll(filter, pageable);
-        List<PendingAdAdminValidationResponseDto> response = page.stream()
-                .map(ad -> new PendingAdAdminValidationResponseDto(ad, attachmentHelper.getStringLinkFromAd(ad)))
-                .toList();
-
-        return PaginationResponseDto.fromResult(response, (int) page.getTotalElements(), page.getTotalPages(), request.getPage());
-    }
-
-    @Override
     @Transactional
     public void addMonitorToWishlist(UUID monitorId) {
         Client client = authenticatedUserService.getLoggedUser().client();
@@ -482,41 +444,6 @@ public class ClientServiceImpl implements ClientService {
             predicates.add(criteriaBuilder.like(
                     criteriaBuilder.lower(root.get("client").get("businessName")),
                     filter
-            ));
-            predicates.add(criteriaBuilder.like(
-                    root.get("client").get("contact").get("email"), filter
-            ));
-            predicates.add(criteriaBuilder.like(
-                    root.get("client").get("contact").get("phone"), filter
-            ));
-            predicates.add(criteriaBuilder.equal(
-                    root.get("client").get("role"), genericFilter
-            ));
-
-            try {
-                LocalDate submissionDate = LocalDate.parse(genericFilter);
-                predicates.add(criteriaBuilder.equal(
-                        criteriaBuilder.function("date", LocalDate.class, root.get("createdAt")),
-                        submissionDate
-                ));
-            } catch (DateTimeParseException ignored) {
-            }
-
-            return criteriaBuilder.or(predicates.toArray(new Predicate[0]));
-        });
-    }
-
-    Specification<Ad> filterAds(Specification<Ad> specification, String genericFilter) {
-        return specification.and((root, query, criteriaBuilder) -> {
-            List<Predicate> predicates = new ArrayList<>();
-            String filter = "%" + genericFilter.toLowerCase() + "%";
-
-            predicates.add(criteriaBuilder.like(
-                    criteriaBuilder.lower(root.get("client").get("businessName")),
-                    filter
-            ));
-            predicates.add(criteriaBuilder.like(
-                    root.get("name"), filter
             ));
             predicates.add(criteriaBuilder.like(
                     root.get("client").get("contact").get("email"), filter

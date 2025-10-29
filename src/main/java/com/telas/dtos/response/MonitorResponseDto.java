@@ -1,7 +1,6 @@
 package com.telas.dtos.response;
 
 import com.telas.entities.Monitor;
-import com.telas.enums.MonitorType;
 import lombok.Getter;
 
 import java.io.Serial;
@@ -16,7 +15,6 @@ public final class MonitorResponseDto implements Serializable {
 
     private final UUID id;
     private final boolean active;
-    private final MonitorType type;
     private final String locationDescription;
     private final AddressFromZipCodeResponseDto address;
     private final String fullAddress;
@@ -26,7 +24,6 @@ public final class MonitorResponseDto implements Serializable {
     public MonitorResponseDto(Monitor entity, List<MonitorAdResponseDto> adLinks) {
         id = entity.getId();
         active = entity.isActive();
-        type = entity.getType();
         locationDescription = entity.getLocationDescription();
         address = new AddressFromZipCodeResponseDto(entity.getAddress());
         fullAddress = entity.getAddress().getCoordinatesParams();

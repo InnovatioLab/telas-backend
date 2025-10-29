@@ -1,7 +1,6 @@
 package com.telas.dtos.response;
 
 import com.telas.entities.Monitor;
-import com.telas.enums.MonitorType;
 import lombok.Getter;
 
 import java.io.Serial;
@@ -16,7 +15,6 @@ public final class MonitorMapsResponseDto implements Serializable {
 
     private final UUID id;
     private final Boolean active;
-    private final MonitorType type;
     private final Double latitude;
     private final Double longitude;
     private final Boolean hasAvailableSlots;
@@ -30,7 +28,6 @@ public final class MonitorMapsResponseDto implements Serializable {
     public MonitorMapsResponseDto(Monitor entity) {
         id = entity.getId();
         active = entity.isActive();
-        type = entity.getType();
         latitude = entity.getAddress() != null ? entity.getAddress().getLatitude() : null;
         longitude = entity.getAddress() != null ? entity.getAddress().getLongitude() : null;
         hasAvailableSlots = entity.hasAvailableBlocks(1);
