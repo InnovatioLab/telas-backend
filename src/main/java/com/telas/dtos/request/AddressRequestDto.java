@@ -53,7 +53,7 @@ public class AddressRequestDto implements Serializable {
     @Size(max = 50, message = AddressValidationMessages.COUNTRY_SIZE)
     @Pattern(regexp = SharedConstants.REGEX_ONLY_LETTERS, message = AddressValidationMessages.COUNTRY_REGEX)
     @JsonDeserialize(using = TrimStringDeserializer.class)
-    private String country;
+    private String country = "US";
 
     @Size(max = 100, message = AddressValidationMessages.ADDRESS2_SIZE)
     @JsonDeserialize(using = TrimStringDeserializer.class)
