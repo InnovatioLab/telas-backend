@@ -31,7 +31,7 @@ public final class MonitorMapsResponseDto implements Serializable {
         latitude = entity.getAddress() != null ? entity.getAddress().getLatitude() : null;
         longitude = entity.getAddress() != null ? entity.getAddress().getLongitude() : null;
         hasAvailableSlots = entity.hasAvailableBlocks(1);
-        estimatedSlotReleaseDate = entity.getEstimatedSlotReleaseDate();
+        estimatedSlotReleaseDate = entity.hasAvailableBlocks(1) ? null : entity.getEstimatedSlotReleaseDate();
         adsDailyDisplayTimeInMinutes = entity.getAdsDailyDisplayTimeInMinutes();
         addressLocationName = entity.getAddress() != null ? entity.getAddress().getLocationName() : null;
         addressLocationDescription = entity.getAddress() != null ? entity.getAddress().getLocationDescription() : null;
