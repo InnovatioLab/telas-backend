@@ -191,14 +191,7 @@ public class PaymentServiceImpl implements PaymentService {
                 .setSuccessUrl(successUrl)
                 .setExpiresAt(expiresAt)
                 .setCancelUrl(frontBaseUrl + "/client")
-                .setClientReferenceId(subscription.getClient().getId().toString())
-                .setShippingAddressCollection(
-                        SessionCreateParams.ShippingAddressCollection.builder()
-                                .addAllowedCountry(SessionCreateParams.ShippingAddressCollection.AllowedCountry.US)
-                                .addAllowedCountry(SessionCreateParams.ShippingAddressCollection.AllowedCountry.CA)
-                                .addAllowedCountry(SessionCreateParams.ShippingAddressCollection.AllowedCountry.MX)
-                                .build()
-                );
+                .setClientReferenceId(subscription.getClient().getId().toString());
 
         if (isSubscription) {
             metaData.put("invoice_description", "Invoice payment for your Tela's Subscription for monitors: " + subscription.getMonitorAddresses());

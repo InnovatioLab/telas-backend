@@ -65,6 +65,8 @@ public class PaymentHelper {
         metaData.put("subscriptionId", subscription.getId().toString());
         metaData.put("clientId", subscription.getClient().getId().toString());
         metaData.put("paymentId", payment.getId().toString());
+        metaData.put("billing_address_locked", "true");
+        metaData.put("allowed_billing_countries", "US,CA,MX");
 
         if (recurrence != null) {
             metaData.put("recurrence", recurrence.name());
