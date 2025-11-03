@@ -27,143 +27,147 @@ import java.util.stream.Collectors;
 @Service
 @RequiredArgsConstructor
 public class CartServiceImpl implements CartService {
-  private final CartRepository repository;
-  private final CartItemRepository cartItemRepository;
-  private final SubscriptionFlowRepository subscriptionFlowRepository;
-  private final AuthenticatedUserService authenticatedUserService;
-  private final MonitorService monitorService;
+    private final CartRepository repository;
+    private final CartItemRepository cartItemRepository;
+    private final SubscriptionFlowRepository subscriptionFlowRepository;
+    private final AuthenticatedUserService authenticatedUserService;
+    private final MonitorService monitorService;
 
-  @Override
-  @Transactional
-  public CartResponseDto save(CartRequestDto request, UUID cartId) {
-    Client client = authenticatedUserService.getLoggedUser().client();
+    @Override
+    @Transactional
+    public CartResponseDto save(CartRequestDto request, UUID cartId) {
+        Client client = authenticatedUserService.getLoggedUser().client();
 
-    if (Role.ADMIN.equals(client.getRole())) {
-      return null;
+        if (Role.ADMIN.equals(client.getRole())) {
+            return null;
+        }
+
+        Cart cart = (cartId != null) ? findEntityById(cartId) : null;
+
+        if (cart == null) {
+            if (repository.findActiveByClientIdWithItens(client.getId()).isPresent()) {
+                throw new ResourceNotFoundException(CartValidationMessages.CART_ALREADY_EXISTS);
+            }
+
+            cart = new Cart(client);
+            cart.setRecurrence(request.getRecurrence());
+            cart = repository.save(cart);
+        } else {
+            if (ValidateDataUtils.isNullOrEmpty(request.getItems())) {
+                repository.delete(cart);
+                return null;
+            }
+            cart.setRecurrence(request.getRecurrence());
+            cart = repository.save(cart);
+        }
+
+        if (client.getSubscriptionFlow() == null) {
+            subscriptionFlowRepository.save(new SubscriptionFlow(client));
+        }
+
+
+        List<CartItemResponseDto> itemsResponse = saveCartItems(request, cart);
+        return getCartResponse(cart, itemsResponse);
     }
 
-    Cart cart = (cartId != null) ? findEntityById(cartId) : null;
-
-    if (cart == null) {
-      if (repository.findActiveByClientIdWithItens(client.getId()).isPresent()) {
-        throw new ResourceNotFoundException(CartValidationMessages.CART_ALREADY_EXISTS);
-      }
-
-      cart = new Cart(client);
-      cart.setRecurrence(request.getRecurrence());
-      cart = repository.save(cart);
-    } else {
-      cart.setRecurrence(request.getRecurrence());
-      cart = repository.save(cart);
+    @Override
+    @Transactional
+    public void inactivateCart(Cart cart) {
+        if (cart.isActive()) {
+            cart.inactivate();
+            repository.save(cart);
+        }
     }
 
-    if (client.getSubscriptionFlow() == null) {
-      subscriptionFlowRepository.save(new SubscriptionFlow(client));
+    @Override
+    @Transactional
+    public Cart findActiveByClientIdWithItens(UUID id) {
+        return repository.findActiveByClientIdWithItens(id).orElseThrow(() -> new ResourceNotFoundException(CartValidationMessages.CART_NOT_FOUND));
     }
 
-
-    List<CartItemResponseDto> itemsResponse = saveCartItems(request, cart);
-    return getCartResponse(cart, itemsResponse);
-  }
-
-  @Override
-  @Transactional
-  public void inactivateCart(Cart cart) {
-    if (cart.isActive()) {
-      cart.inactivate();
-      repository.save(cart);
-    }
-  }
-
-  @Override
-  @Transactional
-  public Cart findActiveByClientIdWithItens(UUID id) {
-    return repository.findActiveByClientIdWithItens(id).orElseThrow(() -> new ResourceNotFoundException(CartValidationMessages.CART_NOT_FOUND));
-  }
-
-  @Override
-  @Transactional
-  public CartResponseDto findById(UUID id) {
-    Cart cart = findEntityById(id);
-    return getCartResponse(cart, null);
-  }
-
-  @Override
-  @Transactional(readOnly = true)
-  public Object getLoggedUserCart() {
-    Client client = authenticatedUserService.getLoggedUser().client();
-    return repository.findActiveByClientIdWithItens(client.getId())
-            .map(cart -> getCartResponse(cart, cart.getItems().stream().map(CartItemResponseDto::new).toList()))
-            .orElse(null);
-  }
-
-  private CartResponseDto getCartResponse(Cart cart, List<CartItemResponseDto> itemsResponse) {
-    CartResponseDto response = new CartResponseDto(cart);
-
-    if (!ValidateDataUtils.isNullOrEmpty(itemsResponse)) {
-      response.setItems(itemsResponse);
+    @Override
+    @Transactional
+    public CartResponseDto findById(UUID id) {
+        Cart cart = findEntityById(id);
+        return getCartResponse(cart, null);
     }
 
-    return response;
-  }
-
-  private List<CartItemResponseDto> saveCartItems(CartRequestDto request, Cart cart) {
-    Map<UUID, CartItem> actualItems = mapExistingCartItems(cart);
-    List<CartItemResponseDto> itemsResponse = new ArrayList<>();
-
-    Set<UUID> itemsReceivedIds = processReceivedItems(request, cart, actualItems, itemsResponse);
-    removeUnreceivedItems(cart, actualItems, itemsReceivedIds);
-    deleteCartIfEmpty(cart);
-    return itemsResponse;
-  }
-
-  private Map<UUID, CartItem> mapExistingCartItems(Cart cart) {
-    List<CartItem> cartItems = !ValidateDataUtils.isNullOrEmpty(cart.getItems()) ? cart.getItems() : new ArrayList<>();
-    return cartItems.stream().collect(Collectors.toMap(item -> item.getMonitor().getId(), item -> item));
-  }
-
-  private Set<UUID> processReceivedItems(CartRequestDto request, Cart cart, Map<UUID, CartItem> actualItems, List<CartItemResponseDto> itemsResponse) {
-    Set<UUID> itemsReceivedIds = new HashSet<>();
-
-    for (CartItemRequestDto itemDto : request.getItems()) {
-      UUID monitorId = itemDto.getMonitorId();
-      Monitor monitor = monitorService.findEntityById(monitorId);
-
-      CartItem cartItem = actualItems.computeIfAbsent(monitorId, k -> new CartItem(cart, monitor, itemDto));
-      cartItem.setBlockQuantity(itemDto.getBlockQuantity());
-      cartItemRepository.save(cartItem);
-
-      itemsResponse.add(new CartItemResponseDto(cartItem));
-
-      itemsReceivedIds.add(monitorId);
+    @Override
+    @Transactional(readOnly = true)
+    public Object getLoggedUserCart() {
+        Client client = authenticatedUserService.getLoggedUser().client();
+        return repository.findActiveByClientIdWithItens(client.getId())
+                .map(cart -> getCartResponse(cart, cart.getItems().stream().map(CartItemResponseDto::new).toList()))
+                .orElse(null);
     }
 
-    return itemsReceivedIds;
-  }
+    private CartResponseDto getCartResponse(Cart cart, List<CartItemResponseDto> itemsResponse) {
+        CartResponseDto response = new CartResponseDto(cart);
 
-  private void removeUnreceivedItems(Cart cart, Map<UUID, CartItem> actualItems, Set<UUID> itemsReceivedIds) {
-    List<CartItem> itemsToRemove = actualItems.values().stream()
-            .filter(item -> !itemsReceivedIds.contains(item.getMonitor().getId()))
-            .toList();
+        if (!ValidateDataUtils.isNullOrEmpty(itemsResponse)) {
+            response.setItems(itemsResponse);
+        }
 
-    if (!itemsToRemove.isEmpty()) {
-      cartItemRepository.deleteAll(itemsToRemove);
-      cartItemRepository.flush();
-
-      if (cart.getItems() != null && !cart.getItems().isEmpty()) {
-        cart.getItems().removeAll(itemsToRemove);
-      }
+        return response;
     }
-  }
 
-  private void deleteCartIfEmpty(Cart cart) {
-    if (cartItemRepository.countByCartId(cart.getId()) == SharedConstants.ZERO) {
-      repository.delete(cart);
+    private List<CartItemResponseDto> saveCartItems(CartRequestDto request, Cart cart) {
+        Map<UUID, CartItem> actualItems = mapExistingCartItems(cart);
+        List<CartItemResponseDto> itemsResponse = new ArrayList<>();
+
+        Set<UUID> itemsReceivedIds = processReceivedItems(request, cart, actualItems, itemsResponse);
+        removeUnreceivedItems(cart, actualItems, itemsReceivedIds);
+        deleteCartIfEmpty(cart);
+        return itemsResponse;
     }
-  }
 
-  private Cart findEntityById(UUID cartId) {
-    return repository.findByIdWithItens(cartId)
-            .orElseThrow(() -> new ResourceNotFoundException(CartValidationMessages.CART_NOT_FOUND));
-  }
+    private Map<UUID, CartItem> mapExistingCartItems(Cart cart) {
+        List<CartItem> cartItems = !ValidateDataUtils.isNullOrEmpty(cart.getItems()) ? cart.getItems() : new ArrayList<>();
+        return cartItems.stream().collect(Collectors.toMap(item -> item.getMonitor().getId(), item -> item));
+    }
+
+    private Set<UUID> processReceivedItems(CartRequestDto request, Cart cart, Map<UUID, CartItem> actualItems, List<CartItemResponseDto> itemsResponse) {
+        Set<UUID> itemsReceivedIds = new HashSet<>();
+
+        for (CartItemRequestDto itemDto : request.getItems()) {
+            UUID monitorId = itemDto.getMonitorId();
+            Monitor monitor = monitorService.findEntityById(monitorId);
+
+            CartItem cartItem = actualItems.computeIfAbsent(monitorId, k -> new CartItem(cart, monitor, itemDto));
+            cartItem.setBlockQuantity(itemDto.getBlockQuantity());
+            cartItemRepository.save(cartItem);
+
+            itemsResponse.add(new CartItemResponseDto(cartItem));
+
+            itemsReceivedIds.add(monitorId);
+        }
+
+        return itemsReceivedIds;
+    }
+
+    private void removeUnreceivedItems(Cart cart, Map<UUID, CartItem> actualItems, Set<UUID> itemsReceivedIds) {
+        List<CartItem> itemsToRemove = actualItems.values().stream()
+                .filter(item -> !itemsReceivedIds.contains(item.getMonitor().getId()))
+                .toList();
+
+        if (!itemsToRemove.isEmpty()) {
+            cartItemRepository.deleteAll(itemsToRemove);
+            cartItemRepository.flush();
+
+            if (cart.getItems() != null && !cart.getItems().isEmpty()) {
+                cart.getItems().removeAll(itemsToRemove);
+            }
+        }
+    }
+
+    private void deleteCartIfEmpty(Cart cart) {
+        if (cartItemRepository.countByCartId(cart.getId()) == SharedConstants.ZERO) {
+            repository.delete(cart);
+        }
+    }
+
+    private Cart findEntityById(UUID cartId) {
+        return repository.findByIdWithItens(cartId)
+                .orElseThrow(() -> new ResourceNotFoundException(CartValidationMessages.CART_NOT_FOUND));
+    }
 }

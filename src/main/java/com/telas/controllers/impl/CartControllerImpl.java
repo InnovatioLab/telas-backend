@@ -18,40 +18,40 @@ import java.util.UUID;
 @RequestMapping(value = "carts")
 @RequiredArgsConstructor
 public class CartControllerImpl implements CartController {
-  private final CartService service;
+    private final CartService service;
 
-  @Override
-  @PostMapping
-  @SecurityRequirement(name = "jwt")
-  public ResponseEntity<?> save(@Valid @RequestBody CartRequestDto request) {
-    return ResponseEntity.status(HttpStatus.CREATED)
-            .body(ResponseDto.fromData(service.save(request, null), HttpStatus.CREATED, MessageCommonsConstants.SAVE_SUCCESS_MESSAGE));
-  }
+    @Override
+    @PostMapping
+    @SecurityRequirement(name = "jwt")
+    public ResponseEntity<?> save(@Valid @RequestBody CartRequestDto request) {
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(ResponseDto.fromData(service.save(request, null), HttpStatus.CREATED, MessageCommonsConstants.SAVE_SUCCESS_MESSAGE));
+    }
 
-  @Override
-  @PutMapping("/{id}")
-  @SecurityRequirement(name = "jwt")
-  public ResponseEntity<?> update(@Valid @RequestBody CartRequestDto request, @PathVariable(name = "id") UUID cartId) {
-    return ResponseEntity.status(HttpStatus.OK)
-            .body(ResponseDto.fromData(service.save(request, cartId), HttpStatus.OK, MessageCommonsConstants.UPDATE_SUCCESS_MESSAGE));
-  }
+    @Override
+    @PutMapping("/{id}")
+    @SecurityRequirement(name = "jwt")
+    public ResponseEntity<?> update(@RequestBody CartRequestDto request, @PathVariable(name = "id") UUID cartId) {
+        return ResponseEntity.status(HttpStatus.OK)
+                .body(ResponseDto.fromData(service.save(request, cartId), HttpStatus.OK, MessageCommonsConstants.UPDATE_SUCCESS_MESSAGE));
+    }
 
-  @Override
-  @GetMapping("/{id}")
-  @SecurityRequirement(name = "jwt")
-  public ResponseEntity<?> findById(@PathVariable(name = "id") UUID id) {
-    return ResponseEntity.status(HttpStatus.OK)
-            .body(ResponseDto.fromData(service.findById(id), HttpStatus.OK, MessageCommonsConstants.FIND_ID_SUCCESS_MESSAGE));
-  }
+    @Override
+    @GetMapping("/{id}")
+    @SecurityRequirement(name = "jwt")
+    public ResponseEntity<?> findById(@PathVariable(name = "id") UUID id) {
+        return ResponseEntity.status(HttpStatus.OK)
+                .body(ResponseDto.fromData(service.findById(id), HttpStatus.OK, MessageCommonsConstants.FIND_ID_SUCCESS_MESSAGE));
+    }
 
-  @Override
-  @GetMapping
-  @SecurityRequirement(name = "jwt")
-  public ResponseEntity<?> getLoggedUserCart() {
-    Object response = service.getLoggedUserCart();
-    String message = response != null ? MessageCommonsConstants.FIND_ID_SUCCESS_MESSAGE : null;
+    @Override
+    @GetMapping
+    @SecurityRequirement(name = "jwt")
+    public ResponseEntity<?> getLoggedUserCart() {
+        Object response = service.getLoggedUserCart();
+        String message = response != null ? MessageCommonsConstants.FIND_ID_SUCCESS_MESSAGE : null;
 
-    return ResponseEntity.status(HttpStatus.OK)
-            .body(ResponseDto.fromData(response, HttpStatus.OK, message));
-  }
+        return ResponseEntity.status(HttpStatus.OK)
+                .body(ResponseDto.fromData(response, HttpStatus.OK, message));
+    }
 }
