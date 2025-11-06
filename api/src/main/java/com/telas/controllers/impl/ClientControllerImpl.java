@@ -1,0 +1,202 @@
+package com.telas.controllers.impl;
+
+import com.telas.controllers.ClientController;
+import com.telas.dtos.request.*;
+import com.telas.dtos.request.filters.ClientFilterRequestDto;
+import com.telas.dtos.request.filters.FilterAdRequestDto;
+import com.telas.dtos.response.AdRequestAdminResponseDto;
+import com.telas.dtos.response.ClientMinResponseDto;
+import com.telas.dtos.response.PaginationResponseDto;
+import com.telas.dtos.response.ResponseDto;
+import com.telas.enums.AdValidationType;
+import com.telas.infra.security.services.AuthenticatedUserService;
+import com.telas.services.ClientService;
+import com.telas.shared.constants.MessageCommonsConstants;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
+import jakarta.validation.Valid;
+import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
+import java.util.UUID;
+
+@RestController
+@RequestMapping(value = "clients")
+@RequiredArgsConstructor
+public class ClientControllerImpl implements ClientController {
+    private final ClientService service;
+    private final AuthenticatedUserService authenticatedUserService;
+
+    @Override
+    @PostMapping
+    public ResponseEntity<?> save(@Valid @RequestBody ClientRequestDto request) {
+        service.save(request);
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(ResponseDto.fromData(null, HttpStatus.CREATED, MessageCommonsConstants.SAVE_SUCCESS_MESSAGE));
+    }
+
+    @Override
+    @PatchMapping("/validate-code/{email}")
+    public ResponseEntity<?> validateCode(@PathVariable(name = "email") String email, @RequestParam(name = "code") String code) {
+        service.validateCode(email, code);
+        return ResponseEntity.status(HttpStatus.OK)
+                .body(ResponseDto.fromData(null, HttpStatus.OK, MessageCommonsConstants.CODE_CONFIRMED_SUCCESS_MESSAGE));
+    }
+
+    @Override
+    @PostMapping("/resend-code/{email}")
+    public ResponseEntity<?> resendCode(@PathVariable(name = "email") String email) {
+        service.resendCode(email);
+        return ResponseEntity.status(HttpStatus.OK)
+                .body(ResponseDto.fromData(null, HttpStatus.OK, MessageCommonsConstants.CODE_SENT_SUCCESS_MESSAGE));
+    }
+
+    @Override
+    @PatchMapping("/create-password/{email}")
+    public ResponseEntity<?> createPassword(@PathVariable(name = "email") String email, @Valid @RequestBody PasswordRequestDto request) {
+        service.createPassword(email, request);
+        return ResponseEntity.status(HttpStatus.OK)
+                .body(ResponseDto.fromData(null, HttpStatus.OK, "Password created successfully!"));
+    }
+
+    @Override
+    @GetMapping("/{id}")
+    @SecurityRequirement(name = "jwt")
+    public ResponseEntity<?> findById(@PathVariable(name = "id") UUID clientId) {
+        return ResponseEntity.status(HttpStatus.OK)
+                .body(ResponseDto.fromData(service.findById(clientId), HttpStatus.OK, MessageCommonsConstants.FIND_ID_SUCCESS_MESSAGE));
+    }
+
+    @Override
+    @GetMapping("/identification/{email}")
+    public ResponseEntity<?> findByEmail(@PathVariable(name = "email") String email) {
+        return ResponseEntity.status(HttpStatus.OK)
+                .body(ResponseDto.fromData(service.findByEmailUnprotected(email), HttpStatus.OK, MessageCommonsConstants.FIND_ID_SUCCESS_MESSAGE));
+    }
+
+    @Override
+    @GetMapping("/authenticated")
+    @SecurityRequirement(name = "jwt")
+    public ResponseEntity<?> getDataFromToken() {
+        UUID clientId = authenticatedUserService.getLoggedUser().client().getId();
+        return ResponseEntity.status(HttpStatus.OK)
+                .body(ResponseDto.fromData(service.getDataFromToken(clientId), HttpStatus.OK, MessageCommonsConstants.FIND_ID_SUCCESS_MESSAGE));
+    }
+
+    @Override
+    @PutMapping("/{id}")
+    @SecurityRequirement(name = "jwt")
+    public ResponseEntity<?> update(@Valid @RequestBody ClientRequestDto request, @PathVariable(name = "id") UUID clientId) {
+        service.update(request, clientId);
+        return ResponseEntity.status(HttpStatus.OK)
+                .body(ResponseDto.fromData(null, HttpStatus.OK, MessageCommonsConstants.UPDATE_SUCCESS_MESSAGE));
+    }
+
+    @Override
+    @PostMapping("/attachments")
+    @SecurityRequirement(name = "jwt")
+    public ResponseEntity<?> uploadAttachments(@Valid @RequestBody List<AttachmentRequestDto> request) {
+        service.uploadAttachments(request);
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(ResponseDto.fromData(null, HttpStatus.CREATED, MessageCommonsConstants.UPLOAD_SUCCESS_MESSAGE));
+    }
+
+    @Override
+    @PostMapping("/request-ad")
+    @SecurityRequirement(name = "jwt")
+    public ResponseEntity<?> requestAdCreation(@Valid @RequestBody ClientAdRequestToAdminDto request) {
+        service.requestAdCreation(request);
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(ResponseDto.fromData(null, HttpStatus.CREATED, MessageCommonsConstants.REQUEST_AD_SUCCESS_MESSAGE));
+    }
+
+    @Override
+    @PostMapping("/ads/{id}")
+    @SecurityRequirement(name = "jwt")
+    public ResponseEntity<?> uploadAd(@Valid @RequestBody AttachmentRequestDto request, @PathVariable(name = "id") UUID clientId) {
+        service.uploadAds(request, clientId);
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(ResponseDto.fromData(null, HttpStatus.CREATED, MessageCommonsConstants.UPLOAD_SUCCESS_MESSAGE));
+    }
+
+    @Override
+    @GetMapping("/filters")
+    @SecurityRequirement(name = "jwt")
+    public ResponseEntity<?> findAllFilters(ClientFilterRequestDto request) {
+        PaginationResponseDto<List<ClientMinResponseDto>> response = service.findAllFilters(request);
+
+        String msg = response.getList().isEmpty() ? MessageCommonsConstants.FIND_FILTER_EMPTY_MESSAGE : MessageCommonsConstants.FIND_ALL_SUCCESS_MESSAGE;
+
+        return ResponseEntity.status(HttpStatus.OK).body(ResponseDto.fromData(response, HttpStatus.OK, msg));
+    }
+
+    @Override
+    @PatchMapping("/accept-terms-conditions")
+    @SecurityRequirement(name = "jwt")
+    public ResponseEntity<?> acceptTermsConditions() {
+        service.acceptTermsAndConditions();
+        return ResponseEntity.status(HttpStatus.ACCEPTED).body(
+                ResponseDto.fromData(null, HttpStatus.ACCEPTED, MessageCommonsConstants.ACCEPT_TERMS_CONDITIONS_SUCCESS_MESSAGE));
+    }
+
+    @Override
+    @PatchMapping("/partner/{id}")
+    @SecurityRequirement(name = "jwt")
+    public ResponseEntity<?> changeRoleToPartner(@PathVariable(name = "id") UUID clientId) {
+        service.changeRoleToPartner(clientId);
+        return ResponseEntity.status(HttpStatus.OK)
+                .body(ResponseDto.fromData(null, HttpStatus.OK, MessageCommonsConstants.UPDATE_SUCCESS_MESSAGE));
+    }
+
+    @Override
+    @GetMapping("/ads-requests")
+    @SecurityRequirement(name = "jwt")
+    public ResponseEntity<?> findAdRequestsByFilter(FilterAdRequestDto request) {
+        PaginationResponseDto<List<AdRequestAdminResponseDto>> response = service.findPendingAdRequest(request);
+
+        String msg = response.getList().isEmpty() ? MessageCommonsConstants.FIND_FILTER_EMPTY_MESSAGE : MessageCommonsConstants.FIND_ALL_SUCCESS_MESSAGE;
+
+        return ResponseEntity.status(HttpStatus.OK).body(ResponseDto.fromData(response, HttpStatus.OK, msg));
+    }
+
+    @Override
+    @PatchMapping("/validate-ad/{id}")
+    @SecurityRequirement(name = "jwt")
+    public ResponseEntity<?> validateAd(
+            @RequestParam("validation") AdValidationType validation,
+            @RequestBody(required = false) RefusedAdRequestDto request,
+            @PathVariable(name = "id") UUID adId) {
+
+        service.validateAd(adId, validation, request);
+        return ResponseEntity.status(HttpStatus.OK).body(ResponseDto.fromData(null, HttpStatus.OK, MessageCommonsConstants.AD_VALIDATION_MESSAGE));
+    }
+
+    @Override
+    @PatchMapping("/increment-subscription-flow")
+    @SecurityRequirement(name = "jwt")
+    public ResponseEntity<?> incrementSubscriptionFlow() {
+        service.incrementSubscriptionFlow();
+        return ResponseEntity.status(HttpStatus.OK).body(ResponseDto.fromData(null, HttpStatus.OK, "Subscription flow incremented successfully!"));
+    }
+
+    @Override
+    @GetMapping("/wishlist")
+    @SecurityRequirement(name = "jwt")
+    public ResponseEntity<?> getWishlistMonitors() {
+        return ResponseEntity.status(HttpStatus.OK)
+                .body(ResponseDto.fromData(service.getWishlistMonitors(), HttpStatus.OK, MessageCommonsConstants.FIND_ALL_SUCCESS_MESSAGE));
+    }
+
+    @Override
+    @PostMapping("/wishlist/{monitorId}")
+    @SecurityRequirement(name = "jwt")
+    public ResponseEntity<?> addMonitorToWishlist(@PathVariable(name = "monitorId") UUID monitorId) {
+        service.addMonitorToWishlist(monitorId);
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(ResponseDto.fromData(null, HttpStatus.CREATED, MessageCommonsConstants.SAVE_SUCCESS_MESSAGE));
+    }
+
+
+}
