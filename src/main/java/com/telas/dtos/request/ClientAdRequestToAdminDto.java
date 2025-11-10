@@ -2,10 +2,13 @@ package com.telas.dtos.request;
 
 
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
+import com.telas.dtos.validation.ValidUrl;
 import com.telas.shared.constants.SharedConstants;
 import com.telas.shared.constants.valitation.AdValidationMessages;
+import com.telas.shared.constants.valitation.ClientValidationMessages;
 import com.telas.shared.constants.valitation.ContactValidationMessages;
 import com.telas.shared.utils.TrimStringDeserializer;
+import jakarta.validation.Valid;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.Pattern;
@@ -32,16 +35,12 @@ public class ClientAdRequestToAdminDto implements Serializable {
 
     private List<UUID> attachmentIds = new ArrayList<>();
 
-    @NotEmpty(message = AdValidationMessages.MESSAGE_REQUIRED)
+    @Size(max = 50, message = "Slogan must be less than 50 characters.")
     @JsonDeserialize(using = TrimStringDeserializer.class)
-    private String message;
+    private String slogan;
 
-    @Pattern(regexp = SharedConstants.REGEX_ONLY_NUMBERS, message = ContactValidationMessages.PHONE_ONLY_NUMBERS)
-    @Size(min = 10, max = 10, message = ContactValidationMessages.PHONE_SIZE)
+    @ValidUrl(message = "Invalid Brand Guideline URL format")
+    @Size(max = 255, message = "Brand Guideline URL must be less than 255 characters.")
     @JsonDeserialize(using = TrimStringDeserializer.class)
-    private String phone;
-
-    @Email(message = ContactValidationMessages.EMAIL_INVALID)
-    @JsonDeserialize(using = TrimStringDeserializer.class)
-    private String email;
+    private String brandGuidelineUrl;
 }

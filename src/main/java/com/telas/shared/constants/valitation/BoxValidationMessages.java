@@ -10,4 +10,5 @@ public final class BoxValidationMessages {
     public static final String BOX_ADDRESS_NOT_FOUND = "Box address not found with the provided ID.";
     public static final String BOX_ADDRESS_ALREADY_ALLOCATED = "Box address is already allocated to a box.";
     public static final String MONITORS_DIFFERENT_ADDRESSES = "All monitors must have the same address.";
+    public static final String MONITOR_ID_REQUIRED = "Monitor ID is required.";
 }

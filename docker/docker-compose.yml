@@ -25,6 +25,7 @@ services:
     ports:
       - "3100:3100"
     restart: always
+    user: "${UID}:${GID}"
     healthcheck:
       test: wget --spider -q http://localhost:3100/ready || exit 1
       interval: 30s
@@ -46,6 +47,7 @@ services:
       - "9001:9001" # MinIO Console
     networks:
       - observability
+    user: "${UID}:${GID}"
     healthcheck:
       test: curl --fail http://localhost:9000/minio/health/live || exit 1
       interval: 30s
@@ -62,6 +64,7 @@ services:
       - observability
     restart: always
     command: -config.file=/etc/promtail/promtail-config.yml
+    user: "${UID}:${GID}"
     healthcheck:
       test: wget --spider -q http://localhost:9080/ready || exit 1
       interval: 30s
@@ -81,6 +84,7 @@ services:
     ports:
       - "9090:9090"
     restart: always
+    user: "${UID}:${GID}"
     healthcheck:
       test: wget --spider -q http://localhost:9090/-/ready || exit 1
       interval: 30s
@@ -99,6 +103,7 @@ services:
     networks:
       - observability
     restart: always
+    user: "${UID}:${GID}"
     healthcheck:
       test: curl --fail http://localhost:3000/api/health || exit 1
       interval: 30s
@@ -112,6 +117,7 @@ services:
     ports:
       - "5672:5672"
       - "15672:15672"
+    user: "${UID}:${GID}"
     healthcheck:
       test: rabbitmq-diagnostics check_port_connectivity
       interval: 10s

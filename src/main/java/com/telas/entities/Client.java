@@ -89,6 +89,7 @@ public class Client extends BaseAudit implements Serializable {
     @JoinColumn(name = "social_media_id", referencedColumnName = "id")
     private SocialMedia socialMedia;
 
+    @NotAudited
     @JsonIgnore
     @OneToOne(mappedBy = "client", cascade = CascadeType.ALL)
     private AdRequest adRequest;
@@ -190,9 +191,7 @@ public class Client extends BaseAudit implements Serializable {
         return termCondition != null && termAcceptedAt != null;
     }
 
-    public List<Ad> getPendingAds() {
-        return ads.stream()
-                .filter(ad -> AdValidationType.PENDING.equals(ad.getValidation()))
-                .collect(Collectors.toList());
+    public boolean isPartner() {
+        return Role.PARTNER.equals(role);
     }
 }

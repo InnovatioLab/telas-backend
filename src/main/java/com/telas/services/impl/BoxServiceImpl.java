@@ -20,6 +20,7 @@ import com.telas.shared.utils.ValidateDataUtils;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.util.ObjectUtils;
 
 import java.util.Collections;
 import java.util.List;
@@ -50,15 +51,13 @@ public class BoxServiceImpl implements BoxService {
         authenticatedUserService.validateAdmin();
 
         BoxAddress boxAddress = helper.getBoxAddress(request.getBoxAddressId());
-        List<Monitor> monitors = ValidateDataUtils.isNullOrEmpty(request.getMonitorIds()) ?
-                Collections.emptyList() :
-                helper.getMonitorsWithSameAddress(request.getMonitorIds());
+        Monitor monitor = findMonitorById(request.getMonitorId());
 
-        Box box = (boxId != null) ? updateBox(request, boxId, boxAddress, monitors) : createBox(boxAddress, monitors);
+        Box box = (boxId != null) ? updateBox(request, boxId, boxAddress, monitor) : new Box(boxAddress, monitor);
 
         repository.save(box);
 
-        if (!ValidateDataUtils.isNullOrEmpty(monitors)) {
+        if (!ObjectUtils.isEmpty(monitor)) {
             helper.sendUpdateBoxMonitorsAdsRequest(box);
         }
     }
@@ -120,49 +119,33 @@ public class BoxServiceImpl implements BoxService {
                 .orElseThrow(() -> new ResourceNotFoundException(BoxValidationMessages.BOX_NOT_FOUND));
     }
 
-    private Box createBox(BoxAddress boxAddress, List<Monitor> monitors) {
-        helper.validateUniqueAddress(boxAddress);
-
-        if (monitors.stream().anyMatch(monitor -> monitor.getBox() != null)) {
-            throw new ResourceNotFoundException(BoxValidationMessages.MONITOR_ALREADY_ASSOCIATED);
-        }
-
-        return new Box(boxAddress, monitors);
-    }
-
-    private Box updateBox(BoxRequestDto request, UUID boxId, BoxAddress boxAddress, List<Monitor> monitors) {
+    private Box updateBox(BoxRequestDto request, UUID boxId, BoxAddress boxAddress, Monitor monitor) {
         Box box = findById(boxId);
 
         if (!box.getBoxAddress().getId().equals(boxAddress.getId())) {
-            helper.validateUniqueAddress(boxAddress);
             box.setBoxAddress(boxAddress);
         }
 
         box.setActive(request.isActive());
-        updateMonitors(box, monitors);
 
-        return box;
-    }
+        if (monitor.getBox() != null && !monitor.getBox().getId().equals(box.getId())) {
+            Box previousBox = monitor.getBox();
+            previousBox.getMonitors().removeIf(m -> m.getId().equals(monitor.getId()));
+        }
 
-    private void updateMonitors(Box box, List<Monitor> monitors) {
-        List<UUID> newMonitorIds = monitors.stream().map(Monitor::getId).toList();
-
-        box.getMonitors().removeIf(monitor -> {
-            if (!newMonitorIds.contains(monitor.getId())) {
-                monitor.setBox(null);
-                monitorRepository.save(monitor);
-                return true;
-            }
-            return false;
+        box.getMonitors().forEach(m -> {
+            m.setBox(null);
+            monitorRepository.save(m);
         });
 
-        List<UUID> boxMonitorIds = box.getMonitors().stream().map(Monitor::getId).toList();
-        monitors.stream()
-                .filter(monitor -> !boxMonitorIds.contains(monitor.getId()))
-                .forEach(monitor -> {
-                    monitor.setBox(box);
-                    monitorRepository.save(monitor);
-                    box.getMonitors().add(monitor);
-                });
+        box.getMonitors().clear();
+
+        monitor.setBox(box);
+        monitorRepository.save(monitor);
+
+        box.getMonitors().add(monitor);
+
+        return box;
+
     }
 }

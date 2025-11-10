@@ -17,7 +17,6 @@ public final class MonitorWishlistResponseDto implements Serializable {
 
     private final UUID id;
     private final boolean active;
-    private final String locationDescription;
     private final String addressLocationName;
     private final String addressLocationDescription;
     private final String photoUrl;
@@ -31,7 +30,6 @@ public final class MonitorWishlistResponseDto implements Serializable {
     public MonitorWishlistResponseDto(Monitor entity) {
         id = entity.getId();
         active = entity.isActive() && entity.isAbleToSendBoxRequest();
-        locationDescription = entity.getLocationDescription();
         addressLocationName = entity.getAddress().getLocationName();
         addressLocationDescription = entity.getAddress().getLocationDescription();
         photoUrl = entity.getAddress().getPhotoUrl();

@@ -38,9 +38,6 @@ public class Monitor extends BaseAudit implements Serializable {
     @Column(name = "fl_active", nullable = false)
     private boolean active = true;
 
-    @Column(name = "location_description")
-    private String locationDescription;
-
     @Column(name = "product_id", nullable = false)
     private String productId;
 
@@ -67,7 +64,6 @@ public class Monitor extends BaseAudit implements Serializable {
 
     public Monitor(MonitorRequestDto request, Address address, String productId) {
         this.productId = productId;
-        locationDescription = request.getLocationDescription();
         this.address = address;
     }
 
@@ -96,12 +92,26 @@ public class Monitor extends BaseAudit implements Serializable {
     }
 
     public boolean isWithinAdsLimit(int blocksWanted) {
-        return monitorAds.size() + blocksWanted <= maxBlocks;
+        int adsSize = monitorAds.size() - (hasPartnerAds() ? 7 : 0);
+        return adsSize + blocksWanted <= maxBlocks;
     }
 
     private boolean isWithinSubscriptionsLimit(int blocksWanted) {
-        return getActiveSubscriptions().size() + blocksWanted <= maxBlocks;
+        int subscriptionsCount = getActiveSubscriptions().size() - (hasPartnerSubscription() ? 1 : 0);
+        return subscriptionsCount + blocksWanted <= maxBlocks;
     }
+
+    private boolean hasPartnerAds() {
+        return monitorAds.stream().anyMatch(monitorAd ->
+                monitorAd.getAd().getClient().isPartner() &&
+                        monitorAd.getAd().getClient().getId().equals(address.getClient().getId()));
+    }
+
+    private boolean hasPartnerSubscription() {
+        return getActiveSubscriptions().stream().anyMatch(subscription ->
+                subscription.getClient().isPartner() && subscription.getClient().getId().equals(address.getClient().getId()));
+    }
+
 
     public Set<Subscription> getActiveSubscriptions() {
         Instant now = Instant.now();

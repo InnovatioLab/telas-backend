@@ -35,10 +35,6 @@ public class MonitorRequestDto implements Serializable {
 
     private AddressRequestDto address;
 
-    @Size(max = SharedConstants.TAMANHO_NOME_ANEXO, message = MonitorValidationMessages.LOCATION_DESCRIPTION_SIZE)
-    @JsonDeserialize(using = TrimStringDeserializer.class)
-    private String locationDescription;
-
     private Boolean active;
 
     private @Valid List<MonitorAdRequestDto> ads;

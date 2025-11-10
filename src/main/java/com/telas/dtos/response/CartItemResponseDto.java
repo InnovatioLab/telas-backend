@@ -41,7 +41,6 @@ public class CartItemResponseDto implements Serializable {
     monitorAddress = entity.getMonitor().getAddress().getCoordinatesParams();
     latitude = entity.getMonitor().getAddress().getLatitude();
     longitude = entity.getMonitor().getAddress().getLongitude();
-    locationDescription = entity.getMonitor().getLocationDescription();
     addressLocationName = entity.getMonitor().getAddress().getLocationName();
     addressLocationDescription = entity.getMonitor().getAddress().getLocationDescription();
     photoUrl = entity.getMonitor().getAddress().getPhotoUrl();

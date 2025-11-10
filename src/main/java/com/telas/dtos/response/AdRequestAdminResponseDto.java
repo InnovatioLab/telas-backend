@@ -23,15 +23,13 @@ public final class AdRequestAdminResponseDto implements Serializable {
 
     private final UUID clientId;
 
-    private final String message;
+    private final String slogan;
+
+    private final String brandGuidelineUrl;
 
     private final String clientName;
 
     private final Role clientRole;
-
-    private final String phone;
-
-    private final String email;
 
     private final boolean isActive;
 
@@ -48,11 +46,10 @@ public final class AdRequestAdminResponseDto implements Serializable {
     public AdRequestAdminResponseDto(AdRequest adRequest, Map<String, Object> linkResponseData) {
         id = adRequest.getId();
         clientId = adRequest.getClient().getId();
-        message = adRequest.getMessage();
+        brandGuidelineUrl = adRequest.getBrandGuidelineUrl();
+        slogan = adRequest.getSlogan();
         clientName = adRequest.getClient().getBusinessName();
         clientRole = adRequest.getClient().getRole();
-        phone = adRequest.getPhone();
-        email = adRequest.getEmail();
         isActive = adRequest.isActive();
         submissionDate = adRequest.getCreatedAt().atZone(ZoneId.systemDefault()).toLocalDate();
         waitingDays = ChronoUnit.DAYS.between(adRequest.getCreatedAt(), Instant.now());

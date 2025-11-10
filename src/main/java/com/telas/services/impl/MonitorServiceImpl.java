@@ -126,17 +126,8 @@ public class MonitorServiceImpl implements MonitorService {
     @Transactional(readOnly = true)
     public List<MonitorsBoxMinResponseDto> findAllMonitors() {
         return repository.findAll().stream()
-                .collect(Collectors.groupingBy(monitor -> monitor.getAddress().getCoordinatesParams()))
-                .values().stream()
-                .map(monitors -> {
-                    List<UUID> monitorIds = monitors.stream()
-                            .map(Monitor::getId)
-                            .toList();
-                    String fullAddress = monitors.isEmpty() ? null : monitors.get(0).getAddress().getCoordinatesParams();
-                    boolean hasBox = monitors.stream().allMatch(monitor -> monitor.getBox() != null);
-                    return new MonitorsBoxMinResponseDto(monitorIds, fullAddress, hasBox);
-                })
-                .toList();
+                .map(MonitorsBoxMinResponseDto::new)
+                .collect(Collectors.toList());
     }
 
 
@@ -228,6 +219,9 @@ public class MonitorServiceImpl implements MonitorService {
     }
 
     private Monitor createNewMonitor(MonitorRequestDto request, AuthenticatedUser authenticatedUser, Address address) {
+        if (!address.getMonitors().isEmpty()) {
+            throw new BusinessRuleException(MonitorValidationMessages.ADDRESS_ALREADY_IN_USE);
+        }
         helper.setAddressCoordinates(address);
         Monitor monitor = new Monitor(request, address, productId);
         monitor.setUsernameCreate(authenticatedUser.client().getBusinessName());
@@ -238,6 +232,10 @@ public class MonitorServiceImpl implements MonitorService {
         Monitor monitor = findEntityById(monitorId);
 
         if (!monitor.getAddress().getId().equals(address.getId())) {
+            if (!address.getMonitors().isEmpty()) {
+                throw new BusinessRuleException(MonitorValidationMessages.ADDRESS_ALREADY_IN_USE);
+            }
+
             monitor.setAddress(address);
 
             if (!address.hasLocation()) {
@@ -256,7 +254,6 @@ public class MonitorServiceImpl implements MonitorService {
 
     private void updateMonitorDetails(MonitorRequestDto request, Monitor monitor, List<Ad> ads) {
         monitor.setProductId(productId);
-        monitor.setLocationDescription(request.getLocationDescription());
         monitor.setActive(request.getActive() != null ? request.getActive() : monitor.isActive());
 
         if (ValidateDataUtils.isNullOrEmpty(ads)) {

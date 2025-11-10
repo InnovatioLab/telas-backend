@@ -13,6 +13,7 @@ import java.io.Serializable;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 import java.util.UUID;
 
 @Getter
@@ -44,13 +45,29 @@ public class Box implements Serializable {
   @OneToMany(mappedBy = "box", cascade = CascadeType.ALL)
   private List<Monitor> monitors = new ArrayList<>();
 
-  public Box(BoxAddress boxAddress, List<Monitor> monitors) {
-    this.boxAddress = boxAddress;
-
-    if (!ValidateDataUtils.isNullOrEmpty(monitors)) {
-      monitors.forEach(monitor -> monitor.setBox(this));
-      this.monitors.addAll(monitors);
+    public Box(BoxAddress boxAddress, List<Monitor> monitors) {
+        this.boxAddress = boxAddress;
+        if (!ValidateDataUtils.isNullOrEmpty(monitors)) {
+            monitors.forEach(this::addMonitor);
+        }
     }
 
-  }
+    public Box(BoxAddress boxAddress, Monitor monitor) {
+        this.boxAddress = boxAddress;
+        addMonitor(monitor);
+
+    }
+
+    private void addMonitor(Monitor monitor) {
+            removeIfExists(monitor);
+            monitor.setBox(this);
+            this.monitors.add(monitor);
+    }
+
+    private void removeIfExists(Monitor monitor) {
+        if (Objects.nonNull(monitor.getBox())) {
+            Box box = monitor.getBox();
+            box.getMonitors().removeIf(m -> m.getId().equals(monitor.getId()));
+        }
+    }
 }

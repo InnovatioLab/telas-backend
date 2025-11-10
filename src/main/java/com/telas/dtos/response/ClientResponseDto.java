@@ -6,11 +6,13 @@ import com.telas.entities.Contact;
 import com.telas.entities.SocialMedia;
 import com.telas.enums.DefaultStatus;
 import com.telas.enums.Role;
+import com.telas.enums.SubscriptionStatus;
 import lombok.Getter;
 
 import java.io.Serial;
 import java.io.Serializable;
 import java.util.List;
+import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
 
@@ -49,6 +51,8 @@ public final class ClientResponseDto implements Serializable {
 
     private final boolean shouldDisplayAttachments;
 
+    private final boolean hasAdRequest;
+
     private final int currentSubscriptionFlowStep;
 
     public ClientResponseDto(Client entity, List<LinkResponseDto> attachmentUrls, List<AdResponseDto> adsUrls) {
@@ -67,6 +71,8 @@ public final class ClientResponseDto implements Serializable {
         termAccepted = entity.isTermsAccepted();
         currentSubscriptionFlowStep = entity.getSubscriptionFlow() != null ? entity.getSubscriptionFlow().getStep() : 0;
         hasSubscription = !entity.getSubscriptions().isEmpty();
-        shouldDisplayAttachments = !entity.getAttachments().isEmpty() || !entity.getAds().isEmpty() || !entity.getSubscriptions().isEmpty();
+        shouldDisplayAttachments = !entity.getSubscriptions().isEmpty()
+                && entity.getSubscriptions().stream().anyMatch(subscription -> SubscriptionStatus.ACTIVE.equals(subscription.getStatus()));
+        hasAdRequest = Objects.nonNull(entity.getAdRequest());
     }
 }

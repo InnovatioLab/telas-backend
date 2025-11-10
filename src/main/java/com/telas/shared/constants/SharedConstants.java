@@ -28,8 +28,8 @@ public final class SharedConstants {
     public static final String REGEX_ONLY_LETTERS = "^[a-zA-ZÀ-ÖØ-öø-ÿ\\s]*$";
     public static final String REGEX_ZIP_CODE = "\\d{5}";
 
-    public static final String REGEX_ATTACHMENT_NAME = ".*\\.(jpg|jpeg|png|gif|svg|bmp|tiff)$";
-    public static final String REGEX_ATTACHMENT_TYPE = "image/(jpg|jpeg|png|gif|svg|bmp|tiff)";
+    public static final String REGEX_ATTACHMENT_NAME = ".*\\.(jpg|jpeg|png|gif|svg|bmp|tiff|pdf)$";
+    public static final String REGEX_ATTACHMENT_TYPE = "(image/(jpg|jpeg|png|gif|svg|bmp|tiff)|application/pdf)";
 
     public static final int ZERO = 0;
     public static final int ATTACHMENT_LINK_EXPIRY_TIME = 7 * 24 * 60 * 60;
@@ -43,9 +43,8 @@ public final class SharedConstants {
     public static final int MAX_MONITOR_ADS = 17;
     public static final int MAX_ADS_VALIDATION = 3;
     public static final int MIN_QUANTITY_MONITOR_BLOCK = 1;
-    public static final int MAX_QUANTITY_MONITOR_BLOCK = 3;
+    public static final int MAX_QUANTITY_MONITOR_BLOCK = 2;
 
-    public static final int TAMANHO_NOME_ANEXO = 255;
     public static final int MAX_ADS_PER_CLIENT = 1;
 
     public static final long MAX_BILLING_CYCLE_ANCHOR = 30L * 24 * 60 * 60;

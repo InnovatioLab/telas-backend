@@ -11,6 +11,4 @@ public final class CartValidationMessages {
   public static final String CART_ALREADY_EXISTS = "An active cart already exists for this client.";
   public static final String CART_INACTIVE = "Cart is inactive.";
   public static final String CART_EMPTY = "Cart is empty.";
-  public static final String MONITOR_IDS_REQUIRED = "Monitor IDs are required.";
-  public static final String CART_ACTIVE = "Cart is active and cannot be deleted.";
 }

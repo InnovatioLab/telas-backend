@@ -15,7 +15,6 @@ public final class MonitorResponseDto implements Serializable {
 
     private final UUID id;
     private final boolean active;
-    private final String locationDescription;
     private final AddressFromZipCodeResponseDto address;
     private final String fullAddress;
     private final boolean canBeDeleted;
@@ -24,7 +23,6 @@ public final class MonitorResponseDto implements Serializable {
     public MonitorResponseDto(Monitor entity, List<MonitorAdResponseDto> adLinks) {
         id = entity.getId();
         active = entity.isActive();
-        locationDescription = entity.getLocationDescription();
         address = new AddressFromZipCodeResponseDto(entity.getAddress());
         fullAddress = entity.getAddress().getCoordinatesParams();
         canBeDeleted = entity.getActiveSubscriptions().isEmpty();

@@ -350,31 +350,15 @@ CREATE TABLE "ad_requests"
 (
     "id"              UUID PRIMARY KEY,
     "client_id"       UUID                     NOT NULL,
-    "message"         TEXT                     NOT NULL,
+    "brand_guideline_url"         TEXT                     NULL DEFAULT NULL,
     "attachment_ids"  TEXT,
+    "slogan"        VARCHAR(50) NULL     DEFAULT NULL,
     "active"          BOOLEAN                           DEFAULT TRUE,
-    "phone"           VARCHAR(11),
-    "email"           VARCHAR(255),
     "username_create" VARCHAR(255) NULL     DEFAULT NULL,
     "username_update" VARCHAR(255) NULL     DEFAULT NULL,
     "created_at"      TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT (now()),
     "updated_at"      TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT (now()),
     CONSTRAINT "fk_ad_request_client" FOREIGN KEY ("client_id") REFERENCES "clients" ("id") ON UPDATE NO ACTION ON DELETE CASCADE
-);
-
-CREATE TABLE "ad_requests_aud"
-(
-    "id"             UUID,
-    "client_id"      UUID,
-    "message"        TEXT,
-    "attachment_ids" TEXT,
-    "phone"          VARCHAR(11),
-    "email"          VARCHAR(255),
-    "active"         BOOLEAN,
-    "audit_id"       BIGINT NOT NULL,
-    "audit_type"     SMALLINT NULL DEFAULT NULL,
-    CONSTRAINT "pk_tbads_requests_aud" PRIMARY KEY ("id", "audit_id"),
-    CONSTRAINT "fk_tbads_requests_aud_tbaudit" FOREIGN KEY ("audit_id") REFERENCES "audit" ("audit_id") ON UPDATE NO ACTION ON DELETE NO ACTION
 );
 
 CREATE TABLE "ads"

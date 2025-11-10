@@ -16,11 +16,9 @@ public final class AdRequestClientResponseDto implements Serializable {
 
     private final UUID id;
 
-    private final String message;
+    private final String slogan;
 
-    private final String phone;
-
-    private final String email;
+    private final String brandGuidelineUrl;
 
     private final boolean isActive;
 
@@ -28,9 +26,8 @@ public final class AdRequestClientResponseDto implements Serializable {
 
     public AdRequestClientResponseDto(AdRequest adRequest) {
         id = adRequest.getId();
-        message = adRequest.getMessage();
-        phone = adRequest.getPhone();
-        email = adRequest.getEmail();
+        brandGuidelineUrl = adRequest.getBrandGuidelineUrl();
+        slogan = adRequest.getSlogan();
         isActive = adRequest.isActive();
         attachmentsIds = adRequest.getAttachmentIds() != null
                 ? Stream.of(adRequest.getAttachmentIds().split(","))

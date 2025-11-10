@@ -38,36 +38,9 @@ public class BoxHelper {
     private String API_KEY;
 
     @Transactional(readOnly = true)
-    public void validateUniqueAddress(BoxAddress boxAddress) {
-        if (boxAddress.getBox() != null) {
-            throw new BusinessRuleException(BoxValidationMessages.BOX_ADDRESS_ALREADY_ALLOCATED);
-        }
-    }
-
-    @Transactional(readOnly = true)
     public BoxAddress getBoxAddress(UUID boxAddressId) {
         return boxAddressRepository.findById(boxAddressId)
                 .orElseThrow(() -> new ResourceNotFoundException(BoxValidationMessages.BOX_ADDRESS_NOT_FOUND));
-    }
-
-    @Transactional(readOnly = true)
-    public List<Monitor> getMonitorsWithSameAddress(List<UUID> monitorIds) {
-        List<Monitor> monitors = monitorRepository.findAllById(monitorIds);
-
-        if (monitors.isEmpty()) {
-            return Collections.emptyList();
-        }
-
-        UUID addressId = monitors.get(0).getAddress().getId();
-
-        boolean monitorsDifferentAddresses = monitors.stream()
-                .anyMatch(monitor -> !Objects.equals(monitor.getAddress().getId(), addressId));
-
-        if (monitorsDifferentAddresses) {
-            throw new BusinessRuleException(BoxValidationMessages.MONITORS_DIFFERENT_ADDRESSES);
-        }
-
-        return monitors;
     }
 
 

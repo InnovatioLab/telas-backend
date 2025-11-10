@@ -295,7 +295,7 @@ public class SubscriptionHelper {
             Monitor monitor = monitors.get(item.getMonitor().getId());
             String msg = " with id: " + item.getMonitor().getId();
 
-            if (monitor == null || !monitor.isActive() || !monitor.hasAvailableBlocks(item.getBlockQuantity())) {
+            if (!monitor.isActive() || !monitor.hasAvailableBlocks(item.getBlockQuantity())) {
                 throw new BusinessRuleException(MonitorValidationMessages.MONITOR_INACTIVE_OR_BLOCKS_UNAVAILABLE + msg);
             }
 

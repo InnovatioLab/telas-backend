@@ -20,4 +20,5 @@ public final class MonitorValidationMessages {
           "Monitor is not attached to a valid box. Please ensure the monitor is linked to a box with an active state.";
   public static final String ADS_LIMIT_EXCEEDED =
           "The number of ads exceeds the maximum limit for this monitor. The maximum number of ads is: ";
+    public static final String ADDRESS_ALREADY_IN_USE = "Address is already in use by another monitor.";
 }

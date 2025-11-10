@@ -25,7 +25,8 @@ public class BoxRequestDto implements Serializable {
   @NotNull(message = BoxValidationMessages.BOX_ADDRESS_ID_REQUIRED)
   private UUID boxAddressId;
 
-  private List<UUID> monitorIds = new ArrayList<>();
+  @NotNull(message = BoxValidationMessages.MONITOR_ID_REQUIRED)
+  private UUID monitorId;
 
   private boolean active = true;
 }

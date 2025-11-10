@@ -18,7 +18,6 @@ import java.util.UUID;
 @Setter
 @Entity
 @Table(name = "ad_requests")
-@AuditTable("ad_requests_aud")
 @NoArgsConstructor
 public class AdRequest extends BaseAudit implements Serializable {
     @Serial
@@ -29,17 +28,14 @@ public class AdRequest extends BaseAudit implements Serializable {
     @Column(name = "id")
     private UUID id;
 
-    @Column(name = "message", nullable = false)
-    private String message;
+    @Column(name = "slogan")
+    private String slogan;
+
+    @Column(name = "brand_guideline_url", columnDefinition = "TEXT")
+    private String brandGuidelineUrl;
 
     @Column(name = "attachment_ids")
     private String attachmentIds;
-
-    @Column(name = "phone")
-    private String phone;
-
-    @Column(name = "email")
-    private String email;
 
     @Column(name = "active")
     private boolean isActive = true;
@@ -53,9 +49,8 @@ public class AdRequest extends BaseAudit implements Serializable {
 
     public AdRequest(ClientAdRequestToAdminDto request, Client client, List<Attachment> attachmentList) {
         this.client = client;
-        message = request.getMessage();
-        phone = request.getPhone();
-        email = request.getEmail();
+        this.slogan = request.getSlogan();
+        this.brandGuidelineUrl = request.getBrandGuidelineUrl();
 
         if (!ValidateDataUtils.isNullOrEmpty(attachmentList)) {
             attachmentIds = attachmentList.stream()
