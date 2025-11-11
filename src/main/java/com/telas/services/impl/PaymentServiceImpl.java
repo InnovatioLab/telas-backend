@@ -42,7 +42,6 @@ public class PaymentServiceImpl implements PaymentService {
     private final Logger log = LoggerFactory.getLogger(PaymentServiceImpl.class);
     private final PaymentRepository repository;
     private final SubscriptionRepository subscriptionRepository;
-    private final ClientRepository clientRepository;
     private final PaymentHelper helper;
     private final ClientHelper clientHelper;
 

@@ -14,8 +14,10 @@ public final class MonitorValidationMessages {
   public static final String ADDRESS_ID_AND_ADDRESS_BOTH_PROVIDED = "Both address and address ID cannot be provided at the same time";
   public static final String AD_NOT_ABLE_TO_ASSIGN_TO_MONITOR = "Ad cannot be assigned to the monitor. It might not be approved, not associated with the monitor, or linked to an invalid subscription.";
   public static final String MONITOR_HAS_ACTIVE_SUBSCRIPTION = "Monitor has an active subscription. Please cancel the subscription before deleting the monitor.";
-  public static final String MONITOR_INACTIVE_OR_BLOCKS_UNAVAILABLE =
-          "Monitor is inactive or does not have enough available blocks.";
+  public static final String MONITOR_BLOCKS_UNAVAILABLE =
+          "Monitor not have enough available blocks.";
+    public static final String MONITOR_INACTIVE =
+            "Monitor is inactive.";
   public static final String MONITOR_BOX_NOT_VALID =
           "Monitor is not attached to a valid box. Please ensure the monitor is linked to a box with an active state.";
   public static final String ADS_LIMIT_EXCEEDED =

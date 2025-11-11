@@ -223,7 +223,7 @@ public class MonitorServiceImpl implements MonitorService {
             throw new BusinessRuleException(MonitorValidationMessages.ADDRESS_ALREADY_IN_USE);
         }
         helper.setAddressCoordinates(address);
-        Monitor monitor = new Monitor(request, address, productId);
+        Monitor monitor = new Monitor(address, productId);
         monitor.setUsernameCreate(authenticatedUser.client().getBusinessName());
         return monitor;
     }

@@ -134,11 +134,9 @@ public class CartServiceImpl implements CartService {
             Monitor monitor = monitorService.findEntityById(monitorId);
 
             CartItem cartItem = actualItems.computeIfAbsent(monitorId, k -> new CartItem(cart, monitor, itemDto));
-            cartItem.setBlockQuantity(itemDto.getBlockQuantity());
             cartItemRepository.save(cartItem);
 
             itemsResponse.add(new CartItemResponseDto(cartItem));
-
             itemsReceivedIds.add(monitorId);
         }
 

@@ -54,12 +54,4 @@ public class Cart extends BaseAudit implements Serializable {
   public void inactivate() {
     active = false;
   }
-
-  public String toStringMapper() throws JsonProcessingException {
-    ObjectMapper objectMapper = new ObjectMapper();
-    objectMapper.registerModule(new JavaTimeModule())
-            .configure(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS, false);
-
-    return objectMapper.writeValueAsString(this);
-  }
 }

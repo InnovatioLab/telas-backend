@@ -44,6 +44,7 @@ public final class SharedConstants {
     public static final int MAX_ADS_VALIDATION = 3;
     public static final int MIN_QUANTITY_MONITOR_BLOCK = 1;
     public static final int MAX_QUANTITY_MONITOR_BLOCK = 2;
+    public static final int PARTNER_RESERVED_SLOTS = 7;
 
     public static final int MAX_ADS_PER_CLIENT = 1;
 

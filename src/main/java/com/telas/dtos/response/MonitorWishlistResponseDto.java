@@ -1,5 +1,6 @@
 package com.telas.dtos.response;
 
+import com.telas.entities.CartItem;
 import com.telas.entities.Monitor;
 import com.telas.enums.SubscriptionStatus;
 import com.telas.shared.constants.SharedConstants;
@@ -36,7 +37,9 @@ public final class MonitorWishlistResponseDto implements Serializable {
         fullAddress = entity.getAddress().getCoordinatesParams();
         latitude = entity.getAddress().getLatitude();
         longitude = entity.getAddress().getLongitude();
-        hasAvailableSlots = entity.hasAvailableBlocks(SharedConstants.MIN_QUANTITY_MONITOR_BLOCK);
+        CartItem cartItem = new CartItem();
+        cartItem.setBlockQuantity(SharedConstants.MIN_QUANTITY_MONITOR_BLOCK);
+        hasAvailableSlots = entity.hasAvailableBlocks(cartItem);
         estimatedSlotReleaseDate = entity.getSubscriptions().stream()
                 .filter(subscription -> subscription.getEndsAt() != null && SubscriptionStatus.ACTIVE.equals(subscription.getStatus()))
                 .map(subscription -> subscription.getEndsAt().atZone(java.time.ZoneId.of(SharedConstants.ZONE_ID)).toLocalDateTime())

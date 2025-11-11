@@ -300,7 +300,11 @@ public class SubscriptionServiceImpl implements SubscriptionService {
             String filter = "%" + genericFilter.toLowerCase() + "%";
             List<Predicate> predicates = new ArrayList<>();
 
-            predicates.add(criteriaBuilder.like(criteriaBuilder.lower(root.get("monitors").get("address").get("street")), filter));
+            // Acessar através de subscriptionMonitors -> monitor -> address
+            predicates.add(criteriaBuilder.like(
+                    criteriaBuilder.lower(
+                            root.join("subscriptionMonitors").join("id").join("monitor").get("address").get("street")
+                    ), filter));
             predicates.add(criteriaBuilder.like(criteriaBuilder.lower(root.get("status")), filter));
             predicates.add(criteriaBuilder.like(criteriaBuilder.lower(root.get("recurrence")), filter));
 

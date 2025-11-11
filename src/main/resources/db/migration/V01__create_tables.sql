@@ -275,6 +275,7 @@ CREATE TABLE "subscriptions_monitors"
 (
     "subscription_id" UUID NOT NULL,
     "monitor_id"      UUID NOT NULL,
+    "slots_quantity"  INTEGER NOT NULL DEFAULT 1,
     PRIMARY KEY ("subscription_id", "monitor_id"),
     CONSTRAINT "fk_subscription_monitor" FOREIGN KEY ("subscription_id") REFERENCES "subscriptions" ("id") ON UPDATE NO ACTION ON DELETE CASCADE,
     CONSTRAINT "fk_monitor_subscription" FOREIGN KEY ("monitor_id") REFERENCES "monitors" ("id") ON UPDATE NO ACTION ON DELETE CASCADE
@@ -284,6 +285,7 @@ CREATE TABLE "subscriptions_monitors_aud"
 (
     "subscription_id" UUID   NOT NULL,
     "monitor_id"      UUID   NOT NULL,
+    "slots_quantity"  INTEGER,
     "audit_id"        BIGINT NOT NULL,
     "audit_type"      SMALLINT NULL DEFAULT NULL,
     CONSTRAINT "pk_tbsubscriptions_monitors_aud" PRIMARY KEY ("subscription_id", "monitor_id", "audit_id"),

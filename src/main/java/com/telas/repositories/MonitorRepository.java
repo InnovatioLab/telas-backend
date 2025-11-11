@@ -26,12 +26,11 @@ public interface MonitorRepository extends JpaRepository<Monitor, UUID>, JpaSpec
                   AND m.active = true
                   AND m.box IS NOT NULL
                   AND NOT EXISTS (
-                    SELECT 1 FROM Subscription s
-                    JOIN s.monitors sm
-                    WHERE sm.id = m.id
-                      AND s.client.id = :clientId
-                      AND s.status = 'ACTIVE'
-                      AND (s.endsAt IS NULL OR s.endsAt > CURRENT_TIMESTAMP)
+                    SELECT 1 FROM SubscriptionMonitor sm
+                    WHERE sm.id.monitor.id = m.id
+                      AND sm.id.subscription.client.id = :clientId
+                      AND sm.id.subscription.status = 'ACTIVE'
+                      AND (sm.id.subscription.endsAt IS NULL OR sm.id.subscription.endsAt > CURRENT_TIMESTAMP)
                   )
             """)
     List<Monitor> findAvailableMonitorsByZipCode(@Param("zipCode") String zipCode, @Param("clientId") UUID clientId);
@@ -41,17 +40,17 @@ public interface MonitorRepository extends JpaRepository<Monitor, UUID>, JpaSpec
     List<Monitor> findAllByIdIn(List<UUID> monitorIds);
 
     @Query("""
-                SELECT CASE WHEN COUNT(s) > 0 THEN true ELSE false END
-                FROM Subscription s
-                JOIN s.monitors m
-                WHERE m.id = :monitorId
-                  AND s.status = 'ACTIVE'
+                SELECT CASE WHEN COUNT(sm) > 0 THEN true ELSE false END
+                FROM SubscriptionMonitor sm
+                WHERE sm.id.monitor.id = :monitorId
+                  AND sm.id.subscription.status = 'ACTIVE'
             """)
     boolean existsActiveSubscriptionByMonitorId(@Param("monitorId") UUID monitorId);
 
     @Query("""
                 SELECT m FROM Monitor m
-                JOIN m.subscriptions s
+                LEFT JOIN m.subscriptionMonitors sm
+                LEFT JOIN sm.id.subscription s
                 WHERE s.client.id = :clientId
                   AND s.status = 'ACTIVE'
                   AND (s.endsAt IS NULL OR s.endsAt > CURRENT_TIMESTAMP)

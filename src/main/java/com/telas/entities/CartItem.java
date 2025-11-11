@@ -6,6 +6,7 @@ import com.fasterxml.jackson.databind.SerializationFeature;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import com.telas.dtos.request.CartItemRequestDto;
 import com.telas.shared.audit.BaseAudit;
+import com.telas.shared.constants.SharedConstants;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -14,6 +15,7 @@ import org.hibernate.envers.AuditTable;
 
 import java.io.Serial;
 import java.io.Serializable;
+import java.util.Objects;
 import java.util.UUID;
 
 @Getter
@@ -45,14 +47,12 @@ public class CartItem extends BaseAudit implements Serializable {
   public CartItem(Cart cart, Monitor monitor, CartItemRequestDto request) {
     this.cart = cart;
     this.monitor = monitor;
-    blockQuantity = request.getBlockQuantity();
+    blockQuantity = isBonus() ? SharedConstants.PARTNER_RESERVED_SLOTS : request.getBlockQuantity();
   }
 
-  public String toStringMapper() throws JsonProcessingException {
-    ObjectMapper objectMapper = new ObjectMapper();
-    objectMapper.registerModule(new JavaTimeModule())
-            .configure(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS, false);
-
-    return objectMapper.writeValueAsString(this);
+  public boolean isBonus() {
+      Client client = cart.getClient();
+      return client.isPartner() && Objects.nonNull(monitor.getAddress().getClient()) &&
+             monitor.getAddress().getClient().getId().equals(client.getId());
   }
 }

@@ -293,20 +293,39 @@ public class SubscriptionHelper {
 
         for (CartItem item : items) {
             Monitor monitor = monitors.get(item.getMonitor().getId());
-            String msg = " with id: " + item.getMonitor().getId();
 
-            if (!monitor.isActive() || !monitor.hasAvailableBlocks(item.getBlockQuantity())) {
-                throw new BusinessRuleException(MonitorValidationMessages.MONITOR_INACTIVE_OR_BLOCKS_UNAVAILABLE + msg);
+            if (!monitor.isActive()) {
+                throw new BusinessRuleException(MonitorValidationMessages.MONITOR_INACTIVE);
+            }
+
+            if (shouldValidatePartnerSlots(client, monitor) && !hasAvailableBlocksForPartner(monitor, item)) {
+                    throw new BusinessRuleException(MonitorValidationMessages.MONITOR_BLOCKS_UNAVAILABLE);
             }
 
             if (!clientActiveMonitors.isEmpty() && clientActiveMonitors.contains(monitor)) {
-                throw new BusinessRuleException(SubscriptionValidationMessages.CLIENT_ALREADY_HAS_ACTIVE_SUBSCRIPTION_WITH_MONITOR + msg);
+                throw new BusinessRuleException(SubscriptionValidationMessages.CLIENT_ALREADY_HAS_ACTIVE_SUBSCRIPTION_WITH_MONITOR);
             }
 
             if (monitor.getBox() == null || !monitor.getBox().isActive()) {
-                throw new BusinessRuleException(MonitorValidationMessages.MONITOR_BOX_NOT_VALID + msg);
+                throw new BusinessRuleException(MonitorValidationMessages.MONITOR_BOX_NOT_VALID);
             }
         }
+    }
+
+    private boolean shouldValidatePartnerSlots(Client client, Monitor monitor) {
+        if (!monitor.hasPartner()) {
+            return false;
+        }
+
+        return client.getAddresses().stream()
+                .map(Address::getId)
+                .noneMatch(id -> id.equals(monitor.getAddress().getId()));
+    }
+
+    private boolean hasAvailableBlocksForPartner(Monitor monitor, CartItem item) {
+//        Garantir que há espaço para os slots desejados + 7 slots do partner
+//        Os 7 slots do partner já estão considerados no método hasAvailableBlocks através da constante PARTNER_RESERVED_SLOTS
+        return monitor.hasAvailableBlocks(item);
     }
 
     private void validateStripeId(String stripeId) {

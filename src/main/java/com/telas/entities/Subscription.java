@@ -5,6 +5,7 @@ import com.telas.enums.Recurrence;
 import com.telas.enums.Role;
 import com.telas.enums.SubscriptionStatus;
 import com.telas.shared.audit.BaseAudit;
+import com.telas.shared.constants.SharedConstants;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -17,6 +18,7 @@ import java.io.Serializable;
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.HashSet;
+import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
@@ -71,20 +73,22 @@ public class Subscription extends BaseAudit implements Serializable {
     @OneToMany(mappedBy = "subscription", cascade = CascadeType.ALL)
     private Set<Payment> payments = new HashSet<>();
 
-    @ManyToMany
-    @JoinTable(
-            name = "subscriptions_monitors",
-            joinColumns = @JoinColumn(name = "subscription_id"),
-            inverseJoinColumns = @JoinColumn(name = "monitor_id")
-    )
-    private Set<Monitor> monitors = new HashSet<>();
+    @OneToMany(mappedBy = "id.subscription", cascade = CascadeType.ALL, orphanRemoval = true)
+    private Set<SubscriptionMonitor> subscriptionMonitors = new HashSet<>();
 
     public Subscription(Client client, Cart cart) {
         this.client = client;
         setUsernameCreate(client.getBusinessName());
-        monitors.addAll(cart.getItems().stream()
-                .map(CartItem::getMonitor)
-                .collect(Collectors.toSet()));
+        
+        cart.getItems().forEach(item -> {
+            Monitor monitor = item.getMonitor();
+            SubscriptionMonitor subscriptionMonitor = new SubscriptionMonitor(
+                    this,
+                    monitor,
+                    item.getBlockQuantity()
+            );
+            subscriptionMonitors.add(subscriptionMonitor);
+        });
 
         bonus = isPartnerBonus();
         recurrence = bonus ? Recurrence.MONTHLY : cart.getRecurrence();
@@ -109,7 +113,7 @@ public class Subscription extends BaseAudit implements Serializable {
                 .map(Address::getId)
                 .collect(Collectors.toSet());
 
-        Set<UUID> monitorAddressesIds = monitors.stream()
+        Set<UUID> monitorAddressesIds = getMonitors().stream()
                 .map(monitor -> monitor.getAddress().getId())
                 .collect(Collectors.toSet());
 
@@ -123,7 +127,7 @@ public class Subscription extends BaseAudit implements Serializable {
                 && SubscriptionStatus.ACTIVE.equals(status)
                 && endsAt != null
                 && endsAt.isAfter(Instant.now())
-                && monitors.stream().allMatch(monitor -> monitor.getBox() != null && monitor.getBox().isActive());
+                && getMonitors().stream().allMatch(monitor -> monitor.getBox() != null && monitor.getBox().isActive());
     }
 
     public boolean ableToRenew() {
@@ -132,7 +136,7 @@ public class Subscription extends BaseAudit implements Serializable {
                 && SubscriptionStatus.ACTIVE.equals(status)
                 && endsAt != null
                 && endsAt.isAfter(Instant.now())
-                && monitors.stream().allMatch(monitor -> monitor.getBox() != null && monitor.getBox().isActive());
+                && getMonitors().stream().allMatch(monitor -> monitor.getBox() != null && monitor.getBox().isActive());
     }
 
     public BigDecimal getPaidAmount() {
@@ -142,8 +146,14 @@ public class Subscription extends BaseAudit implements Serializable {
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
     }
 
+    public Set<Monitor> getMonitors() {
+        return subscriptionMonitors.stream()
+                .map(SubscriptionMonitor::getMonitor)
+                .collect(Collectors.toSet());
+    }
+
     public String getMonitorAddresses() {
-        return monitors.stream()
+        return getMonitors().stream()
                 .map(monitor -> monitor.getAddress().getCoordinatesParams())
                 .collect(Collectors.joining("\n"));
     }
