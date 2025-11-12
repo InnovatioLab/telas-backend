@@ -17,4 +17,5 @@ public final class AddressValidationMessages {
     public static final String COUNTRY_REGEX = "Country must contain only letters";
     public static final String ADDRESS_NOT_FOUND = "Address not found";
     public static final String ZIP_CODE_INVALID = "Zipcode must have five digits.";
+    public static final String PARTNER_ADDRESS_NOT_FOUND = "Partner address not found";
 }

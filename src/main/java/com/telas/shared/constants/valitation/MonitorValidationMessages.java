@@ -23,4 +23,5 @@ public final class MonitorValidationMessages {
   public static final String ADS_LIMIT_EXCEEDED =
           "The number of ads exceeds the maximum limit for this monitor. The maximum number of ads is: ";
     public static final String ADDRESS_ALREADY_IN_USE = "Address is already in use by another monitor.";
+    public static final String PARTNER_CANNOT_BE_IN_CART = "A bônus screen cannot be in the cart.";
 }

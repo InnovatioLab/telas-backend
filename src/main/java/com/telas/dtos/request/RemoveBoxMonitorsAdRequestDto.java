@@ -22,9 +22,6 @@ public class RemoveBoxMonitorsAdRequestDto implements Serializable {
   @Serial
   private static final long serialVersionUID = -3963846843873646628L;
 
-  @NotNull(message = BoxValidationMessages.MONITOR_ID_NOT_NULL)
-  private UUID monitorId;
-
   @NotNull(message = BoxValidationMessages.FILE_NAMES_NOT_NULL)
   @NotEmpty(message = BoxValidationMessages.FILE_NAMES_NOT_EMPTY)
   private List<String> fileNames;

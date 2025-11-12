@@ -326,13 +326,7 @@ public class ClientServiceImpl implements ClientService {
         attachmentHelper.validateAd(ad, validation, request);
 
         if (AdValidationType.APPROVED.equals(validation)) {
-            List<UUID> monitorIds = helper.findClientMonitorsWithActiveSubscriptions(ad.getClient().getId()).stream()
-                    .map(Monitor::getId)
-                    .toList();
-
-            if (!monitorIds.isEmpty()) {
-                helper.addAdToMonitor(ad, monitorIds, ad.getClient());
-            }
+                helper.addAdToMonitor(ad, ad.getClient());
         }
     }
 

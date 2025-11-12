@@ -179,7 +179,7 @@ CREATE TABLE "addresses"
     "location_name"        VARCHAR(255) NULL     DEFAULT NULL,
     "location_description" VARCHAR(255) NULL     DEFAULT NULL,
     "photo_url"            TEXT NULL     DEFAULT NULL,
-    "client_id"            UUID NULL     DEFAULT NULL,
+    "client_id"            UUID NOT NULL,
     "username_create"      VARCHAR(255) NULL     DEFAULT NULL,
     "username_update"      VARCHAR(255) NULL     DEFAULT NULL,
     "created_at"           TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT (now()),
@@ -213,7 +213,7 @@ CREATE TABLE "monitors"
     "id"                   UUID PRIMARY KEY,
     "fl_active"            BOOLEAN                           DEFAULT TRUE,
     "box_id"               UUID NULL     DEFAULT NULL,
-    "address_id"           UUID                     NOT NULL,
+    "partner_id"           UUID                     NOT NULL,
     "max_blocks"           INTEGER                  NOT NULL DEFAULT 17,
     "product_id"           VARCHAR(255)             NOT NULL,
     "location_description" VARCHAR(255) NULL     DEFAULT NULL,
@@ -221,14 +221,14 @@ CREATE TABLE "monitors"
     "username_update"      VARCHAR(255) NULL     DEFAULT NULL,
     "created_at"           TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT (now()),
     "updated_at"           TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT (now()),
-    CONSTRAINT "fk_monitor_address" FOREIGN KEY ("address_id") REFERENCES "addresses" ("id") ON UPDATE NO ACTION ON DELETE CASCADE
+    CONSTRAINT "fk_monitor_partner" FOREIGN KEY ("partner_id") REFERENCES "clients" ("id") ON UPDATE NO ACTION ON DELETE CASCADE
 );
 
 CREATE TABLE "monitors_aud"
 (
     "id"                   UUID   NOT NULL,
     "fl_active"            BOOLEAN,
-    "address_id"           UUID,
+    "partner_id"           UUID,
     "max_blocks"           INTEGER,
     "product_id"           VARCHAR(255),
     "location_description" VARCHAR(255),

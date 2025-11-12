@@ -33,6 +33,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.*;
 import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 
 @Component
 @RequiredArgsConstructor
@@ -44,6 +45,7 @@ public class ClientHelper {
     private final AttachmentRepository attachmentRepository;
     private final AdRepository adRepository;
     private final AdRequestRepository adRequestRepository;
+    private final SubscriptionMonitorRepository subscriptionMonitorRepository;
     private final AddressService addressService;
     private final MapsService mapsService;
     private final HttpClientUtil httpClient;
@@ -145,7 +147,7 @@ public class ClientHelper {
                 .collect(Collectors.toSet());
 
         List<Address> addressesToRemove = client.getAddresses().stream()
-                .filter(address -> address.getMonitors().isEmpty() && !receivedAddressIds.contains(address.getId()))
+                .filter(address -> !monitorRepository.existsByPartnerId(client.getId()) && !receivedAddressIds.contains(address.getId()))
                 .toList();
 
         requestList.forEach(addressRequest -> {
@@ -174,7 +176,7 @@ public class ClientHelper {
     private Address updateExistingAddress(AddressRequestDto addressRequest, Client client) {
         Address address = addressService.findById(addressRequest.getId());
 
-        if (address.getMonitors().isEmpty() && address.hasChanged(addressRequest)) {
+        if (!monitorRepository.existsByPartnerId(client.getId()) && address.hasChanged(addressRequest)) {
             BeanUtils.copyProperties(addressRequest, address, "latitude", "longitude", "client", "monitors");
             address.setUsernameUpdate(client.getBusinessName());
 
@@ -199,28 +201,36 @@ public class ClientHelper {
 
     @Transactional
     @Async
-    public void addAdToMonitor(Ad ad, List<UUID> monitorIds, Client client) {
-        List<Monitor> monitors = monitorRepository.findAllById(monitorIds);
+    public void addAdToMonitor(Ad ad, Client client) {
+        List<Monitor> monitorsToUpdate = new ArrayList<>();
+        List<SubscriptionMonitor> subscriptionMonitors = subscriptionMonitorRepository.findByClientId(client.getId());
+        List<UpdateBoxMonitorsAdRequestDto> requestList = subscriptionMonitors.stream()
+                .map(
+                        subscriptionMonitor -> {
+                            Monitor monitor = subscriptionMonitor.getMonitor();
 
-        if (monitors.size() != monitorIds.size()) {
-            log.error("Some monitors not found for ad with id: {}", ad.getId());
-            return;
-        }
+                            if (!isMonitorEligibleForAd(client, monitor)) {
+                                log.error("Monitor with id {} is not eligible for ad with id {}", monitor.getId(), ad.getId());
+                                return null;
+                            }
 
-        List<Monitor> monitorsToUpdate = processMonitorsForAd(monitors, ad, client);
+                            MonitorAd monitorAd = new MonitorAd(monitor, ad);
+                            monitor.getMonitorAds().add(monitorAd);
+                            monitorsToUpdate.add(monitor);
 
-        if (!monitorsToUpdate.isEmpty()) {
-            sendBoxesMonitorsUpdateAd(ad, monitorsToUpdate);
-        }
-    }
+                            if (monitor.isAbleToSendBoxRequest()) {
+                                return  new UpdateBoxMonitorsAdRequestDto(ad, monitorAd, subscriptionMonitor, bucketService.getLink(AttachmentUtils.format(ad)));
+                            } else {
+                                return null;
+                            }
+                        })
+                .filter(Objects::nonNull)
+                .toList();
 
-    @Transactional
-    public void addAdToMonitor(Set<Monitor> monitors, Client client) {
-        Ad ad = client.getApprovedAd();
-        List<Monitor> monitorsToUpdate = processMonitorsForAd(monitors, ad, client);
+        monitorRepository.saveAll(monitorsToUpdate);
 
-        if (!monitorsToUpdate.isEmpty()) {
-            sendBoxesMonitorsUpdateAd(ad, monitorsToUpdate);
+        if (!requestList.isEmpty()) {
+            sendBoxesMonitorsUpdateAd(requestList);
         }
     }
 
@@ -257,36 +267,8 @@ public class ClientHelper {
         return customer;
     }
 
-    private List<Monitor> processMonitorsForAd(Collection<Monitor> monitors, Ad ad, Client client) {
-        List<Monitor> monitorsToUpdate = new ArrayList<>();
-
-        monitors.forEach(monitor -> {
-            if (isMonitorEligibleForAd(client, monitor)) {
-                addMonitorAd(monitor, ad);
-                monitorsToUpdate.add(monitor);
-            } else {
-                log.error("Monitor with id {} is not eligible for ad with id {}", monitor.getId(), ad.getId());
-            }
-        });
-
-        if (monitorsToUpdate.isEmpty()) {
-            log.info("No monitors were eligible for ad with id {}", ad.getId());
-            return Collections.emptyList();
-        }
-
-        monitorRepository.saveAll(monitorsToUpdate);
-        return monitorsToUpdate;
-    }
-
     private boolean isMonitorEligibleForAd(Client client, Monitor monitor) {
-        List<Monitor> monitorsWithActiveSubscriptions = monitorRepository.findMonitorsWithActiveSubscriptionsByClientId(client.getId());
-
-        if (!monitorsWithActiveSubscriptions.isEmpty() && !monitorsWithActiveSubscriptions.contains(monitor)) {
-            log.error("Client {} does not have an active subscription for monitor {}", client.getId(), monitor.getId());
-            return false;
-        }
-
-        if (monitor.clientAlreadyHasAd(client)) {
+        if (monitor.clientAlreadyHasAd(client) && !monitor.isPartner(client)) {
             log.error("Client {} already has an ad in monitor {}", client.getId(), monitor.getId());
             return false;
         }
@@ -312,33 +294,31 @@ public class ClientHelper {
         );
     }
 
-    private void addMonitorAd(Monitor monitor, Ad ad) {
-        monitor.getMonitorAds().add(new MonitorAd(monitor, ad));
-    }
+    private void sendBoxesMonitorsUpdateAd(List<UpdateBoxMonitorsAdRequestDto> requestList) {
+        if (requestList == null || requestList.isEmpty()) {
+            return;
+        }
 
-    private void sendBoxesMonitorsUpdateAd(Ad ad, List<Monitor> monitors) {
-        monitors.stream()
-                .filter(Monitor::isAbleToSendBoxRequest)
-                .collect(Collectors.groupingBy(Monitor::getBox))
-                .forEach((box, boxMonitors) -> {
-                    List<UpdateBoxMonitorsAdRequestDto> dtos = boxMonitors.stream()
-                            .map(monitor -> new UpdateBoxMonitorsAdRequestDto(
-                                    monitor.getId(),
-                                    ad.getName(),
-                                    bucketService.getLink(AttachmentUtils.format(ad))
-                            ))
-                            .toList();
+        Map<String, List<UpdateBoxMonitorsAdRequestDto>> grouped = requestList.stream()
+                .filter(Objects::nonNull)
+                .collect(Collectors.groupingBy(UpdateBoxMonitorsAdRequestDto::getBaseUrl));
 
-                    String url = "http://" + box.getBoxAddress().getIp() + ":8081/ad";
-                    Map<String, String> headers = Map.of("X-API-KEY", API_KEY);
+        Map<String, String> headers = Map.of("X-API-KEY", API_KEY);
 
-                    try {
-                        log.info("Sending ad update to box IP: {}, URL: {}", box.getBoxAddress().getIp(), url);
-                        httpClient.makePostRequest(url, dtos, Void.class, null, headers);
-                    } catch (Exception e) {
-                        log.error("Error sending ad update to box IP: {}, URL: {}, message: {}", box.getBoxAddress().getIp(), url, e.getMessage());
-                    }
-                });
+        grouped.forEach((baseUrl, group) -> {
+            if (baseUrl == null || baseUrl.isBlank()) {
+                log.warn("Ignorando grupo com baseUrl nula ou vazia. Itens: {}", group.size());
+                return;
+            }
+
+            String url = baseUrl.endsWith("/") ? baseUrl + "update-ads" : baseUrl + "/update-ads";
+            try {
+                log.info("Sending ad update to box URL: {}", url);
+                httpClient.makePostRequest(url, group, Void.class, null, headers);
+            } catch (Exception e) {
+                log.error("Error sending ad update to box URL: {}, message: {}", url, e.getMessage());
+            }
+        });
     }
 
     @Transactional

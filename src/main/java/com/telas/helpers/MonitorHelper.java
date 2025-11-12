@@ -6,15 +6,13 @@ import com.telas.dtos.request.RemoveBoxMonitorsAdRequestDto;
 import com.telas.dtos.request.UpdateBoxMonitorsAdRequestDto;
 import com.telas.dtos.response.MonitorAdResponseDto;
 import com.telas.dtos.response.MonitorValidAdResponseDto;
-import com.telas.entities.Ad;
-import com.telas.entities.Address;
-import com.telas.entities.Monitor;
-import com.telas.entities.MonitorAd;
+import com.telas.entities.*;
 import com.telas.enums.AdValidationType;
 import com.telas.enums.Role;
 import com.telas.infra.exceptions.BusinessRuleException;
 import com.telas.repositories.AdRepository;
 import com.telas.repositories.MonitorRepository;
+import com.telas.repositories.SubscriptionMonitorRepository;
 import com.telas.services.AddressService;
 import com.telas.services.BucketService;
 import com.telas.services.MapsService;
@@ -43,6 +41,7 @@ public class MonitorHelper {
     private final MapsService mapsService;
     private final AdRepository adRepository;
     private final MonitorRepository repository;
+    private final SubscriptionMonitorRepository subscriptionMonitorRepository;
     private final AddressService addressService;
     private final BucketService bucketService;
     private final HttpClientUtil httpClient;
@@ -79,19 +78,6 @@ public class MonitorHelper {
     public void setAddressCoordinates(Address address) {
         mapsService.getAddressCoordinates(address);
         addressService.save(address);
-    }
-
-    @Transactional
-    public Address getOrCreateAddress(MonitorRequestDto request) {
-        Address address = (request.getAddressId() != null)
-                ? addressService.findById(request.getAddressId())
-                : addressService.getOrCreateAddress(request.getAddress());
-
-        if (address.getClient() != null && !Role.PARTNER.equals(address.getClient().getRole())) {
-            throw new BusinessRuleException(MonitorValidationMessages.CLIENT_NOT_PARTNER);
-        }
-
-        return address;
     }
 
     @Transactional
@@ -154,27 +140,36 @@ public class MonitorHelper {
     }
 
 
-    public void sendBoxesMonitorsUpdateAds(Monitor monitor, List<Ad> ads) {
-        String url = "http://" + monitor.getBox().getBoxAddress().getIp() + ":8081/update-ads";
+    public void sendBoxesMonitorsUpdateAds(List<UpdateBoxMonitorsAdRequestDto> requestList) {
+        if (requestList.isEmpty()) {
+            return;
+        }
 
-        List<UpdateBoxMonitorsAdRequestDto> dtos = ads.stream()
-                .map(ad -> new UpdateBoxMonitorsAdRequestDto(
-                        monitor.getId(),
-                        ad.getName(),
-                        bucketService.getLink(AttachmentUtils.format(ad))
-                ))
-                .toList();
+        String baseUrl = requestList.stream()
+                .map(UpdateBoxMonitorsAdRequestDto::getBaseUrl)
+                .distinct()
+                .findFirst()
+                .orElse(null);
 
-        log.info("Sending request to update boxMonitorsAds for monitor with ID: {}, URL: {}", monitor.getId(), url);
-        executePostRequest(url, dtos, monitor.getId());
+        if (baseUrl == null || requestList.stream()
+                .map(UpdateBoxMonitorsAdRequestDto::getBaseUrl)
+                .distinct()
+                .count() != SharedConstants.MIN_QUANTITY_MONITOR_BLOCK) {
+            return;
+        }
+
+        String url = baseUrl.endsWith("/") ? baseUrl + "update-ads" : baseUrl + "/update-ads";
+        log.info("Sending request to update Ads, URL: {}", url);
+        executePostRequest(url, requestList);
     }
+
 
     public void sendBoxesMonitorsRemoveAds(Monitor monitor, List<String> adNamesToRemove) {
         String url = String.format("http://%s:8081/remove-ads", monitor.getBox().getBoxAddress().getIp());
-        RemoveBoxMonitorsAdRequestDto dto = new RemoveBoxMonitorsAdRequestDto(monitor.getId(), adNamesToRemove);
+        RemoveBoxMonitorsAdRequestDto dto = new RemoveBoxMonitorsAdRequestDto(adNamesToRemove);
 
         log.info("Sending request to remove ads from boxMonitorsAds for monitor with ID: {}, URL: {}", monitor.getId(), url);
-        executePostRequest(url, dto, monitor.getId());
+        executePostRequest(url, dto);
     }
 
     @Transactional
@@ -194,28 +189,12 @@ public class MonitorHelper {
                 .forEach(monitor -> sendBoxesMonitorsRemoveAds(monitor, adNameToRemove));
     }
 
-    private <T> void executePostRequest(String url, T body, UUID monitorId) {
+    private <T> void executePostRequest(String url, T body) {
         try {
             Map<String, String> headers = Map.of("X-API-KEY", API_KEY);
             httpClient.makePostRequest(url, body, Void.class, null, headers);
         } catch (Exception e) {
-            log.error("Error while sending request with monitorID: {}, URL: {}, message: {}", monitorId, url, e.getMessage());
-        }
-    }
-
-    @Transactional
-    public void sendBoxRemoveMonitor(Monitor monitor) {
-        if (!monitor.isAbleToSendBoxRequest()) {
-            return;
-        }
-
-        String url = "http://" + monitor.getBox().getBoxAddress().getIp() + ":8081/remove-monitor/" + monitor.getId().toString();
-        try {
-            log.info("Sending request to remove monitor with ID: {}, URL: {}", monitor.getId(), url);
-            Map<String, String> headers = Map.of("X-API-KEY", API_KEY);
-            httpClient.makeDeleteRequest(url, null, headers);
-        } catch (Exception e) {
-            log.error("Error while sending request to remove monitor with ID: {}, URL: {}, message: {}", monitor.getId(), url, e.getMessage());
+            log.error("Error while sending request, URL: {}, message: {}", url, e.getMessage());
         }
     }
 
@@ -236,7 +215,7 @@ public class MonitorHelper {
             return Collections.emptyList();
         }
 
-        String url = "http://" + monitor.getBox().getBoxAddress().getIp() + ":8081/get-ads/" + monitor.getId().toString();
+        String url = "http://" + monitor.getBox().getBoxAddress().getIp() + ":8081/get-ads";
         try {
             log.info("Sending request to get current displayed ads from box for monitor with ID: {}, URL: {}", monitor.getId(), url);
             return (List<String>) httpClient.makeGetRequest(url, List.class, null);
@@ -248,5 +227,23 @@ public class MonitorHelper {
 
     private List<Monitor> getClientMonitorsWithActiveSubscription(UUID clientId) {
         return repository.findMonitorsWithActiveSubscriptionsByClientId(clientId);
+    }
+
+    @Transactional
+    public List<SubscriptionMonitor> getSubscriptionsMonitorsFromMonitor(UUID id) {
+        return subscriptionMonitorRepository.findByMonitorId(id);
+    }
+
+    @Transactional
+    public Map<Client, Address> getAddressPartnerMap(MonitorRequestDto request) {
+        Address address = (request.getAddressId() != null)
+                ? addressService.findById(request.getAddressId())
+                : addressService.getPartnerAddress(request.getAddress());
+
+        if (!address.getClient().isPartner()) {
+            throw new BusinessRuleException(MonitorValidationMessages.CLIENT_NOT_PARTNER);
+        }
+
+        return Map.of(address.getClient(), address);
     }
 }

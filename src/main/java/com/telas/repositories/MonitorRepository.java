@@ -56,4 +56,7 @@ public interface MonitorRepository extends JpaRepository<Monitor, UUID>, JpaSpec
                   AND (s.endsAt IS NULL OR s.endsAt > CURRENT_TIMESTAMP)
             """)
     List<Monitor> findMonitorsWithActiveSubscriptionsByClientId(@Param("clientId") UUID clientId);
+
+    @Query("SELECT CASE WHEN COUNT(m) > 0 THEN true ELSE false END FROM Monitor m JOIN FETCH m.partner p WHERE p.role = 'PARTNER' AND p.id = :partnerId")
+    boolean existsByPartnerId(UUID partnerId);
 }

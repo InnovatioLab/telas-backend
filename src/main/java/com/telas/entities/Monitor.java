@@ -4,6 +4,7 @@ import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.telas.dtos.request.MonitorRequestDto;
 import com.telas.enums.Recurrence;
 import com.telas.enums.SubscriptionStatus;
+import com.telas.infra.exceptions.BusinessRuleException;
 import com.telas.shared.audit.BaseAudit;
 import com.telas.shared.constants.SharedConstants;
 import jakarta.persistence.*;
@@ -44,9 +45,9 @@ public class Monitor extends BaseAudit implements Serializable {
     @Column(name = "max_blocks")
     private Integer maxBlocks = SharedConstants.MAX_MONITOR_ADS;
 
-    @ManyToOne
-    @JoinColumn(name = "address_id", referencedColumnName = "id", nullable = false)
-    private Address address;
+    @OneToOne
+    @JoinColumn(name = "partner_id", referencedColumnName = "id", nullable = false)
+    private Client partner;
 
     @JsonIgnore
     @OneToMany(mappedBy = "id.monitor", cascade = CascadeType.ALL, orphanRemoval = true)
@@ -70,9 +71,12 @@ public class Monitor extends BaseAudit implements Serializable {
     @JoinColumn(name = "box_id", referencedColumnName = "id")
     private Box box;
 
-    public Monitor(Address address, String productId) {
+    public Monitor(Client partner, String productId) {
+        if (partner == null || !partner.isPartner()) {
+            throw new BusinessRuleException("Partner client invalid");
+        }
         this.productId = productId;
-        this.address = address;
+        this.partner = partner;
     }
 
     @Override
@@ -101,29 +105,26 @@ public class Monitor extends BaseAudit implements Serializable {
 
     public boolean isWithinAdsLimit(CartItem item) {
         // Se o monitor tem um partner, reserva 7 slots para ads do partner
-        int reservedForPartner = hasPartner() ? SharedConstants.PARTNER_RESERVED_SLOTS : 0;
         int partnerAdsSlots = getPartnerAdsSlots();
         int otherAdsSize = monitorAds.size() - partnerAdsSlots;
         
         // Slots disponíveis para outros clientes = maxBlocks - slots reservados para partner
-        int availableSlotsForOthers = maxBlocks - reservedForPartner;
+        int availableSlotsForOthers = maxBlocks - SharedConstants.PARTNER_RESERVED_SLOTS;
         return otherAdsSize + item.getBlockQuantity() <= availableSlotsForOthers;
     }
 
     public boolean isWithinAdsLimit(int blocksWanted) {
-        int reservedForPartner = hasPartner() ? SharedConstants.PARTNER_RESERVED_SLOTS : 0;
         int partnerAdsSlots = getPartnerAdsSlots();
         int otherAdsSize = monitorAds.size() - partnerAdsSlots;
-        int availableSlotsForOthers = maxBlocks - reservedForPartner;
+        int availableSlotsForOthers = maxBlocks - SharedConstants.PARTNER_RESERVED_SLOTS;
         return otherAdsSize + blocksWanted <= availableSlotsForOthers;
     }
 
     private boolean isWithinSubscriptionsLimit(CartItem item) {
         // Se o monitor tem um partner, sempre reserva 7 slots para ele
-        int reservedForPartner = hasPartner() ? SharedConstants.PARTNER_RESERVED_SLOTS : 0;
         int totalActiveSubscriptionSlots = getTotalActiveSubscriptionSlots(); // Todos os slots ativos
         int otherClientsSubscriptionSlots = getOtherClientsSubscriptionSlots(totalActiveSubscriptionSlots); // Slots ocupados pelo partner
-        int availableSlotsForOthers = maxBlocks - reservedForPartner;
+        int availableSlotsForOthers = maxBlocks - SharedConstants.PARTNER_RESERVED_SLOTS;
         
         return otherClientsSubscriptionSlots + item.getBlockQuantity() <= availableSlotsForOthers;
     }
@@ -139,27 +140,20 @@ public class Monitor extends BaseAudit implements Serializable {
     }
 
     private int getPartnerAdsSlots() {
-        if (!hasPartner()) {
-            return 0;
-        }
         // Partner tem até 7 slots reservados para ads
         return monitorAds.stream()
                 .filter(monitorAd -> {
                     Client adClient = monitorAd.getAd().getClient();
-                    return adClient.isPartner() && adClient.getId().equals(getPartnerClient().getId());
+                    return adClient.isPartner() && adClient.getId().equals(partner.getId());
                 })
                 .mapToInt(ma -> 1) // Cada ad do partner ocupa 1 slot, até 7
                 .sum();
     }
 
     private int getPartnerSubscriptionSlots() {
-        if (!hasPartner()) {
-            return 0;
-        }
-        Client partnerClient = getPartnerClient();
         return getActiveSubscriptionMonitors().stream()
                 .filter(sm -> sm.getSubscription().getClient().isPartner() 
-                        && sm.getSubscription().getClient().getId().equals(partnerClient.getId()))
+                        && sm.getSubscription().getClient().getId().equals(partner.getId()))
                 .mapToInt(SubscriptionMonitor::getSlotsQuantity)
                 .sum();
     }
@@ -168,14 +162,6 @@ public class Monitor extends BaseAudit implements Serializable {
         return getActiveSubscriptionMonitors().stream()
                 .mapToInt(SubscriptionMonitor::getSlotsQuantity)
                 .sum();
-    }
-
-    public boolean hasPartner() {
-        return address.getClient() != null && address.getClient().isPartner();
-    }
-
-    private Client getPartnerClient() {
-        return address.getClient();
     }
 
     public Set<SubscriptionMonitor> getActiveSubscriptionMonitors() {
@@ -227,5 +213,9 @@ public class Monitor extends BaseAudit implements Serializable {
         int loops = secondsOfDay / loopDuration;
         int totalSeconds = loops * SharedConstants.AD_DISPLAY_TIME_IN_SECONDS;
         return totalSeconds / SharedConstants.TOTAL_SECONDS_IN_A_MINUTE;
+    }
+
+    public boolean isPartner(Client client) {
+        return partner.getId().equals(client.getId());
     }
 }

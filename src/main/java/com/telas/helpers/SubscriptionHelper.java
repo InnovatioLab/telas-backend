@@ -143,7 +143,7 @@ public class SubscriptionHelper {
             sendFirstBuyEmail(subscription);
             return;
         } else if (!client.getAds().isEmpty() && client.getApprovedAd() != null) {
-            clientHelper.addAdToMonitor(subscription.getMonitors(), client);
+            clientHelper.addAdToMonitor(client.getApprovedAd(), client);
         }
 
         createNewSubscriptionNotification(subscription);
@@ -291,6 +291,10 @@ public class SubscriptionHelper {
 
         List<Monitor> clientActiveMonitors = clientHelper.findClientMonitorsWithActiveSubscriptions(client.getId());
 
+        if (items.stream().anyMatch(item -> item.getMonitor().isPartner(client))) {
+            throw new BusinessRuleException(MonitorValidationMessages.PARTNER_CANNOT_BE_IN_CART);
+        }
+
         for (CartItem item : items) {
             Monitor monitor = monitors.get(item.getMonitor().getId());
 
@@ -298,7 +302,7 @@ public class SubscriptionHelper {
                 throw new BusinessRuleException(MonitorValidationMessages.MONITOR_INACTIVE);
             }
 
-            if (shouldValidatePartnerSlots(client, monitor) && !hasAvailableBlocksForPartner(monitor, item)) {
+            if (!monitor.hasAvailableBlocks(item)) {
                     throw new BusinessRuleException(MonitorValidationMessages.MONITOR_BLOCKS_UNAVAILABLE);
             }
 
@@ -306,26 +310,10 @@ public class SubscriptionHelper {
                 throw new BusinessRuleException(SubscriptionValidationMessages.CLIENT_ALREADY_HAS_ACTIVE_SUBSCRIPTION_WITH_MONITOR);
             }
 
-            if (monitor.getBox() == null || !monitor.getBox().isActive()) {
+            if (!monitor.isAbleToSendBoxRequest()) {
                 throw new BusinessRuleException(MonitorValidationMessages.MONITOR_BOX_NOT_VALID);
             }
         }
-    }
-
-    private boolean shouldValidatePartnerSlots(Client client, Monitor monitor) {
-        if (!monitor.hasPartner()) {
-            return false;
-        }
-
-        return client.getAddresses().stream()
-                .map(Address::getId)
-                .noneMatch(id -> id.equals(monitor.getAddress().getId()));
-    }
-
-    private boolean hasAvailableBlocksForPartner(Monitor monitor, CartItem item) {
-//        Garantir que há espaço para os slots desejados + 7 slots do partner
-//        Os 7 slots do partner já estão considerados no método hasAvailableBlocks através da constante PARTNER_RESERVED_SLOTS
-        return monitor.hasAvailableBlocks(item);
     }
 
     private void validateStripeId(String stripeId) {

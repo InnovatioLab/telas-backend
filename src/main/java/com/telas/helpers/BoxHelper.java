@@ -64,47 +64,4 @@ public class BoxHelper {
                 ))
                 .toList();
     }
-
-    @Transactional
-    public void sendUpdateBoxMonitorsAdsRequest(Box box) {
-        if (!box.isActive()) {
-            return;
-        }
-
-        String url;
-        List<UpdateBoxMonitorsAdRequestDto> body = box.getMonitors().stream()
-                .flatMap(monitor -> monitor.getAds().stream()
-                        .filter(ad -> AdValidationType.APPROVED.equals(ad.getValidation()))
-                        .map(ad -> new UpdateBoxMonitorsAdRequestDto(
-                                monitor.getId(),
-                                ad.getName(),
-                                bucketService.getLink(AttachmentUtils.format(ad))
-                        ))
-                )
-                .toList();
-
-        if (body.isEmpty()) {
-            url = "http://" + box.getBoxAddress().getIp() + ":8081/create-folders";
-            body = box.getMonitors().stream()
-                    .map(monitor -> new UpdateBoxMonitorsAdRequestDto(
-                            monitor.getId(),
-                            null,
-                            null
-                    ))
-                    .toList();
-        } else {
-            url = "http://" + box.getBoxAddress().getIp() + ":8081/update-folders";
-        }
-
-        try {
-            String action = url.contains("create-folders") ? "create folders" : "update folders";
-            log.info("Sending box {} request to boxId: {}, URL: {}, body: {}", action, box.getId(), url, body);
-            Map<String, String> headers = Map.of("X-API-KEY", API_KEY);
-
-            httpClient.makePostRequest(url, body, Void.class, null, headers);
-        } catch (Exception e) {
-            String action = url.contains("create-folders") ? "create folders" : "update folders";
-            log.error("Failed to send box {} request to boxId: {}, URL: {}, body: {}, error: {}", action, box.getId(), url, body, e.getMessage());
-        }
-    }
 }
