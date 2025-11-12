@@ -91,20 +91,28 @@ public class MonitorHelper {
     public List<MonitorValidAdResponseDto> getValidAdsForMonitor(Monitor monitor) {
         List<Ad> validAds = adRepository.findAllValidAdsForMonitor(AdValidationType.APPROVED, monitor.getId());
 
-        if (validAds.isEmpty()) {
-            return List.of();
-        }
+        if (validAds.isEmpty()) return List.of();
 
-        Set<MonitorAd> monitorAds = monitor.getMonitorAds();
+        Map<UUID, Integer> orderIndexByAdId = monitor.getMonitorAds().stream()
+                .collect(Collectors.toMap(ma -> ma.getAd().getId(), MonitorAd::getOrderIndex));
 
         return validAds.stream()
-                .map(ad -> new MonitorValidAdResponseDto(
-                        ad,
-                        bucketService.getLink(AttachmentUtils.format(ad)),
-                        monitorAds.stream().anyMatch(ma -> ma.getAd().equals(ad))
+                .map(ad -> {
+                    return new MonitorValidAdResponseDto(
+                            ad,
+                            bucketService.getLink(AttachmentUtils.format(ad)),
+                            orderIndexByAdId.containsKey(ad.getId()),
+                            orderIndexByAdId.get(ad.getId())
+                    );
+                })
+                .sorted(Comparator.comparing(
+                        MonitorValidAdResponseDto::getOrderIndex,
+                        Comparator.nullsLast(Comparator.naturalOrder())
                 ))
                 .toList();
     }
+
+
 
     @Transactional(readOnly = true)
     public List<MonitorAdResponseDto> getMonitorAdsResponse(Monitor entity) {
@@ -138,7 +146,6 @@ public class MonitorHelper {
                 filter
         );
     }
-
 
     public void sendBoxesMonitorsUpdateAds(List<UpdateBoxMonitorsAdRequestDto> requestList) {
         if (requestList.isEmpty()) {
@@ -200,12 +207,14 @@ public class MonitorHelper {
 
     @Transactional(readOnly = true)
     public List<MonitorValidAdResponseDto> getBoxMonitorAdsResponse(Monitor monitor, List<String> adNames) {
-        return monitor.getAds().stream()
-                .filter(ad -> adNames.contains(ad.getName()))
-                .map(ad -> {
+        return monitor.getMonitorAds().stream()
+                .filter(monitorAd -> adNames.contains(monitorAd.getAd().getName()))
+                .map(monitorAd -> {
+                    Ad ad = monitorAd.getAd();
                     String adLink = bucketService.getLink(AttachmentUtils.format(ad));
-                    return new MonitorValidAdResponseDto(ad, adLink, true);
+                    return new MonitorValidAdResponseDto(ad, adLink, true, monitorAd.getOrderIndex());
                 })
+                .sorted(Comparator.comparing(MonitorValidAdResponseDto::getOrderIndex))
                 .collect(Collectors.toList());
     }
 
@@ -235,7 +244,7 @@ public class MonitorHelper {
     }
 
     @Transactional
-    public Map<Client, Address> getAddressPartnerMap(MonitorRequestDto request) {
+    public Address getAddress(MonitorRequestDto request) {
         Address address = (request.getAddressId() != null)
                 ? addressService.findById(request.getAddressId())
                 : addressService.getPartnerAddress(request.getAddress());
@@ -244,6 +253,8 @@ public class MonitorHelper {
             throw new BusinessRuleException(MonitorValidationMessages.CLIENT_NOT_PARTNER);
         }
 
-        return Map.of(address.getClient(), address);
+        return address;
     }
+
+
 }

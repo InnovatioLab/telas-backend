@@ -19,7 +19,4 @@ public interface CartRepository extends JpaRepository<Cart, UUID> {
 
   @Query("SELECT c FROM Cart c LEFT JOIN FETCH c.items WHERE c.client.id = :clientId AND c.active = true")
   Optional<Cart> findActiveByClientIdWithItens(@Param("clientId") UUID clientId);
-
-//  @Query("SELECT DISTINCT c FROM Cart c LEFT JOIN FETCH c.items WHERE c.active IS TRUE AND c.client.id = :id")
-//  Optional<Cart> findActiveByClientIdWithItens(@Param("id") UUID id);
 }

@@ -46,15 +46,15 @@ public class Monitor extends BaseAudit implements Serializable {
     private Integer maxBlocks = SharedConstants.MAX_MONITOR_ADS;
 
     @OneToOne
-    @JoinColumn(name = "partner_id", referencedColumnName = "id", nullable = false)
-    private Client partner;
+    @JoinColumn(name = "address_id", unique = true, nullable = false)
+    private Address address;
 
     @JsonIgnore
     @OneToMany(mappedBy = "id.monitor", cascade = CascadeType.ALL, orphanRemoval = true)
     private Set<MonitorAd> monitorAds = new HashSet<>();
 
     @JsonIgnore
-    @OneToMany(mappedBy = "id.monitor", cascade = CascadeType.ALL, orphanRemoval = true)
+    @OneToMany(mappedBy = "id.monitor")
     private Set<SubscriptionMonitor> subscriptionMonitors = new HashSet<>();
     
     @JsonIgnore
@@ -71,12 +71,12 @@ public class Monitor extends BaseAudit implements Serializable {
     @JoinColumn(name = "box_id", referencedColumnName = "id")
     private Box box;
 
-    public Monitor(Client partner, String productId) {
-        if (partner == null || !partner.isPartner()) {
+    public Monitor(Address address, String productId) {
+        if (address == null || !address.getClient().isPartner()) {
             throw new BusinessRuleException("Partner client invalid");
         }
         this.productId = productId;
-        this.partner = partner;
+        this.address = address;
     }
 
     @Override
@@ -130,13 +130,7 @@ public class Monitor extends BaseAudit implements Serializable {
     }
 
     private int getOtherClientsSubscriptionSlots(int totalActiveSubscriptionSlots) {
-        int partnerSubscriptionSlots = getPartnerSubscriptionSlots();
-        // Se estamos adicionando slots para o partner, eles usam os slots reservados
-        // Se estamos adicionando slots para outros clientes, verificamos se há espaço nos slots não reservados
-        // Os slots já ocupados pelo partner não devem ser contados contra o limite disponível para outros clientes
-
-        // Slots disponíveis = maxBlocks - slots reservados para partner - slots já ocupados por outros clientes
-        return totalActiveSubscriptionSlots - partnerSubscriptionSlots;
+        return totalActiveSubscriptionSlots - getPartnerSubscriptionSlots();
     }
 
     private int getPartnerAdsSlots() {
@@ -144,16 +138,16 @@ public class Monitor extends BaseAudit implements Serializable {
         return monitorAds.stream()
                 .filter(monitorAd -> {
                     Client adClient = monitorAd.getAd().getClient();
-                    return adClient.isPartner() && adClient.getId().equals(partner.getId());
+                    return adClient.isPartner() && adClient.getId().equals(getPartner().getId());
                 })
-                .mapToInt(ma -> 1) // Cada ad do partner ocupa 1 slot, até 7
+                .mapToInt(ma -> 1)
                 .sum();
     }
 
     private int getPartnerSubscriptionSlots() {
         return getActiveSubscriptionMonitors().stream()
-                .filter(sm -> sm.getSubscription().getClient().isPartner() 
-                        && sm.getSubscription().getClient().getId().equals(partner.getId()))
+                .filter(sm -> sm.getSubscription().getClient().isPartner()
+                        && sm.getSubscription().getClient().getId().equals(getPartner().getId()))
                 .mapToInt(SubscriptionMonitor::getSlotsQuantity)
                 .sum();
     }
@@ -163,6 +157,7 @@ public class Monitor extends BaseAudit implements Serializable {
                 .mapToInt(SubscriptionMonitor::getSlotsQuantity)
                 .sum();
     }
+
 
     public Set<SubscriptionMonitor> getActiveSubscriptionMonitors() {
         Instant now = Instant.now();
@@ -216,6 +211,10 @@ public class Monitor extends BaseAudit implements Serializable {
     }
 
     public boolean isPartner(Client client) {
-        return partner.getId().equals(client.getId());
+        return client.isPartner() && address.getClient().getId().equals(client.getId());
+    }
+
+    private Client getPartner() {
+        return address.getClient();
     }
 }

@@ -14,7 +14,7 @@ import java.util.UUID;
 public interface AddressRepository extends JpaRepository<Address, UUID> {
   @Override
   @NotNull
-  @Query("SELECT a FROM Address a LEFT JOIN a.monitors WHERE a.id = :id")
+  @Query("SELECT a FROM Address a LEFT JOIN a.client WHERE a.id = :id")
   Optional<Address> findById(@NotNull UUID id);
 
   @Query("SELECT a FROM Address a WHERE a.zipCode = :zipCode")

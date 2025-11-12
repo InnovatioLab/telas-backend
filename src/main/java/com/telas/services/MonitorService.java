@@ -4,6 +4,7 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.telas.dtos.request.MonitorRequestDto;
 import com.telas.dtos.request.filters.FilterMonitorRequestDto;
 import com.telas.dtos.response.*;
+import com.telas.entities.Client;
 import com.telas.entities.Monitor;
 import com.telas.entities.Subscription;
 
@@ -22,8 +23,6 @@ public interface MonitorService {
     List<MonitorMapsResponseDto> findNearestActiveMonitors(String zipCode);
 
     List<MonitorsBoxMinResponseDto> findAllMonitors();
-
-    List<Monitor> findAllByIds(List<UUID> monitorIds);
 
     List<MonitorValidAdResponseDto> findValidAdsForMonitor(UUID monitorId);
 

@@ -16,6 +16,7 @@ import com.telas.infra.security.services.AuthenticatedUserService;
 import com.telas.repositories.MonitorRepository;
 import com.telas.services.BucketService;
 import com.telas.services.MonitorService;
+import com.telas.services.SubscriptionService;
 import com.telas.shared.audit.CustomRevisionListener;
 import com.telas.shared.constants.valitation.MonitorValidationMessages;
 import com.telas.shared.utils.AttachmentUtils;
@@ -23,6 +24,9 @@ import com.telas.shared.utils.PaginationFilterUtil;
 import com.telas.shared.utils.ValidateDataUtils;
 import jakarta.persistence.criteria.Predicate;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.log4j.Log4j;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -38,9 +42,11 @@ import java.util.stream.IntStream;
 @Service
 @RequiredArgsConstructor
 public class MonitorServiceImpl implements MonitorService {
+    private final Logger log = LoggerFactory.getLogger(MonitorServiceImpl.class);
     private final AuthenticatedUserService authenticatedUserService;
     private final MonitorRepository repository;
     private final BucketService bucketService;
+    private final SubscriptionService subscriptionService;
     private final MonitorHelper helper;
 
     @Value("${stripe.product.id}")
@@ -51,18 +57,16 @@ public class MonitorServiceImpl implements MonitorService {
     public void save(MonitorRequestDto request, UUID monitorId) throws JsonProcessingException {
         AuthenticatedUser authenticatedUser = authenticatedUserService.validateAdmin();
         request.validate();
-        Map<Client, Address> addressPartnerMap = helper.getAddressPartnerMap(request);
-
-        Monitor monitor;
+        Address address = helper.getAddress(request);
 
         if (monitorId != null) {
+            validateAddressAvailability(address, monitorId);
             List<Ad> ads = !ValidateDataUtils.isNullOrEmpty(request.getAds()) ? helper.getAds(request, monitorId) : Collections.emptyList();
-            monitor = updateExistingMonitor(request, monitorId, authenticatedUser, addressPartnerMap, ads);
+            updateExistingMonitor(request, monitorId, authenticatedUser, address, ads);
         } else {
-            monitor = createNewMonitor(request, authenticatedUser, addressPartnerMap);
+            validateAddressAvailability(address);
+            createNewMonitor(authenticatedUser, address);
         }
-
-        repository.save(monitor);
     }
 
     @Override
@@ -130,13 +134,6 @@ public class MonitorServiceImpl implements MonitorService {
         return repository.findAll().stream()
                 .map(MonitorsBoxMinResponseDto::new)
                 .collect(Collectors.toList());
-    }
-
-
-    @Override
-    @Transactional
-    public List<Monitor> findAllByIds(List<UUID> monitorIds) {
-        return repository.findAllByIdIn(monitorIds);
     }
 
     @Override
@@ -219,89 +216,133 @@ public class MonitorServiceImpl implements MonitorService {
         });
     }
 
-    private Monitor createNewMonitor(MonitorRequestDto request, AuthenticatedUser authenticatedUser, Map<Client, Address> addressPartnerMap) {
-        Client partner = addressPartnerMap.keySet().iterator().next();
-        Address address = addressPartnerMap.get(partner);
+    private Monitor createNewMonitor(AuthenticatedUser authenticatedUser, Address address) {
+        setCoordinatesIfMissing(address);
 
-        if (!repository.existsByPartnerId(partner.getId())) {
-            throw new BusinessRuleException(MonitorValidationMessages.ADDRESS_ALREADY_IN_USE);
-        }
-
-        if (!address.hasLocation()) {
-            helper.setAddressCoordinates(address);
-        }
-
-        Monitor monitor = new Monitor(partner, productId);
+        Monitor monitor = new Monitor(address, productId);
         monitor.setUsernameCreate(authenticatedUser.client().getBusinessName());
+        repository.save(monitor);
+        subscriptionService.savePartnerBonusSubscription(address.getClient(), monitor);
         return monitor;
     }
 
-    private Monitor updateExistingMonitor(MonitorRequestDto request, UUID monitorId, AuthenticatedUser authenticatedUser, Map<Client, Address> addressPartnerMap, List<Ad> ads) {
+    private void updateExistingMonitor(MonitorRequestDto request, UUID monitorId, AuthenticatedUser authenticatedUser, Address address, List<Ad> ads) {
         Monitor monitor = findEntityById(monitorId);
-        Client partner = addressPartnerMap.keySet().iterator().next();
-        Address address = addressPartnerMap.get(partner);
 
-        if (!monitor.getPartner().getId().equals(partner.getId())) {
-            if (repository.existsByPartnerId(partner.getId())) {
-                throw new BusinessRuleException(MonitorValidationMessages.ADDRESS_ALREADY_IN_USE);
-            }
+        Address oldAddress = monitor.getAddress();
+        Client oldPartner = getClientFromAddress(oldAddress);
+        Client newPartner = address.getClient();
 
-            monitor.setPartner(partner);
 
-            if (!address.hasLocation()) {
-                helper.setAddressCoordinates(address);
-            }
-
+        if (isAddressChanged(oldAddress, address)) {
+            monitor.setAddress(address);
+            handlePartnerSubscriptionChanges(oldPartner, newPartner, monitor);
+            setCoordinatesIfMissing(address);
         }
 
+        updateMonitorMetadata(authenticatedUser, monitor);
+        updateMonitorDetails(request, monitor, ads);
+        repository.save(monitor);
+    }
+
+    private void validateAddressAvailability(Address address) {
+        if (repository.existsByAddressId(address.getId())) {
+            throw new BusinessRuleException(MonitorValidationMessages.ADDRESS_ALREADY_IN_USE);
+        }
+    }
+
+    private void validateAddressAvailability(Address address, UUID monitorId) {
+        if (repository.existsByAddressIdAndIdNot(address.getId(), monitorId)) {
+            throw new BusinessRuleException(MonitorValidationMessages.ADDRESS_ALREADY_IN_USE);
+        }
+    }
+
+    private void setCoordinatesIfMissing(Address address) {
+        if (!address.hasLocation()) {
+            helper.setAddressCoordinates(address);
+        }
+    }
+
+    private Client getClientFromAddress(Address address) {
+        return address != null ? address.getClient() : null;
+    }
+
+    private boolean isAddressChanged(Address oldAddress, Address newAddress) {
+        return !Objects.equals(oldAddress != null ? oldAddress.getId() : null, newAddress.getId());
+    }
+
+    private void handlePartnerSubscriptionChanges(Client oldPartner, Client newPartner, Monitor monitor) {
+        if (oldPartner != null && oldPartner.isPartner()) {
+            cancelPartnerBonusSubscription(oldPartner);
+        }
+        if (newPartner != null && newPartner.isPartner()) {
+            subscriptionService.savePartnerBonusSubscription(newPartner, monitor);
+        }
+    }
+
+    private void cancelPartnerBonusSubscription(Client partner) {
+        try {
+            subscriptionService.cancelBonusSubscription(partner);
+        } catch (ResourceNotFoundException e) {
+            log.info("Old partner {} had no bonus subscription to cancel.", partner.getId());
+        }
+    }
+
+    private void updateMonitorMetadata(AuthenticatedUser authenticatedUser, Monitor monitor) {
         String usernameUpdate = authenticatedUser.client().getBusinessName();
         CustomRevisionListener.setUsername(usernameUpdate);
         monitor.setUsernameUpdate(usernameUpdate);
-
-        updateMonitorDetails(request, monitor, ads);
-        return monitor;
     }
 
     private void updateMonitorDetails(MonitorRequestDto request, Monitor monitor, List<Ad> ads) {
         monitor.setProductId(productId);
         monitor.setActive(request.getActive() != null ? request.getActive() : monitor.isActive());
 
-        if (ValidateDataUtils.isNullOrEmpty(ads)) {
-            return;
+        if (!ValidateDataUtils.isNullOrEmpty(ads)) {
+            updateMonitorAds(request, monitor, ads);
         }
-
-        updateMonitorAds(request, monitor, ads);
     }
 
     private void updateMonitorAds(MonitorRequestDto request, Monitor monitor, List<Ad> ads) {
         monitor.getMonitorAds().clear();
+        validateAdsLimit(monitor, ads);
 
-        if (!monitor.isWithinAdsLimit(ads.size())) {
-            throw new BusinessRuleException(MonitorValidationMessages.ADS_LIMIT_EXCEEDED + monitor.getMaxBlocks());
-        }
-
-        Map<UUID, MonitorAdRequestDto> adRequestMap = request.getAds().stream()
-                .collect(Collectors.toMap(MonitorAdRequestDto::getId, dto -> dto));
-
+        Map<UUID, MonitorAdRequestDto> adRequestMap = mapAdsById(request);
         List<SubscriptionMonitor> subscriptionMonitors = helper.getSubscriptionsMonitorsFromMonitor(monitor.getId());
 
-        List<UpdateBoxMonitorsAdRequestDto> requestList =  ads.stream().map(ad -> {
-            MonitorAd monitorAd = new MonitorAd(adRequestMap.get(ad.getId()), monitor, ad);
-            monitor.getMonitorAds().add(monitorAd);
-
-            SubscriptionMonitor matched = subscriptionMonitors.stream()
-                    .filter(sm -> sm.getSubscription().getClient().getId().equals(ad.getClient().getId()))
-                    .findFirst()
-                    .orElse(null);
-
-            String link = bucketService.getLink(AttachmentUtils.format(ad));
-            return matched != null
-                    ? new UpdateBoxMonitorsAdRequestDto(ad, monitorAd, matched, link)
-                    : new UpdateBoxMonitorsAdRequestDto(ad, monitorAd, link);
-        }).toList();
+        List<UpdateBoxMonitorsAdRequestDto> requestList = ads.stream()
+                .map(ad -> createMonitorAdRequest(ad, monitor, adRequestMap, subscriptionMonitors))
+                .toList();
 
         if (monitor.isAbleToSendBoxRequest()) {
             helper.sendBoxesMonitorsUpdateAds(requestList);
         }
     }
+
+    private void validateAdsLimit(Monitor monitor, List<Ad> ads) {
+        if (!monitor.isWithinAdsLimit(ads.size())) {
+            throw new BusinessRuleException(MonitorValidationMessages.ADS_LIMIT_EXCEEDED + monitor.getMaxBlocks());
+        }
+    }
+
+    private Map<UUID, MonitorAdRequestDto> mapAdsById(MonitorRequestDto request) {
+        return request.getAds().stream()
+                .collect(Collectors.toMap(MonitorAdRequestDto::getId, dto -> dto));
+    }
+
+    private UpdateBoxMonitorsAdRequestDto createMonitorAdRequest(Ad ad, Monitor monitor, Map<UUID, MonitorAdRequestDto> adRequestMap, List<SubscriptionMonitor> subscriptionMonitors) {
+        MonitorAd monitorAd = new MonitorAd(adRequestMap.get(ad.getId()), monitor, ad);
+        monitor.getMonitorAds().add(monitorAd);
+
+        SubscriptionMonitor matched = subscriptionMonitors.stream()
+                .filter(sm -> sm.getSubscription().getClient().getId().equals(ad.getClient().getId()))
+                .findFirst()
+                .orElse(null);
+
+        String link = bucketService.getLink(AttachmentUtils.format(ad));
+        return matched != null
+                ? new UpdateBoxMonitorsAdRequestDto(ad, monitorAd, matched, link)
+                : new UpdateBoxMonitorsAdRequestDto(ad, monitorAd, link);
+    }
+
 }

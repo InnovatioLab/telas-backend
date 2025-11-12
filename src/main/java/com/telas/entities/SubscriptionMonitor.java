@@ -1,6 +1,6 @@
 package com.telas.entities;
 
-import com.telas.shared.audit.BaseAudit;
+import com.telas.shared.constants.SharedConstants;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -9,6 +9,7 @@ import org.hibernate.envers.AuditTable;
 
 import java.io.Serial;
 import java.io.Serializable;
+import java.util.Objects;
 
 @Getter
 @Setter
@@ -32,6 +33,12 @@ public class SubscriptionMonitor implements Serializable {
         this.slotsQuantity = slotsQuantity != null ? slotsQuantity : 1;
     }
 
+    public SubscriptionMonitor(Subscription subscription, Monitor monitor) {
+        id.setSubscription(subscription);
+        id.setMonitor(monitor);
+        this.slotsQuantity = SharedConstants.PARTNER_RESERVED_SLOTS;
+    }
+
     @Transient
     public Subscription getSubscription() {
         return id.getSubscription();
@@ -48,6 +55,24 @@ public class SubscriptionMonitor implements Serializable {
 
     public void setMonitor(Monitor monitor) {
         id.setMonitor(monitor);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hashCode(id);
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) {
+            return true;
+        }
+        if (o == null || getClass() != o.getClass()) {
+            return false;
+        }
+
+        SubscriptionMonitor subscriptionMonitor = (SubscriptionMonitor) o;
+        return Objects.equals(id, subscriptionMonitor.id);
     }
 }
 

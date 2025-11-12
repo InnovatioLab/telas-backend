@@ -27,29 +27,19 @@ public class SubscriptionMonitorPK implements Serializable {
     @JoinColumn(name = "monitor_id", nullable = false)
     private Monitor monitor;
 
-    public SubscriptionMonitorPK(Subscription subscription, Monitor monitor) {
-        this.subscription = subscription;
-        this.monitor = monitor;
+    @Override
+    public boolean equals(Object o) {
+        if (o == null || getClass() != o.getClass()) return false;
+
+        SubscriptionMonitorPK that = (SubscriptionMonitorPK) o;
+        return getSubscription().equals(that.getSubscription()) && getMonitor().equals(that.getMonitor());
     }
 
     @Override
     public int hashCode() {
-        int result = (subscription != null ? subscription.hashCode() : 0);
-        result = 31 * result + (monitor != null ? monitor.hashCode() : 0);
+        int result = getSubscription().hashCode();
+        result = 31 * result + getMonitor().hashCode();
         return result;
-    }
-
-    @Override
-    public boolean equals(Object o) {
-        if (this == o) {
-            return true;
-        }
-        if (o == null || getClass() != o.getClass()) {
-            return false;
-        }
-
-        SubscriptionMonitorPK that = (SubscriptionMonitorPK) o;
-        return Objects.equals(subscription, that.subscription) && Objects.equals(monitor, that.monitor);
     }
 }
 

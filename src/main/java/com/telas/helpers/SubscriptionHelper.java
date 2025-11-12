@@ -15,12 +15,10 @@ import com.telas.enums.SubscriptionStatus;
 import com.telas.infra.exceptions.BusinessRuleException;
 import com.telas.infra.exceptions.ForbiddenException;
 import com.telas.infra.exceptions.ResourceNotFoundException;
+import com.telas.repositories.MonitorRepository;
 import com.telas.repositories.SubscriptionFlowRepository;
 import com.telas.repositories.SubscriptionRepository;
-import com.telas.services.BucketService;
-import com.telas.services.CartService;
-import com.telas.services.MonitorService;
-import com.telas.services.NotificationService;
+import com.telas.services.*;
 import com.telas.shared.audit.CustomRevisionListener;
 import com.telas.shared.constants.SharedConstants;
 import com.telas.shared.constants.valitation.CartValidationMessages;
@@ -29,10 +27,11 @@ import com.telas.shared.constants.valitation.SubscriptionValidationMessages;
 import com.telas.shared.utils.AttachmentUtils;
 import com.telas.shared.utils.DateUtils;
 import com.telas.shared.utils.ValidateDataUtils;
-import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
@@ -43,16 +42,40 @@ import java.util.*;
 import java.util.stream.Collectors;
 
 @Component
-@RequiredArgsConstructor
 public class SubscriptionHelper {
     private final Logger log = LoggerFactory.getLogger(SubscriptionHelper.class);
     private final SubscriptionRepository repository;
     private final SubscriptionFlowRepository subscriptionFlowRepository;
-    private final CartService cartService;
-    private final MonitorService monitorService;
+    private final CartService cartService; // injetado lazy via construtor
+    private final MonitorRepository monitorRepository;
+    private final MonitorSubscriptionService monitorSubscriptionService;
     private final BucketService bucketService;
     private final NotificationService notificationService;
+    private final PaymentService paymentService;
     private final ClientHelper clientHelper;
+
+    @Autowired
+    public SubscriptionHelper(
+            SubscriptionRepository repository,
+            SubscriptionFlowRepository subscriptionFlowRepository,
+            @Lazy CartService cartService,
+            MonitorRepository monitorRepository,
+            MonitorSubscriptionService monitorSubscriptionService,
+            BucketService bucketService,
+            NotificationService notificationService,
+            PaymentService paymentService,
+            ClientHelper clientHelper
+    ) {
+        this.repository = repository;
+        this.subscriptionFlowRepository = subscriptionFlowRepository;
+        this.cartService = cartService;
+        this.monitorRepository = monitorRepository;
+        this.monitorSubscriptionService = monitorSubscriptionService;
+        this.bucketService = bucketService;
+        this.notificationService = notificationService;
+        this.paymentService = paymentService;
+        this.clientHelper = clientHelper;
+    }
 
     @Value("${front.base.url}")
     private String frontBaseUrl;
@@ -83,7 +106,7 @@ public class SubscriptionHelper {
 
     @Transactional
     public void removeMonitorAdsFromSubscription(Subscription subscription) {
-        monitorService.removeMonitorAdsFromSubscription(subscription);
+        monitorSubscriptionService.removeMonitorAdsFromSubscription(subscription);
     }
 
     @Transactional
@@ -111,7 +134,7 @@ public class SubscriptionHelper {
     @Transactional(readOnly = true)
     public SubscriptionResponseDto getSubscriptionResponse(Subscription subscription, Client loggedUser) {
         SubscriptionResponseDto response = new SubscriptionResponseDto(subscription);
-        List<Monitor> monitors = monitorService.findAllByIds(response.getMonitors().stream().map(SubscriptionMonitorResponseDto::getId).toList());
+        List<Monitor> monitors = monitorRepository.findAllByIdIn(response.getMonitors().stream().map(SubscriptionMonitorResponseDto::getId).toList());
 
         if (monitors.isEmpty()) {
             return response;
@@ -143,6 +166,21 @@ public class SubscriptionHelper {
             sendFirstBuyEmail(subscription);
             return;
         } else if (!client.getAds().isEmpty() && client.getApprovedAd() != null) {
+            clientHelper.addAdToMonitor(client.getApprovedAd(), client);
+        }
+
+        createNewSubscriptionNotification(subscription);
+    }
+
+    @Transactional
+    public void handleBonusSubscription(Subscription subscription) {
+        Client client = subscription.getClient();
+
+        if (client.isFirstSubscription()) {
+            sendFirstBuyEmail(subscription);
+        }
+
+        if (!client.getAds().isEmpty() && client.getApprovedAd() != null) {
             clientHelper.addAdToMonitor(client.getApprovedAd(), client);
         }
 
@@ -285,15 +323,19 @@ public class SubscriptionHelper {
 
     private void validateItems(List<CartItem> items) {
         Client client = items.get(0).getCart().getClient();
-        Map<UUID, Monitor> monitors = monitorService.findAllByIds(
-                items.stream().map(item -> item.getMonitor().getId()).toList()
+
+        Map<UUID, Monitor> monitors = monitorRepository.findAllByIdIn(
+                items.stream()
+                        .map(CartItem::getMonitor)
+                        .filter(Objects::nonNull)
+                        .filter(monitor -> !monitor.isPartner(client))
+                        .map(Monitor::getId)
+                        .toList()
         ).stream().collect(Collectors.toMap(Monitor::getId, monitor -> monitor));
 
-        List<Monitor> clientActiveMonitors = clientHelper.findClientMonitorsWithActiveSubscriptions(client.getId());
+        items.removeIf(item -> !monitors.containsKey(item.getMonitor().getId()));
 
-        if (items.stream().anyMatch(item -> item.getMonitor().isPartner(client))) {
-            throw new BusinessRuleException(MonitorValidationMessages.PARTNER_CANNOT_BE_IN_CART);
-        }
+        List<Monitor> clientActiveMonitors = clientHelper.findClientMonitorsWithActiveSubscriptions(client.getId());
 
         for (CartItem item : items) {
             Monitor monitor = monitors.get(item.getMonitor().getId());
@@ -397,4 +439,11 @@ public class SubscriptionHelper {
         }
 
     }
+
+    @Transactional
+    public String process(Subscription subscription, Recurrence recurrence) {
+        return paymentService.process(subscription, recurrence);
+    }
+
+
 }

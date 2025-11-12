@@ -86,7 +86,12 @@ public class ClientServiceImpl implements ClientService {
             client.setRole(Role.CLIENT);
         }
 
-        sendContactConfirmationEmail(client, verificationCode);
+        TermCondition actualTermCondition = termConditionService.getLastTermCondition();
+        client.setTermCondition(actualTermCondition);
+        client.setTermAcceptedAt(Instant.now());
+        verificationCode.setValidated(true);
+
+//        sendContactConfirmationEmail(client, verificationCode);
         repository.save(client);
     }
 

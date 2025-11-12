@@ -184,7 +184,8 @@ CREATE TABLE "addresses"
     "username_update"      VARCHAR(255) NULL     DEFAULT NULL,
     "created_at"           TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT (now()),
     "updated_at"           TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT (now()),
-    CONSTRAINT "client_address" FOREIGN KEY ("client_id") REFERENCES "clients" ("id") ON UPDATE NO ACTION ON DELETE CASCADE
+    CONSTRAINT "client_address" FOREIGN KEY ("client_id") REFERENCES "clients" ("id") ON UPDATE NO ACTION ON DELETE CASCADE,
+    CONSTRAINT "unique_addresses_data_client" UNIQUE (street, city, state, zip_code, client_id)
 );
 
 CREATE TABLE "addresses_aud"
@@ -213,7 +214,7 @@ CREATE TABLE "monitors"
     "id"                   UUID PRIMARY KEY,
     "fl_active"            BOOLEAN                           DEFAULT TRUE,
     "box_id"               UUID NULL     DEFAULT NULL,
-    "partner_id"           UUID                     NOT NULL,
+    "address_id"           UUID                      NOT NULL,
     "max_blocks"           INTEGER                  NOT NULL DEFAULT 17,
     "product_id"           VARCHAR(255)             NOT NULL,
     "location_description" VARCHAR(255) NULL     DEFAULT NULL,
@@ -221,14 +222,14 @@ CREATE TABLE "monitors"
     "username_update"      VARCHAR(255) NULL     DEFAULT NULL,
     "created_at"           TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT (now()),
     "updated_at"           TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT (now()),
-    CONSTRAINT "fk_monitor_partner" FOREIGN KEY ("partner_id") REFERENCES "clients" ("id") ON UPDATE NO ACTION ON DELETE CASCADE
+    CONSTRAINT "fk_monitor_address" FOREIGN KEY ("address_id") REFERENCES "addresses" ("id") ON UPDATE NO ACTION ON DELETE CASCADE
 );
 
 CREATE TABLE "monitors_aud"
 (
     "id"                   UUID   NOT NULL,
     "fl_active"            BOOLEAN,
-    "partner_id"           UUID,
+    "address_id"           UUID,
     "max_blocks"           INTEGER,
     "product_id"           VARCHAR(255),
     "location_description" VARCHAR(255),
@@ -828,7 +829,9 @@ CREATE INDEX idx_webhook_events_id ON webhook_events (id);
 
 CREATE INDEX idx_clients_id_status ON clients (id, status);
 
-CREATE INDEX idx_monitors_address_id ON monitors (address_id);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_monitors_address_id_unique ON monitors (address_id);
+CREATE UNIQUE INDEX IF NOT EXISTS uniq_subscription_bonus_per_client ON subscriptions (client_id) WHERE fl_bonus = true;
+
 CREATE INDEX idx_addresses_lat_long ON addresses (latitude, longitude);
 
 CREATE INDEX idx_ads_client_id_validation ON ads (client_id, validation);

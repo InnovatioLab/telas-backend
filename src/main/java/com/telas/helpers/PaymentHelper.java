@@ -25,7 +25,9 @@ import org.apache.commons.lang3.ObjectUtils;
 import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -36,7 +38,6 @@ import java.util.*;
 import java.util.stream.IntStream;
 
 @Component
-@RequiredArgsConstructor
 public class PaymentHelper {
     private final Logger log = LoggerFactory.getLogger(PaymentHelper.class);
     private final SubscriptionHelper subscriptionHelper;
@@ -48,6 +49,15 @@ public class PaymentHelper {
 
     @Value("${stripe.product.id}")
     private String productId;
+
+    @Autowired
+    public PaymentHelper(@Lazy SubscriptionHelper subscriptionHelper,
+                         ClientRepository clientRepository,
+                         NotificationService notificationService) {
+        this.subscriptionHelper = subscriptionHelper;
+        this.clientRepository = clientRepository;
+        this.notificationService = notificationService;
+    }
 
     @Transactional
     public void updateSubscriptionPeriod(Invoice invoice, Subscription subscription) {

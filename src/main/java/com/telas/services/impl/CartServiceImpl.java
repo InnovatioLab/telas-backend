@@ -18,6 +18,7 @@ import com.telas.shared.constants.SharedConstants;
 import com.telas.shared.constants.valitation.CartValidationMessages;
 import com.telas.shared.utils.ValidateDataUtils;
 import lombok.RequiredArgsConstructor;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -132,6 +133,10 @@ public class CartServiceImpl implements CartService {
         for (CartItemRequestDto itemDto : request.getItems()) {
             UUID monitorId = itemDto.getMonitorId();
             Monitor monitor = monitorService.findEntityById(monitorId);
+
+            if (monitor.isPartner(cart.getClient())) {
+                continue;
+            }
 
             CartItem cartItem = actualItems.computeIfAbsent(monitorId, k -> new CartItem(cart, monitor, itemDto));
             cartItemRepository.save(cartItem);

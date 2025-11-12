@@ -147,8 +147,15 @@ public class ClientHelper {
                 .collect(Collectors.toSet());
 
         List<Address> addressesToRemove = client.getAddresses().stream()
-                .filter(address -> !monitorRepository.existsByPartnerId(client.getId()) && !receivedAddressIds.contains(address.getId()))
+                .filter(address -> !receivedAddressIds.contains(address.getId()))
                 .toList();
+
+
+        addressesToRemove.forEach(address -> {
+            if (monitorRepository.existsByAddressId(address.getId())) {
+                throw new BusinessRuleException(AddressValidationMessages.ADDRESS_IN_USE_BY_MONITOR);
+            }
+        });
 
         requestList.forEach(addressRequest -> {
             Address address = addressRequest.getId() == null
@@ -158,7 +165,7 @@ public class ClientHelper {
         });
 
         if (!addressesToRemove.isEmpty()) {
-            addressesToRemove.forEach(client.getAddresses()::remove);
+            client.getAddresses().removeAll(addressesToRemove);
             addressService.deleteMany(addressesToRemove);
         }
     }
@@ -176,13 +183,9 @@ public class ClientHelper {
     private Address updateExistingAddress(AddressRequestDto addressRequest, Client client) {
         Address address = addressService.findById(addressRequest.getId());
 
-        if (!monitorRepository.existsByPartnerId(client.getId()) && address.hasChanged(addressRequest)) {
+        if (!monitorRepository.existsByAddressId(address.getId()) && address.hasChanged(addressRequest)) {
             BeanUtils.copyProperties(addressRequest, address, "latitude", "longitude", "client", "monitors");
             address.setUsernameUpdate(client.getBusinessName());
-
-            if (address.isPartnerAddress()) {
-                mapsService.getAddressCoordinates(address);
-            }
         }
         return address;
     }

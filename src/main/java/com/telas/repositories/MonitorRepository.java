@@ -44,19 +44,24 @@ public interface MonitorRepository extends JpaRepository<Monitor, UUID>, JpaSpec
                 FROM SubscriptionMonitor sm
                 WHERE sm.id.monitor.id = :monitorId
                   AND sm.id.subscription.status = 'ACTIVE'
+                  AND sm.id.subscription.bonus = false
+                  AND (sm.id.subscription.endsAt IS NULL OR sm.id.subscription.endsAt > CURRENT_TIMESTAMP)
             """)
     boolean existsActiveSubscriptionByMonitorId(@Param("monitorId") UUID monitorId);
 
     @Query("""
-                SELECT m FROM Monitor m
-                LEFT JOIN m.subscriptionMonitors sm
-                LEFT JOIN sm.id.subscription s
-                WHERE s.client.id = :clientId
-                  AND s.status = 'ACTIVE'
-                  AND (s.endsAt IS NULL OR s.endsAt > CURRENT_TIMESTAMP)
-            """)
+        SELECT DISTINCT m FROM Monitor m
+        JOIN m.subscriptionMonitors sm
+        JOIN sm.id.subscription s
+        WHERE s.client.id = :clientId
+          AND s.status = 'ACTIVE'
+          AND (s.endsAt IS NULL OR s.endsAt > CURRENT_TIMESTAMP)
+    """)
     List<Monitor> findMonitorsWithActiveSubscriptionsByClientId(@Param("clientId") UUID clientId);
 
-    @Query("SELECT CASE WHEN COUNT(m) > 0 THEN true ELSE false END FROM Monitor m JOIN FETCH m.partner p WHERE p.role = 'PARTNER' AND p.id = :partnerId")
-    boolean existsByPartnerId(UUID partnerId);
+    boolean existsByAddressId(UUID addressId);
+
+    boolean existsByAddressIdAndIdNot(UUID addressId, UUID monitorId);
+
+
 }

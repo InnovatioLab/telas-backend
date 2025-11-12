@@ -100,10 +100,6 @@ public class Address extends BaseAudit implements Serializable {
         return latitude != null && longitude != null;
     }
 
-    public boolean isPartnerAddress() {
-        return Role.PARTNER.equals(client.getRole());
-    }
-
     public void setLocation(Double latitude, Double longitude) {
         this.latitude = latitude;
         this.longitude = longitude;
