@@ -54,7 +54,6 @@ public class BoxHelper {
     public List<BoxMonitorAdResponseDto> getBoxMonitorAdResponse(Box box) {
         return box.getMonitors().stream()
                 .map(monitor -> new BoxMonitorAdResponseDto(
-                        monitor,
                         monitor.getMonitorAds().stream()
                                 .map(monitorAd -> new MonitorAdResponseDto(
                                         monitorAd,

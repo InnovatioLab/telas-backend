@@ -18,6 +18,7 @@ import com.telas.services.BucketService;
 import com.telas.services.MonitorService;
 import com.telas.services.SubscriptionService;
 import com.telas.shared.audit.CustomRevisionListener;
+import com.telas.shared.constants.SharedConstants;
 import com.telas.shared.constants.valitation.MonitorValidationMessages;
 import com.telas.shared.utils.AttachmentUtils;
 import com.telas.shared.utils.PaginationFilterUtil;
@@ -229,21 +230,43 @@ public class MonitorServiceImpl implements MonitorService {
     private void updateExistingMonitor(MonitorRequestDto request, UUID monitorId, AuthenticatedUser authenticatedUser, Address address, List<Ad> ads) {
         Monitor monitor = findEntityById(monitorId);
 
-        Address oldAddress = monitor.getAddress();
-        Client oldPartner = getClientFromAddress(oldAddress);
-        Client newPartner = address.getClient();
-
-
-        if (isAddressChanged(oldAddress, address)) {
-            monitor.setAddress(address);
-            handlePartnerSubscriptionChanges(oldPartner, newPartner, monitor);
-            setCoordinatesIfMissing(address);
+        if (isAddressChanged(monitor.getAddress(), address)) {
+            ads = handleAddressChange(monitor, address, ads);
         }
 
         updateMonitorMetadata(authenticatedUser, monitor);
         updateMonitorDetails(request, monitor, ads);
         repository.save(monitor);
     }
+
+    private List<Ad> handleAddressChange(Monitor monitor, Address newAddress, List<Ad> ads) {
+        Address oldAddress = monitor.getAddress();
+        Client oldPartner = getClientFromAddress(oldAddress);
+        Client newPartner = newAddress.getClient();
+
+        monitor.setAddress(newAddress);
+        handlePartnerSubscriptionChanges(oldPartner, newPartner, monitor);
+        setCoordinatesIfMissing(newAddress);
+        return addNewPartnerAdIfExists(ads, newPartner);
+    }
+
+    private List<Ad> addNewPartnerAdIfExists(List<Ad> ads, Client newPartner) {
+        Ad approvedAd = newPartner == null ? null : newPartner.getApprovedAd();
+
+        if (approvedAd == null) {
+            return ads;
+        }
+
+        List<Ad> mutable = ValidateDataUtils.isNullOrEmpty(ads) ? new ArrayList<>() : ads;
+        List<UUID> adIds = mutable.stream().map(Ad::getId).toList();
+
+        if (!adIds.contains(approvedAd.getId())) {
+            mutable.add(approvedAd);
+        }
+
+        return mutable;
+    }
+
 
     private void validateAddressAvailability(Address address) {
         if (repository.existsByAddressId(address.getId())) {
@@ -304,24 +327,126 @@ public class MonitorServiceImpl implements MonitorService {
     }
 
     private void updateMonitorAds(MonitorRequestDto request, Monitor monitor, List<Ad> ads) {
-        monitor.getMonitorAds().clear();
+        Set<UUID> newAdIds = buildNewAdIds(ads);
+
+        removeStaleMonitorAds(monitor, newAdIds);
         validateAdsLimit(monitor, ads);
 
         Map<UUID, MonitorAdRequestDto> adRequestMap = mapAdsById(request);
-        List<SubscriptionMonitor> subscriptionMonitors = helper.getSubscriptionsMonitorsFromMonitor(monitor.getId());
+        Map<UUID, MonitorAd> existingAfterRemoval = buildExistingAfterRemoval(monitor);
+        Map<UUID, SubscriptionMonitor> subscriptionByClientId = buildSubscriptionByClientId(monitor);
 
-        List<UpdateBoxMonitorsAdRequestDto> requestList = ads.stream()
-                .map(ad -> createMonitorAdRequest(ad, monitor, adRequestMap, subscriptionMonitors))
-                .toList();
+        List<MonitorAd> newMonitorAds = createNewMonitorAds(ads, existingAfterRemoval, adRequestMap, monitor);
+        updateOrderIndexes(ads, existingAfterRemoval, adRequestMap);
+
+        Map<UUID, MonitorAd> newMonitorAdsByAdId = newMonitorAds.stream()
+                .collect(Collectors.toMap(ma -> ma.getAd().getId(), ma -> ma));
+
+        // agora passamos o monitor para que possamos identificar o partner atual
+        List<UpdateBoxMonitorsAdRequestDto> requestList = buildRequestList(ads, existingAfterRemoval, newMonitorAdsByAdId, subscriptionByClientId, monitor);
+
+        addNewMonitorAdsToMonitor(monitor, newMonitorAds);
 
         if (monitor.isAbleToSendBoxRequest()) {
             helper.sendBoxesMonitorsUpdateAds(requestList);
         }
     }
 
-    private void validateAdsLimit(Monitor monitor, List<Ad> ads) {
-        if (!monitor.isWithinAdsLimit(ads.size())) {
+    private Set<UUID> buildNewAdIds(List<Ad> ads) {
+        return ads.stream().map(Ad::getId).collect(Collectors.toSet());
+    }
+
+    private void removeStaleMonitorAds(Monitor monitor, Set<UUID> newAdIds) {
+        monitor.getMonitorAds().removeIf(ma -> !newAdIds.contains(ma.getAd().getId()));
+    }
+
+    private Map<UUID, MonitorAd> buildExistingAfterRemoval(Monitor monitor) {
+        return monitor.getMonitorAds().stream()
+                .collect(Collectors.toMap(ma -> ma.getAd().getId(), ma -> ma));
+    }
+
+    private Map<UUID, SubscriptionMonitor> buildSubscriptionByClientId(Monitor monitor) {
+        List<SubscriptionMonitor> subscriptionMonitors = helper.getSubscriptionsMonitorsFromMonitor(monitor.getId());
+        return subscriptionMonitors.stream()
+                .filter(sm -> sm.getSubscription() != null && sm.getSubscription().getClient() != null && sm.getSubscription().getClient().getId() != null)
+                .collect(Collectors.toMap(sm -> sm.getSubscription().getClient().getId(), sm -> sm, (a, b) -> a));
+    }
+
+    private List<MonitorAd> createNewMonitorAds(List<Ad> ads, Map<UUID, MonitorAd> existingAfterRemoval,
+                                                Map<UUID, MonitorAdRequestDto> adRequestMap, Monitor monitor) {
+        return ads.stream()
+                .filter(ad -> !existingAfterRemoval.containsKey(ad.getId()))
+                .map(ad -> {
+                    MonitorAdRequestDto reqDto = adRequestMap.get(ad.getId());
+                    // Se não veio MonitorAdRequestDto (ex.: ad do partner inserido automaticamente), utiliza outro construtor
+                    return reqDto != null ? new MonitorAd(reqDto, monitor, ad) : new MonitorAd(monitor, ad);
+                })
+                .toList();
+    }
+
+    private void updateOrderIndexes(List<Ad> ads, Map<UUID, MonitorAd> existingAfterRemoval, Map<UUID, MonitorAdRequestDto> adRequestMap) {
+        ads.stream()
+                .filter(ad -> existingAfterRemoval.containsKey(ad.getId()))
+                .forEach(ad -> {
+                    MonitorAd ma = existingAfterRemoval.get(ad.getId());
+                    MonitorAdRequestDto dto = adRequestMap.get(ad.getId());
+                    if (ma != null && dto != null) {
+                        ma.setOrderIndex(dto.getOrderIndex());
+                    }
+                });
+    }
+
+    private List<UpdateBoxMonitorsAdRequestDto> buildRequestList(List<Ad> ads,
+                                                                 Map<UUID, MonitorAd> existingAfterRemoval,
+                                                                 Map<UUID, MonitorAd> newMonitorAdsByAdId,
+                                                                 Map<UUID, SubscriptionMonitor> subscriptionByClientId,
+                                                                 Monitor monitor) {
+        return ads.stream()
+                .map(ad -> {
+                    MonitorAd monitorAd = existingAfterRemoval.getOrDefault(ad.getId(), newMonitorAdsByAdId.get(ad.getId()));
+                    UUID clientId = ad.getClient() != null ? ad.getClient().getId() : null;
+                    SubscriptionMonitor matched = clientId != null ? subscriptionByClientId.get(clientId) : null;
+                    String link = bucketService.getLink(AttachmentUtils.format(ad));
+                    UpdateBoxMonitorsAdRequestDto dto = matched != null
+                            ? new UpdateBoxMonitorsAdRequestDto(ad, monitorAd, matched, link)
+                            : new UpdateBoxMonitorsAdRequestDto(ad, monitorAd, link);
+
+                    // Se o ad pertence ao partner atual do monitor, força blockQuantity para o valor reservado (7)
+                    if (monitor != null
+                            && monitor.getAddress() != null
+                            && monitor.getAddress().getClient() != null
+                            && ad.getClient() != null
+                            && ad.getClient().isPartner()
+                            && Objects.equals(ad.getClient().getId(), monitor.getAddress().getClient().getId())) {
+                        dto.setBlockQuantity(SharedConstants.PARTNER_RESERVED_SLOTS);
+                    }
+
+                    return dto;
+                })
+                .collect(Collectors.toList());
+    }
+
+    private void validateAdsLimit(Monitor monitor, List<Ad> newAds) {
+        UUID partnerId = monitor.getAddress() != null && monitor.getAddress().getClient() != null
+                ? monitor.getAddress().getClient().getId()
+                : null;
+
+        long partnerAdsCountFinal = newAds.stream()
+                .filter(ad -> ad.getClient() != null && ad.getClient().isPartner()
+                        && Objects.equals(ad.getClient().getId(), partnerId))
+                .count();
+
+        int otherAdsFinal = newAds.size() - (int) partnerAdsCountFinal;
+        int availableSlotsForOthers = monitor.getMaxBlocks() - SharedConstants.PARTNER_RESERVED_SLOTS;
+
+        if (otherAdsFinal > availableSlotsForOthers) {
             throw new BusinessRuleException(MonitorValidationMessages.ADS_LIMIT_EXCEEDED + monitor.getMaxBlocks());
+        }
+    }
+
+    private void addNewMonitorAdsToMonitor(Monitor monitor, List<MonitorAd> newMonitorAds) {
+        if (!newMonitorAds.isEmpty()) {
+            monitor.getMonitorAds().addAll(newMonitorAds);
         }
     }
 
@@ -329,20 +454,4 @@ public class MonitorServiceImpl implements MonitorService {
         return request.getAds().stream()
                 .collect(Collectors.toMap(MonitorAdRequestDto::getId, dto -> dto));
     }
-
-    private UpdateBoxMonitorsAdRequestDto createMonitorAdRequest(Ad ad, Monitor monitor, Map<UUID, MonitorAdRequestDto> adRequestMap, List<SubscriptionMonitor> subscriptionMonitors) {
-        MonitorAd monitorAd = new MonitorAd(adRequestMap.get(ad.getId()), monitor, ad);
-        monitor.getMonitorAds().add(monitorAd);
-
-        SubscriptionMonitor matched = subscriptionMonitors.stream()
-                .filter(sm -> sm.getSubscription().getClient().getId().equals(ad.getClient().getId()))
-                .findFirst()
-                .orElse(null);
-
-        String link = bucketService.getLink(AttachmentUtils.format(ad));
-        return matched != null
-                ? new UpdateBoxMonitorsAdRequestDto(ad, monitorAd, matched, link)
-                : new UpdateBoxMonitorsAdRequestDto(ad, monitorAd, link);
-    }
-
 }

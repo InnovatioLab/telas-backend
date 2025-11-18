@@ -13,11 +13,9 @@ public final class BoxMonitorAdResponseDto implements Serializable {
   @Serial
   private static final long serialVersionUID = -2929124221854520175L;
 
-  private final UUID id;
   private final List<MonitorAdResponseDto> ads;
 
-  public BoxMonitorAdResponseDto(Monitor entity, List<MonitorAdResponseDto> adLinks) {
-    id = entity.getId();
+  public BoxMonitorAdResponseDto(List<MonitorAdResponseDto> adLinks) {
     ads = adLinks;
   }
 }

@@ -11,11 +11,13 @@ import com.telas.infra.exceptions.ResourceNotFoundException;
 import com.telas.infra.security.services.AuthenticatedUserService;
 import com.telas.repositories.CartItemRepository;
 import com.telas.repositories.CartRepository;
+import com.telas.repositories.MonitorRepository;
 import com.telas.repositories.SubscriptionFlowRepository;
 import com.telas.services.CartService;
 import com.telas.services.MonitorService;
 import com.telas.shared.constants.SharedConstants;
 import com.telas.shared.constants.valitation.CartValidationMessages;
+import com.telas.shared.constants.valitation.MonitorValidationMessages;
 import com.telas.shared.utils.ValidateDataUtils;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Lazy;
@@ -32,7 +34,7 @@ public class CartServiceImpl implements CartService {
     private final CartItemRepository cartItemRepository;
     private final SubscriptionFlowRepository subscriptionFlowRepository;
     private final AuthenticatedUserService authenticatedUserService;
-    private final MonitorService monitorService;
+    private final MonitorRepository monitorRepository;
 
     @Override
     @Transactional
@@ -123,27 +125,37 @@ public class CartServiceImpl implements CartService {
     }
 
     private Map<UUID, CartItem> mapExistingCartItems(Cart cart) {
-        List<CartItem> cartItems = !ValidateDataUtils.isNullOrEmpty(cart.getItems()) ? cart.getItems() : new ArrayList<>();
-        return cartItems.stream().collect(Collectors.toMap(item -> item.getMonitor().getId(), item -> item));
+        return Optional.ofNullable(cart.getItems())
+                .orElseGet(ArrayList::new)
+                .stream()
+                .collect(Collectors.toMap(item -> item.getMonitor().getId(), item -> item));
     }
 
     private Set<UUID> processReceivedItems(CartRequestDto request, Cart cart, Map<UUID, CartItem> actualItems, List<CartItemResponseDto> itemsResponse) {
         Set<UUID> itemsReceivedIds = new HashSet<>();
 
-        for (CartItemRequestDto itemDto : request.getItems()) {
-            UUID monitorId = itemDto.getMonitorId();
-            Monitor monitor = monitorService.findEntityById(monitorId);
+        Map<UUID, CartItemRequestDto> requestItemsByMonitorId = request.getItems()
+                .stream().collect(Collectors.toMap(CartItemRequestDto::getMonitorId, item -> item));
 
-            if (monitor.isPartner(cart.getClient())) {
-                continue;
-            }
+        Map<UUID, Monitor> monitorsById = monitorRepository
+                .findAllByIdIn(new ArrayList<>(requestItemsByMonitorId.keySet()))
+                .stream()
+                .collect(Collectors.toMap(Monitor::getId, monitor -> monitor));
 
-            CartItem cartItem = actualItems.computeIfAbsent(monitorId, k -> new CartItem(cart, monitor, itemDto));
-            cartItemRepository.save(cartItem);
-
-            itemsResponse.add(new CartItemResponseDto(cartItem));
-            itemsReceivedIds.add(monitorId);
+        if (!monitorsById.keySet().containsAll(requestItemsByMonitorId.keySet())) {
+            throw new ResourceNotFoundException(MonitorValidationMessages.MONITOR_NOT_FOUND);
         }
+
+        requestItemsByMonitorId.forEach((monitorId, item) -> {
+            Monitor monitor = monitorsById.get(monitorId);
+
+            if (!monitor.isPartner(cart.getClient())) {
+                CartItem cartItem = actualItems.computeIfAbsent(monitorId, k -> new CartItem(cart, monitor, item));
+                cartItemRepository.save(cartItem);
+                itemsResponse.add(new CartItemResponseDto(cartItem));
+                itemsReceivedIds.add(monitorId);
+            }
+        });
 
         return itemsReceivedIds;
     }
@@ -156,10 +168,7 @@ public class CartServiceImpl implements CartService {
         if (!itemsToRemove.isEmpty()) {
             cartItemRepository.deleteAll(itemsToRemove);
             cartItemRepository.flush();
-
-            if (cart.getItems() != null && !cart.getItems().isEmpty()) {
-                cart.getItems().removeAll(itemsToRemove);
-            }
+            Optional.ofNullable(cart.getItems()).ifPresent(items -> items.removeAll(itemsToRemove));
         }
     }
 

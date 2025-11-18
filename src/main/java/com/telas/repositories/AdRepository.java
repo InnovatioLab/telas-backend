@@ -16,8 +16,8 @@ public interface AdRepository extends JpaRepository<Ad, UUID>, JpaSpecificationE
   @Query("""
               SELECT ad FROM Ad ad
               JOIN FETCH ad.client c
-              JOIN FETCH c.subscriptions s
-              JOIN FETCH s.subscriptionMonitors sm
+              LEFT JOIN FETCH c.subscriptions s
+              LEFT JOIN FETCH s.subscriptionMonitors sm
               WHERE (
                   c.role <> 'ADMIN'
                   AND ad.validation = :validation

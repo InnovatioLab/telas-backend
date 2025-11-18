@@ -50,4 +50,6 @@ public final class SharedConstants {
 
     public static final long MAX_BILLING_CYCLE_ANCHOR = 30L * 24 * 60 * 60;
 
+    private SharedConstants(){}
+
 }

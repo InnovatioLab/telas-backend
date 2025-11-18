@@ -25,7 +25,7 @@ public class UpdateBoxMonitorsAdRequestDto implements Serializable {
   @Serial
   private static final long serialVersionUID = -3963846843873646628L;
 
-  private Integer blockQuantity = 1;
+  private Integer blockQuantity = 2;
 
   private Integer orderIndex;
 
