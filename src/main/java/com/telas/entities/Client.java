@@ -100,16 +100,16 @@ public class Client extends BaseAudit implements Serializable {
 
     @JsonIgnore
     @OneToMany(mappedBy = "client")
-    private Set<Subscription> subscriptions = new HashSet<>();
+    private List<Subscription> subscriptions = new ArrayList<>();
 
     @OneToMany(mappedBy = "client", cascade = CascadeType.ALL)
-    private Set<Address> addresses = new HashSet<>();
+    private List<Address> addresses = new ArrayList<>();
 
     @OneToMany(mappedBy = "client", cascade = CascadeType.ALL)
-    private Set<Attachment> attachments = new HashSet<>();
+    private List<Attachment> attachments = new ArrayList<>();
 
     @OneToMany(mappedBy = "client", cascade = CascadeType.ALL)
-    private Set<Ad> ads = new HashSet<>();
+    private List<Ad> ads = new ArrayList<>();
 
     @NotAudited
     @OneToMany(mappedBy = "client", cascade = CascadeType.ALL)
@@ -129,7 +129,7 @@ public class Client extends BaseAudit implements Serializable {
 
         addresses = request.getAddresses().stream()
                 .map(address -> new Address(address, this))
-                .collect(Collectors.toSet());
+                .collect(Collectors.toList());
 
         setUsernameCreateForRelatedEntities(request.getBusinessName());
     }
@@ -160,8 +160,12 @@ public class Client extends BaseAudit implements Serializable {
     }
 
     public boolean isFirstSubscription() {
-        return subscriptions.size() == SharedConstants.MIN_QUANTITY_MONITOR_BLOCK;
+        long nonBonusSubscriptions = subscriptions.stream()
+                .filter(subs -> !subs.isBonus())
+                .count();
+        return nonBonusSubscriptions == SharedConstants.MIN_QUANTITY_MONITOR_BLOCK;
     }
+
 
     private void setUsernameCreateForRelatedEntities(String username) {
         setUsernameCreate(username);

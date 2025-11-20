@@ -12,8 +12,6 @@ import java.util.UUID;
 public interface AddressService {
     Address save(Address address);
 
-    Address save(AddressRequestDto request);
-
     void saveAddressUpdates(Address address, Double latitude, Double longitude,
                             NearbySearchResponse.Place place, String photoUrl);
 
@@ -23,7 +21,7 @@ public interface AddressService {
 
     Address findById(UUID id);
 
-    Address getOrCreateAddress(AddressRequestDto addressRequestDto);
+    Address getPartnerAddress(AddressRequestDto addressRequestDto);
 
     Address getOrCreateAddress(AddressRequestDto addressRequestDto, Client client);
 }

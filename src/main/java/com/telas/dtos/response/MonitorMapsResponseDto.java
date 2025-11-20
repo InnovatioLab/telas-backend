@@ -1,6 +1,8 @@
 package com.telas.dtos.response;
 
+import com.telas.entities.CartItem;
 import com.telas.entities.Monitor;
+import com.telas.shared.constants.SharedConstants;
 import lombok.Getter;
 
 import java.io.Serial;
@@ -29,8 +31,10 @@ public final class MonitorMapsResponseDto implements Serializable {
         active = entity.isActive();
         latitude = entity.getAddress() != null ? entity.getAddress().getLatitude() : null;
         longitude = entity.getAddress() != null ? entity.getAddress().getLongitude() : null;
-        hasAvailableSlots = entity.hasAvailableBlocks(1);
-        estimatedSlotReleaseDate = entity.hasAvailableBlocks(1) ? null : entity.getEstimatedSlotReleaseDate();
+        CartItem cartItem = new CartItem();
+        cartItem.setBlockQuantity(SharedConstants.MIN_QUANTITY_MONITOR_BLOCK);
+        hasAvailableSlots = entity.hasAvailableBlocks(cartItem);
+        estimatedSlotReleaseDate = entity.hasAvailableBlocks(cartItem) ? null : entity.getEstimatedSlotReleaseDate();
         adsDailyDisplayTimeInMinutes = entity.getAdsDailyDisplayTimeInMinutes();
         addressLocationName = entity.getAddress() != null ? entity.getAddress().getLocationName() : null;
         addressLocationDescription = entity.getAddress() != null ? entity.getAddress().getLocationDescription() : null;

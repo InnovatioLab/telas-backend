@@ -19,6 +19,10 @@ public final class SubscriptionValidationMessages {
     public static final String SUBSCRIPTION_ALREADY_ON_UPGRADE = "Subscription already on upgrade mode, if you miss the checkout session, please wait about 30 minutes and try again.";
     public static final String SUBSCRIPTION_RENEW_NOT_ALLOWED_FOR_BONUS = "Subscription renew not allowed for bonus subscriptions.";
     public static final String SUBSCRIPTION_RENEW_NOT_ALLOWED_FOR_MONTHLY = "Subscription renew not allowed for monthly subscriptions.";
-    public static final String CLIENT_WITHOUT_STRIPE_ID = "Client is not able to access Customer Portal!";
+    public static final String CLIENT_WITHOUT_STRIPE_ID = "Client is unable to access Customer Portal!";
     public static final String CLIENT_WITHOUT_SUBSCRIPTIONS = "Client don't have any subscriptions!";
+    public static final String CLIENT_IS_NOT_A_PARTNER = "Client is not a partner!";
+    public static final String MONITOR_ADDRESS_NOT_BELONGS_TO_PARTNER = "Monitor address does not belong to the partner!";
+    public static final String PARTNER_MONITOR_IS_REQUIRED = "Partner and Monitor are required!";
+    public static final String BONUS_SUBSCRIPTION_NOT_FOUND = "Bonus subscription not found for the partner with id: ";
 }

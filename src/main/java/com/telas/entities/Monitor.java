@@ -4,6 +4,7 @@ import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.telas.dtos.request.MonitorRequestDto;
 import com.telas.enums.Recurrence;
 import com.telas.enums.SubscriptionStatus;
+import com.telas.infra.exceptions.BusinessRuleException;
 import com.telas.shared.audit.BaseAudit;
 import com.telas.shared.constants.SharedConstants;
 import jakarta.persistence.*;
@@ -44,8 +45,8 @@ public class Monitor extends BaseAudit implements Serializable {
     @Column(name = "max_blocks")
     private Integer maxBlocks = SharedConstants.MAX_MONITOR_ADS;
 
-    @ManyToOne
-    @JoinColumn(name = "address_id", referencedColumnName = "id", nullable = false)
+    @OneToOne
+    @JoinColumn(name = "address_id", unique = true, nullable = false)
     private Address address;
 
     @JsonIgnore
@@ -53,8 +54,16 @@ public class Monitor extends BaseAudit implements Serializable {
     private Set<MonitorAd> monitorAds = new HashSet<>();
 
     @JsonIgnore
-    @ManyToMany(mappedBy = "monitors")
-    private Set<Subscription> subscriptions;
+    @OneToMany(mappedBy = "id.monitor")
+    private Set<SubscriptionMonitor> subscriptionMonitors = new HashSet<>();
+    
+    @JsonIgnore
+    @Transient
+    public Set<Subscription> getSubscriptions() {
+        return subscriptionMonitors.stream()
+                .map(SubscriptionMonitor::getSubscription)
+                .collect(Collectors.toSet());
+    }
 
     @JsonIgnore
     @NotAudited
@@ -62,7 +71,10 @@ public class Monitor extends BaseAudit implements Serializable {
     @JoinColumn(name = "box_id", referencedColumnName = "id")
     private Box box;
 
-    public Monitor(MonitorRequestDto request, Address address, String productId) {
+    public Monitor(Address address, String productId) {
+        if (address == null || !address.getClient().isPartner()) {
+            throw new BusinessRuleException("Partner client invalid");
+        }
         this.productId = productId;
         this.address = address;
     }
@@ -87,37 +99,80 @@ public class Monitor extends BaseAudit implements Serializable {
                 .toList();
     }
 
-    public boolean hasAvailableBlocks(int blocksWanted) {
-        return isWithinAdsLimit(blocksWanted) && isWithinSubscriptionsLimit(blocksWanted);
+    public boolean hasAvailableBlocks(CartItem item) {
+        return isWithinAdsLimit(item) && isWithinSubscriptionsLimit(item);
+    }
+
+    public boolean isWithinAdsLimit(CartItem item) {
+        // Se o monitor tem um partner, reserva 7 slots para ads do partner
+        int partnerAdsSlots = getPartnerAdsSlots();
+        int otherAdsSize = monitorAds.size() - partnerAdsSlots;
+        
+        // Slots disponíveis para outros clientes = maxBlocks - slots reservados para partner
+        int availableSlotsForOthers = maxBlocks - SharedConstants.PARTNER_RESERVED_SLOTS;
+        return otherAdsSize + item.getBlockQuantity() <= availableSlotsForOthers;
     }
 
     public boolean isWithinAdsLimit(int blocksWanted) {
-        int adsSize = monitorAds.size() - (hasPartnerAds() ? 7 : 0);
-        return adsSize + blocksWanted <= maxBlocks;
+        int partnerAdsSlots = getPartnerAdsSlots();
+        int otherAdsSize = monitorAds.size() - partnerAdsSlots;
+        int availableSlotsForOthers = maxBlocks - SharedConstants.PARTNER_RESERVED_SLOTS;
+        return otherAdsSize + blocksWanted <= availableSlotsForOthers;
     }
 
-    private boolean isWithinSubscriptionsLimit(int blocksWanted) {
-        int subscriptionsCount = getActiveSubscriptions().size() - (hasPartnerSubscription() ? 1 : 0);
-        return subscriptionsCount + blocksWanted <= maxBlocks;
+    private boolean isWithinSubscriptionsLimit(CartItem item) {
+        // Se o monitor tem um partner, sempre reserva 7 slots para ele
+        int totalActiveSubscriptionSlots = getTotalActiveSubscriptionSlots(); // Todos os slots ativos
+        int otherClientsSubscriptionSlots = getOtherClientsSubscriptionSlots(totalActiveSubscriptionSlots); // Slots ocupados pelo partner
+        int availableSlotsForOthers = maxBlocks - SharedConstants.PARTNER_RESERVED_SLOTS;
+        
+        return otherClientsSubscriptionSlots + item.getBlockQuantity() <= availableSlotsForOthers;
     }
 
-    private boolean hasPartnerAds() {
-        return monitorAds.stream().anyMatch(monitorAd ->
-                monitorAd.getAd().getClient().isPartner() &&
-                        monitorAd.getAd().getClient().getId().equals(address.getClient().getId()));
+    private int getOtherClientsSubscriptionSlots(int totalActiveSubscriptionSlots) {
+        return totalActiveSubscriptionSlots - getPartnerSubscriptionSlots();
     }
 
-    private boolean hasPartnerSubscription() {
-        return getActiveSubscriptions().stream().anyMatch(subscription ->
-                subscription.getClient().isPartner() && subscription.getClient().getId().equals(address.getClient().getId()));
+    private int getPartnerAdsSlots() {
+        // Partner tem até 7 slots reservados para ads
+        return monitorAds.stream()
+                .filter(monitorAd -> {
+                    Client adClient = monitorAd.getAd().getClient();
+                    return adClient.isPartner() && adClient.getId().equals(getPartner().getId());
+                })
+                .mapToInt(ma -> 1)
+                .sum();
     }
 
+    private int getPartnerSubscriptionSlots() {
+        return getActiveSubscriptionMonitors().stream()
+                .filter(sm -> sm.getSubscription().getClient().isPartner()
+                        && sm.getSubscription().getClient().getId().equals(getPartner().getId()))
+                .mapToInt(SubscriptionMonitor::getSlotsQuantity)
+                .sum();
+    }
+
+    private int getTotalActiveSubscriptionSlots() {
+        return getActiveSubscriptionMonitors().stream()
+                .mapToInt(SubscriptionMonitor::getSlotsQuantity)
+                .sum();
+    }
+
+
+    public Set<SubscriptionMonitor> getActiveSubscriptionMonitors() {
+        Instant now = Instant.now();
+        return subscriptionMonitors.stream()
+                .filter(sm -> {
+                    Subscription subscription = sm.getSubscription();
+                    return SubscriptionStatus.ACTIVE.equals(subscription.getStatus())
+                            && (subscription.getEndsAt() == null || subscription.getEndsAt().isAfter(now));
+                })
+                .collect(Collectors.toSet());
+    }
 
     public Set<Subscription> getActiveSubscriptions() {
-        Instant now = Instant.now();
-        return subscriptions.stream()
-                .filter(subscription -> SubscriptionStatus.ACTIVE.equals(subscription.getStatus())
-                        && (subscription.getEndsAt() == null || subscription.getEndsAt().isAfter(now)))
+        return getActiveSubscriptionMonitors().stream()
+                .map(SubscriptionMonitor::getSubscription)
                 .collect(Collectors.toSet());
     }
 
@@ -131,7 +186,8 @@ public class Monitor extends BaseAudit implements Serializable {
     }
 
     public Instant getEstimatedSlotReleaseDate() {
-        return getActiveSubscriptions().stream()
+        return getActiveSubscriptionMonitors().stream()
+                .map(SubscriptionMonitor::getSubscription)
                 .filter(sub -> !Recurrence.MONTHLY.equals(sub.getRecurrence()))
                 .map(Subscription::getEndsAt)
                 .filter(Objects::nonNull)
@@ -152,5 +208,13 @@ public class Monitor extends BaseAudit implements Serializable {
         int loops = secondsOfDay / loopDuration;
         int totalSeconds = loops * SharedConstants.AD_DISPLAY_TIME_IN_SECONDS;
         return totalSeconds / SharedConstants.TOTAL_SECONDS_IN_A_MINUTE;
+    }
+
+    public boolean isPartner(Client client) {
+        return client.isPartner() && address.getClient().getId().equals(client.getId());
+    }
+
+    private Client getPartner() {
+        return address.getClient();
     }
 }

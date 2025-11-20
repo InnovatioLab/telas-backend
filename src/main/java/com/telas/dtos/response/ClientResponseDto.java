@@ -39,7 +39,7 @@ public final class ClientResponseDto implements Serializable {
 
     private final AdRequestClientResponseDto adRequest;
 
-    private final Set<Address> addresses;
+    private final List<Address> addresses;
 
     private final List<LinkResponseDto> attachments;
 

@@ -29,14 +29,6 @@ public class AddressServiceImpl implements AddressService {
 
     @Override
     @Transactional
-    public Address save(AddressRequestDto request) {
-        Address address = new Address(request);
-        repository.save(address);
-        return address;
-    }
-
-    @Override
-    @Transactional
     public void saveAddressUpdates(Address address, Double latitude, Double longitude, NearbySearchResponse.Place place, String photoUrl) {
         address.setLocation(latitude, longitude);
 
@@ -79,13 +71,13 @@ public class AddressServiceImpl implements AddressService {
 
     @Override
     @Transactional
-    public Address getOrCreateAddress(AddressRequestDto addressRequestDto) {
+    public Address getPartnerAddress(AddressRequestDto addressRequestDto) {
         return repository.findByStreetAndCityAndStateAndZipCode(
                 addressRequestDto.getStreet().toLowerCase(),
                 addressRequestDto.getCity().toLowerCase(),
                 addressRequestDto.getState().toLowerCase(),
                 addressRequestDto.getZipCode().toLowerCase()
-        ).orElseGet(() -> save(addressRequestDto));
+        ).orElseThrow(() -> new ResourceNotFoundException(AddressValidationMessages.PARTNER_ADDRESS_NOT_FOUND));
     }
 
     @Override

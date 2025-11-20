@@ -14,13 +14,13 @@ import java.util.UUID;
 public interface AddressRepository extends JpaRepository<Address, UUID> {
   @Override
   @NotNull
-  @Query("SELECT a FROM Address a LEFT JOIN a.monitors WHERE a.id = :id")
+  @Query("SELECT a FROM Address a LEFT JOIN a.client WHERE a.id = :id")
   Optional<Address> findById(@NotNull UUID id);
 
   @Query("SELECT a FROM Address a WHERE a.zipCode = :zipCode")
   List<Address> findByZipCode(String zipCode);
 
-  @Query("SELECT a FROM Address a LEFT JOIN FETCH a.client c WHERE LOWER(a.street) = :street AND LOWER(a.city) = :city AND LOWER(a.state) = :state AND a.zipCode = :zipCode AND (a.client IS NOT NULL OR c.role = 'PARTNER')")
+      @Query("SELECT a FROM Address a JOIN FETCH a.client c WHERE LOWER(a.street) = :street AND LOWER(a.city) = :city AND LOWER(a.state) = :state AND a.zipCode = :zipCode AND c.role = 'PARTNER'")
   Optional<Address> findByStreetAndCityAndStateAndZipCode(String street, String city, String state, String zipCode);
 
   @Query("SELECT a FROM Address a JOIN FETCH a.client c WHERE LOWER(a.street) = :street AND LOWER(a.city) = :city AND LOWER(a.state) = :state AND a.zipCode = :zipCode AND c.id = :clientId")

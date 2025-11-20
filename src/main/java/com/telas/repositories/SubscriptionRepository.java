@@ -17,19 +17,20 @@ import java.util.UUID;
 public interface SubscriptionRepository extends JpaRepository<Subscription, UUID>, JpaSpecificationExecutor<Subscription> {
     @NotNull
     @Override
-    @Query("SELECT s FROM Subscription s LEFT JOIN FETCH s.payments JOIN FETCH s.monitors WHERE s.id = :id")
+    @Query("SELECT DISTINCT s FROM Subscription s LEFT JOIN FETCH s.payments LEFT JOIN FETCH s.subscriptionMonitors sm LEFT JOIN FETCH sm.id.monitor WHERE s.id = :id")
     Optional<Subscription> findById(@NotNull UUID id);
 
     @Query("""
-                SELECT s FROM Subscription s
-                JOIN FETCH s.monitors
+                SELECT DISTINCT s FROM Subscription s
+                LEFT JOIN FETCH s.subscriptionMonitors sm
+                LEFT JOIN FETCH sm.id.monitor
                 WHERE s.client.id = :clientId
                   AND s.status = 'ACTIVE'
                   AND (s.endsAt IS NULL OR s.endsAt > CURRENT_TIMESTAMP)
             """)
     List<Subscription> findActiveSubscriptionsByClientId(@Param("clientId") UUID clientId);
 
-    @Query("SELECT s FROM Subscription s JOIN FETCH s.monitors WHERE s.endsAt IS NOT NULL AND s.endsAt < :now AND s.status = 'ACTIVE' AND s.bonus = false")
+    @Query("SELECT DISTINCT s FROM Subscription s LEFT JOIN FETCH s.subscriptionMonitors sm LEFT JOIN FETCH sm.id.monitor WHERE s.endsAt IS NOT NULL AND s.endsAt < :now AND s.status = 'ACTIVE' AND s.bonus = false")
     List<Subscription> getActiveAndExpiredSubscriptions(Instant now);
 
     @Query("""
@@ -59,4 +60,15 @@ public interface SubscriptionRepository extends JpaRepository<Subscription, UUID
     @Query("SELECT CASE WHEN COUNT(s) > 0 THEN true ELSE false END FROM Subscription s WHERE s.client.id = :clientId")
     boolean existsByClientId(UUID clientId);
 
+    @Query("""
+                SELECT DISTINCT s FROM Subscription s
+                LEFT JOIN FETCH s.subscriptionMonitors sm
+                LEFT JOIN FETCH sm.id.monitor
+                WHERE s.client.id = :partnerId
+                  AND s.bonus = true
+                  AND s.status = 'ACTIVE'
+                  AND s.endsAt IS NULL
+                  AND s.client.role = 'PARTNER'
+            """)
+  Optional<Subscription> findActiveBonusSubscriptionByClientId(UUID partnerId);
 }

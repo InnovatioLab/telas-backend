@@ -6,6 +6,9 @@ import com.telas.dtos.request.filters.SubscriptionFilterRequestDto;
 import com.telas.dtos.response.PaginationResponseDto;
 import com.telas.dtos.response.SubscriptionMinResponseDto;
 import com.telas.dtos.response.SubscriptionResponseDto;
+import com.telas.entities.Client;
+import com.telas.entities.Monitor;
+import com.telas.entities.Subscription;
 import com.telas.enums.Recurrence;
 
 import java.util.List;
@@ -13,6 +16,8 @@ import java.util.UUID;
 
 public interface SubscriptionService {
     String save();
+
+    void savePartnerBonusSubscription(Client partner, Monitor monitor);
 
     String generateCustomerPortalSession() throws StripeException;
 
@@ -23,6 +28,8 @@ public interface SubscriptionService {
     String renewSubscription(UUID subscriptionId);
 
     void cancelSubscription(UUID subscriptionId);
+
+    void cancelBonusSubscription(Client partner);
 
     void cancelSubscription(com.stripe.model.Subscription stripeSubscription);
 

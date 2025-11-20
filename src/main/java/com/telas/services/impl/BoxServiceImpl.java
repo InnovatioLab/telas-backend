@@ -56,10 +56,6 @@ public class BoxServiceImpl implements BoxService {
         Box box = (boxId != null) ? updateBox(request, boxId, boxAddress, monitor) : new Box(boxAddress, monitor);
 
         repository.save(box);
-
-        if (!ObjectUtils.isEmpty(monitor)) {
-            helper.sendUpdateBoxMonitorsAdsRequest(box);
-        }
     }
 
     @Override

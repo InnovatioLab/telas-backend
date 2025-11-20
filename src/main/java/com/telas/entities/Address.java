@@ -67,21 +67,11 @@ public class Address extends BaseAudit implements Serializable {
 
     @JsonIgnore
     @ManyToOne
-    @JoinColumn(name = "client_id", referencedColumnName = "id")
+    @JoinColumn(name = "client_id", referencedColumnName = "id", nullable = false)
     private Client client;
 
-    @JsonIgnore
-    @OneToMany(mappedBy = "address")
-    private List<Monitor> monitors = new ArrayList<>();
-
     public Address(AddressRequestDto request, Client client) {
-        this(request);
         this.client = client;
-        client.getAddresses().add(this);
-        setUsernameCreate(client.getBusinessName());
-    }
-
-    public Address(AddressRequestDto request) {
         street = request.getStreet();
         zipCode = request.getZipCode();
         city = request.getCity();
@@ -90,6 +80,8 @@ public class Address extends BaseAudit implements Serializable {
         address2 = request.getAddress2();
         latitude = request.getLatitude();
         longitude = request.getLongitude();
+        client.getAddresses().add(this);
+        setUsernameCreate(client.getBusinessName());
     }
 
     public boolean hasChanged(AddressRequestDto address) {
@@ -106,10 +98,6 @@ public class Address extends BaseAudit implements Serializable {
 
     public boolean hasLocation() {
         return latitude != null && longitude != null;
-    }
-
-    public boolean isPartnerAddress() {
-        return client != null && Role.PARTNER.equals(client.getRole());
     }
 
     public void setLocation(Double latitude, Double longitude) {

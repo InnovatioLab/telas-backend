@@ -179,12 +179,13 @@ CREATE TABLE "addresses"
     "location_name"        VARCHAR(255) NULL     DEFAULT NULL,
     "location_description" VARCHAR(255) NULL     DEFAULT NULL,
     "photo_url"            TEXT NULL     DEFAULT NULL,
-    "client_id"            UUID NULL     DEFAULT NULL,
+    "client_id"            UUID NOT NULL,
     "username_create"      VARCHAR(255) NULL     DEFAULT NULL,
     "username_update"      VARCHAR(255) NULL     DEFAULT NULL,
     "created_at"           TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT (now()),
     "updated_at"           TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT (now()),
-    CONSTRAINT "client_address" FOREIGN KEY ("client_id") REFERENCES "clients" ("id") ON UPDATE NO ACTION ON DELETE CASCADE
+    CONSTRAINT "client_address" FOREIGN KEY ("client_id") REFERENCES "clients" ("id") ON UPDATE NO ACTION ON DELETE CASCADE,
+    CONSTRAINT "unique_addresses_data_client" UNIQUE (street, city, state, zip_code, client_id)
 );
 
 CREATE TABLE "addresses_aud"
@@ -213,7 +214,7 @@ CREATE TABLE "monitors"
     "id"                   UUID PRIMARY KEY,
     "fl_active"            BOOLEAN                           DEFAULT TRUE,
     "box_id"               UUID NULL     DEFAULT NULL,
-    "address_id"           UUID                     NOT NULL,
+    "address_id"           UUID                      NOT NULL,
     "max_blocks"           INTEGER                  NOT NULL DEFAULT 17,
     "product_id"           VARCHAR(255)             NOT NULL,
     "location_description" VARCHAR(255) NULL     DEFAULT NULL,
@@ -275,6 +276,7 @@ CREATE TABLE "subscriptions_monitors"
 (
     "subscription_id" UUID NOT NULL,
     "monitor_id"      UUID NOT NULL,
+    "slots_quantity"  INTEGER NOT NULL DEFAULT 1,
     PRIMARY KEY ("subscription_id", "monitor_id"),
     CONSTRAINT "fk_subscription_monitor" FOREIGN KEY ("subscription_id") REFERENCES "subscriptions" ("id") ON UPDATE NO ACTION ON DELETE CASCADE,
     CONSTRAINT "fk_monitor_subscription" FOREIGN KEY ("monitor_id") REFERENCES "monitors" ("id") ON UPDATE NO ACTION ON DELETE CASCADE
@@ -284,6 +286,7 @@ CREATE TABLE "subscriptions_monitors_aud"
 (
     "subscription_id" UUID   NOT NULL,
     "monitor_id"      UUID   NOT NULL,
+    "slots_quantity"  INTEGER,
     "audit_id"        BIGINT NOT NULL,
     "audit_type"      SMALLINT NULL DEFAULT NULL,
     CONSTRAINT "pk_tbsubscriptions_monitors_aud" PRIMARY KEY ("subscription_id", "monitor_id", "audit_id"),
@@ -826,7 +829,9 @@ CREATE INDEX idx_webhook_events_id ON webhook_events (id);
 
 CREATE INDEX idx_clients_id_status ON clients (id, status);
 
-CREATE INDEX idx_monitors_address_id ON monitors (address_id);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_monitors_address_id_unique ON monitors (address_id);
+CREATE UNIQUE INDEX IF NOT EXISTS uniq_subscription_bonus_per_client ON subscriptions (client_id) WHERE fl_bonus = true AND status = 'ACTIVE';
+
 CREATE INDEX idx_addresses_lat_long ON addresses (latitude, longitude);
 
 CREATE INDEX idx_ads_client_id_validation ON ads (client_id, validation);

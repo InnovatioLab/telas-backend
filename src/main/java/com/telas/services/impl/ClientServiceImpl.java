@@ -74,6 +74,7 @@ public class ClientServiceImpl implements ClientService {
 
         Client client = new Client(request);
         VerificationCode verificationCode = verificationCodeService.save(CodeType.CONTACT, client);
+
         client.setVerificationCode(verificationCode);
 
         if (Objects.equals(client.getBusinessName(), "Admin")) {
@@ -85,7 +86,12 @@ public class ClientServiceImpl implements ClientService {
             client.setRole(Role.CLIENT);
         }
 
-        sendContactConfirmationEmail(client, verificationCode);
+        TermCondition actualTermCondition = termConditionService.getLastTermCondition();
+        client.setTermCondition(actualTermCondition);
+        client.setTermAcceptedAt(Instant.now());
+        verificationCode.setValidated(true);
+
+//        sendContactConfirmationEmail(client, verificationCode);
         repository.save(client);
     }
 
@@ -262,7 +268,10 @@ public class ClientServiceImpl implements ClientService {
             throw new ForbiddenException(ClientValidationMessages.AD_REQUEST_EXISTS);
         }
 
-        if (!client.getAds().isEmpty()) {
+        if (
+                client.getAds().size() >= SharedConstants.PARTNER_RESERVED_SLOTS && client.isPartner() ||
+                !client.isPartner() && !client.getAds().isEmpty()
+        ) {
             throw new BusinessRuleException(ClientValidationMessages.MAX_ADS_REACHED);
         }
 
@@ -322,13 +331,7 @@ public class ClientServiceImpl implements ClientService {
         attachmentHelper.validateAd(ad, validation, request);
 
         if (AdValidationType.APPROVED.equals(validation)) {
-            List<UUID> monitorIds = helper.findClientMonitorsWithActiveSubscriptions(ad.getClient().getId()).stream()
-                    .map(Monitor::getId)
-                    .toList();
-
-            if (!monitorIds.isEmpty()) {
-                helper.addAdToMonitor(ad, monitorIds, ad.getClient());
-            }
+                helper.addAdToMonitor(ad, ad.getClient());
         }
     }
 

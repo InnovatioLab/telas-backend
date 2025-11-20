@@ -22,27 +22,22 @@ public class CartItemResponseDto implements Serializable {
 
   private String monitorAddress;
 
-  private Double latitude;
-
-  private Double longitude;
-
-  private String locationDescription;
-
   private String addressLocationName;
 
   private String addressLocationDescription;
 
   private String photoUrl;
 
+  private boolean isBonus;
+
   public CartItemResponseDto(CartItem entity) {
     id = entity.getId();
     monitorId = entity.getMonitor().getId();
     blockQuantity = entity.getBlockQuantity();
     monitorAddress = entity.getMonitor().getAddress().getCoordinatesParams();
-    latitude = entity.getMonitor().getAddress().getLatitude();
-    longitude = entity.getMonitor().getAddress().getLongitude();
     addressLocationName = entity.getMonitor().getAddress().getLocationName();
     addressLocationDescription = entity.getMonitor().getAddress().getLocationDescription();
     photoUrl = entity.getMonitor().getAddress().getPhotoUrl();
+    isBonus = entity.isBonus();
   }
 }

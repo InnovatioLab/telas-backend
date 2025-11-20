@@ -17,13 +17,13 @@ public interface AdRepository extends JpaRepository<Ad, UUID>, JpaSpecificationE
               SELECT ad FROM Ad ad
               JOIN FETCH ad.client c
               LEFT JOIN FETCH c.subscriptions s
-              LEFT JOIN FETCH s.monitors m
+              LEFT JOIN FETCH s.subscriptionMonitors sm
               WHERE (
                   c.role <> 'ADMIN'
                   AND ad.validation = :validation
                   AND s.status = 'ACTIVE'
                   AND (s.endsAt IS NULL OR s.endsAt > CURRENT_TIMESTAMP)
-                  AND m.id = :monitorId
+                  AND sm.id.monitor.id = :monitorId
               )
               OR c.role = 'ADMIN'
           """)

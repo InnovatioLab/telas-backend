@@ -13,21 +13,24 @@ import java.util.UUID;
 @Setter
 @NoArgsConstructor
 public final class MonitorValidAdResponseDto implements Serializable {
-  @Serial
-  private static final long serialVersionUID = -7144327643566339527L;
+      @Serial
+      private static final long serialVersionUID = -7144327643566339527L;
 
-  private UUID id;
+      private UUID id;
 
-  private String link;
+      private String link;
 
-  private String fileName;
+      private String fileName;
 
-  private Boolean isAttachedToMonitor;
+      private Boolean isAttachedToMonitor;
 
-  public MonitorValidAdResponseDto(Ad ad, String adLink, Boolean isAttachedToMonitor) {
-    id = ad.getId();
-    link = adLink;
-    fileName = ad.getName();
-    this.isAttachedToMonitor = isAttachedToMonitor;
-  }
+      private Integer orderIndex;
+
+    public MonitorValidAdResponseDto(Ad ad, String adLink, Boolean isAttachedToMonitor, Integer orderIndex) {
+        id = ad.getId();
+        link = adLink;
+        fileName = ad.getName();
+        this.isAttachedToMonitor = isAttachedToMonitor;
+        this.orderIndex = orderIndex;
+    }
 }

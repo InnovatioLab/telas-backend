@@ -31,6 +31,7 @@ import lombok.RequiredArgsConstructor;
 import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
@@ -51,7 +52,6 @@ public class SubscriptionServiceImpl implements SubscriptionService {
     private final SubscriptionRepository repository;
     private final ClientRepository clientRepository;
     private final AuthenticatedUserService authenticatedUserService;
-    private final PaymentService paymentService;
     private final SubscriptionHelper helper;
 
     @Override
@@ -67,14 +67,33 @@ public class SubscriptionServiceImpl implements SubscriptionService {
         Subscription subscription = new Subscription(client, cart);
 
         if (subscription.isBonus()) {
-            log.info("Client with id: {} is eligible for a bonus subscription", client.getId());
-            persistSubscriptionClient(client, subscription);
-            helper.handleNonRecurringPayment(subscription);
-            return helper.getRedirectUrlAfterCreatingNewSubscription(client);
+            return null;
         }
 
         persistSubscriptionClient(client, subscription);
-        return paymentService.process(subscription, null);
+        return helper.process(subscription, null);
+    }
+
+    @Override
+    @Transactional
+    public void savePartnerBonusSubscription(Client partner, Monitor monitor) {
+        if (repository.findActiveBonusSubscriptionByClientId(partner.getId()).isPresent()) {
+            log.info("Partner with id: {} already has a bonus subscription, skipping creation.", partner.getId());
+            return;
+        }
+
+        if (Role.PARTNER.equals(partner.getRole()) && Objects.equals(monitor.getAddress().getClient().getId(), partner.getId())) {
+            log.info("Partner with id: {} is eligible for a bonus subscription.", partner.getId());
+            Subscription subscription = new Subscription(partner, monitor);
+            log.info("Subscription generated with id: {} for partner id: {}", subscription.getId(), partner.getId());
+
+            try {
+                persistSubscriptionClient(partner, subscription);
+                helper.handleBonusSubscription(subscription);
+            } catch (DataIntegrityViolationException e) {
+                log.warn("Could not create bonus subscription for a partner {} due to constraint violation. Likely concurrent creation.", partner.getId());
+            }
+        }
     }
 
     @Override
@@ -93,7 +112,7 @@ public class SubscriptionServiceImpl implements SubscriptionService {
         helper.validateSubscriptionForUpgrade(entity, recurrence);
         entity.setUpgrade(true);
         repository.save(entity);
-        return paymentService.process(entity, recurrence);
+        return helper.process(entity, recurrence);
     }
 
     @Override
@@ -118,7 +137,7 @@ public class SubscriptionServiceImpl implements SubscriptionService {
         Subscription entity = helper.findEntityById(subscriptionId);
         authenticatedUserService.validateSelfOrAdmin(entity.getClient().getId());
         helper.validateSubscriptionForRenewal(entity, client);
-        return paymentService.process(entity, entity.getRecurrence());
+        return helper.process(entity, entity.getRecurrence());
     }
 
     @Override
@@ -140,6 +159,16 @@ public class SubscriptionServiceImpl implements SubscriptionService {
             helper.removeMonitorAdsFromSubscription(subscription);
             notifyClientsWishList(subscription);
         }
+    }
+
+    @Override
+    @Transactional
+    public void cancelBonusSubscription(Client partner) {
+        Subscription subscription = repository.findActiveBonusSubscriptionByClientId(partner.getId())
+                .orElseThrow(() -> new ResourceNotFoundException(SubscriptionValidationMessages.BONUS_SUBSCRIPTION_NOT_FOUND + partner.getId()));
+        updateSubscriptionStatusCancelled(subscription, Instant.now(), subscription.getClient().getBusinessName());
+        helper.removeMonitorAdsFromSubscription(subscription);
+        notifyClientsWishList(subscription);
     }
 
     @Override
@@ -300,7 +329,11 @@ public class SubscriptionServiceImpl implements SubscriptionService {
             String filter = "%" + genericFilter.toLowerCase() + "%";
             List<Predicate> predicates = new ArrayList<>();
 
-            predicates.add(criteriaBuilder.like(criteriaBuilder.lower(root.get("monitors").get("address").get("street")), filter));
+            // Acessar através de subscriptionMonitors -> monitor -> address
+            predicates.add(criteriaBuilder.like(
+                    criteriaBuilder.lower(
+                            root.join("subscriptionMonitors").join("id").join("monitor").get("address").get("street")
+                    ), filter));
             predicates.add(criteriaBuilder.like(criteriaBuilder.lower(root.get("status")), filter));
             predicates.add(criteriaBuilder.like(criteriaBuilder.lower(root.get("recurrence")), filter));
 

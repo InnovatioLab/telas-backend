@@ -5,9 +5,7 @@ import com.stripe.model.*;
 import com.stripe.param.CouponCreateParams;
 import com.stripe.param.PriceListParams;
 import com.stripe.param.checkout.SessionCreateParams;
-import com.telas.entities.Client;
-import com.telas.entities.Monitor;
-import com.telas.entities.Payment;
+import com.telas.entities.*;
 import com.telas.entities.Subscription;
 import com.telas.enums.NotificationReference;
 import com.telas.enums.PaymentStatus;
@@ -24,18 +22,22 @@ import com.telas.shared.utils.MoneyUtils;
 import com.telas.shared.utils.ValidateDataUtils;
 import lombok.RequiredArgsConstructor;
 import org.apache.commons.lang3.ObjectUtils;
+import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.time.Instant;
 import java.util.*;
+import java.util.stream.IntStream;
 
 @Component
-@RequiredArgsConstructor
 public class PaymentHelper {
     private final Logger log = LoggerFactory.getLogger(PaymentHelper.class);
     private final SubscriptionHelper subscriptionHelper;
@@ -47,6 +49,15 @@ public class PaymentHelper {
 
     @Value("${stripe.product.id}")
     private String productId;
+
+    @Autowired
+    public PaymentHelper(@Lazy SubscriptionHelper subscriptionHelper,
+                         ClientRepository clientRepository,
+                         NotificationService notificationService) {
+        this.subscriptionHelper = subscriptionHelper;
+        this.clientRepository = clientRepository;
+        this.notificationService = notificationService;
+    }
 
     @Transactional
     public void updateSubscriptionPeriod(Invoice invoice, Subscription subscription) {
@@ -76,41 +87,132 @@ public class PaymentHelper {
 
     @Transactional
     public void configureSubscriptionParams(SessionCreateParams.Builder paramsBuilder, Subscription subscription, Map<String, String> metaData, Recurrence recurrence) throws StripeException {
-        SessionCreateParams.SubscriptionData.Builder subscriptionDataBuilder = SessionCreateParams.SubscriptionData.builder()
+        paramsBuilder.setSubscriptionData(SessionCreateParams.SubscriptionData.builder()
                 .putAllMetadata(metaData)
-                .setDescription("Invoice payment for your tela's subscription for monitors: " + subscription.getMonitorAddresses());
+                .setDescription("Invoice payment for your tela's subscription for monitors: " + subscription.getMonitorAddresses())
+                .build());
 
         if (subscription.isUpgrade() && subscription.getEndsAt() != null) {
             addDiscountForUpgrade(paramsBuilder, subscription, recurrence);
         }
 
-        paramsBuilder.setSubscriptionData(subscriptionDataBuilder.build())
-                .addLineItem(SessionCreateParams.LineItem.builder()
-                        .setQuantity((long) subscription.getMonitors().size())
-                        .setPrice(getProductPriceIdMonthly())
-                        .build());
+        addLineItems(paramsBuilder, subscription.getSubscriptionMonitors(), recurrence, true);
     }
 
     @Transactional
     public void configurePaymentParams(SessionCreateParams.Builder paramsBuilder, Subscription subscription, Customer customer, Map<String, String> metaData, Recurrence recurrence) {
-        BigDecimal totalPrice = calculatePrice(subscription, recurrence);
-
         paramsBuilder.setPaymentIntentData(SessionCreateParams.PaymentIntentData.builder()
                 .setSetupFutureUsage(SessionCreateParams.PaymentIntentData.SetupFutureUsage.OFF_SESSION)
                 .setReceiptEmail(customer.getEmail())
                 .putAllMetadata(metaData)
                 .build());
 
-        paramsBuilder.addLineItem(
-                SessionCreateParams.LineItem.builder()
-                        .setQuantity(1L)
-                        .setPriceData(SessionCreateParams.LineItem.PriceData.builder()
-                                .setCurrency(SharedConstants.USD)
-                                .setUnitAmount(totalPrice.multiply(BigDecimal.valueOf(100)).longValue())
-                                .setProduct(productId)
-                                .build())
-                        .build()
-        );
+        addLineItems(paramsBuilder, subscription.getSubscriptionMonitors(),recurrence, false);
+    }
+
+//    private void addLineItems(SessionCreateParams.Builder paramsBuilder, Set<SubscriptionMonitor> subscriptionMonitors, Recurrence recurrence, boolean isMonthly) {
+//        subscriptionMonitors.stream()
+//                .sorted(Comparator.comparing(sm -> sm.getMonitor().getId()))
+//                .filter(sm -> sm.getSlotsQuantity() != null && sm.getSlotsQuantity() > SharedConstants.ZERO)
+//                .forEachOrdered(sm -> {
+//                    BigDecimal unitPricePerSlot = getUnitPricePerSlot(new ArrayList<>(subscriptionMonitors).indexOf(sm), getMultiplier(sm.getSubscription(), recurrence));
+//                    paramsBuilder.addLineItem(createLineItem(sm.getSlotsQuantity(), unitPricePerSlot, isMonthly));
+//                });
+//    }
+//
+//    private SessionCreateParams.LineItem createLineItem(Integer slotsQuantity, BigDecimal unitPricePerSlot, boolean isMonthly) {
+//        SessionCreateParams.LineItem.PriceData.Builder priceDataBuilder =
+//                SessionCreateParams.LineItem.PriceData.builder()
+//                        .setCurrency(SharedConstants.USD)
+//                        .setUnitAmount(unitPricePerSlot.multiply(BigDecimal.valueOf(100)).longValue())
+//                        .setProduct(productId);
+//
+//        if (isMonthly) {
+//            priceDataBuilder.setRecurring(
+//                    SessionCreateParams.LineItem.PriceData.Recurring.builder()
+//                            .setInterval(SessionCreateParams.LineItem.PriceData.Recurring.Interval.MONTH)
+//                            .build()
+//            );
+//        }
+//
+//        return SessionCreateParams.LineItem.builder()
+//                .setQuantity(slotsQuantity.longValue())
+//                .setPriceData(priceDataBuilder.build())
+//                .build();
+//    }
+
+
+    private void addLineItems(SessionCreateParams.Builder paramsBuilder, Set<SubscriptionMonitor> subscriptionMonitors, Recurrence recurrence, boolean isMonthly) {
+        List<SubscriptionMonitor> monitors = subscriptionMonitors.stream().toList();
+
+        BigDecimal baseSum = getBaseMonitorsSum(monitors);
+        int totalSlots = monitors.stream().mapToInt(SubscriptionMonitor::getSlotsQuantity).sum();
+
+        BigDecimal adjustedTotal = MoneyUtils.divide(MoneyUtils.multiply(baseSum, BigDecimal.valueOf(totalSlots)), BigDecimal.valueOf(monitors.size()));
+
+        BigDecimal finalTotal = MoneyUtils.multiply(adjustedTotal, getMultiplier(monitors.get(0).getSubscription(), recurrence));
+
+        long totalCents = finalTotal.multiply(BigDecimal.valueOf(100)).setScale(0, RoundingMode.HALF_UP).longValue();
+        distributeCents(paramsBuilder, monitors, totalSlots, totalCents, isMonthly);
+    }
+
+    private BigDecimal getBaseMonitorsSum(List<SubscriptionMonitor> monitors) {
+        return IntStream.range(0, monitors.size())
+                .mapToObj(this::getUnitPricePerSlot)
+                .reduce(BigDecimal.ZERO, MoneyUtils::add);
+    }
+
+    private SessionCreateParams.LineItem createLineItem(long unitAmountCents, int slotsQuantity, boolean isMonthly) {
+        SessionCreateParams.LineItem.PriceData.Builder priceDataBuilder =
+                SessionCreateParams.LineItem.PriceData.builder()
+                        .setCurrency(SharedConstants.USD)
+                        .setUnitAmount(unitAmountCents)
+                        .setProduct(productId);
+
+        if (isMonthly) {
+            priceDataBuilder.setRecurring(
+                    SessionCreateParams.LineItem.PriceData.Recurring.builder()
+                            .setInterval(SessionCreateParams.LineItem.PriceData.Recurring.Interval.MONTH)
+                            .build()
+            );
+        }
+
+        return SessionCreateParams.LineItem.builder()
+                .setQuantity((long) Math.max(1, slotsQuantity))
+                .setPriceData(priceDataBuilder.build())
+                .build();
+    }
+
+    private BigDecimal getUnitPricePerSlot(int index) {
+        return switch (index) {
+            case 0 ->  BigDecimal.valueOf(700);
+            case 1 -> BigDecimal.valueOf(600);
+            default -> BigDecimal.valueOf(500);
+        };
+    }
+
+    private void distributeCents(SessionCreateParams.Builder paramsBuilder, List<SubscriptionMonitor> monitors, int totalSlots, long totalCents, boolean isMonthly) {
+        long centsPerSlot = totalCents / totalSlots;
+        long remainder = totalCents % totalSlots;
+
+        for (SubscriptionMonitor sm : monitors) {
+            int slots = sm.getSlotsQuantity();
+            long extra = Math.min(remainder, slots);
+            long unitAmountCents = centsPerSlot + (extra > 0 ? 1 : 0);
+            remainder -= extra;
+
+            paramsBuilder.addLineItem(createLineItem(unitAmountCents, slots, isMonthly));
+        }
+    }
+
+    private BigDecimal calculatePrice(Subscription subscription, Recurrence recurrence) {
+        List<SubscriptionMonitor> monitors = subscription.getSubscriptionMonitors().stream().toList();
+
+        BigDecimal baseSum = getBaseMonitorsSum(monitors);
+        int totalSlots = monitors.stream().mapToInt(SubscriptionMonitor::getSlotsQuantity).sum();
+
+        BigDecimal adjustedTotal = MoneyUtils.divide(MoneyUtils.multiply(baseSum, BigDecimal.valueOf(totalSlots)), BigDecimal.valueOf(monitors.size()));
+        return MoneyUtils.multiply(adjustedTotal, getMultiplier(monitors.get(0).getSubscription(), recurrence));
     }
 
     private void addDiscountForUpgrade(SessionCreateParams.Builder paramsBuilder, Subscription subscription, Recurrence recurrence) throws StripeException {
@@ -127,7 +229,7 @@ public class PaymentHelper {
 
             CouponCreateParams couponParams = CouponCreateParams.builder()
                     .setAmountOff(adjustedPrice.multiply(BigDecimal.valueOf(100)).longValue())
-                    .setCurrency("usd")
+                    .setCurrency(SharedConstants.USD)
                     .setDuration(CouponCreateParams.Duration.ONCE)
                     .build();
 
@@ -139,23 +241,8 @@ public class PaymentHelper {
         }
     }
 
-    private BigDecimal calculatePrice(Subscription subscription, Recurrence recurrence) {
-        BigDecimal totalPrice = BigDecimal.ZERO;
-
-        for (int i = 0; i < subscription.getMonitors().size(); i++) {
-            BigDecimal unitPrice = switch (i) {
-                case 0 -> BigDecimal.valueOf(700);
-                case 1 -> BigDecimal.valueOf(600);
-                default -> BigDecimal.valueOf(500);
-            };
-            totalPrice = MoneyUtils.add(totalPrice, unitPrice);
-        }
-
-        return MoneyUtils.multiply(totalPrice, getMultiplier(subscription, recurrence));
-    }
-
     private BigDecimal getMultiplier(Subscription subscription, Recurrence recurrence) {
-        if (!subscription.isUpgrade()) {
+        if (!subscription.isUpgrade() || recurrence == null) {
             return subscription.getRecurrence().getMultiplier();
         }
         return Recurrence.MONTHLY.equals(recurrence)
@@ -163,63 +250,24 @@ public class PaymentHelper {
                 : MoneyUtils.subtract(recurrence.getMultiplier(), subscription.getRecurrence().getMultiplier());
     }
 
-    private String getProductPriceIdMonthly() {
-        try {
-            PriceListParams params = PriceListParams.builder()
-                    .setProduct(productId)
-                    .addAllLookupKey(List.of("subscription"))
-                    .build();
-
-            List<Price> prices = Price.list(params).getData();
-
-            return prices.stream()
-                    .filter(price -> price.getRecurring() != null && "month".equals(price.getRecurring().getInterval()))
-                    .map(Price::getId)
-                    .findFirst()
-                    .orElseThrow(() -> new ResourceNotFoundException(PaymentValidationMessages.PAYMENT_PRODUCT_PRICES_NOT_FOUND));
-        } catch (StripeException e) {
-            throw new BusinessRuleException(PaymentValidationMessages.PAYMENT_PRODUCT_PRICES_NOT_FOUND);
-        }
-    }
-
-//  @Transactional
-//  public void setPaymentMethodForInvoice(Invoice invoice, Payment payment) {
-//    try {
-//      InvoicePayment invoicePayment = InvoicePayment.list(
-//              InvoicePaymentListParams.builder()
-//                      .setLimit(1L)
-//                      .setInvoice(invoice.getId())
-//                      .build()
-//      ).getData().stream().findFirst().orElse(null);
+//    private String getProductPriceIdMonthly() {
+//        try {
+//            PriceListParams params = PriceListParams.builder()
+//                    .setProduct(productId)
+//                    .addAllLookupKey(List.of("subscription"))
+//                    .build();
 //
-//      if (invoicePayment == null) {
-//        return;
-//      }
+//            List<Price> prices = Price.list(params).getData();
 //
-//      PaymentIntent paymentIntent = PaymentIntent.retrieve(invoicePayment.getPayment().getPaymentIntent());
-//      
-//      if (paymentIntent == null) {
-//        log.warn("PaymentIntent not found for Invoice ID: {}", invoice.getId());
-//        return;
-//      }
-//      
-//      if (!ValidateDataUtils.isNullOrEmptyString(paymentIntent.getPaymentMethod())) {
-//        setPaymentMethod(paymentIntent, payment);
-//      }
-//    } catch (StripeException e) {
-//      log.error("Failed to set payment method for Invoice ID: {}, error: {}", invoice.getId(), e.getMessage());
+//            return prices.stream()
+//                    .filter(price -> price.getRecurring() != null && "month".equals(price.getRecurring().getInterval()))
+//                    .map(Price::getId)
+//                    .findFirst()
+//                    .orElseThrow(() -> new ResourceNotFoundException(PaymentValidationMessages.PAYMENT_PRODUCT_PRICES_NOT_FOUND));
+//        } catch (StripeException e) {
+//            throw new BusinessRuleException(PaymentValidationMessages.PAYMENT_PRODUCT_PRICES_NOT_FOUND);
+//        }
 //    }
-//  }
-
-//  @Transactional
-//  public void setPaymentMethod(PaymentIntent paymentIntent, Payment payment) {
-//    try {
-//      PaymentMethod paymentMethod = PaymentMethod.retrieve(paymentIntent.getPaymentMethod());
-//      payment.setPaymentMethod(paymentMethod == null ? "unknown" : paymentMethod.getType().toLowerCase());
-//    } catch (StripeException e) {
-//      log.error("Failed to set payment method for PaymentIntent ID: {}, error: {}", paymentIntent.getId(), e.getMessage());
-//    }
-//  }
 
     @Transactional
     public boolean isRecurringPayment(Subscription subscription, PaymentIntent paymentIntent) {
@@ -297,7 +345,6 @@ public class PaymentHelper {
             createUpgradeSubscriptionNotification(subscription);
         }
     }
-
 
     @Transactional
     public void handleCompletedPaymentFromInvoice(Subscription subscription, Payment payment, Invoice invoice) {
