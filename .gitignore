@@ -38,5 +38,7 @@ docker/.env
 /docker/loki_data
 /docker/minio_data
 /docker/minio_data/**
-/docker/minio_data/.minio.sys/
+/docker/minio_data/.minio.sys
+/docker/minio_data/.minio.sys/**
 /docker/minio_data/
+/docker/minio_data/.minio.sys/

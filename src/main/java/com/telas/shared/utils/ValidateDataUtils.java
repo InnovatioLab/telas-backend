@@ -20,6 +20,6 @@ public class ValidateDataUtils {
     }
 
     public static boolean isNullOrEmptyString(String valor) {
-        return Objects.isNull(valor) || valor.isEmpty();
+        return Objects.isNull(valor) || valor.trim().isEmpty();
     }
 }
