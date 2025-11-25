@@ -13,5 +13,5 @@ public class PaginationRequestDto {
   private int page = 1;
   private int size = 10;
   private String sortBy = "firstName";
-  private String sortDir = "desc";
+  private String sortDir = "asc";
 }
