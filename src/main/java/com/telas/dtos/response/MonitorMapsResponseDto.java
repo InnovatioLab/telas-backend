@@ -27,6 +27,10 @@ public final class MonitorMapsResponseDto implements Serializable {
     private final String photoUrl;
 
     public MonitorMapsResponseDto(Monitor entity) {
+        this(entity, entity.getAdsDailyDisplayTimeInMinutes());
+    }
+
+    public MonitorMapsResponseDto(Monitor entity, Integer adsDailyDisplayTimeInMinutes) {
         id = entity.getId();
         active = entity.isActive();
         latitude = entity.getAddress() != null ? entity.getAddress().getLatitude() : null;
@@ -35,7 +39,7 @@ public final class MonitorMapsResponseDto implements Serializable {
         cartItem.setBlockQuantity(SharedConstants.MIN_QUANTITY_MONITOR_BLOCK);
         hasAvailableSlots = entity.hasAvailableBlocks(cartItem);
         estimatedSlotReleaseDate = entity.hasAvailableBlocks(cartItem) ? null : entity.getEstimatedSlotReleaseDate();
-        adsDailyDisplayTimeInMinutes = entity.getAdsDailyDisplayTimeInMinutes();
+        this.adsDailyDisplayTimeInMinutes = adsDailyDisplayTimeInMinutes;
         addressLocationName = entity.getAddress() != null ? entity.getAddress().getLocationName() : null;
         addressLocationDescription = entity.getAddress() != null ? entity.getAddress().getLocationDescription() : null;
         photoUrl = entity.getAddress() != null && entity.getAddress().getPhotoUrl() != null ? entity.getAddress().getPhotoUrl() : null;

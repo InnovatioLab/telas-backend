@@ -203,7 +203,6 @@ public class ClientHelper {
     }
 
     @Transactional
-    @Async
     public void addAdToMonitor(Ad ad, Client client) {
         List<Monitor> monitorsToUpdate = new ArrayList<>();
         List<SubscriptionMonitor> subscriptionMonitors = subscriptionMonitorRepository.findByClientId(client.getId());
