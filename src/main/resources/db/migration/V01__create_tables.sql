@@ -830,7 +830,7 @@ CREATE INDEX idx_webhook_events_id ON webhook_events (id);
 CREATE INDEX idx_clients_id_status ON clients (id, status);
 
 CREATE UNIQUE INDEX IF NOT EXISTS idx_monitors_address_id_unique ON monitors (address_id);
-CREATE UNIQUE INDEX IF NOT EXISTS uniq_subscription_bonus_per_client ON subscriptions (client_id) WHERE fl_bonus = true;
+CREATE UNIQUE INDEX IF NOT EXISTS uniq_subscription_bonus_per_client ON subscriptions (client_id) WHERE fl_bonus = true AND status = 'ACTIVE';
 
 CREATE INDEX idx_addresses_lat_long ON addresses (latitude, longitude);
 

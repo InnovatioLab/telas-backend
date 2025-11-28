@@ -21,6 +21,7 @@ import com.telas.shared.audit.CustomRevisionListener;
 import com.telas.shared.constants.SharedConstants;
 import com.telas.shared.constants.valitation.MonitorValidationMessages;
 import com.telas.shared.utils.AttachmentUtils;
+import com.telas.shared.utils.MonitorBlocksUtils;
 import com.telas.shared.utils.PaginationFilterUtil;
 import com.telas.shared.utils.ValidateDataUtils;
 import jakarta.persistence.criteria.Predicate;
@@ -125,9 +126,32 @@ public class MonitorServiceImpl implements MonitorService {
         UUID clientId = authenticatedUserService.getLoggedUser().client().getId();
         return repository.findAvailableMonitorsByZipCode(zipCode, clientId)
                 .stream()
-                .map(MonitorMapsResponseDto::new)
+                .map(monitor -> {
+                    List<SubscriptionMonitor> subscriptionMonitors = helper.getSubscriptionsMonitorsFromMonitor(monitor.getId());
+
+                    int totalSubscriptionBlocks = MonitorBlocksUtils.sumSubscriptionBlocks(subscriptionMonitors);
+
+                    Map<UUID, SubscriptionMonitor> subsByClientId = subscriptionMonitors.stream()
+                            .filter(sm -> sm.getSubscription() != null && sm.getSubscription().getClient() != null)
+                            .collect(Collectors.toMap(sm -> sm.getSubscription().getClient().getId(), sm -> sm, (a, b) -> a));
+
+                    long unmatchedAdsCount = monitor.getMonitorAds().stream()
+                            .filter(ma -> {
+                                UUID clientIdAd = ma.getAd() != null && ma.getAd().getClient() != null
+                                        ? ma.getAd().getClient().getId()
+                                        : null;
+                                return clientIdAd == null || !subsByClientId.containsKey(clientIdAd);
+                            })
+                            .count();
+
+                    int adsDailyMinutes = MonitorBlocksUtils
+                            .calculateAdsDailyDisplayTimeInMinutes(monitor.getMaxBlocks(), totalSubscriptionBlocks, unmatchedAdsCount);
+
+                    return new MonitorMapsResponseDto(monitor, adsDailyMinutes);
+                })
                 .toList();
     }
+
 
     @Override
     @Transactional(readOnly = true)
@@ -217,14 +241,13 @@ public class MonitorServiceImpl implements MonitorService {
         });
     }
 
-    private Monitor createNewMonitor(AuthenticatedUser authenticatedUser, Address address) {
+    private void createNewMonitor(AuthenticatedUser authenticatedUser, Address address) {
         setCoordinatesIfMissing(address);
 
         Monitor monitor = new Monitor(address, productId);
         monitor.setUsernameCreate(authenticatedUser.client().getBusinessName());
         repository.save(monitor);
         subscriptionService.savePartnerBonusSubscription(address.getClient(), monitor);
-        return monitor;
     }
 
     private void updateExistingMonitor(MonitorRequestDto request, UUID monitorId, AuthenticatedUser authenticatedUser, Address address, List<Ad> ads) {

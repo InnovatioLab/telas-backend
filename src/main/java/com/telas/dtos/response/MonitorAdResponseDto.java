@@ -24,6 +24,8 @@ public final class MonitorAdResponseDto implements Serializable {
 
   private Integer orderIndex;
 
+  private Integer blockQuantity;
+
   public MonitorAdResponseDto(MonitorAd entity, String adLink) {
     id = entity.getAd().getId();
     orderIndex = entity.getOrderIndex();

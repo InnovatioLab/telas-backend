@@ -86,12 +86,7 @@ public class ClientServiceImpl implements ClientService {
             client.setRole(Role.CLIENT);
         }
 
-        TermCondition actualTermCondition = termConditionService.getLastTermCondition();
-        client.setTermCondition(actualTermCondition);
-        client.setTermAcceptedAt(Instant.now());
-        verificationCode.setValidated(true);
-
-//        sendContactConfirmationEmail(client, verificationCode);
+        sendContactConfirmationEmail(client, verificationCode);
         repository.save(client);
     }
 
@@ -370,22 +365,30 @@ public class ClientServiceImpl implements ClientService {
         Pageable pageable = PaginationFilterUtil.getPageable(request, order);
         Specification<AdRequest> filter = PaginationFilterUtil.addSpecificationFilter(
                 (root, query, criteriaBuilder) -> {
-                    query.distinct(true);
 
                     Join<AdRequest, Ad> adJoin = root.join("ad", JoinType.LEFT);
                     Join<Ad, RefusedAd> refusedAdsJoin = adJoin.join("refusedAds", JoinType.LEFT);
+                    Join<AdRequest, Client> clientJoin = root.join("client", JoinType.LEFT);
 
-                    query.groupBy(root.get("id"));
+                    query.groupBy(
+                            root.get("id"),
+                            root.get("slogan"),
+                            root.get("createdAt"),
+                            clientJoin.get("businessName"),
+                            clientJoin.get("role")
+                    );
 
                     Expression<Long> refusedCount = criteriaBuilder.count(refusedAdsJoin.get("id"));
                     Predicate isActive = criteriaBuilder.equal(root.get("isActive"), true);
 
                     query.having(criteriaBuilder.le(refusedCount, (long) SharedConstants.MAX_ADS_VALIDATION));
+
                     return criteriaBuilder.and(isActive);
                 },
                 request.getGenericFilter(),
                 this::filterAdRequests
         );
+
 
         Page<AdRequest> page = adRequestRepository.findAll(filter, pageable);
         List<AdRequestAdminResponseDto> response = page.stream().map(adRequest -> new AdRequestAdminResponseDto(adRequest, attachmentHelper.getAdRequestData(adRequest))).toList();

@@ -10,6 +10,7 @@ public final class SharedConstants {
     public static final String CARD = "card";
 
     public static final String EMAIL_SENDER = "support@telas-ads.com";
+    public static final String RECIPIENT = "Recipient";
     public static final String EMAIL_SUBJECT_CONTACT_VERIFICATION = "Registry Confirmation - Telas";
     public static final String TEMPLATE_EMAIL_CONTACT_VERIFICATION = "email_contact_confirmation.ftlh";
     public static final String TEMPLATE_EMAIL_RESET_PASSWORD = "email_reset_password.ftlh";
@@ -35,9 +36,10 @@ public final class SharedConstants {
     public static final int ATTACHMENT_LINK_EXPIRY_TIME = 7 * 24 * 60 * 60;
     public static final int MAX_ATTACHMENT_SIZE = 10 * 1024 * 1024;
     public static final int MAX_ATTACHMENT_PER_CLIENT = 5;
-    public static final int AD_DISPLAY_TIME_IN_SECONDS = 5;
+    public static final int AD_DISPLAY_TIME_IN_SECONDS = 7;
     public static final int TOTAL_SECONDS_IN_A_MINUTE = 60;
     public static final int TOTAL_SECONDS_IN_A_DAY = 24 * 60 * 60;
+    public static final int TOTAL_MINUTES_IN_A_DAY = 24 * 60;
 
 
     public static final int MAX_MONITOR_ADS = 17;
@@ -49,6 +51,7 @@ public final class SharedConstants {
     public static final int MAX_ADS_PER_CLIENT = 1;
 
     public static final long MAX_BILLING_CYCLE_ANCHOR = 30L * 24 * 60 * 60;
+
 
     private SharedConstants(){}
 

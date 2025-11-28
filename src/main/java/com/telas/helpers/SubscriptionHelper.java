@@ -164,8 +164,9 @@ public class SubscriptionHelper {
 
         if (client.isFirstSubscription()) {
             sendFirstBuyEmail(subscription);
-            return;
-        } else if (!client.getAds().isEmpty() && client.getApprovedAd() != null) {
+        }
+
+        if (!client.getAds().isEmpty() && client.getApprovedAd() != null) {
             clientHelper.addAdToMonitor(client.getApprovedAd(), client);
         }
 
