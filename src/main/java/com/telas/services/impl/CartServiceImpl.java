@@ -151,6 +151,11 @@ public class CartServiceImpl implements CartService {
 
             if (!monitor.isPartner(cart.getClient())) {
                 CartItem cartItem = actualItems.computeIfAbsent(monitorId, k -> new CartItem(cart, monitor, item));
+                
+                if (cartItem.getId() != null && !cartItem.isBonus()) {
+                    cartItem.setBlockQuantity(item.getBlockQuantity());
+                }
+                
                 cartItemRepository.save(cartItem);
                 itemsResponse.add(new CartItemResponseDto(cartItem));
                 itemsReceivedIds.add(monitorId);
