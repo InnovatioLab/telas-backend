@@ -20,6 +20,7 @@ public enum SubscriptionStatus {
       };
     }
 
+
     if (invoiceStatus != null) {
       return switch (invoiceStatus) {
         case "paid" -> ACTIVE;
