@@ -149,10 +149,9 @@ public class AttachmentHelper {
 
     @Transactional
     public void saveAds(AttachmentRequestDto request, Client client) {
-        Ad ad = Role.ADMIN.equals(client.getRole())
+        Ad ad = Role.ADMIN.equals(client.getRole()) || (client.isPartner() && !client.getApprovedAds().isEmpty())
                 ? (request.getId() == null ? createNewAd(request, client) : updateExistingAd(request))
                 : (client.getAdRequest().getAd() == null ? createNewAdFromRequest(client.getAdRequest(), request) : updateExistingAdFromRequest(client.getAdRequest().getAd(), request));
-
         uploadAttachment(request, ad);
         clientRepository.save(client);
     }
@@ -232,7 +231,9 @@ public class AttachmentHelper {
     }
 
     private void setAdValidationDuringUpdate(Ad entity) {
-        if (Role.ADMIN.equals(entity.getClient().getRole())) {
+        Client client = entity.getClient();
+
+        if (Role.ADMIN.equals(client.getRole()) || (client.isPartner() && !client.getApprovedAds().isEmpty())) {
             entity.setValidation(AdValidationType.APPROVED);
             return;
         }

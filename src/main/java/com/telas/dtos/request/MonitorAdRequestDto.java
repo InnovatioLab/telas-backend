@@ -1,7 +1,9 @@
 package com.telas.dtos.request;
 
 
+import com.telas.shared.constants.SharedConstants;
 import com.telas.shared.constants.valitation.MonitorValidationMessages;
+import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Positive;
 import lombok.AllArgsConstructor;
@@ -18,13 +20,18 @@ import java.util.UUID;
 @AllArgsConstructor
 @NoArgsConstructor
 public class MonitorAdRequestDto implements Serializable {
-  @Serial
-  private static final long serialVersionUID = 2896062138730857737L;
+    @Serial
+    private static final long serialVersionUID = 2896062138730857737L;
 
-  @NotNull(message = MonitorValidationMessages.AD_ID_REQUIRED)
-  private UUID id;
+    @NotNull(message = MonitorValidationMessages.AD_ID_REQUIRED)
+    private UUID id;
 
-  @NotNull(message = MonitorValidationMessages.ORDER_REQUIRED)
-  @Positive(message = MonitorValidationMessages.ORDER_INVALID)
-  private Integer orderIndex;
+    @NotNull(message = MonitorValidationMessages.ORDER_REQUIRED)
+    @Positive(message = MonitorValidationMessages.ORDER_INVALID)
+    private Integer orderIndex;
+
+    @NotNull(message = MonitorValidationMessages.BLOCK_QUANTITY_REQUIRED)
+    @Positive(message = MonitorValidationMessages.BLOCK_QUANTITY_POSITIVE)
+    @Max(value = SharedConstants.PARTNER_RESERVED_SLOTS, message = MonitorValidationMessages.BLOCK_QUANTITY_MAXIMUM)
+    private Integer blockQuantity;
 }

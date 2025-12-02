@@ -2,14 +2,11 @@ package com.telas.dtos.request;
 
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
-import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import com.telas.infra.exceptions.BusinessRuleException;
 import com.telas.shared.constants.SharedConstants;
 import com.telas.shared.constants.valitation.MonitorValidationMessages;
-import com.telas.shared.utils.TrimStringDeserializer;
 import com.telas.shared.utils.ValidateDataUtils;
 import jakarta.validation.Valid;
-import jakarta.validation.constraints.Size;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -43,6 +40,34 @@ public class MonitorRequestDto implements Serializable {
     public void validate() {
         validateAddress();
         validadeAdsOrderIndex();
+        validateBlockQuantity();
+    }
+
+    private void validateBlockQuantity() {
+        if (ValidateDataUtils.isNullOrEmpty(ads)) {
+            return;
+        }
+
+        int partnerSlots = SharedConstants.PARTNER_RESERVED_SLOTS;
+        int maxTotal = SharedConstants.MAX_MONITOR_ADS;
+
+        long partnerCount = ads.stream()
+                .map(MonitorAdRequestDto::getBlockQuantity)
+                .filter(q -> q != null && q == partnerSlots)
+                .count();
+
+        if (partnerCount > SharedConstants.MAX_ADS_PER_CLIENT) {
+            throw new BusinessRuleException(MonitorValidationMessages.BLOCK_QUANTITY_PARTNER_DUPLICATED);
+        }
+
+        int totalBlockQuantity = ads.stream()
+                .map(MonitorAdRequestDto::getBlockQuantity)
+                .mapToInt(Integer::intValue)
+                .sum();
+
+        if (totalBlockQuantity > maxTotal || ads.size() > maxTotal) {
+            throw new BusinessRuleException(MonitorValidationMessages.MONITOR_BLOCKS_BEYOND_LIMIT);
+        }
     }
 
     private void validateAddress() {

@@ -26,7 +26,6 @@ import com.telas.shared.utils.PaginationFilterUtil;
 import com.telas.shared.utils.ValidateDataUtils;
 import jakarta.persistence.criteria.Predicate;
 import lombok.RequiredArgsConstructor;
-import lombok.extern.log4j.Log4j;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
@@ -38,6 +37,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.*;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
@@ -254,7 +254,7 @@ public class MonitorServiceImpl implements MonitorService {
         Monitor monitor = findEntityById(monitorId);
 
         if (isAddressChanged(monitor.getAddress(), address)) {
-            ads = handleAddressChange(monitor, address, ads);
+            ads = handleAddressChange(monitor, address, ads, request);
         }
 
         updateMonitorMetadata(authenticatedUser, monitor);
@@ -262,7 +262,7 @@ public class MonitorServiceImpl implements MonitorService {
         repository.save(monitor);
     }
 
-    private List<Ad> handleAddressChange(Monitor monitor, Address newAddress, List<Ad> ads) {
+    private List<Ad> handleAddressChange(Monitor monitor, Address newAddress, List<Ad> ads, MonitorRequestDto request) {
         Address oldAddress = monitor.getAddress();
         Client oldPartner = getClientFromAddress(oldAddress);
         Client newPartner = newAddress.getClient();
@@ -270,26 +270,35 @@ public class MonitorServiceImpl implements MonitorService {
         monitor.setAddress(newAddress);
         handlePartnerSubscriptionChanges(oldPartner, newPartner, monitor);
         setCoordinatesIfMissing(newAddress);
-        return addNewPartnerAdIfExists(ads, newPartner);
+
+        boolean hasSpaceForPartner = hasSpaceForPartnerAds(request, ads, newPartner);
+
+        List<Ad> updatedAds = hasSpaceForPartner ? addNewPartnerAds(ads, newPartner) : ads;
+
+        if (hasSpaceForPartner && !ValidateDataUtils.isNullOrEmpty(newPartner.getApprovedAds())) {
+            addPartnerAdsToRequest(newPartner, request, updatedAds);
+        }
+
+        return updatedAds;
     }
 
-    private List<Ad> addNewPartnerAdIfExists(List<Ad> ads, Client newPartner) {
-        Ad approvedAd = newPartner == null ? null : newPartner.getApprovedAd();
-
-        if (approvedAd == null) {
+    private List<Ad> addNewPartnerAds(List<Ad> ads, Client newPartner) {
+        if (newPartner == null || ValidateDataUtils.isNullOrEmpty(newPartner.getApprovedAds())) {
             return ads;
         }
 
-        List<Ad> mutable = ValidateDataUtils.isNullOrEmpty(ads) ? new ArrayList<>() : ads;
-        List<UUID> adIds = mutable.stream().map(Ad::getId).toList();
+        List<Ad> mutable = ValidateDataUtils.isNullOrEmpty(ads) ? new ArrayList<>() : new ArrayList<>(ads);
+        Set<UUID> adIds = mutable.stream()
+                .map(Ad::getId)
+                .filter(Objects::nonNull)
+                .collect(Collectors.toSet());
 
-        if (!adIds.contains(approvedAd.getId())) {
-            mutable.add(approvedAd);
-        }
+        newPartner.getApprovedAds().stream()
+                .filter(ad -> ad != null && ad.getId() != null && !adIds.contains(ad.getId()))
+                .forEach(mutable::add);
 
         return mutable;
     }
-
 
     private void validateAddressAvailability(Address address) {
         if (repository.existsByAddressId(address.getId())) {
@@ -353,7 +362,9 @@ public class MonitorServiceImpl implements MonitorService {
         Set<UUID> newAdIds = buildNewAdIds(ads);
 
         removeStaleMonitorAds(monitor, newAdIds);
-        validateAdsLimit(monitor, ads);
+
+        // Validar e ajustar blockQuantity antes de validar limite
+//        validateAndAdjustBlockQuantities(request, monitor, ads);
 
         Map<UUID, MonitorAdRequestDto> adRequestMap = mapAdsById(request);
         Map<UUID, MonitorAd> existingAfterRemoval = buildExistingAfterRemoval(monitor);
@@ -365,8 +376,11 @@ public class MonitorServiceImpl implements MonitorService {
         Map<UUID, MonitorAd> newMonitorAdsByAdId = newMonitorAds.stream()
                 .collect(Collectors.toMap(ma -> ma.getAd().getId(), ma -> ma));
 
-        // agora passamos o monitor para que possamos identificar o partner atual
-        List<UpdateBoxMonitorsAdRequestDto> requestList = buildRequestList(ads, existingAfterRemoval, newMonitorAdsByAdId, subscriptionByClientId, monitor);
+        // Garantir orderIndex sequencial
+//        ensureSequentialOrderIndex(ads, existingAfterRemoval, newMonitorAdsByAdId, adRequestMap);
+
+//        List<UpdateBoxMonitorsAdRequestDto> requestList = buildRequestList(ads, existingAfterRemoval, newMonitorAdsByAdId, subscriptionByClientId, monitor, adRequestMap);
+        List<UpdateBoxMonitorsAdRequestDto> requestList = buildRequestList(ads, existingAfterRemoval, newMonitorAdsByAdId, subscriptionByClientId, adRequestMap);
 
         addNewMonitorAdsToMonitor(monitor, newMonitorAds);
 
@@ -419,35 +433,112 @@ public class MonitorServiceImpl implements MonitorService {
                 });
     }
 
+//    private List<UpdateBoxMonitorsAdRequestDto> buildRequestList(List<Ad> ads,
+//                                                                 Map<UUID, MonitorAd> existingAfterRemoval,
+//                                                                 Map<UUID, MonitorAd> newMonitorAdsByAdId,
+//                                                                 Map<UUID, SubscriptionMonitor> subscriptionByClientId,
+//                                                                 Monitor monitor,
+//                                                                 Map<UUID, MonitorAdRequestDto> adRequestMap) {
+//
+//        UUID partnerId = monitor.getAddress().getClient().getId();
+//        Map<Boolean, List<Ad>> partitionedAds = ads.stream()
+//                .collect(Collectors.partitioningBy(ad ->
+//                        ad.getClient().isPartner()
+//                                && Objects.equals(ad.getClient().getId(), partnerId)));
+//
+//        List<Ad> partnerAds = partitionedAds.get(true);
+//        List<Ad> otherAds = partitionedAds.get(false);
+//
+//        List<UpdateBoxMonitorsAdRequestDto> requestList = new ArrayList<>();
+//
+//        // Para ads do partner, usar o blockQuantity que já está definido no MonitorAdRequestDto
+//        partnerAds.forEach(ad -> {
+//            MonitorAd monitorAd = existingAfterRemoval.getOrDefault(ad.getId(), newMonitorAdsByAdId.get(ad.getId()));
+//            String link = bucketService.getLink(AttachmentUtils.format(ad));
+//            UpdateBoxMonitorsAdRequestDto dto = new UpdateBoxMonitorsAdRequestDto(ad, monitorAd, link);
+//
+//            // Usar o blockQuantity do MonitorAdRequestDto (já foi distribuído no addPartnerAdsToRequest)
+//            MonitorAdRequestDto reqDto = adRequestMap.get(ad.getId());
+//            if (reqDto != null && reqDto.getBlockQuantity() != null) {
+//                dto.setBlockQuantity(reqDto.getBlockQuantity());
+//            }
+//
+//            requestList.add(dto);
+//        });
+//
+//        otherAds.forEach(ad -> {
+//            MonitorAd monitorAd = existingAfterRemoval.getOrDefault(ad.getId(), newMonitorAdsByAdId.get(ad.getId()));
+//            UUID clientId = ad.getClient().getId();
+//            SubscriptionMonitor matched = subscriptionByClientId.get(clientId);
+//            String link = bucketService.getLink(AttachmentUtils.format(ad));
+//
+//            UpdateBoxMonitorsAdRequestDto dto = new UpdateBoxMonitorsAdRequestDto(ad, monitorAd, link);
+//            MonitorAdRequestDto reqDto = adRequestMap.get(ad.getId());
+//
+//            // Definir blockQuantity conforme a regra:
+//            // - Se houver SubscriptionMonitor e slotsQuantity != 7: usar slotsQuantity
+//            // - Se houver SubscriptionMonitor mas slotsQuantity == 7: usar blockQuantity do MonitorAdRequestDto
+//            // - Se não houver SubscriptionMonitor: usar blockQuantity do MonitorAdRequestDto
+//            if (matched != null && matched.getSlotsQuantity() != null
+//                    && matched.getSlotsQuantity() != SharedConstants.PARTNER_RESERVED_SLOTS) {
+//                // Usar slotsQuantity do SubscriptionMonitor (exceto quando for 7)
+//                dto.setBlockQuantity(matched.getSlotsQuantity());
+//            } else if (reqDto != null && reqDto.getBlockQuantity() != null) {
+//                // Usar blockQuantity do MonitorAdRequestDto
+//                dto.setBlockQuantity(reqDto.getBlockQuantity());
+//            }
+//
+//            requestList.add(dto);
+//        });
+//
+//        int totalBlockQuantity = requestList.stream()
+//                .mapToInt(dto -> dto.getBlockQuantity() != null ? dto.getBlockQuantity() : 0)
+//                .sum();
+//
+//        if (totalBlockQuantity > SharedConstants.MAX_MONITOR_ADS) {
+//            throw new BusinessRuleException(MonitorValidationMessages.MONITOR_BLOCKS_BEYOND_LIMIT);
+//        }
+//
+//        return requestList;
+//    }
+
     private List<UpdateBoxMonitorsAdRequestDto> buildRequestList(List<Ad> ads,
                                                                  Map<UUID, MonitorAd> existingAfterRemoval,
                                                                  Map<UUID, MonitorAd> newMonitorAdsByAdId,
                                                                  Map<UUID, SubscriptionMonitor> subscriptionByClientId,
-                                                                 Monitor monitor) {
-        return ads.stream()
-                .map(ad -> {
-                    MonitorAd monitorAd = existingAfterRemoval.getOrDefault(ad.getId(), newMonitorAdsByAdId.get(ad.getId()));
-                    UUID clientId = ad.getClient() != null ? ad.getClient().getId() : null;
-                    SubscriptionMonitor matched = clientId != null ? subscriptionByClientId.get(clientId) : null;
-                    String link = bucketService.getLink(AttachmentUtils.format(ad));
-                    UpdateBoxMonitorsAdRequestDto dto = matched != null
-                            ? new UpdateBoxMonitorsAdRequestDto(ad, monitorAd, matched, link)
-                            : new UpdateBoxMonitorsAdRequestDto(ad, monitorAd, link);
+                                                                 Map<UUID, MonitorAdRequestDto> adRequestMap) {
+        List<UpdateBoxMonitorsAdRequestDto> requestList = new ArrayList<>();
 
-                    // Se o ad pertence ao partner atual do monitor, força blockQuantity para o valor reservado (7)
-                    if (monitor != null
-                            && monitor.getAddress() != null
-                            && monitor.getAddress().getClient() != null
-                            && ad.getClient() != null
-                            && ad.getClient().isPartner()
-                            && Objects.equals(ad.getClient().getId(), monitor.getAddress().getClient().getId())) {
-                        dto.setBlockQuantity(SharedConstants.PARTNER_RESERVED_SLOTS);
-                    }
+        ads.forEach(ad -> {
+            MonitorAd monitorAd = existingAfterRemoval.getOrDefault(ad.getId(), newMonitorAdsByAdId.get(ad.getId()));
+            String link = bucketService.getLink(AttachmentUtils.format(ad));
+            UpdateBoxMonitorsAdRequestDto dto = new UpdateBoxMonitorsAdRequestDto(ad, monitorAd, link);
 
-                    return dto;
-                })
-                .collect(Collectors.toList());
+            MonitorAdRequestDto reqDto = adRequestMap.get(ad.getId());
+            Integer blockQuantity = null;
+
+            SubscriptionMonitor matched = subscriptionByClientId.get(ad.getClient().getId());
+            if (matched != null && matched.getSlotsQuantity() != SharedConstants.PARTNER_RESERVED_SLOTS) {
+                blockQuantity = matched.getSlotsQuantity();
+            } else if (reqDto != null && reqDto.getBlockQuantity() != null) {
+                blockQuantity = reqDto.getBlockQuantity();
+            }
+
+            dto.setBlockQuantity(blockQuantity);
+            requestList.add(dto);
+        });
+
+        int totalBlockQuantity = requestList.stream()
+                .mapToInt(dto -> dto.getBlockQuantity() != null ? dto.getBlockQuantity() : 0)
+                .sum();
+
+        if (totalBlockQuantity > SharedConstants.MAX_MONITOR_ADS) {
+            throw new BusinessRuleException(MonitorValidationMessages.MONITOR_BLOCKS_BEYOND_LIMIT);
+        }
+
+        return requestList;
     }
+
 
     private void validateAdsLimit(Monitor monitor, List<Ad> newAds) {
         UUID partnerId = monitor.getAddress() != null && monitor.getAddress().getClient() != null
@@ -455,7 +546,7 @@ public class MonitorServiceImpl implements MonitorService {
                 : null;
 
         long partnerAdsCountFinal = newAds.stream()
-                .filter(ad -> ad.getClient() != null && ad.getClient().isPartner()
+                .filter(ad -> ad.getClient().isPartner()
                         && Objects.equals(ad.getClient().getId(), partnerId))
                 .count();
 
@@ -476,5 +567,203 @@ public class MonitorServiceImpl implements MonitorService {
     private Map<UUID, MonitorAdRequestDto> mapAdsById(MonitorRequestDto request) {
         return request.getAds().stream()
                 .collect(Collectors.toMap(MonitorAdRequestDto::getId, dto -> dto));
+    }
+
+    private boolean hasSpaceForPartnerAds(MonitorRequestDto request, List<Ad> ads, Client newPartner) {
+        if (ValidateDataUtils.isNullOrEmpty(request.getAds())) {
+            return true;
+        }
+
+        UUID partnerId = newPartner.getId();
+
+        Set<UUID> partnerAdIds = ads.stream()
+                .filter(ad -> ad.getClient().isPartner()
+                        && Objects.equals(ad.getClient().getId(), partnerId))
+                .map(Ad::getId)
+                .collect(Collectors.toSet());
+
+        int totalNonPartnerBlockQuantity = request.getAds().stream()
+                .filter(dto -> !partnerAdIds.contains(dto.getId()))
+                .mapToInt(MonitorAdRequestDto::getBlockQuantity)
+                .sum();
+
+        return totalNonPartnerBlockQuantity <= (SharedConstants.MAX_MONITOR_ADS - SharedConstants.PARTNER_RESERVED_SLOTS);
+    }
+
+    private void addPartnerAdsToRequest(Client partner, MonitorRequestDto request, List<Ad> allAds) {
+        List<Ad> partnerAds = partner.getApprovedAds().stream()
+                .filter(ad -> allAds.stream().anyMatch(a -> Objects.equals(a.getId(), ad.getId())))
+                .toList();
+
+        if (partnerAds.isEmpty()) {
+            return;
+        }
+
+        Map<UUID, Integer> blockQuantities = distributePartnerBlockQuantities(partnerAds);
+
+        AtomicInteger maxOrderIndex = new AtomicInteger(request.getAds().stream()
+                .mapToInt(MonitorAdRequestDto::getOrderIndex)
+                .max()
+                .orElse(0));
+
+        partnerAds.forEach(ad -> {
+            MonitorAdRequestDto dto = new MonitorAdRequestDto();
+            dto.setId(ad.getId());
+            dto.setOrderIndex(maxOrderIndex.incrementAndGet());
+            dto.setBlockQuantity(blockQuantities.get(ad.getId()));
+            request.getAds().add(dto);
+        });
+    }
+
+    private Map<UUID, Integer> distributePartnerBlockQuantities(List<Ad> partnerAds) {
+//        Map<UUID, Integer> blockQuantities = new HashMap<>();
+//
+//        if (partnerAds.isEmpty()) {
+//            return blockQuantities;
+//        }
+//
+//        int adsCount = partnerAds.size();
+//        int totalSlots = SharedConstants.PARTNER_RESERVED_SLOTS;
+//
+//        if (adsCount == 1) {
+//            blockQuantities.put(partnerAds.get(0).getId(), totalSlots);
+//        } else if (adsCount == 2) {
+//            // Distribuição equilibrada: 4 e 3
+//            blockQuantities.put(partnerAds.get(0).getId(), 4);
+//            blockQuantities.put(partnerAds.get(1).getId(), 3);
+//        } else if (adsCount == 3) {
+//            // Distribuição equilibrada: 3, 2, 2
+//            blockQuantities.put(partnerAds.get(0).getId(), 3);
+//            blockQuantities.put(partnerAds.get(1).getId(), 2);
+//            blockQuantities.put(partnerAds.get(2).getId(), 2);
+//        } else if (adsCount == 4) {
+//            // Distribuição equilibrada: 2, 2, 2, 1
+//            blockQuantities.put(partnerAds.get(0).getId(), 2);
+//            blockQuantities.put(partnerAds.get(1).getId(), 2);
+//            blockQuantities.put(partnerAds.get(2).getId(), 2);
+//            blockQuantities.put(partnerAds.get(3).getId(), 1);
+//        } else if (adsCount == 5) {
+//            // Distribuição equilibrada: 2, 2, 1, 1, 1
+//            blockQuantities.put(partnerAds.get(0).getId(), 2);
+//            blockQuantities.put(partnerAds.get(1).getId(), 2);
+//            blockQuantities.put(partnerAds.get(2).getId(), 1);
+//            blockQuantities.put(partnerAds.get(3).getId(), 1);
+//            blockQuantities.put(partnerAds.get(4).getId(), 1);
+//        } else if (adsCount == 6) {
+//            // Distribuição equilibrada: 2, 1, 1, 1, 1, 1
+//            blockQuantities.put(partnerAds.get(0).getId(), 2);
+//            for (int i = 1; i < adsCount; i++) {
+//                blockQuantities.put(partnerAds.get(i).getId(), 1);
+//            }
+//        } else if (adsCount == 7) {
+//            // Todos recebem 1
+//            partnerAds.forEach(ad -> blockQuantities.put(ad.getId(), 1));
+//        } else {
+//            // Para mais de 7 ads (caso raro), distribuir de forma equilibrada
+//            // Base: cada um recebe pelo menos 1, e os primeiros recebem o restante distribuído
+//            int baseQuantity = totalSlots / adsCount;
+//            int remainder = totalSlots % adsCount;
+//
+//            for (int i = 0; i < adsCount; i++) {
+//                int quantity = baseQuantity + (i < remainder ? 1 : 0);
+//                blockQuantities.put(partnerAds.get(i).getId(), quantity);
+//            }
+//        }
+//
+//        return blockQuantities;
+
+
+        if (partnerAds == null || partnerAds.isEmpty()) {
+            return Collections.emptyMap();
+        }
+
+        int adsCount = partnerAds.size();
+        int capacity = (int) (adsCount / 0.75f) + 1;
+        Map<UUID, Integer> blockQuantities = new HashMap<>(capacity);
+
+        // Distribuições pré-definidas para 1..7 anúncios
+        final int[][] distributions = {
+                {}, // índice 0 não usado
+                {7},
+                {4, 3},
+                {3, 2, 2},
+                {2, 2, 2, 1},
+                {2, 2, 1, 1, 1},
+                {2, 1, 1, 1, 1, 1},
+                {1, 1, 1, 1, 1, 1, 1}
+        };
+
+        int[] dist = distributions[adsCount];
+        IntStream.range(0, adsCount).forEach(i -> blockQuantities.put(partnerAds.get(i).getId(), dist[i]));
+        return blockQuantities;
+    }
+
+    /**
+     * Valida e ajusta blockQuantity conforme as regras:
+     * - Só pode ter 1 ad com blockQuantity = 7
+     * - Os outros devem ter blockQuantity = 1 ou 2
+     * - Soma total <= MAX_MONITOR_ADS
+     */
+    private void validateAndAdjustBlockQuantities(MonitorRequestDto request, Monitor monitor, List<Ad> ads) {
+        if (ValidateDataUtils.isNullOrEmpty(request.getAds())) {
+            return;
+        }
+
+        UUID partnerId = monitor.getAddress() != null && monitor.getAddress().getClient() != null
+                ? monitor.getAddress().getClient().getId()
+                : null;
+
+        List<MonitorAdRequestDto> partnerAds = new ArrayList<>();
+        List<MonitorAdRequestDto> otherAds = new ArrayList<>();
+
+        request.getAds().forEach(dto -> {
+            Ad ad = ads.stream()
+                    .filter(a -> Objects.equals(a.getId(), dto.getId()))
+                    .findFirst()
+                    .orElse(null);
+
+            if (ad != null && ad.getClient().isPartner() && Objects.equals(ad.getClient().getId(), partnerId)) {
+                partnerAds.add(dto);
+            } else {
+                otherAds.add(dto);
+            }
+        });
+
+//        validateAdsLimit(monitor, ads);
+    }
+
+    private void ensureSequentialOrderIndex(List<Ad> ads,
+                                            Map<UUID, MonitorAd> existingAfterRemoval,
+                                            Map<UUID, MonitorAd> newMonitorAdsByAdId,
+                                            Map<UUID, MonitorAdRequestDto> adRequestMap) {
+        // Ordenar ads por orderIndex atual
+        List<Ad> sortedAds = ads.stream()
+                .sorted(Comparator.comparing(ad -> {
+                    MonitorAd ma = existingAfterRemoval.getOrDefault(ad.getId(), newMonitorAdsByAdId.get(ad.getId()));
+                    MonitorAdRequestDto dto = adRequestMap.get(ad.getId());
+                    if (dto != null && dto.getOrderIndex() != null) {
+                        return dto.getOrderIndex();
+                    }
+                    if (ma != null && ma.getOrderIndex() != null) {
+                        return ma.getOrderIndex();
+                    }
+                    return Integer.MAX_VALUE;
+                }))
+                .toList();
+
+        // Atualizar orderIndex sequencialmente
+        int orderIndex = 1;
+        for (Ad ad : sortedAds) {
+            MonitorAd ma = existingAfterRemoval.getOrDefault(ad.getId(), newMonitorAdsByAdId.get(ad.getId()));
+            MonitorAdRequestDto dto = adRequestMap.get(ad.getId());
+
+            if (ma != null) {
+                ma.setOrderIndex(orderIndex);
+            }
+            if (dto != null) {
+                dto.setOrderIndex(orderIndex);
+            }
+            orderIndex++;
+        }
     }
 }

@@ -152,11 +152,10 @@ public class Client extends BaseAudit implements Serializable {
         setUsernameUpdateForRelatedEntities(updatedBy);
     }
 
-    public Ad getApprovedAd() {
-        return ads.stream()
-                .filter(ad -> AdValidationType.APPROVED.equals(ad.getValidation()))
-                .findFirst()
-                .orElse(null);
+    public List<Ad> getApprovedAds() {
+            return ads.stream()
+                    .filter(ad -> AdValidationType.APPROVED.equals(ad.getValidation()))
+                    .toList();
     }
 
     public boolean isFirstSubscription() {

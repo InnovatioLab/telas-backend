@@ -177,7 +177,7 @@ public enum NotificationReference {
                             </div>
                             <a id="link-details" class='details link-text' href="%s">Check and update monitor's ads</a>
                             """,
-                    params.get("adId"),
+                    params.get("adIds"),
                     params.get("monitorId"),
                     params.get("link"));
         }

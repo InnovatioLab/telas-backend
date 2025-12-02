@@ -263,13 +263,7 @@ public class ClientServiceImpl implements ClientService {
             throw new ForbiddenException(ClientValidationMessages.AD_REQUEST_EXISTS);
         }
 
-        if (
-                client.getAds().size() >= SharedConstants.PARTNER_RESERVED_SLOTS && client.isPartner() ||
-                !client.isPartner() && !client.getAds().isEmpty()
-        ) {
-            throw new BusinessRuleException(ClientValidationMessages.MAX_ADS_REACHED);
-        }
-
+        validateMaxAds(client);
         helper.createAdRequest(request, client);
     }
 
@@ -291,6 +285,7 @@ public class ClientServiceImpl implements ClientService {
             throw new ResourceNotFoundException(ClientValidationMessages.AD_REQUEST_NOT_FOUND);
         }
 
+        validateMaxAds(client);
         attachmentHelper.saveAds(request, client);
     }
 
@@ -326,7 +321,7 @@ public class ClientServiceImpl implements ClientService {
         attachmentHelper.validateAd(ad, validation, request);
 
         if (AdValidationType.APPROVED.equals(validation)) {
-                helper.addAdToMonitor(ad, ad.getClient());
+            helper.addAdToMonitor(List.of(ad), ad.getClient());
         }
     }
 
@@ -496,4 +491,15 @@ public class ClientServiceImpl implements ClientService {
         return repository.findByEmail(email)
                 .orElseThrow(() -> new ResourceNotFoundException(ClientValidationMessages.USER_NOT_FOUND));
     }
+
+    private void validateMaxAds(Client client) {
+        boolean hasReachedMaxAds = client.isPartner()
+                ? client.getAds().size() >= SharedConstants.PARTNER_RESERVED_SLOTS
+                : !client.getAds().isEmpty();
+
+        if (hasReachedMaxAds) {
+            throw new BusinessRuleException(ClientValidationMessages.MAX_ADS_REACHED);
+        }
+    }
+
 }

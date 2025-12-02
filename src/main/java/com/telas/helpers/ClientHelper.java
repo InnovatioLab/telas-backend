@@ -27,13 +27,11 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.*;
 import java.util.stream.Collectors;
-import java.util.stream.IntStream;
 
 @Component
 @RequiredArgsConstructor
@@ -203,37 +201,104 @@ public class ClientHelper {
     }
 
     @Transactional
-    public void addAdToMonitor(Ad ad, Client client) {
-        List<Monitor> monitorsToUpdate = new ArrayList<>();
+    public void addAdToMonitor(List<Ad> ads, Client client) {
+//        List<Monitor> monitorsToUpdate = new ArrayList<>();
+//        List<SubscriptionMonitor> subscriptionMonitors = subscriptionMonitorRepository.findByClientId(client.getId());
+//        List<UpdateBoxMonitorsAdRequestDto> requestList = subscriptionMonitors.stream()
+//                .map(
+//                        subscriptionMonitor -> {
+//                            Monitor monitor = subscriptionMonitor.getMonitor();
+//
+//                            if (!isMonitorEligibleForAd(client, monitor)) {
+//                                log.error("Monitor with id {} is not eligible for ad with id {}", monitor.getId(), ad.getId());
+//                                return null;
+//                            }
+//
+//                            MonitorAd monitorAd = new MonitorAd(monitor, ad);
+//                            monitor.getMonitorAds().add(monitorAd);
+//                            monitorsToUpdate.add(monitor);
+//
+//                            if (monitor.isAbleToSendBoxRequest()) {
+//                                return  new UpdateBoxMonitorsAdRequestDto(ad, monitorAd, subscriptionMonitor, bucketService.getLink(AttachmentUtils.format(ad)));
+//                            } else {
+//                                return null;
+//                            }
+//                        })
+//                .filter(Objects::nonNull)
+//                .toList();
+//
+//        monitorRepository.saveAll(monitorsToUpdate);
+//
+//        if (!requestList.isEmpty()) {
+//            sendBoxesMonitorsUpdateAd(requestList);
+//        }
+
+        if (ads == null || ads.isEmpty()) {
+            return;
+        }
+
         List<SubscriptionMonitor> subscriptionMonitors = subscriptionMonitorRepository.findByClientId(client.getId());
-        List<UpdateBoxMonitorsAdRequestDto> requestList = subscriptionMonitors.stream()
-                .map(
-                        subscriptionMonitor -> {
-                            Monitor monitor = subscriptionMonitor.getMonitor();
 
-                            if (!isMonitorEligibleForAd(client, monitor)) {
-                                log.error("Monitor with id {} is not eligible for ad with id {}", monitor.getId(), ad.getId());
-                                return null;
-                            }
+        if (subscriptionMonitors.isEmpty()) {
+            return;
+        }
 
-                            MonitorAd monitorAd = new MonitorAd(monitor, ad);
-                            monitor.getMonitorAds().add(monitorAd);
-                            monitorsToUpdate.add(monitor);
-
-                            if (monitor.isAbleToSendBoxRequest()) {
-                                return  new UpdateBoxMonitorsAdRequestDto(ad, monitorAd, subscriptionMonitor, bucketService.getLink(AttachmentUtils.format(ad)));
-                            } else {
-                                return null;
-                            }
-                        })
+        // Cria entradas (Monitor -> List of (MonitorAd, optional DTO)) usando streams
+        Map<Monitor, List<AbstractMap.SimpleEntry<MonitorAd, UpdateBoxMonitorsAdRequestDto>>> grouped = ads.stream()
                 .filter(Objects::nonNull)
-                .toList();
+                .flatMap(ad -> subscriptionMonitors.stream()
+                        .map(sm -> new AbstractMap.SimpleEntry<>(ad, sm)))
+                .filter(entry -> {
+                    SubscriptionMonitor sm = entry.getValue();
+                    return isMonitorEligibleForAd(client, sm.getMonitor());
+                })
+                .map(entry -> {
+                    Ad ad = entry.getKey();
+                    SubscriptionMonitor sm =  entry.getValue();
+                    Monitor monitor = sm.getMonitor();
 
-        monitorRepository.saveAll(monitorsToUpdate);
+                    MonitorAd monitorAd = new MonitorAd(monitor, ad);
+                    UpdateBoxMonitorsAdRequestDto dto = monitor.isAbleToSendBoxRequest()
+                            ? new UpdateBoxMonitorsAdRequestDto(ad, monitorAd, sm, bucketService.getLink(AttachmentUtils.format(ad)))
+                            : null;
+
+                    return new AbstractMap.SimpleEntry<>(monitor, new AbstractMap.SimpleEntry<>(monitorAd, dto));
+                })
+                .collect(Collectors.groupingBy(
+                        AbstractMap.SimpleEntry::getKey,
+                        Collectors.mapping(AbstractMap.SimpleEntry::getValue, Collectors.toList())
+                ));
+
+        if (grouped.isEmpty()) {
+            return;
+        }
+
+        // Aplicar alterações nos monitores e montar lista de requests
+        List<Monitor> monitorsToUpdate = new ArrayList<>(grouped.size());
+        List<UpdateBoxMonitorsAdRequestDto> requestList = new ArrayList<>();
+
+        grouped.forEach((monitor, entries) -> {
+            // Adiciona todos os MonitorAd criados ao monitor (evita chamadas repetidas ao repo)
+            entries.forEach(pair -> {
+                MonitorAd monitorAd = pair.getKey();
+                monitor.getMonitorAds().add(monitorAd);
+
+                UpdateBoxMonitorsAdRequestDto dto = pair.getValue();
+                if (dto != null) {
+                    requestList.add(dto);
+                }
+            });
+            monitorsToUpdate.add(monitor);
+        });
+
+        if (!monitorsToUpdate.isEmpty()) {
+            monitorRepository.saveAll(monitorsToUpdate);
+        }
 
         if (!requestList.isEmpty()) {
             sendBoxesMonitorsUpdateAd(requestList);
         }
+
     }
 
     @Transactional
@@ -277,16 +342,20 @@ public class ClientHelper {
 
         if (!monitor.isWithinAdsLimit(SharedConstants.MAX_ADS_PER_CLIENT)) {
             log.error("Monitor with id {} has reached its ad limit for client {}", monitor.getId(), client.getId());
-            createAdNotSentToMonitorNotification(monitor, client.getApprovedAd());
+            createAdNotSentToMonitorNotification(monitor, client.getApprovedAds());
             return false;
         }
 
         return true;
     }
 
-    private void createAdNotSentToMonitorNotification(Monitor monitor, Ad approvedAd) {
+    private void createAdNotSentToMonitorNotification(Monitor monitor, List<Ad> approvedAds) {
+        String adIdsList = approvedAds.stream()
+                .map(ad -> ad.getId().toString())
+                .collect(Collectors.joining(", "));
+
         Map<String, String> params = Map.of(
-                "adId", approvedAd.getId().toString(),
+                "adIds", adIdsList,
                 "monitorId", monitor.getId().toString(),
                 "link", frontBaseUrl + "/admin/screens"
         );

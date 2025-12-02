@@ -166,8 +166,11 @@ public class SubscriptionHelper {
             sendFirstBuyEmail(subscription);
         }
 
-        if (!client.getAds().isEmpty() && client.getApprovedAd() != null) {
-            clientHelper.addAdToMonitor(client.getApprovedAd(), client);
+        if (!client.getApprovedAds().isEmpty()) {
+            client.getApprovedAds().stream()
+                    .filter(Objects::nonNull)
+                    .min(Comparator.comparing(Ad::getCreatedAt, Comparator.nullsLast(Comparator.naturalOrder())))
+                    .ifPresent(ad -> clientHelper.addAdToMonitor(List.of(ad), client));
         }
 
         createNewSubscriptionNotification(subscription);
@@ -181,8 +184,8 @@ public class SubscriptionHelper {
             sendFirstBuyEmail(subscription);
         }
 
-        if (!client.getAds().isEmpty() && client.getApprovedAd() != null) {
-            clientHelper.addAdToMonitor(client.getApprovedAd(), client);
+        if (!ValidateDataUtils.isNullOrEmpty(client.getApprovedAds())) {
+            clientHelper.addAdToMonitor(client.getApprovedAds(), client);
         }
 
         createNewSubscriptionNotification(subscription);
