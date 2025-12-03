@@ -429,11 +429,10 @@ public class ClientServiceImpl implements ClientService {
 
         return specification.and((root, query, criteriaBuilder) -> criteriaBuilder.or(
                 criteriaBuilder.like(criteriaBuilder.lower(root.get("businessName")), filter),
-                criteriaBuilder.like(criteriaBuilder.lower(root.get("industry")), filter),
                 criteriaBuilder.like(root.get("contact").get("email"), filter),
                 criteriaBuilder.equal(root.get("contact").get("phone"), genericFilter),
-                criteriaBuilder.equal(root.get("status"), genericFilter),
-                criteriaBuilder.equal(root.get("role"), genericFilter)
+                criteriaBuilder.equal(criteriaBuilder.lower(root.get("status")), genericFilter.toLowerCase()),
+                criteriaBuilder.like(criteriaBuilder.lower(root.get("role")), filter)
         ));
     }
 

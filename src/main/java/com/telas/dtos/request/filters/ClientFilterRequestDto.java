@@ -16,9 +16,9 @@ public class ClientFilterRequestDto extends PaginationRequestDto {
     public Sort setOrdering() {
         return switch (getSortBy()) {
             case "role" -> Sort.by(Sort.Order.by("role").ignoreCase());
-            case "industry" -> Sort.by(Sort.Order.by("industry").ignoreCase());
             case "status" -> Sort.by(Sort.Order.by("status").ignoreCase());
             case "createdAt" -> Sort.by(Sort.Order.by("createdAt"));
+            case "email" -> Sort.by(Sort.Order.by("contact.email").ignoreCase());
             default -> Sort.by(Sort.Order.by("businessName").ignoreCase());
         };
     }

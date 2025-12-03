@@ -231,8 +231,11 @@ public class MonitorServiceImpl implements MonitorService {
             List<Predicate> predicates = new ArrayList<>();
 
 
-            if ("true".equalsIgnoreCase(genericFilter) || "false".equalsIgnoreCase(genericFilter)) {
-                predicates.add(criteriaBuilder.equal(root.get("active"), Boolean.valueOf(genericFilter)));
+            String filterKey = genericFilter.toLowerCase();
+            if ("active".equals(filterKey)) {
+                predicates.add(criteriaBuilder.equal(root.get("active"), true));
+            } else if ("inactive".equals(filterKey)) {
+                predicates.add(criteriaBuilder.equal(root.get("active"), false));
             }
 
             Predicate addressPredicate = helper.createAddressPredicate(criteriaBuilder, root, filter);
