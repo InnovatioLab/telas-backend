@@ -36,10 +36,7 @@ import com.telas.shared.constants.valitation.AuthValidationMessageConstants;
 import com.telas.shared.constants.valitation.ClientValidationMessages;
 import com.telas.shared.utils.AttachmentUtils;
 import com.telas.shared.utils.PaginationFilterUtil;
-import jakarta.persistence.criteria.Expression;
-import jakarta.persistence.criteria.Join;
-import jakarta.persistence.criteria.JoinType;
-import jakarta.persistence.criteria.Predicate;
+import jakarta.persistence.criteria.*;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -51,8 +48,11 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
 import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
 import java.util.*;
+
+import static java.util.Locale.US;
 
 @Service
 @RequiredArgsConstructor
@@ -66,6 +66,24 @@ public class ClientServiceImpl implements ClientService {
     private final BucketService bucketService;
     private final TermConditionService termConditionService;
     private final AdRequestRepository adRequestRepository;
+
+    private static void addDatePredicates(String genericFilter, Root<AdRequest> root, CriteriaBuilder criteriaBuilder, List<Predicate> predicates) {
+        try {
+            LocalDate submissionDate = LocalDate.parse(genericFilter);
+            predicates.add(criteriaBuilder.equal(
+                    criteriaBuilder.function("date", LocalDate.class, root.get("createdAt")),
+                    submissionDate
+            ));
+        } catch (DateTimeParseException ignored) {
+        }
+
+        try {
+            DateTimeFormatter usFormatter = DateTimeFormatter.ofPattern("MM/dd/yyyy", US);
+            LocalDate date = LocalDate.parse(genericFilter, usFormatter);
+            predicates.add(criteriaBuilder.equal(criteriaBuilder.function("date", LocalDate.class, root.get("createdAt")), date));
+        } catch (DateTimeParseException ignored) {
+        }
+    }
 
     @Override
     @Transactional
@@ -441,28 +459,12 @@ public class ClientServiceImpl implements ClientService {
             List<Predicate> predicates = new ArrayList<>();
             String filter = "%" + genericFilter.toLowerCase() + "%";
 
-            predicates.add(criteriaBuilder.like(
-                    criteriaBuilder.lower(root.get("client").get("businessName")),
-                    filter
-            ));
-            predicates.add(criteriaBuilder.like(
-                    root.get("client").get("contact").get("email"), filter
-            ));
-            predicates.add(criteriaBuilder.like(
-                    root.get("client").get("contact").get("phone"), filter
-            ));
-            predicates.add(criteriaBuilder.equal(
-                    root.get("client").get("role"), genericFilter
-            ));
+            predicates.add(criteriaBuilder.like(criteriaBuilder.lower(root.get("client").get("businessName")), filter));
+            predicates.add(criteriaBuilder.like(root.get("client").get("contact").get("email"), filter));
+            predicates.add(criteriaBuilder.equal(root.get("client").get("contact").get("phone"), genericFilter));
+            predicates.add(criteriaBuilder.like(criteriaBuilder.lower(root.get("client").get("role")), filter));
 
-            try {
-                LocalDate submissionDate = LocalDate.parse(genericFilter);
-                predicates.add(criteriaBuilder.equal(
-                        criteriaBuilder.function("date", LocalDate.class, root.get("createdAt")),
-                        submissionDate
-                ));
-            } catch (DateTimeParseException ignored) {
-            }
+            addDatePredicates(genericFilter, root, criteriaBuilder, predicates);
 
             return criteriaBuilder.or(predicates.toArray(new Predicate[0]));
         });

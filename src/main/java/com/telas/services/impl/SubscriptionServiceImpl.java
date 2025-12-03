@@ -19,7 +19,6 @@ import com.telas.infra.exceptions.ResourceNotFoundException;
 import com.telas.infra.security.services.AuthenticatedUserService;
 import com.telas.repositories.ClientRepository;
 import com.telas.repositories.SubscriptionRepository;
-import com.telas.services.PaymentService;
 import com.telas.services.SubscriptionService;
 import com.telas.shared.constants.SharedConstants;
 import com.telas.shared.constants.valitation.SubscriptionValidationMessages;
@@ -42,8 +41,11 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
 import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
 import java.util.*;
+
+import static java.util.Locale.US;
 
 @Service
 @RequiredArgsConstructor
@@ -329,7 +331,6 @@ public class SubscriptionServiceImpl implements SubscriptionService {
             String filter = "%" + genericFilter.toLowerCase() + "%";
             List<Predicate> predicates = new ArrayList<>();
 
-            // Acessar através de subscriptionMonitors -> monitor -> address
             predicates.add(criteriaBuilder.like(
                     criteriaBuilder.lower(
                             root.join("subscriptionMonitors").join("id").join("monitor").get("address").get("street")
@@ -348,9 +349,19 @@ public class SubscriptionServiceImpl implements SubscriptionService {
             LocalDate date = LocalDate.parse(genericFilter);
             predicates.add(criteriaBuilder.equal(criteriaBuilder.function("date", LocalDate.class, root.get("startedAt")), date));
             predicates.add(criteriaBuilder.equal(criteriaBuilder.function("date", LocalDate.class, root.get("endsAt")), date));
+            return;
+        } catch (DateTimeParseException ignored) {
+        }
+
+        try {
+            DateTimeFormatter usFormatter = DateTimeFormatter.ofPattern("MM/dd/yyyy", US);
+            LocalDate date = LocalDate.parse(genericFilter, usFormatter);
+            predicates.add(criteriaBuilder.equal(criteriaBuilder.function("date", LocalDate.class, root.get("startedAt")), date));
+            predicates.add(criteriaBuilder.equal(criteriaBuilder.function("date", LocalDate.class, root.get("endsAt")), date));
         } catch (DateTimeParseException ignored) {
         }
     }
+
 
     private void addIdPredicate(List<Predicate> predicates, CriteriaBuilder criteriaBuilder, Root<Subscription> root, String genericFilter) {
         try {

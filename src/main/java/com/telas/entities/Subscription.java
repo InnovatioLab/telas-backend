@@ -7,7 +7,6 @@ import com.telas.enums.Role;
 import com.telas.enums.SubscriptionStatus;
 import com.telas.infra.exceptions.BusinessRuleException;
 import com.telas.shared.audit.BaseAudit;
-import com.telas.shared.constants.SharedConstants;
 import com.telas.shared.constants.valitation.SubscriptionValidationMessages;
 import jakarta.persistence.*;
 import lombok.Getter;
@@ -80,7 +79,7 @@ public class Subscription extends BaseAudit implements Serializable {
     public Subscription(Client client, Cart cart) {
         this.client = client;
         setUsernameCreate(client.getBusinessName());
-        
+
         cart.getItems().forEach(item -> {
             Monitor monitor = item.getMonitor();
             SubscriptionMonitor subscriptionMonitor = new SubscriptionMonitor(
@@ -100,19 +99,6 @@ public class Subscription extends BaseAudit implements Serializable {
         }
     }
 
-    @Override
-    public boolean equals(Object o) {
-        if (o == null || getClass() != o.getClass()) return false;
-
-        Subscription subscription = (Subscription) o;
-        return Objects.equals(getId(), subscription.getId());
-    }
-
-    @Override
-    public int hashCode() {
-        return Objects.hashCode(getId());
-    }
-
     public Subscription(Client partner, Monitor monitor) {
         if (partner == null || monitor == null) {
             throw new BusinessRuleException(SubscriptionValidationMessages.PARTNER_MONITOR_IS_REQUIRED);
@@ -126,14 +112,29 @@ public class Subscription extends BaseAudit implements Serializable {
             throw new BusinessRuleException(SubscriptionValidationMessages.MONITOR_ADDRESS_NOT_BELONGS_TO_PARTNER);
         }
 
-        this.client = partner;
+        client = partner;
         SubscriptionMonitor subscriptionMonitor = new SubscriptionMonitor(this, monitor);
         subscriptionMonitors.add(subscriptionMonitor);
         setUsernameCreate(partner.getBusinessName());
-        this.bonus = true;
-        this.recurrence = Recurrence.MONTHLY;
-        this.status = SubscriptionStatus.ACTIVE;
-        this.startedAt = Instant.now();
+        bonus = true;
+        recurrence = Recurrence.MONTHLY;
+        status = SubscriptionStatus.ACTIVE;
+        startedAt = Instant.now();
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (o == null || getClass() != o.getClass()) {
+            return false;
+        }
+
+        Subscription subscription = (Subscription) o;
+        return Objects.equals(getId(), subscription.getId());
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hashCode(getId());
     }
 
     public void initialize() {
@@ -194,4 +195,12 @@ public class Subscription extends BaseAudit implements Serializable {
                 .map(monitor -> monitor.getAddress().getCoordinatesParams())
                 .collect(Collectors.joining("\n"));
     }
+
+    public boolean ableToCancel() {
+        return SubscriptionStatus.ACTIVE.equals(status)
+                && !bonus
+                && (endsAt == null || endsAt.isAfter(Instant.now()));
+    }
+
+
 }

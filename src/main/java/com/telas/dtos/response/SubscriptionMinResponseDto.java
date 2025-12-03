@@ -40,6 +40,8 @@ public class SubscriptionMinResponseDto implements Serializable {
 
     private boolean ableToRenew;
 
+    private boolean ableToCancel;
+
     private List<SubscriptionMonitorMinResponseDto> monitors;
 
     public SubscriptionMinResponseDto(Subscription entity) {
@@ -53,6 +55,7 @@ public class SubscriptionMinResponseDto implements Serializable {
         daysLeft = calculateDaysLeft();
         ableToUpgrade = entity.ableToUpgrade();
         ableToRenew = entity.ableToRenew();
+        ableToCancel = entity.ableToCancel();
         monitors = entity.getMonitors().stream()
                 .map(SubscriptionMonitorMinResponseDto::new)
                 .toList();
