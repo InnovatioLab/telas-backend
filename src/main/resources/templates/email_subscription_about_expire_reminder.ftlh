@@ -145,7 +145,7 @@
                 <td>
                     <strong><a
                                 href="${link}"
-                                style="color: #075473; text-decoration: none"
+                                style="color: #075473;"
                         >Renew Now</a
                         ></strong>
                     to keep your business in front of customers.

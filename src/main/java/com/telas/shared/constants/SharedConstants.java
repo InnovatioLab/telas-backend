@@ -1,8 +1,8 @@
 package com.telas.shared.constants;
 
 public final class SharedConstants {
-    public static final String DAILY_CRON = "0 0 3 * * *";
-    public static final String EXPIRY_SUBSCRIPTION_CRON = "0 0 7 * * *";
+    public static final String DAILY_CRON = "0 0 4 * * *";
+    public static final String EXPIRY_SUBSCRIPTION_CRON = "0 0 6 * * *";
     public static final String ZONE_ID = "America/New_York";
     public static final String PROJECT_NAME = "Telas";
     public static final String PERMISSIONS = "permissions";
@@ -53,6 +53,7 @@ public final class SharedConstants {
     public static final long MAX_BILLING_CYCLE_ANCHOR = 30L * 24 * 60 * 60;
 
 
-    private SharedConstants(){}
+    private SharedConstants() {
+    }
 
 }

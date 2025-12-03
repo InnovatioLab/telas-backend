@@ -106,7 +106,7 @@
             </tr>
             <tr>
                 <td style="padding-bottom: 10px">
-                    Today marks the <strong>last day</strong> of your Telas advertising service. After tonight, your ads
+                    Today marks the <strong>last day</strong> of your Telas advertising service. After this, your ads
                     will no
                     longer appear on our in-store screens.
                 </td>
