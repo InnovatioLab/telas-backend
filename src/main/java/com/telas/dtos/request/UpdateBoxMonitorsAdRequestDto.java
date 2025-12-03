@@ -13,7 +13,6 @@ import lombok.Setter;
 
 import java.io.Serial;
 import java.io.Serializable;
-import java.util.Objects;
 
 @Getter
 @Setter
@@ -37,17 +36,14 @@ public class UpdateBoxMonitorsAdRequestDto implements Serializable {
     private String baseUrl;
 
     public UpdateBoxMonitorsAdRequestDto(Ad ad, MonitorAd monitorAd, SubscriptionMonitor subscriptionMonitor, String link) {
-        blockQuantity = Objects.nonNull(subscriptionMonitor) ? subscriptionMonitor.getSlotsQuantity() : null;
-        orderIndex = monitorAd.getOrderIndex();
-        fileName = ad.getName();
-        this.link = link;
-        baseUrl = String.format("http://%s:8081/", monitorAd.getMonitor().getBox().getBoxAddress().getIp());
+        this(ad, monitorAd, link);
     }
 
     public UpdateBoxMonitorsAdRequestDto(Ad ad, MonitorAd monitorAd, String link) {
         this.link = link;
         orderIndex = monitorAd.getOrderIndex();
         fileName = ad.getName();
+        blockQuantity = monitorAd.getBlockQuantity();
         baseUrl = String.format("http://%s:8081/", monitorAd.getMonitor().getBox().getBoxAddress().getIp());
     }
 }

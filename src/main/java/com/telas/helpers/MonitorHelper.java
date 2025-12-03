@@ -6,9 +6,11 @@ import com.telas.dtos.request.RemoveBoxMonitorsAdRequestDto;
 import com.telas.dtos.request.UpdateBoxMonitorsAdRequestDto;
 import com.telas.dtos.response.MonitorAdResponseDto;
 import com.telas.dtos.response.MonitorValidAdResponseDto;
-import com.telas.entities.*;
+import com.telas.entities.Ad;
+import com.telas.entities.Address;
+import com.telas.entities.Monitor;
+import com.telas.entities.SubscriptionMonitor;
 import com.telas.enums.AdValidationType;
-import com.telas.enums.Role;
 import com.telas.infra.exceptions.BusinessRuleException;
 import com.telas.repositories.AdRepository;
 import com.telas.repositories.MonitorRepository;
@@ -88,30 +90,22 @@ public class MonitorHelper {
     }
 
     @Transactional(readOnly = true)
-    public List<MonitorValidAdResponseDto> getValidAdsForMonitor(Monitor monitor) {
-        List<Ad> validAds = adRepository.findAllValidAdsForMonitor(AdValidationType.APPROVED, monitor.getId());
+    public List<MonitorValidAdResponseDto> getValidAdsForMonitor(Monitor monitor, String name) {
+        List<Ad> validAds = adRepository.findAllApprovedNotInMonitorFiltered(monitor.getId(), name);
 
-        if (validAds.isEmpty()) return List.of();
-
-        Map<UUID, Integer> orderIndexByAdId = monitor.getMonitorAds().stream()
-                .collect(Collectors.toMap(ma -> ma.getAd().getId(), MonitorAd::getOrderIndex));
+        if (validAds.isEmpty()) {
+            return List.of();
+        }
 
         return validAds.stream()
-                .map(ad -> {
-                    return new MonitorValidAdResponseDto(
-                            ad,
-                            bucketService.getLink(AttachmentUtils.format(ad)),
-                            orderIndexByAdId.containsKey(ad.getId()),
-                            orderIndexByAdId.get(ad.getId())
-                    );
-                })
-                .sorted(Comparator.comparing(
-                        MonitorValidAdResponseDto::getOrderIndex,
-                        Comparator.nullsLast(Comparator.naturalOrder())
+                .map(ad -> new MonitorValidAdResponseDto(
+                        ad,
+                        bucketService.getLink(AttachmentUtils.format(ad)),
+                        false,
+                        null
                 ))
                 .toList();
     }
-
 
 
     @Transactional(readOnly = true)

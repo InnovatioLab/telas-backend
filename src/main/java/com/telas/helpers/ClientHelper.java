@@ -202,38 +202,7 @@ public class ClientHelper {
 
     @Transactional
     public void addAdToMonitor(List<Ad> ads, Client client) {
-//        List<Monitor> monitorsToUpdate = new ArrayList<>();
-//        List<SubscriptionMonitor> subscriptionMonitors = subscriptionMonitorRepository.findByClientId(client.getId());
-//        List<UpdateBoxMonitorsAdRequestDto> requestList = subscriptionMonitors.stream()
-//                .map(
-//                        subscriptionMonitor -> {
-//                            Monitor monitor = subscriptionMonitor.getMonitor();
-//
-//                            if (!isMonitorEligibleForAd(client, monitor)) {
-//                                log.error("Monitor with id {} is not eligible for ad with id {}", monitor.getId(), ad.getId());
-//                                return null;
-//                            }
-//
-//                            MonitorAd monitorAd = new MonitorAd(monitor, ad);
-//                            monitor.getMonitorAds().add(monitorAd);
-//                            monitorsToUpdate.add(monitor);
-//
-//                            if (monitor.isAbleToSendBoxRequest()) {
-//                                return  new UpdateBoxMonitorsAdRequestDto(ad, monitorAd, subscriptionMonitor, bucketService.getLink(AttachmentUtils.format(ad)));
-//                            } else {
-//                                return null;
-//                            }
-//                        })
-//                .filter(Objects::nonNull)
-//                .toList();
-//
-//        monitorRepository.saveAll(monitorsToUpdate);
-//
-//        if (!requestList.isEmpty()) {
-//            sendBoxesMonitorsUpdateAd(requestList);
-//        }
-
-        if (ads == null || ads.isEmpty()) {
+        if (ValidateDataUtils.isNullOrEmpty(ads)) {
             return;
         }
 
@@ -243,7 +212,6 @@ public class ClientHelper {
             return;
         }
 
-        // Cria entradas (Monitor -> List of (MonitorAd, optional DTO)) usando streams
         Map<Monitor, List<AbstractMap.SimpleEntry<MonitorAd, UpdateBoxMonitorsAdRequestDto>>> grouped = ads.stream()
                 .filter(Objects::nonNull)
                 .flatMap(ad -> subscriptionMonitors.stream()
@@ -254,10 +222,11 @@ public class ClientHelper {
                 })
                 .map(entry -> {
                     Ad ad = entry.getKey();
-                    SubscriptionMonitor sm =  entry.getValue();
+                    SubscriptionMonitor sm = entry.getValue();
                     Monitor monitor = sm.getMonitor();
 
                     MonitorAd monitorAd = new MonitorAd(monitor, ad);
+                    monitorAd.setBlockQuantity(sm.getSlotsQuantity());
                     UpdateBoxMonitorsAdRequestDto dto = monitor.isAbleToSendBoxRequest()
                             ? new UpdateBoxMonitorsAdRequestDto(ad, monitorAd, sm, bucketService.getLink(AttachmentUtils.format(ad)))
                             : null;
@@ -278,14 +247,10 @@ public class ClientHelper {
         List<UpdateBoxMonitorsAdRequestDto> requestList = new ArrayList<>();
 
         grouped.forEach((monitor, entries) -> {
-            // Adiciona todos os MonitorAd criados ao monitor (evita chamadas repetidas ao repo)
             entries.forEach(pair -> {
-                MonitorAd monitorAd = pair.getKey();
-                monitor.getMonitorAds().add(monitorAd);
-
-                UpdateBoxMonitorsAdRequestDto dto = pair.getValue();
-                if (dto != null) {
-                    requestList.add(dto);
+                monitor.getMonitorAds().add(pair.getKey());
+                if (pair.getValue() != null) {
+                    requestList.add(pair.getValue());
                 }
             });
             monitorsToUpdate.add(monitor);
@@ -298,7 +263,6 @@ public class ClientHelper {
         if (!requestList.isEmpty()) {
             sendBoxesMonitorsUpdateAd(requestList);
         }
-
     }
 
     @Transactional

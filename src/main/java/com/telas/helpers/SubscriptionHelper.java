@@ -53,6 +53,8 @@ public class SubscriptionHelper {
     private final NotificationService notificationService;
     private final PaymentService paymentService;
     private final ClientHelper clientHelper;
+    @Value("${front.base.url}")
+    private String frontBaseUrl;
 
     @Autowired
     public SubscriptionHelper(
@@ -76,9 +78,6 @@ public class SubscriptionHelper {
         this.paymentService = paymentService;
         this.clientHelper = clientHelper;
     }
-
-    @Value("${front.base.url}")
-    private String frontBaseUrl;
 
     @Transactional
     public Cart getAndValidateActiveCart(Client client) {
@@ -166,12 +165,12 @@ public class SubscriptionHelper {
             sendFirstBuyEmail(subscription);
         }
 
-        if (!client.getApprovedAds().isEmpty()) {
-            client.getApprovedAds().stream()
-                    .filter(Objects::nonNull)
-                    .min(Comparator.comparing(Ad::getCreatedAt, Comparator.nullsLast(Comparator.naturalOrder())))
-                    .ifPresent(ad -> clientHelper.addAdToMonitor(List.of(ad), client));
-        }
+
+        client.getApprovedAds().stream()
+                .filter(Objects::nonNull)
+                .min(Comparator.comparing(Ad::getCreatedAt, Comparator.nullsLast(Comparator.naturalOrder())))
+                .ifPresent(ad -> clientHelper.addAdToMonitor(List.of(ad), client));
+
 
         createNewSubscriptionNotification(subscription);
     }
@@ -184,9 +183,8 @@ public class SubscriptionHelper {
             sendFirstBuyEmail(subscription);
         }
 
-        if (!ValidateDataUtils.isNullOrEmpty(client.getApprovedAds())) {
-            clientHelper.addAdToMonitor(client.getApprovedAds(), client);
-        }
+        clientHelper.addAdToMonitor(client.getApprovedAds(), client);
+
 
         createNewSubscriptionNotification(subscription);
     }
@@ -349,7 +347,7 @@ public class SubscriptionHelper {
             }
 
             if (!monitor.hasAvailableBlocks(item)) {
-                    throw new BusinessRuleException(MonitorValidationMessages.MONITOR_BLOCKS_UNAVAILABLE);
+                throw new BusinessRuleException(MonitorValidationMessages.MONITOR_BLOCKS_UNAVAILABLE);
             }
 
             if (!clientActiveMonitors.isEmpty() && clientActiveMonitors.contains(monitor)) {

@@ -31,5 +31,6 @@ public final class MonitorAdResponseDto implements Serializable {
     orderIndex = entity.getOrderIndex();
     link = adLink;
     fileName = entity.getAd().getName();
+    blockQuantity = entity.getBlockQuantity();
   }
 }

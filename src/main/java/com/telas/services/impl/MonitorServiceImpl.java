@@ -163,10 +163,10 @@ public class MonitorServiceImpl implements MonitorService {
 
     @Override
     @Transactional(readOnly = true)
-    public List<MonitorValidAdResponseDto> findValidAdsForMonitor(UUID monitorId) {
+    public List<MonitorValidAdResponseDto> findValidAdsForMonitor(UUID monitorId, String name) {
         authenticatedUserService.validateAdmin();
         Monitor monitor = findEntityById(monitorId);
-        return helper.getValidAdsForMonitor(monitor);
+        return helper.getValidAdsForMonitor(monitor, name);
     }
 
     @Override
@@ -372,7 +372,10 @@ public class MonitorServiceImpl implements MonitorService {
         Map<UUID, MonitorAd> newMonitorAdsByAdId = newMonitorAds.stream()
                 .collect(Collectors.toMap(ma -> ma.getAd().getId(), ma -> ma));
 
-        List<UpdateBoxMonitorsAdRequestDto> requestList = buildRequestList(ads, existingAfterRemoval, newMonitorAdsByAdId, subscriptionByClientId, adRequestMap);
+        Map<UUID, Integer> blockQuantities = resolveBlockQuantities(ads, adRequestMap, subscriptionByClientId);
+        applyBlockQuantities(existingAfterRemoval, newMonitorAdsByAdId, blockQuantities);
+
+        List<UpdateBoxMonitorsAdRequestDto> requestList = buildRequestList(ads, existingAfterRemoval, newMonitorAdsByAdId);
 
         addNewMonitorAdsToMonitor(monitor, newMonitorAds);
 
@@ -425,34 +428,53 @@ public class MonitorServiceImpl implements MonitorService {
                 });
     }
 
-    private List<UpdateBoxMonitorsAdRequestDto> buildRequestList(List<Ad> ads,
-                                                                 Map<UUID, MonitorAd> existingAfterRemoval,
-                                                                 Map<UUID, MonitorAd> newMonitorAdsByAdId,
-                                                                 Map<UUID, SubscriptionMonitor> subscriptionByClientId,
-                                                                 Map<UUID, MonitorAdRequestDto> adRequestMap) {
-        List<UpdateBoxMonitorsAdRequestDto> requestList = new ArrayList<>();
+    private Map<UUID, Integer> resolveBlockQuantities(List<Ad> ads,
+                                                      Map<UUID, MonitorAdRequestDto> adRequestMap,
+                                                      Map<UUID, SubscriptionMonitor> subscriptionByClientId) {
+        Map<UUID, Integer> blockQuantities = new HashMap<>(ads.size());
 
         ads.forEach(ad -> {
-            MonitorAd monitorAd = existingAfterRemoval.getOrDefault(ad.getId(), newMonitorAdsByAdId.get(ad.getId()));
-            String link = bucketService.getLink(AttachmentUtils.format(ad));
-            UpdateBoxMonitorsAdRequestDto dto = new UpdateBoxMonitorsAdRequestDto(ad, monitorAd, link);
+            UUID adId = ad.getId();
+            UUID clientId = ad.getClient() != null ? ad.getClient().getId() : null;
+            SubscriptionMonitor matched = clientId != null ? subscriptionByClientId.get(clientId) : null;
 
-            MonitorAdRequestDto reqDto = adRequestMap.get(ad.getId());
-            Integer blockQuantity = null;
+            Integer blockQuantity = (matched != null && matched.getSlotsQuantity() != null
+                    && matched.getSlotsQuantity() != SharedConstants.PARTNER_RESERVED_SLOTS)
+                    ? matched.getSlotsQuantity()
+                    : Optional.ofNullable(adRequestMap.get(adId))
+                    .map(MonitorAdRequestDto::getBlockQuantity)
+                    .orElse(SharedConstants.MIN_QUANTITY_MONITOR_BLOCK);
 
-            SubscriptionMonitor matched = subscriptionByClientId.get(ad.getClient().getId());
-            if (matched != null && matched.getSlotsQuantity() != SharedConstants.PARTNER_RESERVED_SLOTS) {
-                blockQuantity = matched.getSlotsQuantity();
-            } else if (reqDto != null && reqDto.getBlockQuantity() != null) {
-                blockQuantity = reqDto.getBlockQuantity();
-            }
-
-            dto.setBlockQuantity(blockQuantity);
-            requestList.add(dto);
+            blockQuantities.put(adId, blockQuantity);
         });
 
+        return blockQuantities;
+    }
+
+    private void applyBlockQuantities(Map<UUID, MonitorAd> existingAfterRemoval,
+                                      Map<UUID, MonitorAd> newMonitorAdsByAdId,
+                                      Map<UUID, Integer> blockQuantities) {
+        blockQuantities.forEach((adId, quantity) -> {
+            MonitorAd monitorAd = existingAfterRemoval.getOrDefault(adId, newMonitorAdsByAdId.get(adId));
+            if (monitorAd != null) {
+                monitorAd.setBlockQuantity(quantity);
+            }
+        });
+    }
+
+    private List<UpdateBoxMonitorsAdRequestDto> buildRequestList(List<Ad> ads,
+                                                                 Map<UUID, MonitorAd> existingAfterRemoval,
+                                                                 Map<UUID, MonitorAd> newMonitorAdsByAdId) {
+        List<UpdateBoxMonitorsAdRequestDto> requestList = ads.stream()
+                .map(ad -> {
+                    MonitorAd monitorAd = existingAfterRemoval.getOrDefault(ad.getId(), newMonitorAdsByAdId.get(ad.getId()));
+                    String link = bucketService.getLink(AttachmentUtils.format(ad));
+                    return new UpdateBoxMonitorsAdRequestDto(ad, monitorAd, link);
+                })
+                .toList();
+
         int totalBlockQuantity = requestList.stream()
-                .mapToInt(dto -> dto.getBlockQuantity() != null ? dto.getBlockQuantity() : 0)
+                .mapToInt(dto -> Optional.ofNullable(dto.getBlockQuantity()).orElse(0))
                 .sum();
 
         if (totalBlockQuantity > SharedConstants.MAX_MONITOR_ADS) {
@@ -461,6 +483,7 @@ public class MonitorServiceImpl implements MonitorService {
 
         return requestList;
     }
+
 
     private void addNewMonitorAdsToMonitor(Monitor monitor, List<MonitorAd> newMonitorAds) {
         if (!newMonitorAds.isEmpty()) {
@@ -474,14 +497,14 @@ public class MonitorServiceImpl implements MonitorService {
     }
 
     private boolean hasSpaceForPartnerAds(MonitorRequestDto request, List<Ad> ads, Client newPartner) {
-        if (ValidateDataUtils.isNullOrEmpty(request.getAds())) {
+        if (newPartner == null || !newPartner.isPartner() || ValidateDataUtils.isNullOrEmpty(request.getAds())) {
             return true;
         }
 
         UUID partnerId = newPartner.getId();
 
         Set<UUID> partnerAdIds = ads.stream()
-                .filter(ad -> ad.getClient().isPartner()
+                .filter(ad -> ad.getClient() != null && ad.getClient().isPartner()
                         && Objects.equals(ad.getClient().getId(), partnerId))
                 .map(Ad::getId)
                 .collect(Collectors.toSet());
