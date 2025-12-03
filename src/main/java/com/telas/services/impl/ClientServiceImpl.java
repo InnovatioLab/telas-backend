@@ -67,30 +67,13 @@ public class ClientServiceImpl implements ClientService {
     private final TermConditionService termConditionService;
     private final AdRequestRepository adRequestRepository;
 
-    private static void addDatePredicates(String genericFilter, Root<AdRequest> root, CriteriaBuilder criteriaBuilder, List<Predicate> predicates) {
-        try {
-            LocalDate submissionDate = LocalDate.parse(genericFilter);
-            predicates.add(criteriaBuilder.equal(
-                    criteriaBuilder.function("date", LocalDate.class, root.get("createdAt")),
-                    submissionDate
-            ));
-        } catch (DateTimeParseException ignored) {
-        }
-
-        try {
-            DateTimeFormatter usFormatter = DateTimeFormatter.ofPattern("MM/dd/yyyy", US);
-            LocalDate date = LocalDate.parse(genericFilter, usFormatter);
-            predicates.add(criteriaBuilder.equal(criteriaBuilder.function("date", LocalDate.class, root.get("createdAt")), date));
-        } catch (DateTimeParseException ignored) {
-        }
-    }
-
     @Override
     @Transactional
     public void save(ClientRequestDto request) {
         helper.validateClientRequest(request, null);
 
         Client client = new Client(request);
+        helper.verifyAddressesUnique(request.getAddresses(), client);
         VerificationCode verificationCode = verificationCodeService.save(CodeType.CONTACT, client);
 
         client.setVerificationCode(verificationCode);
@@ -468,6 +451,24 @@ public class ClientServiceImpl implements ClientService {
 
             return criteriaBuilder.or(predicates.toArray(new Predicate[0]));
         });
+    }
+
+    private void addDatePredicates(String genericFilter, Root<AdRequest> root, CriteriaBuilder criteriaBuilder, List<Predicate> predicates) {
+        try {
+            LocalDate submissionDate = LocalDate.parse(genericFilter);
+            predicates.add(criteriaBuilder.equal(
+                    criteriaBuilder.function("date", LocalDate.class, root.get("createdAt")),
+                    submissionDate
+            ));
+        } catch (DateTimeParseException ignored) {
+        }
+
+        try {
+            DateTimeFormatter usFormatter = DateTimeFormatter.ofPattern("MM/dd/yyyy", US);
+            LocalDate date = LocalDate.parse(genericFilter, usFormatter);
+            predicates.add(criteriaBuilder.equal(criteriaBuilder.function("date", LocalDate.class, root.get("createdAt")), date));
+        } catch (DateTimeParseException ignored) {
+        }
     }
 
     ClientResponseDto buildClientResponse(Client client) {

@@ -5,6 +5,7 @@ import com.telas.dtos.response.AddressFromZipCodeResponseDto;
 import com.telas.dtos.response.NearbySearchResponse;
 import com.telas.entities.Address;
 import com.telas.entities.Client;
+import com.telas.infra.exceptions.BusinessRuleException;
 import com.telas.infra.exceptions.ResourceNotFoundException;
 import com.telas.repositories.AddressRepository;
 import com.telas.services.AddressService;
@@ -14,6 +15,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 @Service
@@ -25,6 +27,31 @@ public class AddressServiceImpl implements AddressService {
     @Transactional
     public Address save(Address address) {
         return repository.save(address);
+    }
+
+    @Override
+    @Transactional
+    public void createEntityList(List<AddressRequestDto> addresses, Client client) {
+        addresses.forEach(request -> createAddress(request, client));
+    }
+
+    private Address verifyUniqueAddress(AddressRequestDto addressDto, Client client) {
+        String street = addressDto.getStreet().toLowerCase();
+        String city = addressDto.getCity().toLowerCase();
+        String state = addressDto.getState().toLowerCase();
+        String zip = addressDto.getZipCode().toLowerCase();
+
+        return repository.findByStreetAndCityAndStateAndZipCode(street, city, state, zip)
+                .map(existing -> {
+                    if (client != null) {
+                        if (client.getId() == null || !client.getId().equals(existing.getClient().getId())) {
+                            throw new BusinessRuleException(AddressValidationMessages.DUPLICATE_ADDRESS);
+                        }
+                    }
+
+                    return existing;
+                })
+                .orElse(null);
     }
 
     @Override
@@ -82,14 +109,9 @@ public class AddressServiceImpl implements AddressService {
 
     @Override
     @Transactional
-    public Address getOrCreateAddress(AddressRequestDto addressRequestDto, Client client) {
-        return repository.findByStreetAndCityAndStateAndZipCodeAndClientId(
-                addressRequestDto.getStreet().toLowerCase(),
-                addressRequestDto.getCity().toLowerCase(),
-                addressRequestDto.getState().toLowerCase(),
-                addressRequestDto.getZipCode().toLowerCase(),
-                client.getId()
-        ).orElseGet(() -> createAddressForClient(addressRequestDto, client));
+    public Address createAddress(AddressRequestDto addressRequestDto, Client client) {
+        return Optional.ofNullable(verifyUniqueAddress(addressRequestDto, client))
+                .orElseGet(() -> createAddressForClient(addressRequestDto, client));
     }
 
     private Address createAddressForClient(AddressRequestDto addressRequestDto, Client client) {
@@ -97,4 +119,5 @@ public class AddressServiceImpl implements AddressService {
         client.getAddresses().add(newAddress);
         return newAddress;
     }
+
 }

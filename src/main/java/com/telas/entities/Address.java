@@ -2,7 +2,6 @@ package com.telas.entities;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.telas.dtos.request.AddressRequestDto;
-import com.telas.enums.Role;
 import com.telas.shared.audit.BaseAudit;
 import jakarta.persistence.*;
 import lombok.Getter;
@@ -12,8 +11,6 @@ import org.hibernate.envers.AuditTable;
 
 import java.io.Serial;
 import java.io.Serializable;
-import java.util.ArrayList;
-import java.util.List;
 import java.util.Objects;
 import java.util.UUID;
 

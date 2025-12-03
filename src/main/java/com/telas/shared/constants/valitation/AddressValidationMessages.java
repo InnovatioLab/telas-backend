@@ -19,4 +19,6 @@ public final class AddressValidationMessages {
     public static final String ZIP_CODE_INVALID = "Zipcode must have five digits.";
     public static final String PARTNER_ADDRESS_NOT_FOUND = "Partner address not found";
     public static final String ADDRESS_IN_USE_BY_MONITOR = "Address is in use by a monitor";
+    public static final String DUPLICATE_ADDRESS = "Address already exists";
+    public static final String ADDRESS_NOT_BELONG_TO_CLIENT = "Address does not belong to the client";
 }

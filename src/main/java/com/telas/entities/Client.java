@@ -18,8 +18,10 @@ import org.hibernate.envers.NotAudited;
 import java.io.Serial;
 import java.io.Serializable;
 import java.time.Instant;
-import java.util.*;
-import java.util.stream.Collectors;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Optional;
+import java.util.UUID;
 
 @Getter
 @Setter
@@ -126,11 +128,6 @@ public class Client extends BaseAudit implements Serializable {
         socialMedia = Optional.ofNullable(request.getSocialMedia())
                 .map(SocialMedia::new)
                 .orElse(null);
-
-        addresses = request.getAddresses().stream()
-                .map(address -> new Address(address, this))
-                .collect(Collectors.toList());
-
         setUsernameCreateForRelatedEntities(request.getBusinessName());
     }
 
@@ -153,9 +150,9 @@ public class Client extends BaseAudit implements Serializable {
     }
 
     public List<Ad> getApprovedAds() {
-            return ads.stream()
-                    .filter(ad -> AdValidationType.APPROVED.equals(ad.getValidation()))
-                    .toList();
+        return ads.stream()
+                .filter(ad -> AdValidationType.APPROVED.equals(ad.getValidation()))
+                .toList();
     }
 
     public boolean isFirstSubscription() {

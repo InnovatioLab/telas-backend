@@ -63,6 +63,13 @@ public class ClientHelper {
     }
 
     @Transactional
+    public void verifyAddressesUnique(List<AddressRequestDto> addresses, Client client) {
+        if (!ValidateDataUtils.isNullOrEmpty(addresses) && Objects.nonNull(client)) {
+            addressService.createEntityList(addresses, client);
+        }
+    }
+
+    @Transactional
     public void verifyValidationCode(Client client) {
         if (!client.getVerificationCode().isValidated()) {
             throw new BusinessRuleException(ClientValidationMessages.VALIDATION_CODE_NOT_VALIDATED);
@@ -104,20 +111,6 @@ public class ClientHelper {
         return attachmentRepository.findByIdIn(attachmentsIds).orElseThrow(() -> new ResourceNotFoundException(AttachmentValidationMessages.ATTACHMENTS_NOT_FOUND));
     }
 
-//    void verifyUniqueEmail(ClientRequestDto request, Client client) {
-//        String newEmail = request.getContact().getEmail();
-//
-//        if (client == null && contactRepository.existsByEmail(newEmail)) {
-//            throw new BusinessRuleException(ClientValidationMessages.EMAIL_UNIQUE);
-//        }
-//
-//        if (client != null) {
-//            if (!client.getContact().getEmail().equals(newEmail) && contactRepository.existsByEmail(newEmail)) {
-//                throw new BusinessRuleException(ClientValidationMessages.EMAIL_UNIQUE);
-//            }
-//        }
-//    }
-
     void verifyUniqueEmail(ClientRequestDto request, Client client) {
         String newEmail = request.getContact().getEmail();
 
@@ -156,10 +149,11 @@ public class ClientHelper {
         });
 
         requestList.forEach(addressRequest -> {
-            Address address = addressRequest.getId() == null
-                    ? getOrCreateAddress(addressRequest, client)
-                    : updateExistingAddress(addressRequest, client);
-            client.getAddresses().add(address);
+            if (addressRequest.getId() == null) {
+                createAddress(addressRequest, client);
+            } else {
+                updateExistingAddress(addressRequest, client);
+            }
         });
 
         if (!addressesToRemove.isEmpty()) {
@@ -168,24 +162,25 @@ public class ClientHelper {
         }
     }
 
-    private Address getOrCreateAddress(AddressRequestDto addressRequest, Client client) {
-        Address address = addressService.getOrCreateAddress(addressRequest, client);
+    private void createAddress(AddressRequestDto addressRequest, Client client) {
+        Address address = addressService.createAddress(addressRequest, client);
 
         if (Role.PARTNER.equals(client.getRole()) && address.getLatitude() == null && address.getLongitude() == null) {
             mapsService.getAddressCoordinates(address);
         }
-
-        return address;
     }
 
-    private Address updateExistingAddress(AddressRequestDto addressRequest, Client client) {
+    private void updateExistingAddress(AddressRequestDto addressRequest, Client client) {
         Address address = addressService.findById(addressRequest.getId());
+
+        if (!address.getClient().getId().equals(client.getId())) {
+            throw new BusinessRuleException(AddressValidationMessages.ADDRESS_NOT_BELONG_TO_CLIENT);
+        }
 
         if (!monitorRepository.existsByAddressId(address.getId()) && address.hasChanged(addressRequest)) {
             BeanUtils.copyProperties(addressRequest, address, "latitude", "longitude", "client", "monitors");
             address.setUsernameUpdate(client.getBusinessName());
         }
-        return address;
     }
 
     @Transactional(readOnly = true)
