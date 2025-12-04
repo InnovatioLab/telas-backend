@@ -157,7 +157,7 @@ public class Client extends BaseAudit implements Serializable {
 
     public boolean isFirstSubscription() {
         long nonBonusSubscriptions = subscriptions.stream()
-                .filter(subs -> !subs.isBonus())
+                .filter(subs -> !subs.isBonus() && SubscriptionStatus.ACTIVE.equals(subs.getStatus()))
                 .count();
         return nonBonusSubscriptions == SharedConstants.MIN_QUANTITY_MONITOR_BLOCK;
     }

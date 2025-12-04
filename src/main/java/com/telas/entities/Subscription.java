@@ -196,6 +196,12 @@ public class Subscription extends BaseAudit implements Serializable {
                 .collect(Collectors.joining("\n"));
     }
 
+    public String getMonitorAddressesFormated() {
+        return getMonitors().stream()
+                .map(monitor -> monitor.getAddress().getCoordinatesParamsFormated())
+                .collect(Collectors.joining(" "));
+    }
+
     public boolean ableToCancel() {
         return SubscriptionStatus.ACTIVE.equals(status)
                 && !bonus

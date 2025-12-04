@@ -30,7 +30,6 @@ import com.telas.shared.utils.ValidateDataUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Component;
@@ -53,8 +52,6 @@ public class SubscriptionHelper {
     private final NotificationService notificationService;
     private final PaymentService paymentService;
     private final ClientHelper clientHelper;
-    @Value("${front.base.url}")
-    private String frontBaseUrl;
 
     @Autowired
     public SubscriptionHelper(
@@ -169,7 +166,7 @@ public class SubscriptionHelper {
         client.getApprovedAds().stream()
                 .filter(Objects::nonNull)
                 .min(Comparator.comparing(Ad::getCreatedAt, Comparator.nullsLast(Comparator.naturalOrder())))
-                .ifPresent(ad -> clientHelper.addAdToMonitor(List.of(ad), client));
+                .ifPresent(ad -> clientHelper.addAdToMonitor(List.of(ad), subscription));
 
 
         createNewSubscriptionNotification(subscription);
@@ -183,7 +180,7 @@ public class SubscriptionHelper {
             sendFirstBuyEmail(subscription);
         }
 
-        clientHelper.addAdToMonitor(client.getApprovedAds(), client);
+        clientHelper.addAdToMonitor(client.getApprovedAds(), subscription);
 
 
         createNewSubscriptionNotification(subscription);
@@ -268,7 +265,7 @@ public class SubscriptionHelper {
     public void sendFirstBuyEmail(Subscription subscription) {
         Map<String, String> params = new HashMap<>(Map.of(
                 "name", subscription.getClient().getBusinessName(),
-                "locations", String.join(".<br/>", subscription.getMonitorAddresses()),
+                "locations", subscription.getMonitorAddressesFormated(),
                 "startDate", DateUtils.formatInstantToString(subscription.getStartedAt()),
                 "link", getRedirectUrlAfterCreatingNewSubscription(subscription.getClient())
         ));
@@ -378,7 +375,7 @@ public class SubscriptionHelper {
 
     private void createNewSubscriptionNotification(Subscription subscription) {
         Map<String, String> params = new HashMap<>(Map.of(
-                "locations", String.join(".<br/>", subscription.getMonitorAddresses()),
+                "locations", subscription.getMonitorAddressesFormated(),
                 "startDate", DateUtils.formatInstantToString(subscription.getStartedAt()),
                 "link", "/client/subscriptions/" + subscription.getId()
         ));
@@ -391,7 +388,7 @@ public class SubscriptionHelper {
     }
 
     private String buildRedirectUrl(String path) {
-        return frontBaseUrl + "/client/" + path;
+        return "/client/" + path;
     }
 
     @Transactional(readOnly = true)

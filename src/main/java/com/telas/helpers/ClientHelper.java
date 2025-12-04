@@ -196,25 +196,51 @@ public class ClientHelper {
     }
 
     @Transactional
+    public void addAdToMonitor(List<Ad> ads, Subscription subscription) {
+        if (ValidateDataUtils.isNullOrEmpty(ads)) {
+            return;
+        }
+        List<SubscriptionMonitor> subscriptionMonitors = subscription.getSubscriptionMonitors().stream().toList();
+        Client client = subscription.getClient();
+
+        Map<Monitor, List<AbstractMap.SimpleEntry<MonitorAd, UpdateBoxMonitorsAdRequestDto>>> grouped = groupAdsByMonitor(ads, subscriptionMonitors, client);
+
+        if (grouped.isEmpty()) {
+            return;
+        }
+
+        persistAndNotify(grouped);
+    }
+
+    @Transactional
     public void addAdToMonitor(List<Ad> ads, Client client) {
         if (ValidateDataUtils.isNullOrEmpty(ads)) {
             return;
         }
-
         List<SubscriptionMonitor> subscriptionMonitors = subscriptionMonitorRepository.findByClientId(client.getId());
 
         if (subscriptionMonitors.isEmpty()) {
             return;
         }
 
-        Map<Monitor, List<AbstractMap.SimpleEntry<MonitorAd, UpdateBoxMonitorsAdRequestDto>>> grouped = ads.stream()
+        Map<Monitor, List<AbstractMap.SimpleEntry<MonitorAd, UpdateBoxMonitorsAdRequestDto>>> grouped = groupAdsByMonitor(ads, subscriptionMonitors, client);
+
+        if (grouped.isEmpty()) {
+            return;
+        }
+
+        persistAndNotify(grouped);
+    }
+
+    private Map<Monitor, List<AbstractMap.SimpleEntry<MonitorAd, UpdateBoxMonitorsAdRequestDto>>> groupAdsByMonitor(
+            List<Ad> ads,
+            List<SubscriptionMonitor> subscriptionMonitors,
+            Client client) {
+
+        return ads.stream()
                 .filter(Objects::nonNull)
-                .flatMap(ad -> subscriptionMonitors.stream()
-                        .map(sm -> new AbstractMap.SimpleEntry<>(ad, sm)))
-                .filter(entry -> {
-                    SubscriptionMonitor sm = entry.getValue();
-                    return isMonitorEligibleForAd(client, sm.getMonitor());
-                })
+                .flatMap(ad -> subscriptionMonitors.stream().map(sm -> new AbstractMap.SimpleEntry<>(ad, sm)))
+                .filter(entry -> isMonitorEligibleForAd(client, entry.getValue().getMonitor()))
                 .map(entry -> {
                     Ad ad = entry.getKey();
                     SubscriptionMonitor sm = entry.getValue();
@@ -222,6 +248,7 @@ public class ClientHelper {
 
                     MonitorAd monitorAd = new MonitorAd(monitor, ad);
                     monitorAd.setBlockQuantity(sm.getSlotsQuantity());
+
                     UpdateBoxMonitorsAdRequestDto dto = monitor.isAbleToSendBoxRequest()
                             ? new UpdateBoxMonitorsAdRequestDto(ad, monitorAd, sm, bucketService.getLink(AttachmentUtils.format(ad)))
                             : null;
@@ -232,24 +259,19 @@ public class ClientHelper {
                         AbstractMap.SimpleEntry::getKey,
                         Collectors.mapping(AbstractMap.SimpleEntry::getValue, Collectors.toList())
                 ));
+    }
 
-        if (grouped.isEmpty()) {
-            return;
-        }
+    private void persistAndNotify(Map<Monitor, List<AbstractMap.SimpleEntry<MonitorAd, UpdateBoxMonitorsAdRequestDto>>> grouped) {
+        List<Monitor> monitorsToUpdate = grouped.entrySet().stream()
+                .peek(entry -> entry.getValue().forEach(pair -> entry.getKey().getMonitorAds().add(pair.getKey())))
+                .map(Map.Entry::getKey)
+                .toList();
 
-        // Aplicar alterações nos monitores e montar lista de requests
-        List<Monitor> monitorsToUpdate = new ArrayList<>(grouped.size());
-        List<UpdateBoxMonitorsAdRequestDto> requestList = new ArrayList<>();
-
-        grouped.forEach((monitor, entries) -> {
-            entries.forEach(pair -> {
-                monitor.getMonitorAds().add(pair.getKey());
-                if (pair.getValue() != null) {
-                    requestList.add(pair.getValue());
-                }
-            });
-            monitorsToUpdate.add(monitor);
-        });
+        List<UpdateBoxMonitorsAdRequestDto> requestList = grouped.values().stream()
+                .flatMap(Collection::stream)
+                .map(AbstractMap.SimpleEntry::getValue)
+                .filter(Objects::nonNull)
+                .toList();
 
         if (!monitorsToUpdate.isEmpty()) {
             monitorRepository.saveAll(monitorsToUpdate);
@@ -259,6 +281,7 @@ public class ClientHelper {
             sendBoxesMonitorsUpdateAd(requestList);
         }
     }
+
 
     @Transactional
     public Customer getOrCreateCustomer(Subscription subscription) throws StripeException {

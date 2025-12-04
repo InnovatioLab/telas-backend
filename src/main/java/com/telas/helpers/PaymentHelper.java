@@ -1,28 +1,24 @@
 package com.telas.helpers;
 
 import com.stripe.exception.StripeException;
-import com.stripe.model.*;
+import com.stripe.model.Coupon;
+import com.stripe.model.Customer;
+import com.stripe.model.Invoice;
+import com.stripe.model.PaymentIntent;
 import com.stripe.param.CouponCreateParams;
-import com.stripe.param.PriceListParams;
 import com.stripe.param.checkout.SessionCreateParams;
 import com.telas.entities.*;
-import com.telas.entities.Subscription;
 import com.telas.enums.NotificationReference;
 import com.telas.enums.PaymentStatus;
 import com.telas.enums.Recurrence;
-import com.telas.infra.exceptions.BusinessRuleException;
-import com.telas.infra.exceptions.ResourceNotFoundException;
 import com.telas.repositories.ClientRepository;
 import com.telas.services.NotificationService;
 import com.telas.shared.audit.CustomRevisionListener;
 import com.telas.shared.constants.SharedConstants;
-import com.telas.shared.constants.valitation.PaymentValidationMessages;
 import com.telas.shared.utils.DateUtils;
 import com.telas.shared.utils.MoneyUtils;
 import com.telas.shared.utils.ValidateDataUtils;
-import lombok.RequiredArgsConstructor;
 import org.apache.commons.lang3.ObjectUtils;
-import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -43,9 +39,6 @@ public class PaymentHelper {
     private final SubscriptionHelper subscriptionHelper;
     private final ClientRepository clientRepository;
     private final NotificationService notificationService;
-
-    @Value("${front.base.url}")
-    private String frontBaseUrl;
 
     @Value("${stripe.product.id}")
     private String productId;
@@ -107,7 +100,7 @@ public class PaymentHelper {
                 .putAllMetadata(metaData)
                 .build());
 
-        addLineItems(paramsBuilder, subscription.getSubscriptionMonitors(),recurrence, false);
+        addLineItems(paramsBuilder, subscription.getSubscriptionMonitors(), recurrence, false);
     }
 
 //    private void addLineItems(SessionCreateParams.Builder paramsBuilder, Set<SubscriptionMonitor> subscriptionMonitors, Recurrence recurrence, boolean isMonthly) {
@@ -185,7 +178,7 @@ public class PaymentHelper {
 
     private BigDecimal getUnitPricePerSlot(int index) {
         return switch (index) {
-            case 0 ->  BigDecimal.valueOf(700);
+            case 0 -> BigDecimal.valueOf(700);
             case 1 -> BigDecimal.valueOf(600);
             default -> BigDecimal.valueOf(500);
         };
@@ -424,8 +417,8 @@ public class PaymentHelper {
 
     private Map<String, String> buildNotificationParams(Subscription subscription) {
         Map<String, String> params = new HashMap<>();
-        params.put("locations", String.join(".<br/>", subscription.getMonitorAddresses()));
-        params.put("link", frontBaseUrl + "/client/subscriptions/" + subscription.getId());
+        params.put("locations", subscription.getMonitorAddressesFormated());
+        params.put("link", "/client/subscriptions/" + subscription.getId());
 
         if (subscription.getEndsAt() != null) {
             params.put("endDate", DateUtils.formatInstantToString(subscription.getEndsAt()));

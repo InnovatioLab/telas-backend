@@ -12,6 +12,7 @@ import org.hibernate.envers.AuditTable;
 import java.io.Serial;
 import java.io.Serializable;
 import java.util.Objects;
+import java.util.StringJoiner;
 import java.util.UUID;
 
 @Getter
@@ -105,4 +106,16 @@ public class Address extends BaseAudit implements Serializable {
     public String getCoordinatesParams() {
         return String.join(", ", street, city, state, zipCode);
     }
+
+    public String getCoordinatesParamsFormated() {
+        StringJoiner joiner = new StringJoiner(", ");
+        joiner.add(street);
+        joiner.add(city);
+        joiner.add(state);
+        joiner.add(zipCode);
+
+        String result = joiner.toString();
+        return result + ".<br/>";
+    }
+
 }

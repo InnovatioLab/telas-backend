@@ -15,7 +15,6 @@ import com.telas.helpers.ClientHelper;
 import com.telas.helpers.PaymentHelper;
 import com.telas.infra.exceptions.BusinessRuleException;
 import com.telas.infra.exceptions.ResourceNotFoundException;
-import com.telas.repositories.ClientRepository;
 import com.telas.repositories.PaymentRepository;
 import com.telas.repositories.SubscriptionRepository;
 import com.telas.services.PaymentService;
@@ -177,7 +176,9 @@ public class PaymentServiceImpl implements PaymentService {
         Customer customer = clientHelper.getOrCreateCustomer(subscription);
         Map<String, String> metaData = helper.createMetaData(subscription, payment, recurrence);
 
-        String successUrl = Objects.isNull(recurrence) ? helper.getSuccessUrl(subscription.getClient()) : (frontBaseUrl + "/client/subscriptions");
+        String successUrl = frontBaseUrl + (Objects.isNull(recurrence)
+                ? helper.getSuccessUrl(subscription.getClient())
+                : "/client/subscriptions");
 
         boolean isSubscription = Recurrence.MONTHLY.equals(subscription.getRecurrence()) || Recurrence.MONTHLY.equals(recurrence);
 

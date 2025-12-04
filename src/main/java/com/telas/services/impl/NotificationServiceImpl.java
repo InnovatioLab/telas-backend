@@ -15,6 +15,7 @@ import com.telas.shared.constants.MessageCommonsConstants;
 import com.telas.shared.constants.valitation.AuthValidationMessageConstants;
 import com.telas.shared.utils.ValidateDataUtils;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -29,6 +30,9 @@ public class NotificationServiceImpl implements NotificationService {
     private final NotificationRepository repository;
     private final AuthenticatedUserService authenticatedUserService;
     private final EmailService emailService;
+
+    @Value("${front.base.url}")
+    private String frontBaseUrl;
 
     @Override
     @Transactional
@@ -73,7 +77,23 @@ public class NotificationServiceImpl implements NotificationService {
 
     private void notify(Notification notification, Map<String, String> params) {
         EmailDataDto emailData = notification.getReference().getEmailData(params);
+        if (emailData == null) {
+            return;
+        }
+
+        Map<String, String> emailParams = emailData.getParams();
+        if (emailParams != null) {
+            String link = emailParams.get("link");
+            if (!ValidateDataUtils.isNullOrEmptyString(link) && !link.startsWith(frontBaseUrl)) {
+                String base = frontBaseUrl.endsWith("/") ? frontBaseUrl.substring(0, frontBaseUrl.length() - 1) : frontBaseUrl;
+                String newLink = link.startsWith("/") ? base + link : base + "/" + link;
+                emailParams.put("link", newLink);
+            }
+        }
+
         emailData.setEmail(notification.getClient().getContact().getEmail());
         emailService.send(emailData);
     }
+
+
 }
