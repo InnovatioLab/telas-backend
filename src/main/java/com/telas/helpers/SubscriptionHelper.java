@@ -30,6 +30,7 @@ import com.telas.shared.utils.ValidateDataUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Component;
@@ -45,13 +46,16 @@ public class SubscriptionHelper {
     private final Logger log = LoggerFactory.getLogger(SubscriptionHelper.class);
     private final SubscriptionRepository repository;
     private final SubscriptionFlowRepository subscriptionFlowRepository;
-    private final CartService cartService; // injetado lazy via construtor
+    private final CartService cartService;
     private final MonitorRepository monitorRepository;
     private final MonitorSubscriptionService monitorSubscriptionService;
     private final BucketService bucketService;
     private final NotificationService notificationService;
     private final PaymentService paymentService;
     private final ClientHelper clientHelper;
+
+    @Value("${front.base.url}")
+    private String frontBaseUrl;
 
     @Autowired
     public SubscriptionHelper(
@@ -427,7 +431,8 @@ public class SubscriptionHelper {
             Customer customer = clientHelper.getOrCreateCustomer(client);
             SessionCreateParams params = SessionCreateParams.builder()
                     .setCustomer(customer.getId())
-                    .setReturnUrl(buildRedirectUrl("subscriptions"))
+
+                    .setReturnUrl(frontBaseUrl + buildRedirectUrl("subscriptions"))
                     .build();
 
             Session session = Session.create(params);
