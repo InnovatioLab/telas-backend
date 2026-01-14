@@ -38,192 +38,209 @@ import java.util.UUID;
 @Service
 @RequiredArgsConstructor
 public class PaymentServiceImpl implements PaymentService {
-    private final Logger log = LoggerFactory.getLogger(PaymentServiceImpl.class);
-    private final PaymentRepository repository;
-    private final SubscriptionRepository subscriptionRepository;
-    private final PaymentHelper helper;
-    private final ClientHelper clientHelper;
 
-    @Value("${front.base.url}")
-    private String frontBaseUrl;
+	private final Logger log = LoggerFactory.getLogger(PaymentServiceImpl.class);
 
-    @Override
-    @Transactional
-    public String process(Subscription subscription, Recurrence recurrence) {
-        try {
-            Payment payment = new Payment(subscription);
-            subscription.getPayments().add(payment);
-            repository.save(payment);
-            return generateSession(subscription, payment, recurrence);
-        } catch (StripeException e) {
-            log.error("Error during processing payment for subscription with id: {}, error message: {}", subscription.getId(), e.getMessage());
-            throw new BusinessRuleException(PaymentValidationMessages.PAYMENT_PROCESSING_ERROR);
-        }
-    }
+	private final PaymentRepository repository;
 
-    @Override
-    @Transactional
-    public void updatePaymentStatus(PaymentIntent paymentIntent) {
-        Payment payment = getPaymentFromIntent(paymentIntent);
+	private final SubscriptionRepository subscriptionRepository;
 
-        if (payment == null) {
-            return;
-        }
+	private final PaymentHelper helper;
 
-        Subscription subscription = payment.getSubscription();
+	private final ClientHelper clientHelper;
 
-        if (helper.isRecurringPayment(subscription, paymentIntent)) {
-            return;
-        }
+	@Value("${front.base.url}")
+	private String frontBaseUrl;
 
-        helper.updateAuditInfo(subscription);
 
-        if (Objects.isNull(subscription.getStartedAt())) {
-            subscription.setStatus(SubscriptionStatus.fromStripeStatus(paymentIntent.getStatus(), null, subscription));
-        }
+	@Override
+	@Transactional
+	public String process(Subscription subscription, Recurrence recurrence) {
+		try {
+			Payment payment = new Payment(subscription);
+			subscription.getPayments().add(payment);
+			repository.save(payment);
+			return generateSession(subscription, payment, recurrence);
+		} catch (StripeException e) {
+			log.error("Error during processing payment for subscription with id: {}, error message: {}",
+				subscription.getId(), e.getMessage());
+			throw new BusinessRuleException(PaymentValidationMessages.PAYMENT_PROCESSING_ERROR);
+		}
+	}
 
-        helper.updatePaymentDetails(payment, paymentIntent);
 
-        if (PaymentStatus.COMPLETED.equals(payment.getStatus())) {
-            helper.handleCompletedPayment(subscription, payment, paymentIntent);
-        } else if (PaymentStatus.FAILED.equals(payment.getStatus())) {
-            handleFailedPayment(payment);
-        }
+	@Override
+	@Transactional
+	public void updatePaymentStatus(PaymentIntent paymentIntent) {
+		Payment payment = getPaymentFromIntent(paymentIntent);
 
-        finalizePayment(payment);
-    }
+		if (payment == null) {
+			return;
+		}
 
-    @Override
-    @Transactional
-    public void updatePaymentStatus(Invoice invoice) {
-        Subscription subscription = helper.getSubscriptionFromInvoice(invoice);
-        helper.updateAuditInfo(subscription);
+		Subscription subscription = payment.getSubscription();
 
-        Payment payment = helper.getOrCreatePayment(invoice, subscription);
+		if (helper.isRecurringPayment(subscription, paymentIntent)) {
+			return;
+		}
 
-        if (payment.getId() == null) {
-            repository.save(payment);
-        }
+		helper.updateAuditInfo(subscription);
 
-        helper.updatePaymentDetailsFromInvoice(payment, invoice);
+		if (Objects.isNull(subscription.getStartedAt())) {
+			subscription.setStatus(SubscriptionStatus.fromStripeStatus(paymentIntent.getStatus(), null, subscription));
+		}
 
-        if (!subscription.isUpgrade()) {
-            subscription.setStatus(SubscriptionStatus.fromStripeStatus(null, invoice.getStatus(), subscription));
-        }
+		helper.updatePaymentDetails(payment, paymentIntent);
 
-        if (PaymentStatus.COMPLETED.equals(payment.getStatus())) {
-            helper.handleCompletedPaymentFromInvoice(subscription, payment, invoice);
-        } else if (PaymentStatus.FAILED.equals(payment.getStatus())) {
-            handleFailedPayment(payment);
-        }
+		if (PaymentStatus.COMPLETED.equals(payment.getStatus())) {
+			helper.handleCompletedPayment(subscription, payment, paymentIntent);
+		} else if (PaymentStatus.FAILED.equals(payment.getStatus())) {
+			handleFailedPayment(payment);
+		}
 
-        finalizePayment(payment);
-    }
+		finalizePayment(payment);
+	}
 
-    @Override
-    @Transactional
-    public void handleDisputeFundsWithdrawn(com.stripe.model.Dispute dispute) {
-        String paymentIntentId = dispute.getPaymentIntent();
 
-        if (ValidateDataUtils.isNullOrEmptyString(paymentIntentId)) {
-            log.warn("Dispute without paymentIntentId.");
-            return;
-        }
+	@Override
+	@Transactional
+	public void updatePaymentStatus(Invoice invoice) {
+		Subscription subscription = helper.getSubscriptionFromInvoice(invoice);
+		helper.updateAuditInfo(subscription);
 
-        Payment payment = getPaymentFromStripeId(paymentIntentId);
+		Payment payment = helper.getOrCreatePayment(invoice, subscription);
 
-        BigDecimal disputeAmount = dispute.getAmount() != null
-                ? BigDecimal.valueOf(dispute.getAmount() / 100.0)
-                : BigDecimal.ZERO;
+		if (payment.getId() == null) {
+			repository.save(payment);
+		}
 
-        payment.setAmount(MoneyUtils.subtract(payment.getAmount(), disputeAmount));
-        payment.setStatus(PaymentStatus.FAILED);
-        repository.save(payment);
+		helper.updatePaymentDetailsFromInvoice(payment, invoice);
 
-        Subscription subscription = payment.getSubscription();
+		if (!subscription.isUpgrade()) {
+			subscription.setStatus(SubscriptionStatus.fromStripeStatus(null, invoice.getStatus(), subscription));
+		}
 
-        if (subscription == null || !SubscriptionStatus.ACTIVE.equals(subscription.getStatus())) {
-            log.warn("Subscription not found or not active for payment with id: {}", payment.getId());
-            return;
-        }
+		if (PaymentStatus.COMPLETED.equals(payment.getStatus())) {
+			helper.handleCompletedPaymentFromInvoice(subscription, payment, invoice);
+		} else if (PaymentStatus.FAILED.equals(payment.getStatus())) {
+			handleFailedPayment(payment);
+		}
 
-        subscription.setStatus(SubscriptionStatus.CANCELLED);
-        subscription.setEndsAt(Instant.now());
-        subscriptionRepository.save(subscription);
+		finalizePayment(payment);
+	}
 
-        if (Recurrence.MONTHLY.equals(subscription.getRecurrence())) {
-            log.info("Cancelling Stripe subscription with id: {} due to dispute funds withdrawn.", subscription.getId());
-            cancelStripeSubscription(subscription);
-        }
-    }
 
-    private void cancelStripeSubscription(Subscription subscription) {
-        try {
-            com.stripe.model.Subscription stripeSubscription = helper.getStripeSubscription(subscription);
-            stripeSubscription.cancel();
-        } catch (StripeException e) {
-            log.error("Error cancelling subscription with id: {} on Stripe, error message: {}", subscription.getId(), e.getMessage());
-            throw new BusinessRuleException(SubscriptionValidationMessages.SUBSCRIPTION_CANCELLATION_ERROR_DURING_DISPUTE + subscription.getId());
-        }
-    }
+	@Override
+	@Transactional
+	public void handleDisputeFundsWithdrawn(com.stripe.model.Dispute dispute) {
+		String paymentIntentId = dispute.getPaymentIntent();
 
-    private Payment getPaymentFromStripeId(String paymentIntentId) {
-        return repository.findByStripeId(paymentIntentId)
-                .orElseThrow(() -> new ResourceNotFoundException(PaymentValidationMessages.PAYMENT_NOT_FOUND));
-    }
+		if (ValidateDataUtils.isNullOrEmptyString(paymentIntentId)) {
+			log.warn("Dispute without paymentIntentId.");
+			return;
+		}
 
-    private String generateSession(Subscription subscription, Payment payment, Recurrence recurrence) throws StripeException {
-        Customer customer = clientHelper.getOrCreateCustomer(subscription);
-        Map<String, String> metaData = helper.createMetaData(subscription, payment, recurrence);
+		Payment payment = getPaymentFromStripeId(paymentIntentId);
 
-        String successUrl = frontBaseUrl + (Objects.isNull(recurrence)
-                ? helper.getSuccessUrl(subscription.getClient())
-                : "/client/subscriptions");
+		BigDecimal disputeAmount =
+			dispute.getAmount() != null ? BigDecimal.valueOf(dispute.getAmount() / 100.0) : BigDecimal.ZERO;
 
-        boolean isSubscription = Recurrence.MONTHLY.equals(subscription.getRecurrence()) || Recurrence.MONTHLY.equals(recurrence);
+		payment.setAmount(MoneyUtils.subtract(payment.getAmount(), disputeAmount));
+		payment.setStatus(PaymentStatus.FAILED);
+		repository.save(payment);
 
-        long expiresAt = (System.currentTimeMillis() / 1000L) + 1800;
+		Subscription subscription = payment.getSubscription();
 
-        SessionCreateParams.Builder paramsBuilder = SessionCreateParams.builder()
-                .setMode(isSubscription ? SessionCreateParams.Mode.SUBSCRIPTION : SessionCreateParams.Mode.PAYMENT)
-                .setCustomer(customer.getId())
-                .addPaymentMethodType(SessionCreateParams.PaymentMethodType.CARD)
-                .setSuccessUrl(successUrl)
-                .setExpiresAt(expiresAt)
-                .setCancelUrl(frontBaseUrl + "/client")
-                .setClientReferenceId(subscription.getClient().getId().toString());
+		if (subscription == null || !SubscriptionStatus.ACTIVE.equals(subscription.getStatus())) {
+			log.warn("Subscription not found or not active for payment with id: {}", payment.getId());
+			return;
+		}
 
-        if (isSubscription) {
-            metaData.put("invoice_description", "Invoice payment for your Tela's Subscription for monitors: " + subscription.getMonitorAddresses());
-            helper.configureSubscriptionParams(paramsBuilder, subscription, metaData, recurrence);
-        } else {
-            helper.configurePaymentParams(paramsBuilder, subscription, customer, metaData, recurrence);
-        }
+		subscription.setStatus(SubscriptionStatus.CANCELLED);
+		subscription.setEndsAt(Instant.now());
+		subscriptionRepository.save(subscription);
 
-        Session session = Session.create(paramsBuilder.build());
-        return session.getUrl();
-    }
+		if (Recurrence.MONTHLY.equals(subscription.getRecurrence())) {
+			log.info("Cancelling Stripe subscription with id: {} due to dispute funds withdrawn.", subscription.getId());
+			cancelStripeSubscription(subscription);
+		}
+	}
 
-    private void handleFailedPayment(Payment payment) {
-        log.warn("Payment failed id: {}", payment.getId());
-    }
 
-    private void finalizePayment(Payment payment) {
-        log.info("Finalizing payment update with id: {} and status: {}, attached to subscription with id: {}", payment.getId(), payment.getStatus(), payment.getSubscription().getId());
-        subscriptionRepository.save(payment.getSubscription());
-        repository.save(payment);
-    }
+	private void cancelStripeSubscription(Subscription subscription) {
+		try {
+			com.stripe.model.Subscription stripeSubscription = helper.getStripeSubscription(subscription);
+			stripeSubscription.cancel();
+		} catch (StripeException e) {
+			log.error("Error cancelling subscription with id: {} on Stripe, error message: {}", subscription.getId(),
+				e.getMessage());
+			throw new BusinessRuleException(
+				SubscriptionValidationMessages.SUBSCRIPTION_CANCELLATION_ERROR_DURING_DISPUTE + subscription.getId());
+		}
+	}
 
-    private Payment getPaymentFromIntent(PaymentIntent paymentIntent) {
-        String paymentIdString = paymentIntent.getMetadata().get("paymentId");
 
-        if (ValidateDataUtils.isNullOrEmptyString(paymentIdString)) {
-            log.warn("Payment ID is missing in the metadata of the payment intent with id: {}", paymentIntent.getId());
-            return null;
-        }
+	private Payment getPaymentFromStripeId(String paymentIntentId) {
+		return repository.findByStripeId(paymentIntentId)
+			.orElseThrow(() -> new ResourceNotFoundException(PaymentValidationMessages.PAYMENT_NOT_FOUND));
+	}
 
-        UUID paymentId = UUID.fromString(paymentIdString);
-        return repository.findById(paymentId)
-                .orElseThrow(() -> new ResourceNotFoundException(PaymentValidationMessages.PAYMENT_NOT_FOUND));
-    }
+
+	private String generateSession(Subscription subscription, Payment payment, Recurrence recurrence) throws StripeException {
+		Customer customer = clientHelper.getOrCreateCustomer(subscription);
+		Map<String, String> metaData = helper.createMetaData(subscription, payment, recurrence);
+
+		String successUrl = frontBaseUrl + (Objects.isNull(recurrence)
+			? helper.getSuccessUrl(subscription.getClient())
+			: "/client/subscriptions");
+
+		boolean isSubscription =
+			Recurrence.MONTHLY.equals(subscription.getRecurrence()) || Recurrence.MONTHLY.equals(recurrence);
+
+		long expiresAt = (System.currentTimeMillis() / 1000L) + 1800;
+
+		SessionCreateParams.Builder paramsBuilder = SessionCreateParams.builder()
+			.setMode(isSubscription ? SessionCreateParams.Mode.SUBSCRIPTION : SessionCreateParams.Mode.PAYMENT)
+			.setCustomer(customer.getId()).addPaymentMethodType(SessionCreateParams.PaymentMethodType.CARD)
+			.setSuccessUrl(successUrl).setExpiresAt(expiresAt).setCancelUrl(frontBaseUrl + "/client")
+			.setClientReferenceId(subscription.getId().toString());
+
+		if (isSubscription) {
+			metaData.put("invoice_description",
+				"Invoice payment for your Tela's Subscription for monitors: " + subscription.getMonitorAddresses());
+			helper.configureSubscriptionParams(paramsBuilder, subscription, metaData, recurrence);
+		} else {
+			helper.configurePaymentParams(paramsBuilder, subscription, customer, metaData, recurrence);
+		}
+
+		Session session = Session.create(paramsBuilder.build());
+		return session.getUrl();
+	}
+
+
+	private void handleFailedPayment(Payment payment) {
+		log.warn("Payment failed id: {}", payment.getId());
+	}
+
+
+	private void finalizePayment(Payment payment) {
+		log.info("Finalizing payment update with id: {} and status: {}, attached to subscription with id: {}", payment.getId(),
+			payment.getStatus(), payment.getSubscription().getId());
+		subscriptionRepository.save(payment.getSubscription());
+		repository.save(payment);
+	}
+
+
+	private Payment getPaymentFromIntent(PaymentIntent paymentIntent) {
+		String paymentIdString = paymentIntent.getMetadata().get("paymentId");
+
+		if (ValidateDataUtils.isNullOrEmptyString(paymentIdString)) {
+			log.warn("Payment ID is missing in the metadata of the payment intent with id: {}", paymentIntent.getId());
+			return null;
+		}
+
+		UUID paymentId = UUID.fromString(paymentIdString);
+		return repository.findById(paymentId)
+			.orElseThrow(() -> new ResourceNotFoundException(PaymentValidationMessages.PAYMENT_NOT_FOUND));
+	}
 }
