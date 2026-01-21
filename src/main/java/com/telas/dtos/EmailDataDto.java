@@ -1,6 +1,8 @@
 package com.telas.dtos;
 
 
+import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
+import com.telas.shared.utils.TrimLowercaseDeserializer;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
@@ -17,6 +19,7 @@ public class EmailDataDto implements Serializable {
   @Serial
   private static final long serialVersionUID = -3963846843873646628L;
 
+  @JsonDeserialize(using = TrimLowercaseDeserializer.class)
   private String email;
   private String template;
   private String subject;

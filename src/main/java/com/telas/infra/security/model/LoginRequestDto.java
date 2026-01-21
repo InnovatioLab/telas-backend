@@ -3,6 +3,7 @@ package com.telas.infra.security.model;
 
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import com.telas.shared.constants.valitation.ClientValidationMessages;
+import com.telas.shared.utils.TrimLowercaseDeserializer;
 import com.telas.shared.utils.TrimStringDeserializer;
 import jakarta.validation.constraints.NotBlank;
 import lombok.AllArgsConstructor;
@@ -22,7 +23,7 @@ public class LoginRequestDto implements Serializable {
     private static final long serialVersionUID = -3963846843873646628L;
 
     @NotBlank(message = "Username is required")
-    @JsonDeserialize(using = TrimStringDeserializer.class)
+    @JsonDeserialize(using = TrimLowercaseDeserializer.class)
     private String username;
 
     @NotBlank(message = ClientValidationMessages.PASSWORD_REQUIRED)

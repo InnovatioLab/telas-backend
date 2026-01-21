@@ -4,6 +4,7 @@ package com.telas.dtos.request;
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import com.telas.shared.constants.SharedConstants;
 import com.telas.shared.constants.valitation.ContactValidationMessages;
+import com.telas.shared.utils.TrimLowercaseDeserializer;
 import com.telas.shared.utils.TrimStringDeserializer;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotEmpty;
@@ -33,6 +34,6 @@ public class ContactRequestDto implements Serializable {
 
     @NotEmpty(message = ContactValidationMessages.EMAIL_REQUIRED)
     @Email(message = ContactValidationMessages.EMAIL_INVALID)
-    @JsonDeserialize(using = TrimStringDeserializer.class)
+    @JsonDeserialize(using = TrimLowercaseDeserializer.class)
     private String email;
 }
