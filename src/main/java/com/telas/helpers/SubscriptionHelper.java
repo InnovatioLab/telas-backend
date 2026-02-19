@@ -406,10 +406,17 @@ public class SubscriptionHelper {
             Invoice invoice = stripeSubscription.getLatestInvoiceObject() != null
                     ? stripeSubscription.getLatestInvoiceObject()
                     : Invoice.retrieve(stripeSubscription.getLatestInvoice());
+
             if (invoice == null) {
                 log.warn("No invoices found to void.");
                 return;
             }
+
+            if ("paid".equalsIgnoreCase(invoice.getStatus())) {
+                log.info("Skipping void for paid invoice {}.", invoice.getId());
+                return;
+            }
+            
             invoice.voidInvoice();
             log.info("Invoice {} voided successfully.", invoice.getId());
         } catch (StripeException e) {
