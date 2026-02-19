@@ -1,0 +1,65 @@
+version: "3.8"
+services:
+  loki:
+    image: grafana/loki:2.9.8
+    command: -config.file=/etc/loki/config.yaml
+    volumes:
+      - loki-data:/loki
+      - /opt/dockploy/configs/loki-config.yaml:/etc/loki/config.yaml:ro
+    ports:
+      - "3100:3100"
+    restart: unless-stopped
+    networks:
+      default:
+        aliases:
+          - loki
+
+  promtail:
+    image: grafana/promtail:main-b64daeb
+    command: -config.file=/etc/promtail/config.yml
+    volumes:
+      - /var/lib/docker/containers:/var/lib/docker/containers:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - /opt/dockploy/configs/promtail-config.yml:/etc/promtail/config.yml:ro
+    restart: unless-stopped
+    depends_on:
+      - loki
+
+  prometheus:
+    image: prom/prometheus:latest
+    command: --config.file=/etc/prometheus/prometheus.yml
+    volumes:
+      - /opt/dockploy/configs/prometheus-config.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus-data:/prometheus
+    ports:
+      - "9090:9090"
+    restart: unless-stopped
+    networks:
+      - default
+      - dokploy-network
+
+  grafana:
+    image: grafana/grafana-enterprise:9.5.20
+    restart: unless-stopped
+    ports:
+      - "3001:3000"
+    environment:
+      - NODE_ENV=production
+      - PORT=3000
+    volumes:
+      - grafana-storage:/var/lib/grafana
+    depends_on:
+      - loki
+    networks:
+      default:
+        aliases:
+          - grafana
+
+volumes:
+  grafana-storage: {}
+  loki-data: {}
+  prometheus-data: {}
+
+networks:
+  dokploy-network:
+    external: true

@@ -5,6 +5,6 @@ scrape_configs:
     static_configs:
       - targets: [ "prometheus:9090" ]
   - job_name: "Telas-api"
-    metrics_path: "/actuator/prometheus"
+    metrics_path: "/api/actuator/prometheus"
     static_configs:
       - targets: [ "telas-api:8080" ]
