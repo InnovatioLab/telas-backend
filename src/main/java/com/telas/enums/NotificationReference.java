@@ -186,6 +186,57 @@ public enum NotificationReference {
         public EmailDataDto getEmailData(Map<String, String> params) {
             return null;
         }
+    },
+    BOX_STATUS_UPDATED {
+        @Override
+        public String getNotificationMessage(Map<String, String> params) {
+            return String.format("""
+                    <div class="informacoes">
+                        <h4 id="notification-title" class="notification-title">Box status updated</h4>
+                        <p>The box with IP <strong>%s</strong> was <strong>%s</strong>.</p>
+                        <div class="field">
+                            <span class="field-label">Linked monitor address(es): </span>
+                            <span class="field-value">%s</span>
+                        </div>
+                        <div class="field">
+                            <span class="field-label">Notification time: </span>
+                            <span class="field-value">%s</span>
+                        </div>
+                    </div>
+                    """,
+                    params.get("ip"),
+                    params.get("statusLabel"),
+                    params.get("monitorAddresses"),
+                    params.get("notifiedAt"));
+        }
+
+        @Override
+        public EmailDataDto getEmailData(Map<String, String> params) {
+            return null;
+        }
+    },
+    MONITOR_STATUS_UPDATED {
+        @Override
+        public String getNotificationMessage(Map<String, String> params) {
+            return String.format("""
+                    <div class="informacoes">
+                        <h4 id="notification-title" class="notification-title">Monitor status updated</h4>
+                        <p>The monitor at <strong>%s</strong> was <strong>%s</strong>.</p>
+                        <div class="field">
+                            <span class="field-label">Notification time: </span>
+                            <span class="field-value">%s</span>
+                        </div>
+                    </div>
+                    """,
+                    params.get("monitorAddress"),
+                    params.get("statusLabel"),
+                    params.get("notifiedAt"));
+        }
+
+        @Override
+        public EmailDataDto getEmailData(Map<String, String> params) {
+            return null;
+        }
     };
 
     private static String createEndDateDiv(String endDate) {
