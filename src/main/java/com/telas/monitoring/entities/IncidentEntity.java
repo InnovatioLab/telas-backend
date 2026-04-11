@@ -1,6 +1,7 @@
 package com.telas.monitoring.entities;
 
 import com.telas.entities.Box;
+import com.telas.entities.Client;
 import com.telas.entities.Monitor;
 import jakarta.persistence.*;
 import lombok.Getter;
@@ -44,6 +45,16 @@ public class IncidentEntity {
 
     @Column(name = "closed_at")
     private Instant closedAt;
+
+    @Column(name = "acknowledged_at")
+    private Instant acknowledgedAt;
+
+    @Column(name = "acknowledge_reason")
+    private String acknowledgeReason;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "acknowledged_by")
+    private Client acknowledgedBy;
 
     @JdbcTypeCode(SqlTypes.JSON)
     @Column(name = "details_json")

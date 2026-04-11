@@ -1,5 +1,6 @@
 package com.telas.controllers.impl;
 
+import com.telas.dtos.request.AcknowledgeIncidentRequestDto;
 import com.telas.dtos.request.BoxLogRequestDto;
 import com.telas.dtos.request.HeartbeatRequestDto;
 import com.telas.dtos.response.ApplicationLogResponseDto;
@@ -9,7 +10,9 @@ import com.telas.dtos.response.ResponseDto;
 import com.telas.services.ApplicationLogQueryService;
 import com.telas.services.ApplicationLogService;
 import com.telas.services.BoxHeartbeatService;
+import com.telas.services.IncidentCommandService;
 import com.telas.services.IncidentQueryService;
+import com.telas.infra.security.model.AuthenticatedUser;
 import com.telas.infra.security.services.AuthenticatedUserService;
 import com.telas.shared.constants.MessageCommonsConstants;
 import io.swagger.v3.oas.annotations.Operation;
@@ -26,6 +29,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.Instant;
+import java.util.UUID;
 
 @RestController
 @RequestMapping("monitoring")
@@ -37,6 +41,7 @@ public class MonitoringControllerImpl {
     private final ApplicationLogService applicationLogService;
     private final ApplicationLogQueryService applicationLogQueryService;
     private final IncidentQueryService incidentQueryService;
+    private final IncidentCommandService incidentCommandService;
     private final AuthenticatedUserService authenticatedUserService;
 
     @PostMapping("/heartbeat")
@@ -86,5 +91,26 @@ public class MonitoringControllerImpl {
                 page.getNumber() + 1);
         return ResponseEntity.status(HttpStatus.OK)
                 .body(ResponseDto.fromData(body, HttpStatus.OK, MessageCommonsConstants.FIND_ALL_SUCCESS_MESSAGE));
+    }
+
+    @PostMapping("/incidents/{id}/acknowledge")
+    @Operation(summary = "Reconhece incidente (admin)")
+    @SecurityRequirement(name = "jwt")
+    public ResponseEntity<?> acknowledgeIncident(
+            @PathVariable UUID id, @Valid @RequestBody AcknowledgeIncidentRequestDto dto) {
+        AuthenticatedUser user = authenticatedUserService.validateAdmin();
+        IncidentResponseDto data = incidentCommandService.acknowledge(id, dto, user);
+        return ResponseEntity.status(HttpStatus.OK)
+                .body(ResponseDto.fromData(data, HttpStatus.OK, MessageCommonsConstants.UPDATE_SUCCESS_MESSAGE));
+    }
+
+    @PostMapping("/incidents/{id}/resolve")
+    @Operation(summary = "Resolve incidente (admin)")
+    @SecurityRequirement(name = "jwt")
+    public ResponseEntity<?> resolveIncident(@PathVariable UUID id) {
+        authenticatedUserService.validateAdmin();
+        IncidentResponseDto data = incidentCommandService.resolve(id);
+        return ResponseEntity.status(HttpStatus.OK)
+                .body(ResponseDto.fromData(data, HttpStatus.OK, MessageCommonsConstants.UPDATE_SUCCESS_MESSAGE));
     }
 }
