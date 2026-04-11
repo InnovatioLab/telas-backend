@@ -17,16 +17,16 @@ import java.util.UUID;
 public interface ClientRepository extends JpaRepository<Client, UUID>, JpaSpecificationExecutor<Client> {
     @NotNull
     @Override
-    @Query("SELECT c FROM Client c JOIN FETCH c.addresses WHERE c.id = :id")
+    @Query("SELECT DISTINCT c FROM Client c LEFT JOIN FETCH c.addresses WHERE c.id = :id")
     Optional<Client> findById(@NotNull UUID id);
 
-    @Query("SELECT c FROM Client c JOIN FETCH c.addresses WHERE c.id = :id AND c.status = 'ACTIVE'")
+    @Query("SELECT DISTINCT c FROM Client c LEFT JOIN FETCH c.addresses WHERE c.id = :id AND c.status = 'ACTIVE'")
     Optional<Client> findActiveById(UUID id);
 
-    @Query("SELECT c FROM Client c JOIN FETCH c.addresses LEFT JOIN c.attachments LEFT JOIN c.ads LEFT JOIN c.subscriptions WHERE c.id = :id AND c.status = 'ACTIVE'")
+    @Query("SELECT DISTINCT c FROM Client c LEFT JOIN FETCH c.addresses LEFT JOIN c.attachments LEFT JOIN c.ads LEFT JOIN c.subscriptions WHERE c.id = :id AND c.status = 'ACTIVE'")
     Optional<Client> findActiveIdFromToken(UUID id);
 
-    @Query("SELECT c FROM Client c JOIN FETCH c.addresses LEFT JOIN c.attachments LEFT JOIN c.ads LEFT JOIN c.subscriptions WHERE c.contact.email = :email")
+    @Query("SELECT DISTINCT c FROM Client c LEFT JOIN FETCH c.addresses LEFT JOIN c.attachments LEFT JOIN c.ads LEFT JOIN c.subscriptions WHERE c.contact.email = :email")
     Optional<Client> findByEmail(String email);
 
     @Query("SELECT c FROM Client c WHERE c.role = 'ADMIN'")

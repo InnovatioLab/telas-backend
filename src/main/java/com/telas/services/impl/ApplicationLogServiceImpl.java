@@ -7,6 +7,10 @@ import com.telas.services.ApplicationLogService;
 import com.telas.shared.utils.ValidateDataUtils;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.util.StringUtils;
+
+import java.util.HashMap;
+import java.util.Map;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -40,7 +44,14 @@ public class ApplicationLogServiceImpl implements ApplicationLogService {
         entity.setLevel(level);
         entity.setMessage(truncate(request.getMessage(), 4000));
         entity.setSource("BOX");
-        entity.setMetadataJson(request.getMetadata());
+        Map<String, Object> meta = new HashMap<>();
+        if (request.getMetadata() != null) {
+            meta.putAll(request.getMetadata());
+        }
+        if (StringUtils.hasText(request.getBoxAddress())) {
+            meta.put("boxAddress", request.getBoxAddress().trim());
+        }
+        entity.setMetadataJson(meta.isEmpty() ? null : meta);
         applicationLogEntityRepository.save(entity);
     }
 
