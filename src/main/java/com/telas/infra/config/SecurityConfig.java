@@ -31,8 +31,8 @@ public class SecurityConfig {
                     AllowedEndpointsConstants.getAllowedEndpoints().forEach((method, routes) -> routes.forEach(route -> auth.requestMatchers(method, route).permitAll()));
                     auth.anyRequest().authenticated();
                 })
-                .addFilterBefore(monitoringApiKeyFilter, SecurityFilter.class)
                 .addFilterBefore(securityFilter, UsernamePasswordAuthenticationFilter.class)
+                .addFilterBefore(monitoringApiKeyFilter, SecurityFilter.class)
                 .sessionManagement(conf -> conf.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .build();
     }

@@ -11,6 +11,7 @@ import com.telas.services.IncidentQueryService;
 import com.telas.infra.security.services.AuthenticatedUserService;
 import com.telas.shared.constants.MessageCommonsConstants;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -21,6 +22,7 @@ import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequestMapping("monitoring")
+@Tag(name = "Monitoring", description = "Heartbeat, logs de box e incidentes")
 @RequiredArgsConstructor
 public class MonitoringControllerImpl {
 

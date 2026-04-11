@@ -13,7 +13,7 @@ import java.util.UUID;
 @Repository
 public interface ApplicationLogEntityRepository extends JpaRepository<ApplicationLogEntity, UUID> {
 
-    @Modifying
+    @Modifying(clearAutomatically = true)
     @Query("DELETE FROM ApplicationLogEntity e WHERE e.createdAt < :cutoff")
     int deleteOlderThan(@Param("cutoff") Instant cutoff);
 }
