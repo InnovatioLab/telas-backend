@@ -25,6 +25,7 @@ public final class MonitorMapsResponseDto implements Serializable {
     private final String addressLocationName;
     private final String addressLocationDescription;
     private final String photoUrl;
+    private final Boolean boxActive;
 
     public MonitorMapsResponseDto(Monitor entity) {
         this(entity, entity.getAdsDailyDisplayTimeInMinutes());
@@ -43,5 +44,6 @@ public final class MonitorMapsResponseDto implements Serializable {
         addressLocationName = entity.getAddress() != null ? entity.getAddress().getLocationName() : null;
         addressLocationDescription = entity.getAddress() != null ? entity.getAddress().getLocationDescription() : null;
         photoUrl = entity.getAddress() != null && entity.getAddress().getPhotoUrl() != null ? entity.getAddress().getPhotoUrl() : null;
+        boxActive = entity.getBox() != null ? entity.getBox().isActive() : null;
     }
 }

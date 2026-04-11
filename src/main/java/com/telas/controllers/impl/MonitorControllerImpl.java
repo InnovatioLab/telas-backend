@@ -88,6 +88,15 @@ public class MonitorControllerImpl implements MonitorController {
     }
 
     @Override
+    @GetMapping("/admin/map-search")
+    @SecurityRequirement(name = "jwt")
+    public ResponseEntity<?> findMonitorsForAdminMapByZipCode(@RequestParam String zipCode) {
+        List<MonitorMapsResponseDto> monitors = service.findMonitorsForAdminMapByZipCode(zipCode);
+        String message = monitors.isEmpty() ? MessageCommonsConstants.FIND_FILTER_EMPTY_MESSAGE : MessageCommonsConstants.FIND_ALL_SUCCESS_MESSAGE;
+        return ResponseEntity.status(HttpStatus.OK).body(ResponseDto.fromData(monitors, HttpStatus.OK, message));
+    }
+
+    @Override
     @GetMapping("/displayed-ads/{id}")
     @SecurityRequirement(name = "jwt")
     public ResponseEntity<?> findCurrentDisplayedAdsFromBox(@PathVariable(name = "id") UUID monitorId) {

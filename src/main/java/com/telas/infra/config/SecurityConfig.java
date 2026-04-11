@@ -1,5 +1,6 @@
 package com.telas.infra.config;
 
+import com.telas.infra.security.filters.MonitoringApiKeyFilter;
 import com.telas.infra.security.filters.SecurityFilter;
 import com.telas.shared.constants.AllowedEndpointsConstants;
 import lombok.RequiredArgsConstructor;
@@ -19,6 +20,7 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 @RequiredArgsConstructor
 public class SecurityConfig {
     private final SecurityFilter securityFilter;
+    private final MonitoringApiKeyFilter monitoringApiKeyFilter;
 
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
@@ -29,6 +31,7 @@ public class SecurityConfig {
                     AllowedEndpointsConstants.getAllowedEndpoints().forEach((method, routes) -> routes.forEach(route -> auth.requestMatchers(method, route).permitAll()));
                     auth.anyRequest().authenticated();
                 })
+                .addFilterBefore(monitoringApiKeyFilter, SecurityFilter.class)
                 .addFilterBefore(securityFilter, UsernamePasswordAuthenticationFilter.class)
                 .sessionManagement(conf -> conf.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .build();

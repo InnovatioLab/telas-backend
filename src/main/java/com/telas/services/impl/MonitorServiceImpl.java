@@ -137,26 +137,35 @@ public class MonitorServiceImpl implements MonitorService {
 	@Transactional(readOnly = true)
 	public List<MonitorMapsResponseDto> findNearestActiveMonitors(String zipCode) {
 		UUID clientId = authenticatedUserService.getLoggedUser().client().getId();
-		return repository.findAvailableMonitorsByZipCode(zipCode, clientId).stream().map(monitor -> {
-			List<SubscriptionMonitor> subscriptionMonitors = helper.getSubscriptionsMonitorsFromMonitor(monitor.getId());
+		return repository.findAvailableMonitorsByZipCode(zipCode, clientId).stream().map(this::toMonitorMapsResponseDto).toList();
+	}
 
-			int totalSubscriptionBlocks = MonitorBlocksUtils.sumSubscriptionBlocks(subscriptionMonitors);
+	@Override
+	@Transactional(readOnly = true)
+	public List<MonitorMapsResponseDto> findMonitorsForAdminMapByZipCode(String zipCode) {
+		authenticatedUserService.validateAdmin();
+		return repository.findAllForAdminMapByZipCode(zipCode).stream().map(this::toMonitorMapsResponseDto).toList();
+	}
 
-			Map<UUID, SubscriptionMonitor> subsByClientId = subscriptionMonitors.stream()
-				.filter(sm -> sm.getSubscription() != null && sm.getSubscription().getClient() != null)
-				.collect(Collectors.toMap(sm -> sm.getSubscription().getClient().getId(), sm -> sm, (a, b) -> a));
+	private MonitorMapsResponseDto toMonitorMapsResponseDto(Monitor monitor) {
+		List<SubscriptionMonitor> subscriptionMonitors = helper.getSubscriptionsMonitorsFromMonitor(monitor.getId());
 
-			long unmatchedAdsCount = monitor.getMonitorAds().stream().filter(ma -> {
-				UUID clientIdAd =
-					ma.getAd() != null && ma.getAd().getClient() != null ? ma.getAd().getClient().getId() : null;
-				return clientIdAd == null || !subsByClientId.containsKey(clientIdAd);
-			}).count();
+		int totalSubscriptionBlocks = MonitorBlocksUtils.sumSubscriptionBlocks(subscriptionMonitors);
 
-			int adsDailyMinutes = MonitorBlocksUtils.calculateAdsDailyDisplayTimeInMinutes(monitor.getMaxBlocks(),
-				totalSubscriptionBlocks, unmatchedAdsCount);
+		Map<UUID, SubscriptionMonitor> subsByClientId = subscriptionMonitors.stream()
+			.filter(sm -> sm.getSubscription() != null && sm.getSubscription().getClient() != null)
+			.collect(Collectors.toMap(sm -> sm.getSubscription().getClient().getId(), sm -> sm, (a, b) -> a));
 
-			return new MonitorMapsResponseDto(monitor, adsDailyMinutes);
-		}).toList();
+		long unmatchedAdsCount = monitor.getMonitorAds().stream().filter(ma -> {
+			UUID clientIdAd =
+				ma.getAd() != null && ma.getAd().getClient() != null ? ma.getAd().getClient().getId() : null;
+			return clientIdAd == null || !subsByClientId.containsKey(clientIdAd);
+		}).count();
+
+		int adsDailyMinutes = MonitorBlocksUtils.calculateAdsDailyDisplayTimeInMinutes(monitor.getMaxBlocks(),
+			totalSubscriptionBlocks, unmatchedAdsCount);
+
+		return new MonitorMapsResponseDto(monitor, adsDailyMinutes);
 	}
 
 

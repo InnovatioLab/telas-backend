@@ -3,6 +3,7 @@ package com.telas.infra.exceptions;
 import com.fasterxml.jackson.databind.exc.InvalidFormatException;
 import com.stripe.exception.StripeException;
 import com.telas.dtos.response.ResponseDto;
+import com.telas.services.ApplicationLogService;
 import jakarta.persistence.OptimisticLockException;
 import org.springframework.context.support.DefaultMessageSourceResolvable;
 import org.springframework.dao.DataIntegrityViolationException;
@@ -30,9 +31,11 @@ import java.util.stream.Collectors;
 @RestControllerAdvice
 public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
     private final ObjectMapper objectMapper;
+    private final ApplicationLogService applicationLogService;
 
-    public GlobalExceptionHandler(ObjectMapper objectMapper) {
+    public GlobalExceptionHandler(ObjectMapper objectMapper, ApplicationLogService applicationLogService) {
         this.objectMapper = objectMapper;
+        this.applicationLogService = applicationLogService;
     }
 
     @ExceptionHandler({DataIntegrityViolationException.class})
@@ -214,6 +217,12 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
     private void logException(String title, Throwable ex, ResponseDto<?> res) {
         String message = " =============== " + title + " ========================== | response=" + formatResponse(res);
         logger.error(message, ex);
+        if (res != null && res.getStatus() != null) {
+            try {
+                applicationLogService.persistFromHandler(title, ex, res.getStatus());
+            } catch (RuntimeException ignored) {
+            }
+        }
     }
 
     private String formatResponse(ResponseDto<?> res) {

@@ -21,6 +21,8 @@ public interface MonitorService {
 
     List<MonitorMapsResponseDto> findNearestActiveMonitors(String zipCode);
 
+    List<MonitorMapsResponseDto> findMonitorsForAdminMapByZipCode(String zipCode);
+
     List<MonitorsBoxMinResponseDto> findAllMonitors();
 
     List<MonitorValidAdResponseDto> findValidAdsForMonitor(UUID monitorId, String name);
