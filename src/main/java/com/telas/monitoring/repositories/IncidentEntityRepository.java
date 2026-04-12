@@ -12,4 +12,6 @@ import java.util.UUID;
 public interface IncidentEntityRepository extends JpaRepository<IncidentEntity, UUID> {
 
     Page<IncidentEntity> findAllByOrderByOpenedAtDesc(Pageable pageable);
+
+    boolean existsByMonitor_IdAndIncidentTypeAndClosedAtIsNull(UUID monitorId, String incidentType);
 }

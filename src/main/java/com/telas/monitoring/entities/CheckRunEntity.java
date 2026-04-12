@@ -24,8 +24,12 @@ public class CheckRunEntity {
     private UUID id;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "check_definition_id", nullable = false)
+    @JoinColumn(name = "check_definition_id")
     private CheckDefinitionEntity checkDefinition;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "smart_plug_id")
+    private SmartPlugEntity smartPlug;
 
     @Column(name = "started_at", nullable = false)
     private Instant startedAt = Instant.now();

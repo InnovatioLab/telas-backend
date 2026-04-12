@@ -28,6 +28,9 @@ public class MonitoringWorkerService {
     @Value("${monitoring.heartbeat.stale-seconds:180}")
     private long staleSeconds;
 
+    @Value("${monitoring.kasa.enabled:true}")
+    private boolean kasaEnabled;
+
     @Scheduled(fixedDelayString = "${monitoring.worker.interval-ms:60000}")
     @SchedulerLock(name = "monitoringWorker", lockAtMostFor = "PT50S", lockAtLeastFor = "PT5S")
     @Transactional
@@ -46,6 +49,8 @@ public class MonitoringWorkerService {
             dto.setIncidentSeverity("CRITICAL");
             healthUpdateService.applyHealthUpdate(dto);
         }
-        kasMonitoringCheckRunner.runKasaChecks();
+        if (kasaEnabled) {
+            kasMonitoringCheckRunner.runKasaChecks();
+        }
     }
 }
