@@ -179,8 +179,16 @@ public class Client extends BaseAudit implements Serializable {
         return Role.ADMIN.equals(role);
     }
 
+    public boolean isDeveloper() {
+        return Role.DEVELOPER.equals(role);
+    }
+
+    public boolean isPrivilegedPanelUser() {
+        return isAdmin() || isDeveloper();
+    }
+
     public boolean hasActiveSubscription() {
-        if (isAdmin()) {
+        if (isPrivilegedPanelUser()) {
             return true;
         }
 

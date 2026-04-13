@@ -61,7 +61,7 @@ public class SubscriptionServiceImpl implements SubscriptionService {
     public String save() {
         Client client = authenticatedUserService.getLoggedUser().client();
 
-        if (Role.ADMIN.equals(client.getRole())) {
+        if (client.isPrivilegedPanelUser()) {
             return null;
         }
 
@@ -121,7 +121,7 @@ public class SubscriptionServiceImpl implements SubscriptionService {
     public String generateCustomerPortalSession() throws StripeException {
         Client client = authenticatedUserService.getLoggedUser().client();
 
-        if (Role.ADMIN.equals(client.getRole())) {
+        if (client.isPrivilegedPanelUser()) {
             return null;
         }
         return helper.generateCustomerPortalSession(client);
@@ -132,7 +132,7 @@ public class SubscriptionServiceImpl implements SubscriptionService {
     public String renewSubscription(UUID subscriptionId) {
         Client client = authenticatedUserService.getLoggedUser().client();
 
-        if (Role.ADMIN.equals(client.getRole())) {
+        if (client.isPrivilegedPanelUser()) {
             return null;
         }
 
@@ -312,7 +312,7 @@ public class SubscriptionServiceImpl implements SubscriptionService {
         try {
             com.stripe.model.Subscription stripeSubscription = helper.getStripeSubscription(subscription);
 
-            if (Role.ADMIN.equals(client.getRole())) {
+            if (client.isPrivilegedPanelUser()) {
                 log.info("Subscription with id: {} set to cancel NOW by admin, removing monitors ads", subscription.getId());
                 stripeSubscription.cancel();
             } else {

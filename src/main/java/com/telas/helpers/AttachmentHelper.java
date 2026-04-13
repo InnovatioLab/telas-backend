@@ -149,7 +149,7 @@ public class AttachmentHelper {
 
     @Transactional
     public void saveAds(AttachmentRequestDto request, Client client) {
-        Ad ad = Role.ADMIN.equals(client.getRole()) || (client.isPartner() && !client.getApprovedAds().isEmpty())
+        Ad ad = client.isPrivilegedPanelUser() || (client.isPartner() && !client.getApprovedAds().isEmpty())
                 ? (request.getId() == null ? createNewAd(request, client) : updateExistingAd(request))
                 : (client.getAdRequest().getAd() == null ? createNewAdFromRequest(client.getAdRequest(), request) : updateExistingAdFromRequest(client.getAdRequest().getAd(), request));
         uploadAttachment(request, ad);
@@ -233,7 +233,7 @@ public class AttachmentHelper {
     private void setAdValidationDuringUpdate(Ad entity) {
         Client client = entity.getClient();
 
-        if (Role.ADMIN.equals(client.getRole()) || (client.isPartner() && !client.getApprovedAds().isEmpty())) {
+        if (client.isPrivilegedPanelUser() || (client.isPartner() && !client.getApprovedAds().isEmpty())) {
             entity.setValidation(AdValidationType.APPROVED);
             return;
         }
@@ -243,7 +243,7 @@ public class AttachmentHelper {
     private boolean shouldRemoveAdFromMonitors(Ad ad) {
         Client client = ad.getClient();
         return AdValidationType.APPROVED.equals(ad.getValidation())
-                && !Role.ADMIN.equals(client.getRole())
+                && !client.isPrivilegedPanelUser()
                 && !subscriptionHelper.getClientActiveSubscriptions(client.getId()).isEmpty();
     }
 

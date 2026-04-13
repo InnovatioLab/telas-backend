@@ -56,7 +56,7 @@ public class ApplicationLogServiceImpl implements ApplicationLogService {
     }
 
     @Override
-    @Transactional(propagation = Propagation.REQUIRED)
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void persistSystemLog(String level, String message, String source, Map<String, Object> metadata) {
         String lvl = ValidateDataUtils.isNullOrEmptyString(level) ? "INFO" : level.toUpperCase();
         if (!lvl.matches("TRACE|DEBUG|INFO|WARN|ERROR")) {

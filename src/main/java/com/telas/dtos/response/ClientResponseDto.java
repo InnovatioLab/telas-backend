@@ -11,9 +11,9 @@ import lombok.Getter;
 
 import java.io.Serial;
 import java.io.Serializable;
+import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
-import java.util.Set;
 import java.util.UUID;
 
 @Getter
@@ -55,7 +55,13 @@ public final class ClientResponseDto implements Serializable {
 
     private final int currentSubscriptionFlowStep;
 
-    public ClientResponseDto(Client entity, List<LinkResponseDto> attachmentUrls, List<AdResponseDto> adsUrls) {
+    private final List<String> permissions;
+
+    public ClientResponseDto(
+            Client entity,
+            List<LinkResponseDto> attachmentUrls,
+            List<AdResponseDto> adsUrls,
+            List<String> permissions) {
         id = entity.getId();
         businessName = entity.getBusinessName();
         role = entity.getRole();
@@ -74,5 +80,6 @@ public final class ClientResponseDto implements Serializable {
         shouldDisplayAttachments = !entity.getSubscriptions().isEmpty()
                 && entity.getSubscriptions().stream().anyMatch(subscription -> SubscriptionStatus.ACTIVE.equals(subscription.getStatus()));
         hasAdRequest = Objects.nonNull(entity.getAdRequest());
+        this.permissions = permissions != null ? List.copyOf(permissions) : Collections.emptyList();
     }
 }

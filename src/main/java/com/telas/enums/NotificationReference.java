@@ -39,7 +39,7 @@ public enum NotificationReference {
                     "Your plan is now active.",
                     params,
                     createEndDateDiv(params.get("endDate")),
-                    "Manage yours subscriptions",
+                    "Manage your subscriptions",
                     true
             );
         }
@@ -57,7 +57,7 @@ public enum NotificationReference {
                     "Thank you for renewing your subscription.",
                     params,
                     createEndDateDiv(params.get("endDate"), "New End Date"),
-                    "Manage yours subscriptions",
+                    "Manage your subscriptions",
                     false
             );
         }
@@ -75,7 +75,7 @@ public enum NotificationReference {
                     "Thank you for upgrading your subscription.",
                     params,
                     createEndDateDiv(params.get("endDate"), "New End Date"),
-                    "Manage yours subscriptions",
+                    "Manage your subscriptions",
                     false
             );
         }

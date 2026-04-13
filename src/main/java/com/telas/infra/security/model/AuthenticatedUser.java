@@ -51,6 +51,10 @@ public record AuthenticatedUser(Client client) implements UserDetails {
         return client.isAdmin();
     }
 
+    public boolean isDeveloper() {
+        return client.isDeveloper();
+    }
+
     public boolean isTermsAccepted() {
         return client.isTermsAccepted();
     }

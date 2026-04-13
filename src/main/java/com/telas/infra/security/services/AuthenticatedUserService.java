@@ -1,5 +1,6 @@
 package com.telas.infra.security.services;
 
+import com.telas.enums.Permission;
 import com.telas.infra.security.model.AuthenticatedUser;
 import org.springframework.security.core.userdetails.UserDetails;
 
@@ -11,6 +12,10 @@ public interface AuthenticatedUserService {
   AuthenticatedUser validateSelfOrAdmin(UUID id);
 
   AuthenticatedUser validateAdmin();
+
+  AuthenticatedUser validateDeveloper();
+
+  void validatePermission(Permission permission);
 
   AuthenticatedUser validateActiveSubscription();
 

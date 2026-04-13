@@ -3,6 +3,7 @@ package com.telas.controllers.impl;
 import com.telas.dtos.response.BoxHeartbeatCheckResponseDto;
 import com.telas.dtos.response.MonitoringTestingRowDto;
 import com.telas.dtos.response.ResponseDto;
+import com.telas.enums.Permission;
 import com.telas.infra.security.services.AuthenticatedUserService;
 import com.telas.services.MonitoringTestingService;
 import com.telas.shared.constants.MessageCommonsConstants;
@@ -48,7 +49,7 @@ public class MonitoringTestingControllerImpl {
     @Operation(summary = "Verifica último heartbeat da box (lógico, não ICMP)")
     @SecurityRequirement(name = "jwt")
     public ResponseEntity<?> checkBox(@PathVariable UUID boxId) {
-        authenticatedUserService.validateAdmin();
+        authenticatedUserService.validatePermission(Permission.MONITORING_TESTING_EXECUTE);
         BoxHeartbeatCheckResponseDto data = monitoringTestingService.checkBoxHeartbeat(boxId);
         return ResponseEntity.status(HttpStatus.OK)
                 .body(

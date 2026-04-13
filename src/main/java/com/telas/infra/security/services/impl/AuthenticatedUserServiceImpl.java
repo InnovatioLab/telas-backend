@@ -2,11 +2,13 @@ package com.telas.infra.security.services.impl;
 
 import com.telas.entities.Client;
 import com.telas.enums.DefaultStatus;
+import com.telas.enums.Permission;
 import com.telas.infra.exceptions.ForbiddenException;
 import com.telas.infra.exceptions.UnauthorizedException;
 import com.telas.infra.security.model.AuthenticatedUser;
 import com.telas.infra.security.services.AuthenticatedUserService;
 import com.telas.repositories.ClientRepository;
+import com.telas.services.PermissionService;
 import com.telas.shared.constants.valitation.AuthValidationMessageConstants;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.Authentication;
@@ -21,6 +23,7 @@ import java.util.UUID;
 @RequiredArgsConstructor
 public class AuthenticatedUserServiceImpl implements AuthenticatedUserService {
     private final ClientRepository clientRepository;
+    private final PermissionService permissionService;
 
     @Transactional(readOnly = true)
     @Override
@@ -64,7 +67,7 @@ public class AuthenticatedUserServiceImpl implements AuthenticatedUserService {
         Client loggedClient = getLoggedUser().client();
         AuthenticatedUser authenticatedUser = new AuthenticatedUser(loggedClient);
 
-        if (loggedClient.isAdmin() || loggedClient.getId().equals(id)) {
+        if (loggedClient.isPrivilegedPanelUser() || loggedClient.getId().equals(id)) {
             return authenticatedUser;
         }
 
@@ -77,12 +80,30 @@ public class AuthenticatedUserServiceImpl implements AuthenticatedUserService {
         Client loggedClient = getLoggedUser().client();
         AuthenticatedUser authenticatedUser = new AuthenticatedUser(loggedClient);
 
-        if (loggedClient.isAdmin()) {
+        if (loggedClient.isPrivilegedPanelUser()) {
             return authenticatedUser;
         }
 
         throw new ForbiddenException(AuthValidationMessageConstants.ERROR_NO_PERMISSION);
+    }
 
+    @Transactional(readOnly = true)
+    @Override
+    public AuthenticatedUser validateDeveloper() {
+        Client loggedClient = getLoggedUser().client();
+        if (loggedClient.isDeveloper()) {
+            return new AuthenticatedUser(loggedClient);
+        }
+        throw new ForbiddenException(AuthValidationMessageConstants.ERROR_NO_PERMISSION);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public void validatePermission(Permission permission) {
+        Client loggedClient = getLoggedUser().client();
+        if (!permissionService.hasPermission(loggedClient, permission)) {
+            throw new ForbiddenException(AuthValidationMessageConstants.ERROR_NO_PERMISSION);
+        }
     }
 
     @Override
@@ -91,7 +112,7 @@ public class AuthenticatedUserServiceImpl implements AuthenticatedUserService {
         Client loggedClient = getLoggedUser().client();
         AuthenticatedUser authenticatedUser = new AuthenticatedUser(loggedClient);
 
-        if (loggedClient.hasActiveSubscription() || loggedClient.isAdmin()) {
+        if (loggedClient.hasActiveSubscription() || loggedClient.isPrivilegedPanelUser()) {
             return authenticatedUser;
         }
 
@@ -103,7 +124,9 @@ public class AuthenticatedUserServiceImpl implements AuthenticatedUserService {
     public void verifyTermsAccepted(UserDetails user) {
         AuthenticatedUser authenticatedUser = (AuthenticatedUser) user;
 
-        if (!authenticatedUser.isAdmin() && !authenticatedUser.isTermsAccepted()) {
+        if (!authenticatedUser.isAdmin()
+                && !authenticatedUser.isDeveloper()
+                && !authenticatedUser.isTermsAccepted()) {
             throw new ForbiddenException(AuthValidationMessageConstants.ERROR_TERMS_NOT_ACCEPTED);
         }
     }

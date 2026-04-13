@@ -11,6 +11,7 @@ import com.telas.services.ApplicationLogQueryService;
 import com.telas.services.ApplicationLogService;
 import com.telas.services.BoxHeartbeatService;
 import com.telas.services.IncidentCommandService;
+import com.telas.enums.Permission;
 import com.telas.services.IncidentQueryService;
 import com.telas.infra.security.model.AuthenticatedUser;
 import com.telas.infra.security.services.AuthenticatedUserService;
@@ -66,7 +67,7 @@ public class MonitoringControllerImpl {
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) Instant to,
             @RequestParam(required = false) String q,
             @PageableDefault(size = 20) Pageable pageable) {
-        authenticatedUserService.validateAdmin();
+        authenticatedUserService.validatePermission(Permission.MONITORING_LOGS_VIEW);
         Page<ApplicationLogResponseDto> page =
                 applicationLogQueryService.findAll(source, level, from, to, q, pageable);
         PaginationResponseDto<java.util.List<ApplicationLogResponseDto>> body =
