@@ -14,4 +14,6 @@ public interface IncidentEntityRepository extends JpaRepository<IncidentEntity, 
     Page<IncidentEntity> findAllByOrderByOpenedAtDesc(Pageable pageable);
 
     boolean existsByMonitor_IdAndIncidentTypeAndClosedAtIsNull(UUID monitorId, String incidentType);
+
+    boolean existsByBox_IdAndIncidentTypeAndClosedAtIsNull(UUID boxId, String incidentType);
 }

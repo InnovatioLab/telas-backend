@@ -187,6 +187,31 @@ public enum NotificationReference {
             return null;
         }
     },
+    MONITORING_HOST_REBOOT {
+        @Override
+        public String getNotificationMessage(Map<String, String> params) {
+            return String.format("""
+                    <div class="informacoes">
+                        <h4 id="notification-title" class="notification-title">Monitoring: host reboot detected</h4>
+                        <p>Box IP <strong>%s</strong> — incident <strong>%s</strong> (severity %s). Uptime drop: %s s.</p>
+                        <div class="field">
+                            <span class="field-label">Notification time: </span>
+                            <span class="field-value">%s</span>
+                        </div>
+                    </div>
+                    """,
+                    params.get("boxIp"),
+                    params.get("incidentType"),
+                    params.get("severity"),
+                    params.get("uptimeDropSeconds"),
+                    params.get("notifiedAt"));
+        }
+
+        @Override
+        public EmailDataDto getEmailData(Map<String, String> params) {
+            return null;
+        }
+    },
     BOX_STATUS_UPDATED {
         @Override
         public String getNotificationMessage(Map<String, String> params) {

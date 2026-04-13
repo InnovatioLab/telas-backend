@@ -4,5 +4,5 @@ import com.telas.dtos.request.HeartbeatRequestDto;
 
 public interface BoxHeartbeatService {
 
-    void record(HeartbeatRequestDto request);
+    void persistHeartbeat(HeartbeatRequestDto request);
 }

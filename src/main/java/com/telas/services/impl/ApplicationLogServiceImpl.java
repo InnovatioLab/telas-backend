@@ -55,6 +55,26 @@ public class ApplicationLogServiceImpl implements ApplicationLogService {
         applicationLogEntityRepository.save(entity);
     }
 
+    @Override
+    @Transactional(propagation = Propagation.REQUIRED)
+    public void persistSystemLog(String level, String message, String source, Map<String, Object> metadata) {
+        String lvl = ValidateDataUtils.isNullOrEmptyString(level) ? "INFO" : level.toUpperCase();
+        if (!lvl.matches("TRACE|DEBUG|INFO|WARN|ERROR")) {
+            lvl = "INFO";
+        }
+        String src =
+                ValidateDataUtils.isNullOrEmptyString(source) ? "MONITORING" : source.trim();
+        if (src.length() > 50) {
+            src = src.substring(0, 50);
+        }
+        ApplicationLogEntity entity = new ApplicationLogEntity();
+        entity.setLevel(lvl);
+        entity.setMessage(truncate(message, 4000));
+        entity.setSource(src);
+        entity.setMetadataJson(metadata == null || metadata.isEmpty() ? null : new HashMap<>(metadata));
+        applicationLogEntityRepository.save(entity);
+    }
+
     private static String truncate(String s, int max) {
         if (s == null) {
             return null;

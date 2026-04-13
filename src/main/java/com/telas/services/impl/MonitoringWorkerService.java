@@ -32,7 +32,7 @@ public class MonitoringWorkerService {
     private boolean kasaEnabled;
 
     @Scheduled(fixedDelayString = "${monitoring.worker.interval-ms:60000}")
-    @SchedulerLock(name = "monitoringWorker", lockAtMostFor = "PT50S", lockAtLeastFor = "PT5S")
+    @SchedulerLock(name = "monitoringWorker", lockAtMostFor = "PT120S", lockAtLeastFor = "PT5S")
     @Transactional
     public void runChecks() {
         Instant cutoff = Instant.now().minusSeconds(staleSeconds);

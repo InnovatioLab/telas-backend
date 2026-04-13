@@ -1,12 +1,10 @@
 package com.telas.dtos.response;
 
-import com.telas.entities.Monitor;
 import lombok.Getter;
 
 import java.io.Serial;
 import java.io.Serializable;
 import java.util.List;
-import java.util.UUID;
 
 @Getter
 public final class BoxMonitorAdResponseDto implements Serializable {

@@ -46,7 +46,7 @@ public class MonitoringControllerImpl {
 
     @PostMapping("/heartbeat")
     public ResponseEntity<Void> heartbeat(@Valid @RequestBody HeartbeatRequestDto request) {
-        boxHeartbeatService.record(request);
+        boxHeartbeatService.persistHeartbeat(request);
         return ResponseEntity.noContent().build();
     }
 

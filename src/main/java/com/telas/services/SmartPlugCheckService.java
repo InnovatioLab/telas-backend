@@ -114,7 +114,9 @@ public class SmartPlugCheckService {
             thresholdState.resetLowPower(plug.getId());
             if (!heartbeatStale) {
                 Map<String, Object> details = baseDetails(plug, reading, heartbeatStale);
-                details.put("hypothesis", "Plug unreachable while box heartbeat is fresh; check LAN path to plug.");
+                details.put(
+                        "hypothesis",
+                        "Tomada incontactável com heartbeat da box recente; verificar rede até ao plug ou corte de energia no equipamento.");
                 maybeCreateIncident(plug, "OTHER", "WARNING", details);
             }
             return;
@@ -136,7 +138,7 @@ public class SmartPlugCheckService {
                 Map<String, Object> details = baseDetails(plug, reading, heartbeatStale);
                 details.put(
                         "hypothesis",
-                        "Relay on but power below threshold; possible downstream device or cable fault.");
+                        "Relay ligado mas potência abaixo do limiar (várias leituras); possível perda de carga/corrente no ramo do monitor ou falha a jusante.");
                 details.put("lowPowerStreak", streak);
                 maybeCreateIncident(plug, "POWER_LOSS", "CRITICAL", details);
             }
