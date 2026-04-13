@@ -17,7 +17,7 @@ public class ApplicationLogRetentionScheduler {
 
     private final ApplicationLogEntityRepository applicationLogEntityRepository;
 
-    @Value("${monitoring.log.retention.days:30}")
+    @Value("${monitoring.log.retention.days:60}")
     private int retentionDays;
 
     @Scheduled(cron = "${monitoring.log.retention.cron:0 0 3 * * *}")
