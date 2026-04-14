@@ -49,7 +49,7 @@ public final class SharedConstants {
     public static final int TOTAL_MINUTES_IN_A_DAY = 24 * 60;
 
 
-    public static final int MAX_MONITOR_ADS = 17;
+    public static final int MAX_MONITOR_ADS = 15;
     public static final int MAX_ADS_VALIDATION = 3;
     public static final int MIN_QUANTITY_MONITOR_BLOCK = 1;
     public static final int MAX_QUANTITY_MONITOR_BLOCK = 2;
