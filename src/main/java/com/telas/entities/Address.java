@@ -11,6 +11,10 @@ import org.hibernate.envers.AuditTable;
 
 import java.io.Serial;
 import java.io.Serializable;
+import org.springframework.web.util.HtmlUtils;
+
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Objects;
 import java.util.StringJoiner;
 import java.util.UUID;
@@ -116,6 +120,25 @@ public class Address extends BaseAudit implements Serializable {
 
         String result = joiner.toString();
         return result + ".<br/>";
+    }
+
+    public String getFullAddressFormattedHtml() {
+        List<String> parts = new ArrayList<>();
+        if (locationName != null && !locationName.isBlank()) {
+            parts.add(HtmlUtils.htmlEscape(locationName.trim()));
+        }
+        parts.add(HtmlUtils.htmlEscape(street));
+        if (address2 != null && !address2.isBlank()) {
+            parts.add(HtmlUtils.htmlEscape(address2.trim()));
+        }
+        parts.add(HtmlUtils.htmlEscape(city) + ", " + HtmlUtils.htmlEscape(state) + " " + HtmlUtils.htmlEscape(zipCode));
+        if (country != null && !country.isBlank()) {
+            parts.add(HtmlUtils.htmlEscape(country.trim()));
+        }
+        if (locationDescription != null && !locationDescription.isBlank()) {
+            parts.add(HtmlUtils.htmlEscape(locationDescription.trim()));
+        }
+        return String.join("<br/>", parts);
     }
 
 }

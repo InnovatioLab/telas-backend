@@ -112,29 +112,6 @@ public enum NotificationReference {
             );
         }
     },
-    SUBSCRIPTION_ABOUT_TO_EXPIRY_LAST_DAY {
-        @Override
-        public String getNotificationMessage(Map<String, String> params) {
-            return String.format("""
-                    <div class="informacoes">
-                        <h4 id="notification-title" class="notification-title">Last Day of Service!</h4>
-                        <p>Today marks the last day of your Telas advertising service.</p>
-                    </div>
-                    <p>Don’t let your momentum fade, please visit this <a id="link-details" class='details link-text' href="%s">link</a> and renew your subscription now.</p>
-                    """, params.get("link"));
-        }
-
-        @Override
-        public EmailDataDto getEmailData(Map<String, String> params) {
-            return createEmailData(
-                    SharedConstants.EMAIL_SUBJECT_SUBSCRIPTION_EXPIRING_LAST_DAY,
-                    SharedConstants.TEMPLATE_EMAIL_SUBSCRIPTION_EXPIRING_LAST_DAY,
-                    params,
-                    null,
-                    null
-            );
-        }
-    },
     AD_RECEIVED {
         @Override
         public String getNotificationMessage(Map<String, String> params) {
@@ -262,6 +239,120 @@ public enum NotificationReference {
         public EmailDataDto getEmailData(Map<String, String> params) {
             return null;
         }
+    },
+    ADMIN_NEW_PURCHASE {
+        @Override
+        public String getNotificationMessage(Map<String, String> params) {
+            return String.format("""
+                    <div class="informacoes">
+                        <h4 id="notification-title" class="notification-title">New purchase</h4>
+                        <p>Customer <strong>%s</strong> completed a purchase.</p>
+                        <div class="field">
+                            <span class="field-label">Subscription ID: </span>
+                            <span class="field-value">%s</span>
+                        </div>
+                    </div>
+                    """,
+                    params.get("buyerName"),
+                    params.get("subscriptionId"));
+        }
+
+        @Override
+        public EmailDataDto getEmailData(Map<String, String> params) {
+            return createAdminNewPurchaseEmailData(params);
+        }
+    },
+    SUBSCRIPTION_ABOUT_TO_EXPIRY_5_DAYS {
+        @Override
+        public String getNotificationMessage(Map<String, String> params) {
+            return String.format("""
+                    <div class="informacoes">
+                        <h4 id="notification-title" class="notification-title">5 Days Before Expiration</h4>
+                        <p>Your Telas advertising service is ending soon.</p>
+                        <div class="field">
+                            <span id="attachment-name" class="field-label">Service end date: </span>
+                            <span class="field-value">%s</span>
+                        </div>
+                    </div>
+                    <p>To continue without interruption, visit this <a id="link-details" class='details link-text' href="%s">link</a>.</p>
+                    """, params.get("endDate"), params.get("link"));
+        }
+
+        @Override
+        public EmailDataDto getEmailData(Map<String, String> params) {
+            return createCountdownExpiryEmailData(
+                    SharedConstants.EMAIL_SUBJECT_SUBSCRIPTION_EXPIRING_5_DAYS,
+                    SharedConstants.TEMPLATE_EMAIL_SUBSCRIPTION_EXPIRING_COUNTDOWN,
+                    params
+            );
+        }
+    },
+    SUBSCRIPTION_ABOUT_TO_EXPIRY_10_DAYS {
+        @Override
+        public String getNotificationMessage(Map<String, String> params) {
+            return String.format("""
+                    <div class="informacoes">
+                        <h4 id="notification-title" class="notification-title">10 Days Before Expiration</h4>
+                        <p>Your Telas advertising service is ending in about two weeks.</p>
+                        <div class="field">
+                            <span class="field-label">Service end date: </span>
+                            <span class="field-value">%s</span>
+                        </div>
+                    </div>
+                    <p>Visit this <a id="link-details" class='details link-text' href="%s">link</a> to renew.</p>
+                    """, params.get("endDate"), params.get("link"));
+        }
+
+        @Override
+        public EmailDataDto getEmailData(Map<String, String> params) {
+            return createCountdownExpiryEmailData(
+                    SharedConstants.EMAIL_SUBJECT_SUBSCRIPTION_EXPIRING_10_DAYS,
+                    SharedConstants.TEMPLATE_EMAIL_SUBSCRIPTION_EXPIRING_COUNTDOWN,
+                    params
+            );
+        }
+    },
+    SUBSCRIPTION_ABOUT_TO_EXPIRY_3_DAYS {
+        @Override
+        public String getNotificationMessage(Map<String, String> params) {
+            return String.format("""
+                    <div class="informacoes">
+                        <h4 id="notification-title" class="notification-title">3 Days Before Expiration</h4>
+                        <p>Your Telas advertising service is ending soon.</p>
+                        <div class="field">
+                            <span class="field-label">Service end date: </span>
+                            <span class="field-value">%s</span>
+                        </div>
+                    </div>
+                    <p>Visit this <a id="link-details" class='details link-text' href="%s">link</a> to renew.</p>
+                    """, params.get("endDate"), params.get("link"));
+        }
+
+        @Override
+        public EmailDataDto getEmailData(Map<String, String> params) {
+            return createCountdownExpiryEmailData(
+                    SharedConstants.EMAIL_SUBJECT_SUBSCRIPTION_EXPIRING_3_DAYS,
+                    SharedConstants.TEMPLATE_EMAIL_SUBSCRIPTION_EXPIRING_COUNTDOWN,
+                    params
+            );
+        }
+    },
+    SUBSCRIPTION_ABOUT_TO_EXPIRY_PENULTIMATE_DAY {
+        @Override
+        public String getNotificationMessage(Map<String, String> params) {
+            return String.format("""
+                    <div class="informacoes">
+                        <h4 id="notification-title" class="notification-title">Final reminder before end</h4>
+                        <p>Your Telas advertising service ends on <strong>%s</strong> (tomorrow is the last day of this period).</p>
+                    </div>
+                    <p>Visit this <a id="link-details" class='details link-text' href="%s">link</a> to renew.</p>
+                    """, params.get("endDate"), params.get("link"));
+        }
+
+        @Override
+        public EmailDataDto getEmailData(Map<String, String> params) {
+            return createPenultimateExpiryEmailData(params);
+        }
     };
 
     private static String createEndDateDiv(String endDate) {
@@ -314,6 +405,39 @@ public enum NotificationReference {
         emailData.getParams().put("link", params.get("link"));
         emailData.getParams().put("startDate", startDate);
         emailData.getParams().put("endDate", ObjectUtils.isEmpty(endDate) ? "" : endDate);
+        return emailData;
+    }
+
+    private static EmailDataDto createAdminNewPurchaseEmailData(Map<String, String> params) {
+        EmailDataDto emailData = new EmailDataDto();
+        emailData.setSubject(SharedConstants.EMAIL_SUBJECT_ADMIN_NEW_PURCHASE);
+        emailData.setTemplate(SharedConstants.TEMPLATE_EMAIL_ADMIN_NEW_PURCHASE);
+        emailData.getParams().put("buyerName", ObjectUtils.isEmpty(params.get("buyerName")) ? "" : params.get("buyerName"));
+        emailData.getParams().put("monitorsDetailHtml", ObjectUtils.isEmpty(params.get("monitorsDetailHtml")) ? "" : params.get("monitorsDetailHtml"));
+        emailData.getParams().put("attachmentListHtml", ObjectUtils.isEmpty(params.get("attachmentListHtml")) ? "" : params.get("attachmentListHtml"));
+        emailData.getParams().put("veiculationSummary", ObjectUtils.isEmpty(params.get("veiculationSummary")) ? "" : params.get("veiculationSummary"));
+        emailData.getParams().put("subscriptionId", ObjectUtils.isEmpty(params.get("subscriptionId")) ? "" : params.get("subscriptionId"));
+        return emailData;
+    }
+
+    private static EmailDataDto createCountdownExpiryEmailData(String subject, String template, Map<String, String> params) {
+        EmailDataDto emailData = new EmailDataDto();
+        emailData.setSubject(subject);
+        emailData.setTemplate(template);
+        emailData.getParams().put("name", params.get("name"));
+        emailData.getParams().put("link", params.get("link"));
+        emailData.getParams().put("endDate", ObjectUtils.isEmpty(params.get("endDate")) ? "" : params.get("endDate"));
+        emailData.getParams().put("daysRemaining", ObjectUtils.isEmpty(params.get("daysRemaining")) ? "" : params.get("daysRemaining"));
+        return emailData;
+    }
+
+    private static EmailDataDto createPenultimateExpiryEmailData(Map<String, String> params) {
+        EmailDataDto emailData = new EmailDataDto();
+        emailData.setSubject(SharedConstants.EMAIL_SUBJECT_SUBSCRIPTION_EXPIRING_PENULTIMATE);
+        emailData.setTemplate(SharedConstants.TEMPLATE_EMAIL_SUBSCRIPTION_EXPIRING_PENULTIMATE);
+        emailData.getParams().put("name", params.get("name"));
+        emailData.getParams().put("link", params.get("link"));
+        emailData.getParams().put("endDate", ObjectUtils.isEmpty(params.get("endDate")) ? "" : params.get("endDate"));
         return emailData;
     }
 

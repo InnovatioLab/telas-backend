@@ -41,21 +41,7 @@ public interface SubscriptionRepository extends JpaRepository<Subscription, UUID
                   AND s.bonus = false
                   AND s.recurrence <> 'MONTHLY'
             """)
-    List<Subscription> findSubscriptionsExpiringIn15Days(@Param("targetDate") java.sql.Date targetDate);
-
-    @Query("""
-                SELECT s FROM Subscription s
-                WHERE s.endsAt IS NOT NULL
-                  AND s.endsAt >= :now
-                  AND s.endsAt < :tomorrow
-                  AND s.status = 'ACTIVE'
-                  AND s.bonus = false
-                  AND s.recurrence <> 'MONTHLY'
-            """)
-    List<Subscription> findSubscriptionsExpiringInNext24Hours(
-            @Param("now") Instant now,
-            @Param("tomorrow") Instant tomorrow
-    );
+    List<Subscription> findSubscriptionsWithEndsAtOnDate(@Param("targetDate") java.sql.Date targetDate);
 
     @Query("SELECT CASE WHEN COUNT(s) > 0 THEN true ELSE false END FROM Subscription s WHERE s.client.id = :clientId")
     boolean existsByClientId(UUID clientId);
