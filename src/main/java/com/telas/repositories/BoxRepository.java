@@ -25,4 +25,8 @@ public interface BoxRepository extends JpaRepository<Box, UUID> {
   @NotNull
   @Query("SELECT b FROM Box b LEFT JOIN FETCH b.monitors JOIN b.boxAddress ba WHERE b.id = :boxId")
   Optional<Box> findById(@NotNull @Param("boxId") UUID boxId);
+
+  @Query(
+      "SELECT DISTINCT b FROM Box b JOIN FETCH b.boxAddress LEFT JOIN FETCH b.monitors m LEFT JOIN FETCH m.address")
+  List<Box> findAllForTestingOverview();
 }

@@ -27,6 +27,7 @@ import com.telas.repositories.AdRequestRepository;
 import com.telas.repositories.ClientRepository;
 import com.telas.services.BucketService;
 import com.telas.services.ClientService;
+import com.telas.services.PermissionService;
 import com.telas.services.TermConditionService;
 import com.telas.services.VerificationCodeService;
 import com.telas.shared.audit.CustomRevisionListener;
@@ -75,6 +76,8 @@ public class ClientServiceImpl implements ClientService {
 	private final TermConditionService termConditionService;
 
 	private final AdRequestRepository adRequestRepository;
+
+	private final PermissionService permissionService;
 
 
 	@Override
@@ -164,6 +167,7 @@ public class ClientServiceImpl implements ClientService {
 		Map<String, String> params = new HashMap<>();
 		params.put("verificationCode", verificationCode.getCode());
 		params.put("name", client.getBusinessName());
+		params.put("clientId", client.getId().toString());
 
 		EmailDataDto emailData = new EmailDataDto(client.getContact().getEmail(),
 			SharedConstants.TEMPLATE_EMAIL_CONTACT_VERIFICATION, SharedConstants.EMAIL_SUBJECT_CONTACT_VERIFICATION,
@@ -203,6 +207,7 @@ public class ClientServiceImpl implements ClientService {
 		Map<String, String> params = new HashMap<>();
 		params.put("verificationCode", verificationCode.getCode());
 		params.put("name", client.getBusinessName());
+		params.put("clientId", client.getId().toString());
 
 		EmailDataDto emailData = new EmailDataDto(client.getContact().getEmail(),
 			SharedConstants.TEMPLATE_EMAIL_RESET_PASSWORD, SharedConstants.EMAIL_SUBJECT_RESET_PASSWORD, params);
@@ -450,6 +455,7 @@ public class ClientServiceImpl implements ClientService {
 		Map<String, String> params = new HashMap<>();
 		params.put("name", client.getBusinessName());
 		params.put("verificationCode", verificationCode.getCode());
+		params.put("clientId", client.getId().toString());
 
 		EmailDataDto emailData = new EmailDataDto(client.getContact().getEmail(),
 			SharedConstants.TEMPLATE_EMAIL_CONTACT_VERIFICATION, SharedConstants.EMAIL_SUBJECT_CONTACT_VERIFICATION,
@@ -514,7 +520,8 @@ public class ClientServiceImpl implements ClientService {
 		List<AdResponseDto> ads = client.getAds().stream()
 			.map(ad -> new AdResponseDto(ad, attachmentHelper.getStringLinkFromAd(ad))).toList();
 
-		return new ClientResponseDto(client, attachmentLinks, ads);
+		return new ClientResponseDto(
+			client, attachmentLinks, ads, permissionService.listEffectivePermissionCodesForDisplay(client));
 	}
 
 

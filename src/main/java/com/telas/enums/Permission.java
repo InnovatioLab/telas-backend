@@ -1,0 +1,8 @@
+package com.telas.enums;
+
+public enum Permission {
+    MONITORING_LOGS_VIEW,
+    MONITORING_TESTING_VIEW,
+    MONITORING_TESTING_EXECUTE,
+    MONITORING_SMART_PLUG_ADMIN,
+}

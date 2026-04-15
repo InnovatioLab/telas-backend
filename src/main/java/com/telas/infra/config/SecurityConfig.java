@@ -1,5 +1,6 @@
 package com.telas.infra.config;
 
+import com.telas.infra.security.filters.MonitoringApiKeyFilter;
 import com.telas.infra.security.filters.SecurityFilter;
 import com.telas.shared.constants.AllowedEndpointsConstants;
 import lombok.RequiredArgsConstructor;
@@ -13,23 +14,27 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
+import org.springframework.web.cors.CorsConfigurationSource;
 
 @Configuration
 @EnableWebSecurity
 @RequiredArgsConstructor
 public class SecurityConfig {
     private final SecurityFilter securityFilter;
+    private final MonitoringApiKeyFilter monitoringApiKeyFilter;
+    private final CorsConfigurationSource corsConfigurationSource;
 
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         return http
                 .csrf(AbstractHttpConfigurer::disable)
-                .cors(AbstractHttpConfigurer::disable)
+                .cors(cors -> cors.configurationSource(corsConfigurationSource))
                 .authorizeHttpRequests(auth -> {
                     AllowedEndpointsConstants.getAllowedEndpoints().forEach((method, routes) -> routes.forEach(route -> auth.requestMatchers(method, route).permitAll()));
                     auth.anyRequest().authenticated();
                 })
                 .addFilterBefore(securityFilter, UsernamePasswordAuthenticationFilter.class)
+                .addFilterBefore(monitoringApiKeyFilter, SecurityFilter.class)
                 .sessionManagement(conf -> conf.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .build();
     }

@@ -30,9 +30,9 @@ public class MonitorControllerImpl implements MonitorController {
     @PostMapping
     @SecurityRequirement(name = "jwt")
     public ResponseEntity<?> save(@Valid @RequestBody MonitorRequestDto request) throws JsonProcessingException {
-        service.save(request, null);
+        UUID createdId = service.save(request, null);
         return ResponseEntity.status(HttpStatus.CREATED)
-                .body(ResponseDto.fromData(null, HttpStatus.CREATED, MessageCommonsConstants.SAVE_SUCCESS_MESSAGE));
+                .body(ResponseDto.fromData(createdId, HttpStatus.CREATED, MessageCommonsConstants.SAVE_SUCCESS_MESSAGE));
     }
 
     @Override
@@ -83,6 +83,15 @@ public class MonitorControllerImpl implements MonitorController {
     @SecurityRequirement(name = "jwt")
     public ResponseEntity<?> findValidByZipCode(@RequestParam String zipCode) {
         List<MonitorMapsResponseDto> monitors = service.findNearestActiveMonitors(zipCode);
+        String message = monitors.isEmpty() ? MessageCommonsConstants.FIND_FILTER_EMPTY_MESSAGE : MessageCommonsConstants.FIND_ALL_SUCCESS_MESSAGE;
+        return ResponseEntity.status(HttpStatus.OK).body(ResponseDto.fromData(monitors, HttpStatus.OK, message));
+    }
+
+    @Override
+    @GetMapping("/admin/map-search")
+    @SecurityRequirement(name = "jwt")
+    public ResponseEntity<?> findMonitorsForAdminMapByZipCode(@RequestParam String zipCode) {
+        List<MonitorMapsResponseDto> monitors = service.findMonitorsForAdminMapByZipCode(zipCode);
         String message = monitors.isEmpty() ? MessageCommonsConstants.FIND_FILTER_EMPTY_MESSAGE : MessageCommonsConstants.FIND_ALL_SUCCESS_MESSAGE;
         return ResponseEntity.status(HttpStatus.OK).body(ResponseDto.fromData(monitors, HttpStatus.OK, message));
     }

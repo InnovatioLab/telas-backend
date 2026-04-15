@@ -4,6 +4,8 @@ import com.telas.dtos.request.BoxRequestDto;
 import com.telas.dtos.request.StatusBoxMonitorsRequestDto;
 import io.swagger.v3.oas.annotations.Hidden;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.enums.ParameterIn;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
@@ -55,11 +57,18 @@ public interface BoxController {
     })
     ResponseEntity<?> getMonitorsAdsByIp(@RequestHeader("X-Box-Address") String address);
 
-    @Hidden
-    @Operation(summary = "Endpoint to update box and monitors health, this endpoint should be accessed only by Box API", responses = {
-            @ApiResponse(responseCode = "204", description = "Monitors health checked successfully."),
-            @ApiResponse(responseCode = "404", description = "Some data not found."),
-            @ApiResponse(responseCode = "500", description = "Internal server error."),
-    })
+    @Operation(
+            summary = "Atualiza saúde da box ou de um monitor (integração monitoramento / webhook)",
+            description = "Requer o header X-Monitoring-Key com o mesmo valor configurado em MONITORING_API_KEY (servidor).",
+            parameters = {
+                    @Parameter(name = "X-Monitoring-Key", in = ParameterIn.HEADER, required = true,
+                            description = "Chave de API de monitoramento")
+            },
+            responses = {
+                    @ApiResponse(responseCode = "204", description = "Estado atualizado."),
+                    @ApiResponse(responseCode = "401", description = "Chave ausente ou inválida."),
+                    @ApiResponse(responseCode = "404", description = "Box ou monitor não encontrado."),
+                    @ApiResponse(responseCode = "500", description = "Erro interno."),
+            })
     ResponseEntity<?> updateHealth(@RequestBody StatusBoxMonitorsRequestDto request);
 }

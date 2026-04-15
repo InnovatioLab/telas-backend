@@ -19,8 +19,23 @@ public final class SharedConstants {
     public static final String EMAIL_SUBJECT_FIRST_SUBSCRIPTION = "Your Ad service Purchase is Confirmed";
     public static final String TEMPLATE_EMAIL_SUBSCRIPTION_EXPIRING_REMINDER = "email_subscription_about_expire_reminder.ftlh";
     public static final String EMAIL_SUBJECT_SUBSCRIPTION_EXPIRING_REMINDER = "15 Days Before Expiration";
-    public static final String TEMPLATE_EMAIL_SUBSCRIPTION_EXPIRING_LAST_DAY = "email_subscription_about_expire_last_day.ftlh";
-    public static final String EMAIL_SUBJECT_SUBSCRIPTION_EXPIRING_LAST_DAY = "Last Day of Service";
+    public static final String TEMPLATE_EMAIL_SUBSCRIPTION_EXPIRING_COUNTDOWN = "email_subscription_expiring_in_5_days.ftlh";
+    public static final String EMAIL_SUBJECT_SUBSCRIPTION_EXPIRING_10_DAYS = "10 Days Before Expiration";
+    public static final String EMAIL_SUBJECT_SUBSCRIPTION_EXPIRING_5_DAYS = "5 Days Before Expiration";
+    public static final String EMAIL_SUBJECT_SUBSCRIPTION_EXPIRING_3_DAYS = "3 Days Before Expiration";
+    public static final String TEMPLATE_EMAIL_SUBSCRIPTION_EXPIRING_PENULTIMATE = "email_subscription_expiring_penultimate_day.ftlh";
+    public static final String EMAIL_SUBJECT_SUBSCRIPTION_EXPIRING_PENULTIMATE = "Final reminder — service ends tomorrow";
+
+    public static final String TEMPLATE_EMAIL_BOX_STATUS_UPDATED = "email_box_status_updated.ftlh";
+    public static final String EMAIL_SUBJECT_BOX_STATUS_UPDATED = "Box status updated";
+    public static final String TEMPLATE_EMAIL_MONITOR_STATUS_UPDATED = "email_monitor_status_updated.ftlh";
+    public static final String EMAIL_SUBJECT_MONITOR_STATUS_UPDATED = "Monitor status updated";
+
+    public static final String TEMPLATE_EMAIL_SMART_PLUG_INCIDENT = "email_smart_plug_incident.ftlh";
+    public static final String EMAIL_SUBJECT_SMART_PLUG_INCIDENT = "Monitor power/plug alert";
+
+    public static final String TEMPLATE_EMAIL_ADMIN_NEW_PURCHASE = "email_admin_new_purchase.ftlh";
+    public static final String EMAIL_SUBJECT_ADMIN_NEW_PURCHASE = "New customer purchase — Telas";
 
 
     public static final String REGEX_ONLY_NUMBERS = "^\\d+$";
@@ -42,7 +57,7 @@ public final class SharedConstants {
     public static final int TOTAL_MINUTES_IN_A_DAY = 24 * 60;
 
 
-    public static final int MAX_MONITOR_ADS = 17;
+    public static final int MAX_MONITOR_ADS = 15;
     public static final int MAX_ADS_VALIDATION = 3;
     public static final int MIN_QUANTITY_MONITOR_BLOCK = 1;
     public static final int MAX_QUANTITY_MONITOR_BLOCK = 2;

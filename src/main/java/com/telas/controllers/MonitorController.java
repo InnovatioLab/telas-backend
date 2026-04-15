@@ -65,6 +65,13 @@ public interface MonitorController {
     })
     ResponseEntity<?> findValidByZipCode(String zipCode);
 
+    @Operation(summary = "Admin: monitors in ZIP including inactive (map health)", responses = {
+            @ApiResponse(responseCode = "200", description = "Monitors founded successfully."),
+            @ApiResponse(responseCode = "401", description = "Unauthorized."),
+            @ApiResponse(responseCode = "403", description = "Forbidden."),
+    })
+    ResponseEntity<?> findMonitorsForAdminMapByZipCode(String zipCode);
+
     @Operation(summary = "Endpoint contract to get from the box, the list of current displayed ads from monitor", responses = {
             @ApiResponse(responseCode = "200", description = "Ads founded successfully."),
             @ApiResponse(responseCode = "401", description = "Unauthorized."),

@@ -6,7 +6,6 @@ import com.telas.dtos.request.CartRequestDto;
 import com.telas.dtos.response.CartItemResponseDto;
 import com.telas.dtos.response.CartResponseDto;
 import com.telas.entities.*;
-import com.telas.enums.Role;
 import com.telas.infra.exceptions.ResourceNotFoundException;
 import com.telas.infra.security.services.AuthenticatedUserService;
 import com.telas.repositories.CartItemRepository;
@@ -41,7 +40,7 @@ public class CartServiceImpl implements CartService {
     public CartResponseDto save(CartRequestDto request, UUID cartId) {
         Client client = authenticatedUserService.getLoggedUser().client();
 
-        if (Role.ADMIN.equals(client.getRole())) {
+        if (client.isPrivilegedPanelUser()) {
             return null;
         }
 

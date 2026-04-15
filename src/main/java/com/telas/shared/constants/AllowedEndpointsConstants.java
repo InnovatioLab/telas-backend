@@ -31,7 +31,9 @@ public class AllowedEndpointsConstants {
                 "/webhook",
                 "/auth/login",
                 "/auth/recovery-password/**",
-                "/boxes/health"
+                "/boxes/health",
+                "/monitoring/heartbeat",
+                "/monitoring/logs"
         ));
         ALLOWED_ENDPOINTS.put(HttpMethod.PATCH, List.of(
                 "/clients/create-password/**",

@@ -61,7 +61,7 @@ public class SubscriptionServiceImpl implements SubscriptionService {
     public String save() {
         Client client = authenticatedUserService.getLoggedUser().client();
 
-        if (Role.ADMIN.equals(client.getRole())) {
+        if (client.isPrivilegedPanelUser()) {
             return null;
         }
 
@@ -121,7 +121,7 @@ public class SubscriptionServiceImpl implements SubscriptionService {
     public String generateCustomerPortalSession() throws StripeException {
         Client client = authenticatedUserService.getLoggedUser().client();
 
-        if (Role.ADMIN.equals(client.getRole())) {
+        if (client.isPrivilegedPanelUser()) {
             return null;
         }
         return helper.generateCustomerPortalSession(client);
@@ -132,7 +132,7 @@ public class SubscriptionServiceImpl implements SubscriptionService {
     public String renewSubscription(UUID subscriptionId) {
         Client client = authenticatedUserService.getLoggedUser().client();
 
-        if (Role.ADMIN.equals(client.getRole())) {
+        if (client.isPrivilegedPanelUser()) {
             return null;
         }
 
@@ -242,26 +242,45 @@ public class SubscriptionServiceImpl implements SubscriptionService {
     public void sendSubscriptionExpirationEmail() {
         LocalDate today = LocalDate.now();
         LocalDate in15Days = today.plusDays(15);
+        LocalDate in10Days = today.plusDays(10);
+        LocalDate in5Days = today.plusDays(5);
+        LocalDate in3Days = today.plusDays(3);
+        LocalDate endDateOnTomorrow = today.plusDays(1);
 
-        Instant now = Instant.now();
-        Instant tomorrow = now.plusSeconds(SharedConstants.TOTAL_SECONDS_IN_A_DAY);
+        List<Subscription> subscriptionsReminder15 = repository.findSubscriptionsWithEndsAtOnDate(java.sql.Date.valueOf(in15Days));
+        List<Subscription> subscriptionsReminder10 = repository.findSubscriptionsWithEndsAtOnDate(java.sql.Date.valueOf(in10Days));
+        List<Subscription> subscriptionsReminder5 = repository.findSubscriptionsWithEndsAtOnDate(java.sql.Date.valueOf(in5Days));
+        List<Subscription> subscriptionsReminder3 = repository.findSubscriptionsWithEndsAtOnDate(java.sql.Date.valueOf(in3Days));
+        List<Subscription> subscriptionsPenultimateDay = repository.findSubscriptionsWithEndsAtOnDate(java.sql.Date.valueOf(endDateOnTomorrow));
 
-        List<Subscription> subscriptionsReminder = repository.findSubscriptionsExpiringIn15Days(java.sql.Date.valueOf(in15Days));
-        List<Subscription> subscriptionsExpiringToday = repository.findSubscriptionsExpiringInNext24Hours(now, tomorrow);
-
-
-        if (!subscriptionsReminder.isEmpty()) {
-            log.info("Found {} subscriptions expiring in 15 days, sending reminder emails.", subscriptionsReminder.size());
-            subscriptionsReminder.forEach(helper::sendSubscriptionAboutToExpiryEmail);
+        if (!subscriptionsReminder15.isEmpty()) {
+            log.info("Found {} subscriptions expiring in 15 days, sending reminder emails.", subscriptionsReminder15.size());
+            subscriptionsReminder15.forEach(helper::sendSubscriptionAboutToExpiryEmail);
         }
 
-        if (!subscriptionsExpiringToday.isEmpty()) {
-            log.info("Found {} subscriptions expiring today, sending last day emails.", subscriptionsExpiringToday.size());
-            subscriptionsExpiringToday.forEach(helper::sendSubscriptionExpiryTodayEmail);
+        if (!subscriptionsReminder10.isEmpty()) {
+            log.info("Found {} subscriptions expiring in 10 days, sending reminder emails.", subscriptionsReminder10.size());
+            subscriptionsReminder10.forEach(helper::sendSubscriptionTenDaysBeforeExpiryEmail);
         }
 
-        if (subscriptionsReminder.isEmpty() && subscriptionsExpiringToday.isEmpty()) {
-            log.info("No subscriptions expiring in 15 days or today.");
+        if (!subscriptionsReminder5.isEmpty()) {
+            log.info("Found {} subscriptions expiring in 5 days, sending reminder emails.", subscriptionsReminder5.size());
+            subscriptionsReminder5.forEach(helper::sendSubscriptionFiveDaysBeforeExpiryEmail);
+        }
+
+        if (!subscriptionsReminder3.isEmpty()) {
+            log.info("Found {} subscriptions expiring in 3 days, sending reminder emails.", subscriptionsReminder3.size());
+            subscriptionsReminder3.forEach(helper::sendSubscriptionThreeDaysBeforeExpiryEmail);
+        }
+
+        if (!subscriptionsPenultimateDay.isEmpty()) {
+            log.info("Found {} subscriptions on penultimate day (end date tomorrow), sending final reminder emails.", subscriptionsPenultimateDay.size());
+            subscriptionsPenultimateDay.forEach(helper::sendSubscriptionPenultimateDayEmail);
+        }
+
+        if (subscriptionsReminder15.isEmpty() && subscriptionsReminder10.isEmpty() && subscriptionsReminder5.isEmpty()
+                && subscriptionsReminder3.isEmpty() && subscriptionsPenultimateDay.isEmpty()) {
+            log.info("No subscription expiry reminders to send (15/10/5/3 days or penultimate day).");
         }
     }
 
@@ -312,7 +331,7 @@ public class SubscriptionServiceImpl implements SubscriptionService {
         try {
             com.stripe.model.Subscription stripeSubscription = helper.getStripeSubscription(subscription);
 
-            if (Role.ADMIN.equals(client.getRole())) {
+            if (client.isPrivilegedPanelUser()) {
                 log.info("Subscription with id: {} set to cancel NOW by admin, removing monitors ads", subscription.getId());
                 stripeSubscription.cancel();
             } else {

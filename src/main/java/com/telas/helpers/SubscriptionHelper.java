@@ -15,6 +15,7 @@ import com.telas.enums.SubscriptionStatus;
 import com.telas.infra.exceptions.BusinessRuleException;
 import com.telas.infra.exceptions.ForbiddenException;
 import com.telas.infra.exceptions.ResourceNotFoundException;
+import com.telas.repositories.ClientRepository;
 import com.telas.repositories.MonitorRepository;
 import com.telas.repositories.SubscriptionFlowRepository;
 import com.telas.repositories.SubscriptionRepository;
@@ -29,13 +30,13 @@ import com.telas.shared.utils.DateUtils;
 import com.telas.shared.utils.ValidateDataUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.ObjectUtils;
+import org.springframework.web.util.HtmlUtils;
 
 import java.time.Instant;
 import java.util.*;
@@ -53,11 +54,11 @@ public class SubscriptionHelper {
     private final NotificationService notificationService;
     private final PaymentService paymentService;
     private final ClientHelper clientHelper;
+    private final ClientRepository clientRepository;
 
     @Value("${front.base.url}")
     private String frontBaseUrl;
 
-    @Autowired
     public SubscriptionHelper(
             SubscriptionRepository repository,
             SubscriptionFlowRepository subscriptionFlowRepository,
@@ -67,7 +68,8 @@ public class SubscriptionHelper {
             BucketService bucketService,
             NotificationService notificationService,
             PaymentService paymentService,
-            ClientHelper clientHelper
+            ClientHelper clientHelper,
+            ClientRepository clientRepository
     ) {
         this.repository = repository;
         this.subscriptionFlowRepository = subscriptionFlowRepository;
@@ -78,6 +80,7 @@ public class SubscriptionHelper {
         this.notificationService = notificationService;
         this.paymentService = paymentService;
         this.clientHelper = clientHelper;
+        this.clientRepository = clientRepository;
     }
 
     @Transactional
@@ -172,6 +175,7 @@ public class SubscriptionHelper {
                 .min(Comparator.comparing(Ad::getCreatedAt, Comparator.nullsLast(Comparator.naturalOrder())))
                 .ifPresent(ad -> clientHelper.addAdToMonitor(List.of(ad), subscription));
 
+        notifyAdminsNewPurchase(subscription);
 
         createNewSubscriptionNotification(subscription);
     }
@@ -257,13 +261,52 @@ public class SubscriptionHelper {
     }
 
     @Transactional
-    public void sendSubscriptionExpiryTodayEmail(Subscription subscription) {
+    public void sendSubscriptionTenDaysBeforeExpiryEmail(Subscription subscription) {
+        notificationService.save(
+                NotificationReference.SUBSCRIPTION_ABOUT_TO_EXPIRY_10_DAYS,
+                subscription.getClient(),
+                buildCountdownExpiryParams(subscription, "10"),
+                true
+        );
+    }
+
+    @Transactional
+    public void sendSubscriptionFiveDaysBeforeExpiryEmail(Subscription subscription) {
+        notificationService.save(
+                NotificationReference.SUBSCRIPTION_ABOUT_TO_EXPIRY_5_DAYS,
+                subscription.getClient(),
+                buildCountdownExpiryParams(subscription, "5"),
+                true
+        );
+    }
+
+    @Transactional
+    public void sendSubscriptionThreeDaysBeforeExpiryEmail(Subscription subscription) {
+        notificationService.save(
+                NotificationReference.SUBSCRIPTION_ABOUT_TO_EXPIRY_3_DAYS,
+                subscription.getClient(),
+                buildCountdownExpiryParams(subscription, "3"),
+                true
+        );
+    }
+
+    @Transactional
+    public void sendSubscriptionPenultimateDayEmail(Subscription subscription) {
         Map<String, String> params = new HashMap<>(Map.of(
                 "name", subscription.getClient().getBusinessName(),
-                "link", buildRedirectUrl("subscriptions/" + subscription.getId())
+                "link", buildRedirectUrl("subscriptions/" + subscription.getId()),
+                "endDate", DateUtils.formatInstantToString(subscription.getEndsAt())
         ));
+        notificationService.save(NotificationReference.SUBSCRIPTION_ABOUT_TO_EXPIRY_PENULTIMATE_DAY, subscription.getClient(), params, true);
+    }
 
-        notificationService.save(NotificationReference.SUBSCRIPTION_ABOUT_TO_EXPIRY_LAST_DAY, subscription.getClient(), params, true);
+    private Map<String, String> buildCountdownExpiryParams(Subscription subscription, String daysRemaining) {
+        return new HashMap<>(Map.of(
+                "name", subscription.getClient().getBusinessName(),
+                "link", buildRedirectUrl("subscriptions/" + subscription.getId()),
+                "endDate", DateUtils.formatInstantToString(subscription.getEndsAt()),
+                "daysRemaining", daysRemaining
+        ));
     }
 
     public void sendFirstBuyEmail(Subscription subscription) {
@@ -375,6 +418,88 @@ public class SubscriptionHelper {
         if (!"active".equals(stripeSubscription.getStatus())) {
             throw new BusinessRuleException(SubscriptionValidationMessages.SUBSCRIPTION_NOT_ACTIVE_IN_STRIPE + stripeSubscription.getId());
         }
+    }
+
+    private void notifyAdminsNewPurchase(Subscription subscription) {
+        Map<String, String> params = buildAdminNewPurchaseParams(subscription);
+        clientRepository.findAllAdmins().forEach(admin ->
+                notificationService.save(NotificationReference.ADMIN_NEW_PURCHASE, admin, params, true));
+    }
+
+    private Map<String, String> buildAdminNewPurchaseParams(Subscription subscription) {
+        Client client = subscription.getClient();
+        Map<String, String> params = new HashMap<>();
+        params.put("buyerName", client.getBusinessName() != null ? client.getBusinessName() : "");
+        params.put("subscriptionId", subscription.getId().toString());
+        params.put("monitorsDetailHtml", buildMonitorsDetailHtml(subscription));
+        params.put("attachmentListHtml", buildAttachmentListHtml(client));
+        params.put("veiculationSummary", formatVeiculationPeriod(subscription));
+        return params;
+    }
+
+    private String buildMonitorsDetailHtml(Subscription subscription) {
+        List<SubscriptionMonitor> ordered = subscription.getSubscriptionMonitors().stream()
+                .sorted(Comparator.comparing(sm -> sm.getMonitor().getId()))
+                .toList();
+        StringBuilder sb = new StringBuilder();
+        for (SubscriptionMonitor sm : ordered) {
+            Monitor monitor = sm.getMonitor();
+            Address address = monitor.getAddress();
+            String label = address.getLocationName() != null && !address.getLocationName().isBlank()
+                    ? HtmlUtils.htmlEscape(address.getLocationName().trim())
+                    : "Display location";
+            sb.append("<div style=\"margin-bottom:18px;border-bottom:1px solid #e0e0e0;padding-bottom:12px;\">");
+            sb.append("<strong>").append(label).append("</strong><br/>");
+            sb.append("Blocks purchased: ").append(HtmlUtils.htmlEscape(String.valueOf(sm.getSlotsQuantity()))).append("<br/>");
+            sb.append(address.getFullAddressFormattedHtml());
+            sb.append("</div>");
+        }
+        if (sb.isEmpty()) {
+            return "<p>No monitors linked to this subscription.</p>";
+        }
+        return sb.toString();
+    }
+
+    private String buildAttachmentListHtml(Client client) {
+        Optional<Ad> adOpt = resolveOldestApprovedAd(client);
+        if (adOpt.isEmpty()) {
+            return "<p>No approved ad linked for this order.</p>";
+        }
+        List<Attachment> attachments = adOpt.get().getAttachments().stream()
+                .sorted(Comparator.comparing(Attachment::getName, String.CASE_INSENSITIVE_ORDER))
+                .toList();
+        if (attachments.isEmpty()) {
+            return "<p>No files linked to the ad for this order.</p>";
+        }
+        StringBuilder ul = new StringBuilder("<ul style=\"margin:0;padding-left:20px;\">");
+        for (Attachment att : attachments) {
+            ul.append("<li>")
+                    .append(HtmlUtils.htmlEscape(att.getName()))
+                    .append(" (")
+                    .append(HtmlUtils.htmlEscape(att.getType()))
+                    .append(")</li>");
+        }
+        ul.append("</ul>");
+        return ul.toString();
+    }
+
+    private Optional<Ad> resolveOldestApprovedAd(Client client) {
+        return client.getApprovedAds().stream()
+                .filter(Objects::nonNull)
+                .min(Comparator.comparing(Ad::getCreatedAt, Comparator.nullsLast(Comparator.naturalOrder())));
+    }
+
+    private String formatVeiculationPeriod(Subscription subscription) {
+        Recurrence recurrence = subscription.getRecurrence();
+        String start = subscription.getStartedAt() != null
+                ? DateUtils.formatInstantToString(subscription.getStartedAt())
+                : "";
+        if (Recurrence.MONTHLY.equals(recurrence)) {
+            return "Monthly (continuous renewal). Start: " + start + ".";
+        }
+        String end = subscription.getEndsAt() != null ? DateUtils.formatInstantToString(subscription.getEndsAt()) : "";
+        long days = recurrence.getDays();
+        return "Plan " + recurrence.name().replace('_', ' ') + " (" + days + " days). " + start + " to " + end + ".";
     }
 
     private void createNewSubscriptionNotification(Subscription subscription) {

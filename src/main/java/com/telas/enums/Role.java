@@ -4,4 +4,5 @@ public enum Role {
     CLIENT,
     PARTNER,
     ADMIN,
+    DEVELOPER,
 }

@@ -1,7 +1,7 @@
 package com.telas.shared.constants.valitation;
 
 public final class BoxValidationMessages {
-    public static final String BOX_NOT_FOUND = "Box not found with the provided IP.";
+    public static final String BOX_NOT_FOUND = "Box not found with the provided address.";
     public static final String MONITOR_ID_NOT_NULL = "Monitor ID cannot be null.";
     public static final String FILE_NAMES_NOT_NULL = "File names cannot be null.";
     public static final String FILE_NAMES_NOT_EMPTY = "File names cannot be empty.";
