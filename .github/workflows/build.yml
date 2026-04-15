@@ -2,7 +2,7 @@ name: build.yml
 
 on:
   push:
-    branches: [ "main" ]
+    branches: ["main"]
 
 jobs:
   build:
@@ -10,9 +10,13 @@ jobs:
     concurrency:
       group: deploy-${{ github.ref }}
       cancel-in-progress: true
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+
+      - name: Normalize owner to lowercase
+        run: echo "OWNER_LC=${GITHUB_REPOSITORY_OWNER,,}" >> $GITHUB_ENV
 
       - name: Login to GitHub Container Registry
         uses: docker/login-action@v3
@@ -28,7 +32,7 @@ jobs:
           file: ./Dockerfile
           push: true
           tags: |
-            ghcr.io/${{ github.actor }}/telas-api:latest
+            ghcr.io/${{ env.OWNER_LC }}/telas-api:latest
           platforms: linux/amd64
           build-args: |
             TZ=America/New_York
@@ -60,16 +64,15 @@ jobs:
             EXCHANGE_NAME=${{ secrets.EXCHANGE_NAME }}
             ROUTING_KEY=${{ secrets.ROUTING_KEY }}
             SENDGRID_API_KEY=${{ secrets.SENDGRID_API_KEY }}
-            LOKI_URL=${{ secrets.LOKI_URL }}
 
       - name: Trigger Dokploy Deployment
         run: |
-          curl -X 'POST' \
-          '${{ secrets.DOCKPLOY_WEBHOOK_URL }}' \
-          -H 'accept: application/json' \
-          -H 'Content-Type: application/json' \
-          -H 'Authorization: Bearer ${{ secrets.DOCKPLOY_TOKEN }}' \
-          -H 'x-api-key: ${{ secrets.DOCKPLOY_TOKEN }}' \
+          curl -X POST \
+          "${{ secrets.DOCKPLOY_WEBHOOK_URL }}" \
+          -H "accept: application/json" \
+          -H "Content-Type: application/json" \
+          -H "Authorization: Bearer ${{ secrets.DOCKPLOY_TOKEN }}" \
+          -H "x-api-key: ${{ secrets.DOCKPLOY_TOKEN }}" \
           -d '{
-          "applicationId": "${{ secrets.DOKPLOY_APPLICATION_ID }}"
+            "applicationId": "${{ secrets.DOKPLOY_APPLICATION_ID }}"
           }'
