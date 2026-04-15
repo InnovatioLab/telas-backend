@@ -128,6 +128,8 @@ public interface ClientController {
 
     ResponseEntity<?> deactivateClientByDeveloper(UUID clientId);
 
+    ResponseEntity<?> reactivateClientByDeveloper(UUID clientId);
+
     @Operation(summary = "Endpoint contract to filter and list ads request", responses = {
             @ApiResponse(responseCode = "200", description = "Ads requests filtered successfully."),
             @ApiResponse(responseCode = "422", description = "Erro while filtering ads"),

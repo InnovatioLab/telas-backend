@@ -119,6 +119,11 @@ public class Client extends BaseAudit implements Serializable {
     @OneToMany(mappedBy = "client", cascade = CascadeType.ALL)
     private List<Notification> notifications = new ArrayList<>();
 
+    @JsonIgnore
+    @NotAudited
+    @Column(name = "inactive_by_client_id")
+    private UUID inactiveByClientId;
+
     public Client(ClientRequestDto request) {
         businessName = request.getBusinessName();
         industry = request.getIndustry();

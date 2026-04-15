@@ -369,6 +369,33 @@ public class ClientServiceImpl implements ClientService {
 		}
 		CustomRevisionListener.setUsername(actor.getBusinessName());
 		target.setStatus(DefaultStatus.INACTIVE);
+		target.setInactiveByClientId(actor.getId());
+		target.setUsernameUpdate(actor.getBusinessName());
+		repository.save(target);
+	}
+
+	@Override
+	@Transactional
+	public void reactivateClientByDeveloper(UUID clientId) {
+		authenticatedUserService.validatePermission(Permission.ADMIN_CLIENTS_DEACTIVATE);
+		Client actor = authenticatedUserService.getLoggedUser().client();
+		Client target = repository.findById(clientId)
+				.orElseThrow(() -> new ResourceNotFoundException(ClientValidationMessages.USER_NOT_FOUND));
+		if (target.getId().equals(actor.getId())) {
+			throw new ForbiddenException(ClientValidationMessages.CANNOT_DEACTIVATE_USER);
+		}
+		if (target.isAdmin() || target.isDeveloper()) {
+			throw new ForbiddenException(ClientValidationMessages.CANNOT_DEACTIVATE_USER);
+		}
+		if (!DefaultStatus.INACTIVE.equals(target.getStatus())) {
+			throw new ForbiddenException(ClientValidationMessages.CLIENT_NOT_INACTIVE);
+		}
+		if (target.getInactiveByClientId() == null || !target.getInactiveByClientId().equals(actor.getId())) {
+			throw new ForbiddenException(ClientValidationMessages.ONLY_INACTIVATOR_CAN_REACTIVATE);
+		}
+		CustomRevisionListener.setUsername(actor.getBusinessName());
+		target.setStatus(DefaultStatus.ACTIVE);
+		target.setInactiveByClientId(null);
 		target.setUsernameUpdate(actor.getBusinessName());
 		repository.save(target);
 	}
@@ -406,9 +433,14 @@ public class ClientServiceImpl implements ClientService {
 			request.getGenericFilter(), this::filterClients);
 
 		Page<Client> page = repository.findAll(filter, pageable);
-		List<ClientMinResponseDto> response = page.stream().map(ClientMinResponseDto::new).toList();
+		Client actor = authenticatedUserService.getLoggedUser().client();
+		boolean canDeactivate = permissionService.hasPermission(actor, Permission.ADMIN_CLIENTS_DEACTIVATE);
+		UUID viewerId = actor.getId();
+		List<ClientMinResponseDto> response = page.stream()
+				.map(c -> new ClientMinResponseDto(c, viewerId, canDeactivate))
+				.toList();
 		return PaginationResponseDto.fromResult(response, (int) page.getTotalElements(), page.getTotalPages(),
-			request.getPage());
+				request.getPage());
 	}
 
 

@@ -55,6 +55,8 @@ public interface ClientService {
 
     void deactivateClientByDeveloper(UUID clientId);
 
+    void reactivateClientByDeveloper(UUID clientId);
+
     void validateAd(UUID adId, AdValidationType validation, RefusedAdRequestDto request);
 
     void incrementSubscriptionFlow();

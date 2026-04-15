@@ -39,7 +39,13 @@ public final class ClientMinResponseDto implements Serializable {
 
     private final Instant updatedAt;
 
+    private final boolean reactivatableByCurrentUser;
+
     public ClientMinResponseDto(Client entity) {
+        this(entity, null, false);
+    }
+
+    public ClientMinResponseDto(Client entity, UUID viewerClientId, boolean hasDeactivatePermission) {
         id = entity.getId();
         businessName = entity.getBusinessName();
         role = entity.getRole();
@@ -50,6 +56,21 @@ public final class ClientMinResponseDto implements Serializable {
         partnerAddressSummary = resolvePartnerAddressSummary(entity);
         createdAt = entity.getCreatedAt();
         updatedAt = entity.getUpdatedAt();
+        reactivatableByCurrentUser = computeReactivatable(entity, viewerClientId, hasDeactivatePermission);
+    }
+
+    private static boolean computeReactivatable(
+            Client entity, UUID viewerId, boolean hasDeactivatePermission) {
+        if (!hasDeactivatePermission || viewerId == null) {
+            return false;
+        }
+        if (!DefaultStatus.INACTIVE.equals(entity.getStatus())) {
+            return false;
+        }
+        if (entity.getInactiveByClientId() == null) {
+            return false;
+        }
+        return entity.getInactiveByClientId().equals(viewerId);
     }
 
     private static String resolvePartnerAddressSummary(Client entity) {
