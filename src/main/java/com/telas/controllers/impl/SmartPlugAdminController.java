@@ -1,6 +1,8 @@
 package com.telas.controllers.impl;
 
+import com.telas.dtos.request.SmartPlugInventoryRequestDto;
 import com.telas.dtos.request.SmartPlugRequestDto;
+import com.telas.dtos.request.SmartPlugUpdateRequestDto;
 import com.telas.dtos.response.ResponseDto;
 import com.telas.dtos.response.SmartPlugReadingResponseDto;
 import com.telas.dtos.response.SmartPlugResponseDto;
@@ -39,20 +41,79 @@ public class SmartPlugAdminController {
                 .body(ResponseDto.fromData(list, HttpStatus.OK, MessageCommonsConstants.FIND_ALL_SUCCESS_MESSAGE));
     }
 
+    @GetMapping("/unassigned")
+    @Operation(summary = "Lista inventário e opcionalmente a tomada já ligada ao monitor indicado")
+    @SecurityRequirement(name = "jwt")
+    public ResponseEntity<?> listUnassigned(
+            @RequestParam(name = "forMonitorId", required = false) UUID forMonitorId,
+            @RequestParam(name = "forBoxId", required = false) UUID forBoxId) {
+        authenticatedUserService.validateAdmin();
+        List<SmartPlugResponseDto> list =
+                smartPlugAdminService.findUnassignedInventory(forMonitorId, forBoxId);
+        return ResponseEntity.status(HttpStatus.OK)
+                .body(ResponseDto.fromData(list, HttpStatus.OK, MessageCommonsConstants.FIND_ALL_SUCCESS_MESSAGE));
+    }
+
     @PostMapping
-    @Operation(summary = "Regista tomada e associa a um monitor")
+    @Operation(
+            summary = "Regista tomada e associa a um monitor",
+            description = "Apenas DEVELOPER: criação já associada a um ecrã.")
     @SecurityRequirement(name = "jwt")
     public ResponseEntity<?> create(@Valid @RequestBody SmartPlugRequestDto dto) {
-        authenticatedUserService.validatePermission(Permission.MONITORING_SMART_PLUG_ADMIN);
+        authenticatedUserService.validateDeveloper();
         SmartPlugResponseDto data = smartPlugAdminService.create(dto);
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(ResponseDto.fromData(data, HttpStatus.CREATED, MessageCommonsConstants.SAVE_SUCCESS_MESSAGE));
     }
 
-    @PutMapping("/{id}")
-    @Operation(summary = "Atualiza tomada")
+    @PostMapping("/unassigned")
+    @Operation(
+            summary = "Regista tomada em inventário (sem monitor)",
+            description = "Apenas DEVELOPER.")
     @SecurityRequirement(name = "jwt")
-    public ResponseEntity<?> update(@PathVariable UUID id, @Valid @RequestBody SmartPlugRequestDto dto) {
+    public ResponseEntity<?> createInventory(@Valid @RequestBody SmartPlugInventoryRequestDto dto) {
+        authenticatedUserService.validateDeveloper();
+        SmartPlugResponseDto data = smartPlugAdminService.createInventory(dto);
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(ResponseDto.fromData(data, HttpStatus.CREATED, MessageCommonsConstants.SAVE_SUCCESS_MESSAGE));
+    }
+
+    @PutMapping("/{plugId}/assign/{monitorId}")
+    @Operation(summary = "Associa ou move tomada para um ecrã", description = "Apenas DEVELOPER.")
+    @SecurityRequirement(name = "jwt")
+    public ResponseEntity<?> assign(
+            @PathVariable UUID plugId, @PathVariable UUID monitorId) {
+        authenticatedUserService.validateDeveloper();
+        SmartPlugResponseDto data = smartPlugAdminService.assignToMonitor(plugId, monitorId);
+        return ResponseEntity.status(HttpStatus.OK)
+                .body(ResponseDto.fromData(data, HttpStatus.OK, MessageCommonsConstants.UPDATE_SUCCESS_MESSAGE));
+    }
+
+    @PutMapping("/{plugId}/assign-box/{boxId}")
+    @Operation(summary = "Associa ou move tomada para uma box", description = "Apenas DEVELOPER.")
+    @SecurityRequirement(name = "jwt")
+    public ResponseEntity<?> assignToBox(
+            @PathVariable UUID plugId, @PathVariable UUID boxId) {
+        authenticatedUserService.validateDeveloper();
+        SmartPlugResponseDto data = smartPlugAdminService.assignToBox(plugId, boxId);
+        return ResponseEntity.status(HttpStatus.OK)
+                .body(ResponseDto.fromData(data, HttpStatus.OK, MessageCommonsConstants.UPDATE_SUCCESS_MESSAGE));
+    }
+
+    @PutMapping("/{plugId}/unassign")
+    @Operation(summary = "Devolve tomada ao inventário", description = "Apenas DEVELOPER.")
+    @SecurityRequirement(name = "jwt")
+    public ResponseEntity<?> unassign(@PathVariable UUID plugId) {
+        authenticatedUserService.validateDeveloper();
+        SmartPlugResponseDto data = smartPlugAdminService.unassign(plugId);
+        return ResponseEntity.status(HttpStatus.OK)
+                .body(ResponseDto.fromData(data, HttpStatus.OK, MessageCommonsConstants.UPDATE_SUCCESS_MESSAGE));
+    }
+
+    @PutMapping("/{id}")
+    @Operation(summary = "Atualiza metadados da tomada (sem alterar associação por aqui)")
+    @SecurityRequirement(name = "jwt")
+    public ResponseEntity<?> update(@PathVariable UUID id, @Valid @RequestBody SmartPlugUpdateRequestDto dto) {
         authenticatedUserService.validatePermission(Permission.MONITORING_SMART_PLUG_ADMIN);
         SmartPlugResponseDto data = smartPlugAdminService.update(id, dto);
         return ResponseEntity.status(HttpStatus.OK)

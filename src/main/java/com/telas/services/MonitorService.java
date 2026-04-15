@@ -11,7 +11,7 @@ import java.util.List;
 import java.util.UUID;
 
 public interface MonitorService {
-    void save(MonitorRequestDto requestDto, UUID monitorId) throws JsonProcessingException;
+    UUID save(MonitorRequestDto requestDto, UUID monitorId) throws JsonProcessingException;
 
     void removeMonitorAdsFromSubscription(Subscription subscription);
 

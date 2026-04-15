@@ -30,9 +30,9 @@ public class MonitorControllerImpl implements MonitorController {
     @PostMapping
     @SecurityRequirement(name = "jwt")
     public ResponseEntity<?> save(@Valid @RequestBody MonitorRequestDto request) throws JsonProcessingException {
-        service.save(request, null);
+        UUID createdId = service.save(request, null);
         return ResponseEntity.status(HttpStatus.CREATED)
-                .body(ResponseDto.fromData(null, HttpStatus.CREATED, MessageCommonsConstants.SAVE_SUCCESS_MESSAGE));
+                .body(ResponseDto.fromData(createdId, HttpStatus.CREATED, MessageCommonsConstants.SAVE_SUCCESS_MESSAGE));
     }
 
     @Override

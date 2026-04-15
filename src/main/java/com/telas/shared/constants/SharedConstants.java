@@ -26,6 +26,14 @@ public final class SharedConstants {
     public static final String TEMPLATE_EMAIL_SUBSCRIPTION_EXPIRING_PENULTIMATE = "email_subscription_expiring_penultimate_day.ftlh";
     public static final String EMAIL_SUBJECT_SUBSCRIPTION_EXPIRING_PENULTIMATE = "Final reminder — service ends tomorrow";
 
+    public static final String TEMPLATE_EMAIL_BOX_STATUS_UPDATED = "email_box_status_updated.ftlh";
+    public static final String EMAIL_SUBJECT_BOX_STATUS_UPDATED = "Box status updated";
+    public static final String TEMPLATE_EMAIL_MONITOR_STATUS_UPDATED = "email_monitor_status_updated.ftlh";
+    public static final String EMAIL_SUBJECT_MONITOR_STATUS_UPDATED = "Monitor status updated";
+
+    public static final String TEMPLATE_EMAIL_SMART_PLUG_INCIDENT = "email_smart_plug_incident.ftlh";
+    public static final String EMAIL_SUBJECT_SMART_PLUG_INCIDENT = "Monitor power/plug alert";
+
     public static final String TEMPLATE_EMAIL_ADMIN_NEW_PURCHASE = "email_admin_new_purchase.ftlh";
     public static final String EMAIL_SUBJECT_ADMIN_NEW_PURCHASE = "New customer purchase — Telas";
 

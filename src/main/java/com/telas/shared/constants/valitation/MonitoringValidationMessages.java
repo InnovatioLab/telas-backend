@@ -14,6 +14,8 @@ public final class MonitoringValidationMessages {
 
     public static final String SMART_PLUG_MONITOR_ALREADY_LINKED = "This monitor already has a smart plug.";
 
+    public static final String SMART_PLUG_BOX_ALREADY_LINKED = "This box already has a smart plug.";
+
     public static final String SMART_PLUG_ENCRYPTION_REQUIRED =
             "Configure monitoring.kasa.encryption-key before storing plug passwords.";
 

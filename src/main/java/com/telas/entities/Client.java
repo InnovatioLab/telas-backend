@@ -12,6 +12,7 @@ import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
+import org.hibernate.annotations.BatchSize;
 import org.hibernate.envers.AuditTable;
 import org.hibernate.envers.NotAudited;
 
@@ -104,6 +105,7 @@ public class Client extends BaseAudit implements Serializable {
     @OneToMany(mappedBy = "client")
     private List<Subscription> subscriptions = new ArrayList<>();
 
+    @BatchSize(size = 32)
     @OneToMany(mappedBy = "client", cascade = CascadeType.ALL)
     private List<Address> addresses = new ArrayList<>();
 

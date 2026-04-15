@@ -22,6 +22,7 @@ import java.time.Instant;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
@@ -51,7 +52,7 @@ public class SmartPlugCheckService {
 
     @Transactional
     public void runAllChecks() {
-        List<SmartPlugEntity> plugs = smartPlugEntityRepository.findAllEnabledWithMonitorAndBox();
+        List<SmartPlugEntity> plugs = smartPlugEntityRepository.findAllEnabledForChecks();
         for (SmartPlugEntity plug : plugs) {
             try {
                 runSingle(plug);
@@ -80,14 +81,25 @@ public class SmartPlugCheckService {
     }
 
     private boolean isHeartbeatStale(SmartPlugEntity plug) {
-        if (plug.getMonitor() == null || plug.getMonitor().getBox() == null) {
+        UUID boxId = resolveHeartbeatBoxId(plug);
+        if (boxId == null) {
             return true;
         }
         Instant cutoff = Instant.now().minusSeconds(staleSeconds);
         return boxHeartbeatEntityRepository
-                .findByBox_Id(plug.getMonitor().getBox().getId())
+                .findByBox_Id(boxId)
                 .map(h -> h.getLastSeenAt().isBefore(cutoff))
                 .orElse(true);
+    }
+
+    private static UUID resolveHeartbeatBoxId(SmartPlugEntity plug) {
+        if (plug.getMonitor() != null && plug.getMonitor().getBox() != null) {
+            return plug.getMonitor().getBox().getId();
+        }
+        if (plug.getBox() != null) {
+            return plug.getBox().getId();
+        }
+        return null;
     }
 
     private void persistCheckRun(SmartPlugEntity plug, PlugReading reading) {
@@ -166,20 +178,41 @@ public class SmartPlugCheckService {
             String incidentType,
             String severity,
             Map<String, Object> details) {
-        if (plug.getMonitor() == null) {
+        UUID monitorId = plug.getMonitor() != null ? plug.getMonitor().getId() : null;
+        UUID boxId = resolveIncidentBoxId(plug);
+        if (monitorId == null && boxId == null) {
             return;
         }
-        if (incidentEntityRepository.existsByMonitor_IdAndIncidentTypeAndClosedAtIsNull(
-                plug.getMonitor().getId(), incidentType)) {
+        if (monitorId != null) {
+            if (incidentEntityRepository.existsByMonitor_IdAndIncidentTypeAndClosedAtIsNull(
+                    monitorId, incidentType)) {
+                return;
+            }
+        } else if (incidentEntityRepository.existsByBox_IdAndIncidentTypeAndClosedAtIsNull(
+                boxId, incidentType)) {
             return;
         }
         IncidentEntity incident = new IncidentEntity();
         incident.setIncidentType(incidentType);
         incident.setSeverity(severity);
         incident.setMonitor(plug.getMonitor());
-        incident.setBox(plug.getMonitor().getBox());
+        if (plug.getMonitor() != null) {
+            incident.setBox(plug.getMonitor().getBox());
+        } else {
+            incident.setBox(plug.getBox());
+        }
         incident.setOpenedAt(Instant.now());
         incident.setDetailsJson(details);
         incidentEntityRepository.save(incident);
+    }
+
+    private static UUID resolveIncidentBoxId(SmartPlugEntity plug) {
+        if (plug.getBox() != null) {
+            return plug.getBox().getId();
+        }
+        if (plug.getMonitor() != null && plug.getMonitor().getBox() != null) {
+            return plug.getMonitor().getBox().getId();
+        }
+        return null;
     }
 }

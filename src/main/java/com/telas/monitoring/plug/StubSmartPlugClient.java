@@ -5,7 +5,7 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Component;
 
 @Component
-@ConditionalOnProperty(name = "monitoring.kasa.mode", havingValue = "stub", matchIfMissing = true)
+@ConditionalOnProperty(name = "monitoring.kasa.mode", havingValue = "stub")
 public class StubSmartPlugClient implements SmartPlugClient {
 
     @Override

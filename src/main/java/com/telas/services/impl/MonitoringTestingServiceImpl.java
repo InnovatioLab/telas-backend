@@ -47,11 +47,21 @@ public class MonitoringTestingServiceImpl implements MonitoringTestingService {
     @Transactional(readOnly = true)
     public List<MonitoringTestingRowDto> getOverview() {
         List<Box> boxes = boxRepository.findAllForTestingOverview();
+        List<SmartPlugEntity> allPlugs = smartPlugEntityRepository.findAllWithMonitor();
         Map<UUID, SmartPlugEntity> plugByMonitor =
-                smartPlugEntityRepository.findAllWithMonitor().stream()
+                allPlugs.stream()
+                        .filter(p -> p.getMonitor() != null)
                         .collect(
                                 Collectors.toMap(
                                         p -> p.getMonitor().getId(),
+                                        Function.identity(),
+                                        (a, b) -> a));
+        Map<UUID, SmartPlugEntity> plugByBox =
+                allPlugs.stream()
+                        .filter(p -> p.getBox() != null)
+                        .collect(
+                                Collectors.toMap(
+                                        p -> p.getBox().getId(),
                                         Function.identity(),
                                         (a, b) -> a));
         Instant now = Instant.now();
@@ -63,13 +73,23 @@ public class MonitoringTestingServiceImpl implements MonitoringTestingService {
             String status = resolveHeartbeatStatus(lastSeen, cutoff);
             boolean online = HEARTBEAT_STATUS_ONLINE.equals(status);
             List<Monitor> monitors = box.getMonitors();
+            SmartPlugEntity boxPlug = plugByBox.get(box.getId());
             if (monitors == null || monitors.isEmpty()) {
-                rows.add(buildRow(box, null, null, lastSeen, online, status));
+                rows.add(
+                        buildRow(box, null, null, boxPlug, lastSeen, online, status));
                 continue;
             }
             for (Monitor monitor : monitors) {
-                SmartPlugEntity plug = plugByMonitor.get(monitor.getId());
-                rows.add(buildRow(box, monitor, plug, lastSeen, online, status));
+                SmartPlugEntity monitorPlug = plugByMonitor.get(monitor.getId());
+                rows.add(
+                        buildRow(
+                                box,
+                                monitor,
+                                monitorPlug,
+                                boxPlug,
+                                lastSeen,
+                                online,
+                                status));
             }
         }
         return rows;
@@ -103,7 +123,8 @@ public class MonitoringTestingServiceImpl implements MonitoringTestingService {
     private static MonitoringTestingRowDto buildRow(
             Box box,
             Monitor monitor,
-            SmartPlugEntity plug,
+            SmartPlugEntity monitorPlug,
+            SmartPlugEntity boxPlug,
             Instant lastSeen,
             boolean heartbeatOnline,
             String heartbeatStatus) {
@@ -116,10 +137,14 @@ public class MonitoringTestingServiceImpl implements MonitoringTestingService {
             Address addr = monitor.getAddress();
             monitorSummary = addr != null ? addr.getCoordinatesParams() : null;
         }
-        UUID smartPlugId = plug != null ? plug.getId() : null;
-        String mac = plug != null ? plug.getMacAddress() : null;
-        String vendor = plug != null ? plug.getVendor() : null;
-        Boolean plugEnabled = plug != null ? plug.isEnabled() : null;
+        UUID smartPlugId = monitorPlug != null ? monitorPlug.getId() : null;
+        String mac = monitorPlug != null ? monitorPlug.getMacAddress() : null;
+        String vendor = monitorPlug != null ? monitorPlug.getVendor() : null;
+        Boolean plugEnabled = monitorPlug != null ? monitorPlug.isEnabled() : null;
+        UUID boxSmartPlugId = boxPlug != null ? boxPlug.getId() : null;
+        String boxMac = boxPlug != null ? boxPlug.getMacAddress() : null;
+        String boxVendor = boxPlug != null ? boxPlug.getVendor() : null;
+        Boolean boxPlugEnabled = boxPlug != null ? boxPlug.isEnabled() : null;
         return MonitoringTestingRowDto.builder()
                 .boxId(box.getId())
                 .boxIp(box.getBoxAddress() != null ? box.getBoxAddress().getIp() : null)
@@ -134,6 +159,10 @@ public class MonitoringTestingServiceImpl implements MonitoringTestingService {
                 .smartPlugMac(mac)
                 .smartPlugVendor(vendor)
                 .smartPlugEnabled(plugEnabled)
+                .boxSmartPlugId(boxSmartPlugId)
+                .boxSmartPlugMac(boxMac)
+                .boxSmartPlugVendor(boxVendor)
+                .boxSmartPlugEnabled(boxPlugEnabled)
                 .build();
     }
 

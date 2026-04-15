@@ -214,7 +214,16 @@ public enum NotificationReference {
 
         @Override
         public EmailDataDto getEmailData(Map<String, String> params) {
-            return null;
+            EmailDataDto emailData = new EmailDataDto();
+            emailData.setSubject(SharedConstants.EMAIL_SUBJECT_BOX_STATUS_UPDATED);
+            emailData.setTemplate(SharedConstants.TEMPLATE_EMAIL_BOX_STATUS_UPDATED);
+            emailData.getParams().put("ip", params.get("ip"));
+            emailData.getParams().put("statusLabel", params.get("statusLabel"));
+            emailData.getParams().put("monitorAddresses", params.get("monitorAddresses"));
+            emailData.getParams().put("notifiedAt", params.get("notifiedAt"));
+            emailData.getParams().put("incidentType", params.getOrDefault("incidentType", ""));
+            emailData.getParams().put("severity", params.getOrDefault("severity", ""));
+            return emailData;
         }
     },
     MONITOR_STATUS_UPDATED {
@@ -237,7 +246,55 @@ public enum NotificationReference {
 
         @Override
         public EmailDataDto getEmailData(Map<String, String> params) {
-            return null;
+            EmailDataDto emailData = new EmailDataDto();
+            emailData.setSubject(SharedConstants.EMAIL_SUBJECT_MONITOR_STATUS_UPDATED);
+            emailData.setTemplate(SharedConstants.TEMPLATE_EMAIL_MONITOR_STATUS_UPDATED);
+            emailData.getParams().put("monitorAddress", params.get("monitorAddress"));
+            emailData.getParams().put("statusLabel", params.get("statusLabel"));
+            emailData.getParams().put("notifiedAt", params.get("notifiedAt"));
+            emailData.getParams().put("incidentType", params.getOrDefault("incidentType", ""));
+            emailData.getParams().put("severity", params.getOrDefault("severity", ""));
+            return emailData;
+        }
+    },
+    SMART_PLUG_INCIDENT {
+        @Override
+        public String getNotificationMessage(Map<String, String> params) {
+            return String.format("""
+                    <div class="informacoes">
+                        <h4 id="notification-title" class="notification-title">Smart plug alert</h4>
+                        <p>Monitor %s — incident <strong>%s</strong> (severity %s).</p>
+                        <div class="field">
+                            <span class="field-label">Box IP: </span>
+                            <span class="field-value">%s</span>
+                        </div>
+                        <div class="field">
+                            <span class="field-label">Notification time: </span>
+                            <span class="field-value">%s</span>
+                        </div>
+                    </div>
+                    """,
+                    params.getOrDefault("monitorAddress", "Unknown"),
+                    params.getOrDefault("incidentType", ""),
+                    params.getOrDefault("severity", ""),
+                    params.getOrDefault("boxIp", ""),
+                    params.getOrDefault("notifiedAt", ""));
+        }
+
+        @Override
+        public EmailDataDto getEmailData(Map<String, String> params) {
+            EmailDataDto emailData = new EmailDataDto();
+            emailData.setSubject(SharedConstants.EMAIL_SUBJECT_SMART_PLUG_INCIDENT);
+            emailData.setTemplate(SharedConstants.TEMPLATE_EMAIL_SMART_PLUG_INCIDENT);
+            emailData.getParams().put("monitorAddress", params.getOrDefault("monitorAddress", ""));
+            emailData.getParams().put("incidentType", params.getOrDefault("incidentType", ""));
+            emailData.getParams().put("severity", params.getOrDefault("severity", ""));
+            emailData.getParams().put("boxIp", params.getOrDefault("boxIp", ""));
+            emailData.getParams().put("notifiedAt", params.getOrDefault("notifiedAt", ""));
+            emailData.getParams().put("hypothesis", params.getOrDefault("hypothesis", ""));
+            emailData.getParams().put("powerWatts", params.getOrDefault("powerWatts", ""));
+            emailData.getParams().put("relayOn", params.getOrDefault("relayOn", ""));
+            return emailData;
         }
     },
     ADMIN_NEW_PURCHASE {

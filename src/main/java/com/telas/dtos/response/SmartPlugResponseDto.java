@@ -19,6 +19,7 @@ public final class SmartPlugResponseDto implements Serializable {
     private final String model;
     private final String displayName;
     private final UUID monitorId;
+    private final UUID boxId;
     private final boolean enabled;
     private final String lastSeenIp;
     private final String accountEmail;
@@ -33,6 +34,7 @@ public final class SmartPlugResponseDto implements Serializable {
         model = entity.getModel();
         displayName = entity.getDisplayName();
         monitorId = entity.getMonitor() != null ? entity.getMonitor().getId() : null;
+        boxId = entity.getBox() != null ? entity.getBox().getId() : null;
         enabled = entity.isEnabled();
         lastSeenIp = entity.getLastSeenIp();
         accountEmail = entity.getAccountEmail();

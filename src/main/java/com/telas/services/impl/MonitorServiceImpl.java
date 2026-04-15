@@ -63,7 +63,7 @@ public class MonitorServiceImpl implements MonitorService {
 
 	@Override
 	@Transactional
-	public void save(MonitorRequestDto request, UUID monitorId) throws JsonProcessingException {
+	public UUID save(MonitorRequestDto request, UUID monitorId) throws JsonProcessingException {
 		AuthenticatedUser authenticatedUser = authenticatedUserService.validateAdmin();
 		request.validate();
 		Address address = helper.getAddress(request);
@@ -74,10 +74,11 @@ public class MonitorServiceImpl implements MonitorService {
 				? helper.getAds(request, monitorId)
 				: Collections.emptyList();
 			updateExistingMonitor(request, monitorId, authenticatedUser, address, ads);
-		} else {
-			validateAddressAvailability(address);
-			createNewMonitor(authenticatedUser, address);
+			return null;
 		}
+		validateAddressAvailability(address);
+		Monitor created = createNewMonitor(authenticatedUser, address);
+		return created.getId();
 	}
 
 
@@ -262,13 +263,14 @@ public class MonitorServiceImpl implements MonitorService {
 	}
 
 
-	private void createNewMonitor(AuthenticatedUser authenticatedUser, Address address) {
+	private Monitor createNewMonitor(AuthenticatedUser authenticatedUser, Address address) {
 		setCoordinatesIfMissing(address);
 
 		Monitor monitor = new Monitor(address, productId);
 		monitor.setUsernameCreate(authenticatedUser.client().getBusinessName());
 		repository.save(monitor);
 		subscriptionService.savePartnerBonusSubscription(address.getClient(), monitor);
+		return monitor;
 	}
 
 

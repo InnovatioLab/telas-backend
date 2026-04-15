@@ -1,5 +1,6 @@
 package com.telas.monitoring.entities;
 
+import com.telas.entities.Box;
 import com.telas.entities.Monitor;
 import jakarta.persistence.*;
 import lombok.Getter;
@@ -34,8 +35,12 @@ public class SmartPlugEntity {
     private String displayName;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "monitor_id", nullable = false)
+    @JoinColumn(name = "monitor_id", nullable = true)
     private Monitor monitor;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "box_id", nullable = true)
+    private Box box;
 
     @Column(name = "enabled", nullable = false)
     private boolean enabled = true;

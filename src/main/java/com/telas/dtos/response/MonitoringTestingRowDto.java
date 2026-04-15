@@ -28,4 +28,8 @@ public class MonitoringTestingRowDto implements Serializable {
     String smartPlugMac;
     String smartPlugVendor;
     Boolean smartPlugEnabled;
+    UUID boxSmartPlugId;
+    String boxSmartPlugMac;
+    String boxSmartPlugVendor;
+    Boolean boxSmartPlugEnabled;
 }
