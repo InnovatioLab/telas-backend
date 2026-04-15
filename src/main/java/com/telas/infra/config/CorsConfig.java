@@ -25,9 +25,7 @@ public class CorsConfig {
         patterns.add("http://127.0.0.1:4200");
         patterns.add("http://localhost:*");
         patterns.add("http://127.0.0.1:*");
-        if (StringUtils.hasText(frontBaseUrl)) {
-            patterns.add(frontBaseUrl.trim());
-        }
+        addFrontOriginVariants(frontBaseUrl, patterns);
         if (StringUtils.hasText(additionalPatterns)) {
             Arrays.stream(additionalPatterns.split(","))
                     .map(String::trim)
@@ -42,5 +40,23 @@ public class CorsConfig {
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/**", configuration);
         return source;
+    }
+
+    private static void addFrontOriginVariants(String frontBaseUrl, List<String> patterns) {
+        if (!StringUtils.hasText(frontBaseUrl)) {
+            return;
+        }
+        String trimmed = frontBaseUrl.trim();
+        patterns.add(trimmed);
+        String lower = trimmed.toLowerCase();
+        if (lower.startsWith("https://www.")) {
+            patterns.add("https://" + trimmed.substring(12));
+        } else if (lower.startsWith("https://") && !lower.regionMatches(8, "www.", 0, 4)) {
+            patterns.add("https://www." + trimmed.substring(8));
+        } else if (lower.startsWith("http://www.")) {
+            patterns.add("http://" + trimmed.substring(11));
+        } else if (lower.startsWith("http://") && !lower.regionMatches(7, "www.", 0, 4)) {
+            patterns.add("http://www." + trimmed.substring(7));
+        }
     }
 }
