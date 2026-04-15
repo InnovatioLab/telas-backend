@@ -12,6 +12,7 @@ import com.telas.entities.*;
 import com.telas.enums.AdValidationType;
 import com.telas.enums.CodeType;
 import com.telas.enums.DefaultStatus;
+import com.telas.enums.Permission;
 import com.telas.enums.Role;
 import com.telas.helpers.AttachmentHelper;
 import com.telas.helpers.ClientHelper;
@@ -350,6 +351,27 @@ public class ClientServiceImpl implements ClientService {
 		}
 	}
 
+	@Override
+	@Transactional
+	public void deactivateClientByDeveloper(UUID clientId) {
+		authenticatedUserService.validatePermission(Permission.ADMIN_CLIENTS_DEACTIVATE);
+		Client actor = authenticatedUserService.getLoggedUser().client();
+		Client target = repository.findById(clientId)
+				.orElseThrow(() -> new ResourceNotFoundException(ClientValidationMessages.USER_NOT_FOUND));
+		if (target.getId().equals(actor.getId())) {
+			throw new ForbiddenException(ClientValidationMessages.CANNOT_DEACTIVATE_USER);
+		}
+		if (target.isAdmin() || target.isDeveloper()) {
+			throw new ForbiddenException(ClientValidationMessages.CANNOT_DEACTIVATE_USER);
+		}
+		if (DefaultStatus.INACTIVE.equals(target.getStatus())) {
+			return;
+		}
+		CustomRevisionListener.setUsername(actor.getBusinessName());
+		target.setStatus(DefaultStatus.INACTIVE);
+		target.setUsernameUpdate(actor.getBusinessName());
+		repository.save(target);
+	}
 
 	@Override
 	@Transactional

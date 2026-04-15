@@ -22,8 +22,8 @@ public final class MonitorValidationMessages {
     public static final String ADDRESS_ALREADY_IN_USE = "Address is already in use by another monitor.";
     public static final String BLOCK_QUANTITY_REQUIRED = "Block quantity is required";
     public static final String BLOCK_QUANTITY_POSITIVE = "Block quantity must be a positive number";
-    public static final String BLOCK_QUANTITY_INVALID = "Block quantity is invalid, It must be 1, 2, or 7 (partner slots)";
+    public static final String BLOCK_QUANTITY_INVALID = "Block quantity is invalid, It must be 1, 2, or 5 (partner slots)";
     public static final String MONITOR_BLOCKS_BEYOND_LIMIT = "Total block quantity exceeds the maximum allowed for the monitor.";
-    public static final String BLOCK_QUANTITY_PARTNER_DUPLICATED = "Only one ad with partner reserved slots (7) is allowed per monitor.";
-    public static final String BLOCK_QUANTITY_MAXIMUM = "Block quantity exceeds the maximum of 7 allowed per ad.";
+    public static final String BLOCK_QUANTITY_PARTNER_DUPLICATED = "Only one ad with partner reserved slots (5) is allowed per monitor.";
+    public static final String BLOCK_QUANTITY_MAXIMUM = "Block quantity exceeds the maximum of 5 allowed per ad.";
 }

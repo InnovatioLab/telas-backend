@@ -152,6 +152,15 @@ public class ClientControllerImpl implements ClientController {
     }
 
     @Override
+    @PatchMapping("/{id}/deactivate")
+    @SecurityRequirement(name = "jwt")
+    public ResponseEntity<?> deactivateClientByDeveloper(@PathVariable(name = "id") UUID clientId) {
+        service.deactivateClientByDeveloper(clientId);
+        return ResponseEntity.status(HttpStatus.OK)
+                .body(ResponseDto.fromData(null, HttpStatus.OK, MessageCommonsConstants.UPDATE_SUCCESS_MESSAGE));
+    }
+
+    @Override
     @GetMapping("/ads-requests")
     @SecurityRequirement(name = "jwt")
     public ResponseEntity<?> findAdRequestsByFilter(FilterAdRequestDto request) {

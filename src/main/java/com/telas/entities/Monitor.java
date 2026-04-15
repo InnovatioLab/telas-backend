@@ -104,7 +104,7 @@ public class Monitor extends BaseAudit implements Serializable {
     }
 
     public boolean isWithinAdsLimit(CartItem item) {
-        // Se o monitor tem um partner, reserva 7 slots para ads do partner
+        // Se o monitor tem um partner, reserva slots para ads do partner (PARTNER_RESERVED_SLOTS)
         int partnerAdsSlots = getPartnerAdsSlots();
         int otherAdsSize = monitorAds.size() - partnerAdsSlots;
         
@@ -121,7 +121,7 @@ public class Monitor extends BaseAudit implements Serializable {
     }
 
     private boolean isWithinSubscriptionsLimit(CartItem item) {
-        // Se o monitor tem um partner, sempre reserva 7 slots para ele
+        // Se o monitor tem um partner, sempre reserva slots para ele (PARTNER_RESERVED_SLOTS)
         int totalActiveSubscriptionSlots = getTotalActiveSubscriptionSlots(); // Todos os slots ativos
         int otherClientsSubscriptionSlots = getOtherClientsSubscriptionSlots(totalActiveSubscriptionSlots); // Slots ocupados pelo partner
         int availableSlotsForOthers = maxBlocks - SharedConstants.PARTNER_RESERVED_SLOTS;
@@ -134,7 +134,7 @@ public class Monitor extends BaseAudit implements Serializable {
     }
 
     private int getPartnerAdsSlots() {
-        // Partner tem até 7 slots reservados para ads
+        // Partner tem até PARTNER_RESERVED_SLOTS reservados para ads
         return monitorAds.stream()
                 .filter(monitorAd -> {
                     Client adClient = monitorAd.getAd().getClient();

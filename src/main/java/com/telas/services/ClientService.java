@@ -53,6 +53,8 @@ public interface ClientService {
 
     void changeRoleToPartner(UUID clientId);
 
+    void deactivateClientByDeveloper(UUID clientId);
+
     void validateAd(UUID adId, AdValidationType validation, RefusedAdRequestDto request);
 
     void incrementSubscriptionFlow();

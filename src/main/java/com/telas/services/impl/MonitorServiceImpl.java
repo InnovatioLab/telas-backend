@@ -575,9 +575,7 @@ public class MonitorServiceImpl implements MonitorService {
 		int capacity = (int) (adsCount / 0.75f) + 1;
 		Map<UUID, Integer> blockQuantities = new HashMap<>(capacity);
 
-		// Distribuições pré-definidas para 1..7 anúncios
-		final int[][] distributions = {{}, {7}, {4, 3}, {3, 2, 2}, {2, 2, 2, 1}, {2, 2, 1, 1, 1}, {2, 1, 1, 1, 1, 1},
-			{1, 1, 1, 1, 1, 1, 1}};
+		final int[][] distributions = {{}, {5}, {3, 2}, {2, 2, 1}, {2, 1, 1, 1}, {1, 1, 1, 1, 1}};
 
 		int[] dist = distributions[adsCount];
 		IntStream.range(0, adsCount).forEach(i -> blockQuantities.put(partnerAds.get(i).getId(), dist[i]));

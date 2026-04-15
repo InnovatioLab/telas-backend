@@ -24,4 +24,5 @@ public final class ClientValidationMessages {
     public static final String WEBSITE_URL_SIZE = "Website URL must be less than 255 characters.";
     public static final String CLIENT_ALREADY_HAS_AD_REQUEST = "Client already has an pending AdRequest.";
     public static final String AD_REQUEST_NOT_FOUND = "Client does not have an AdRequest.";
+    public static final String CANNOT_DEACTIVATE_USER = "This user cannot be deactivated.";
 }
