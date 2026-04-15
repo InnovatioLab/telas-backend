@@ -1,5 +1,6 @@
 package com.telas.infra.config;
 
+import com.telas.infra.security.filters.IpRateLimiterFilter;
 import com.telas.infra.security.filters.MonitoringApiKeyFilter;
 import com.telas.infra.security.filters.SecurityFilter;
 import com.telas.shared.constants.AllowedEndpointsConstants;
@@ -22,6 +23,7 @@ import org.springframework.web.cors.CorsConfigurationSource;
 public class SecurityConfig {
     private final SecurityFilter securityFilter;
     private final MonitoringApiKeyFilter monitoringApiKeyFilter;
+    private final IpRateLimiterFilter ipRateLimiterFilter;
     private final CorsConfigurationSource corsConfigurationSource;
 
     @Bean
@@ -35,6 +37,7 @@ public class SecurityConfig {
                 })
                 .addFilterBefore(securityFilter, UsernamePasswordAuthenticationFilter.class)
                 .addFilterBefore(monitoringApiKeyFilter, SecurityFilter.class)
+                .addFilterBefore(ipRateLimiterFilter, MonitoringApiKeyFilter.class)
                 .sessionManagement(conf -> conf.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .build();
     }
