@@ -23,18 +23,18 @@
         <table role="presentation" style="width: 100%; border-collapse: collapse; padding-right: 80px;">
             <tr>
                 <td style="padding-bottom: 10px">
-                    <h3>Hi<strong> ${name?html}</strong></h3>
+                    <h3>Hi<strong> ${name}</strong></h3>
                 </td>
             </tr>
             <tr>
                 <td style="padding-bottom: 16px">
                     <strong>Final reminder</strong> — This email is sent on the <strong>day before</strong> your advertising period ends (not on the last day itself).
-                    Your service period ends on <strong>${endDate?html}</strong>.
+                    Your service period ends on <strong>${endDate}</strong>.
                 </td>
             </tr>
             <tr>
                 <td style="padding-bottom: 20px">
-                    <strong><a href="${link?html}" style="color: #075473;">Renew or manage subscription</a></strong>
+                    <strong><a href="${link}" style="color: #075473;">Renew or manage subscription</a></strong>
                 </td>
             </tr>
             <tr>

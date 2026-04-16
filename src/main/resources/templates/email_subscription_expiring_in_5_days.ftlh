@@ -23,23 +23,23 @@
         <table role="presentation" style="width: 100%; border-collapse: collapse; padding-right: 80px;">
             <tr>
                 <td style="padding-bottom: 10px">
-                    <h3>Hi<strong> ${name?html}</strong></h3>
+                    <h3>Hi<strong> ${name}</strong></h3>
                 </td>
             </tr>
             <tr>
                 <td style="padding-bottom: 20px">
-                    <strong>Placeholder copy</strong> — Your Telas advertising service ends in <strong>${daysRemaining?html}</strong> day(s).
+                    <strong>Placeholder copy</strong> — Your Telas advertising service ends in <strong>${daysRemaining}</strong> day(s).
                     Final copy will be provided later.
                 </td>
             </tr>
             <tr>
                 <td style="padding-bottom: 10px">
-                    Service end date: <strong>${endDate?html}</strong>
+                    Service end date: <strong>${endDate}</strong>
                 </td>
             </tr>
             <tr>
                 <td style="padding-bottom: 20px">
-                    <strong><a href="${link?html}" style="color: #075473;">Manage subscription</a></strong>
+                    <strong><a href="${link}" style="color: #075473;">Manage subscription</a></strong>
                 </td>
             </tr>
             <tr>

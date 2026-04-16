@@ -10,8 +10,8 @@
     </style>
 </head>
 <body>
-<p><strong>Scheduled job</strong> <code>${(jobId!"")?html}</code> is about to run.</p>
-<p>Time (UTC): ${(startedAt!"")?html}</p>
+<p><strong>Scheduled job</strong> <code>${jobId!""}</code> is about to run.</p>
+<p>Time (UTC): ${startedAt!""}</p>
 <p style="font-size: 14px; color: #555;">You receive this message because a cron-style scheduled task is starting on the Telas server.</p>
 </body>
 </html>

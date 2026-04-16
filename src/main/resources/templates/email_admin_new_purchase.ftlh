@@ -28,10 +28,10 @@
                 </td>
             </tr>
             <tr>
-                <td style="padding-bottom: 8px"><strong>Customer:</strong> ${(buyerName!"")?html}</td>
+                <td style="padding-bottom: 8px"><strong>Customer:</strong> ${buyerName!""}</td>
             </tr>
             <tr>
-                <td style="padding-bottom: 8px"><strong>Subscription ID:</strong> ${(subscriptionId!"")?html}</td>
+                <td style="padding-bottom: 8px"><strong>Subscription ID:</strong> ${subscriptionId!""}</td>
             </tr>
             <tr>
                 <td class="section-title">Locations — blocks purchased &amp; full address</td>
@@ -49,7 +49,7 @@
                 <td class="section-title">Advertising period</td>
             </tr>
             <tr>
-                <td style="padding-bottom: 24px">${(veiculationSummary!"")?html}</td>
+                <td style="padding-bottom: 24px">${veiculationSummary!""}</td>
             </tr>
         </table>
     </div>
