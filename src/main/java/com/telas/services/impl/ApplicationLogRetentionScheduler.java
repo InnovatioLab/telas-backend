@@ -20,7 +20,9 @@ public class ApplicationLogRetentionScheduler {
     @Value("${monitoring.log.retention.days:60}")
     private int retentionDays;
 
-    @Scheduled(cron = "${monitoring.log.retention.cron:0 0 3 * * *}")
+    @Scheduled(
+            cron = "${monitoring.log.retention.cron:0 0 3 * * *}",
+            zone = "${app.scheduler.zone:America/New_York}")
     @SchedulerLock(name = "purgeApplicationLogs", lockAtMostFor = "PT10M")
     @Transactional
     public void purgeOldLogs() {

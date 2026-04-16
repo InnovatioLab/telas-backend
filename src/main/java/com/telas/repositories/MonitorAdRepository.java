@@ -14,6 +14,9 @@ import org.springframework.stereotype.Repository;
 @Repository
 public interface MonitorAdRepository extends JpaRepository<MonitorAd, MonitorAdPK> {
 
+    @Query("SELECT COUNT(ma) FROM MonitorAd ma WHERE ma.id.ad.id = :adId")
+    long countByAdId(@Param("adId") java.util.UUID adId);
+
     @Query(
             countQuery = """
                     SELECT COUNT(ma)

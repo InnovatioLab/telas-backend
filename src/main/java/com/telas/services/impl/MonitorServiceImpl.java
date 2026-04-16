@@ -14,6 +14,7 @@ import com.telas.infra.exceptions.ResourceNotFoundException;
 import com.telas.infra.security.model.AuthenticatedUser;
 import com.telas.infra.security.services.AuthenticatedUserService;
 import com.telas.repositories.MonitorRepository;
+import com.telas.services.AdUnusedTrackingService;
 import com.telas.services.BucketService;
 import com.telas.services.MonitorService;
 import com.telas.services.SubscriptionService;
@@ -56,6 +57,8 @@ public class MonitorServiceImpl implements MonitorService {
 	private final SubscriptionService subscriptionService;
 
 	private final MonitorHelper helper;
+
+	private final AdUnusedTrackingService adUnusedTrackingService;
 
 	@Value("${stripe.product.id}")
 	private String productId;
@@ -211,8 +214,11 @@ public class MonitorServiceImpl implements MonitorService {
 		authenticatedUserService.validateAdmin();
 		Monitor monitor = findEntityById(monitorId);
 		ensureNoActiveSubscription(monitor);
+		Set<UUID> adIds =
+				monitor.getMonitorAds().stream().map(ma -> ma.getAd().getId()).collect(Collectors.toSet());
 		clearMonitorAssociations(monitor);
 		repository.delete(monitor);
+		adUnusedTrackingService.syncUnusedStateForAdIds(adIds);
 	}
 
 
@@ -390,6 +396,11 @@ public class MonitorServiceImpl implements MonitorService {
 
 	private void updateMonitorAds(MonitorRequestDto request, Monitor monitor, List<Ad> ads) {
 		Set<UUID> newAdIds = buildNewAdIds(ads);
+		Set<UUID> removedAdIds =
+				monitor.getMonitorAds().stream()
+						.filter(ma -> !newAdIds.contains(ma.getAd().getId()))
+						.map(ma -> ma.getAd().getId())
+						.collect(Collectors.toSet());
 		removeStaleMonitorAds(monitor, newAdIds);
 
 		Map<UUID, MonitorAdRequestDto> adRequestMap = mapAdsById(request);
@@ -412,6 +423,10 @@ public class MonitorServiceImpl implements MonitorService {
 		if (monitor.isAbleToSendBoxRequest()) {
 			helper.sendBoxesMonitorsUpdateAds(requestList);
 		}
+
+		Set<UUID> toSync = new HashSet<>(newAdIds);
+		toSync.addAll(removedAdIds);
+		adUnusedTrackingService.syncUnusedStateForAdIds(toSync);
 	}
 
 

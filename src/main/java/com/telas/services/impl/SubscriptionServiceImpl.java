@@ -20,7 +20,6 @@ import com.telas.infra.security.services.AuthenticatedUserService;
 import com.telas.repositories.ClientRepository;
 import com.telas.repositories.SubscriptionRepository;
 import com.telas.services.SubscriptionService;
-import com.telas.shared.constants.SharedConstants;
 import com.telas.shared.constants.valitation.SubscriptionValidationMessages;
 import com.telas.shared.utils.PaginationFilterUtil;
 import jakarta.persistence.criteria.CriteriaBuilder;
@@ -213,7 +212,9 @@ public class SubscriptionServiceImpl implements SubscriptionService {
 
     @Override
     @Transactional
-    @Scheduled(cron = SharedConstants.DAILY_CRON, zone = SharedConstants.ZONE_ID)
+    @Scheduled(
+            cron = "${subscription.cron.remove-expired-ads:0 0 4 * * *}",
+            zone = "${app.scheduler.zone:America/New_York}")
     @SchedulerLock(name = "removeAdsFromExpiredSubscriptionsLock", lockAtLeastFor = "PT10M", lockAtMostFor = "PT1H")
     public void removeAdsFromExpiredSubscriptions() {
         List<Subscription> expiredSubscriptions = repository.getActiveAndExpiredSubscriptions(Instant.now());
@@ -237,7 +238,9 @@ public class SubscriptionServiceImpl implements SubscriptionService {
 
     @Override
     @Transactional
-    @Scheduled(cron = SharedConstants.EXPIRY_SUBSCRIPTION_CRON, zone = SharedConstants.ZONE_ID)
+    @Scheduled(
+            cron = "${subscription.cron.expiry-emails:0 0 6 * * *}",
+            zone = "${app.scheduler.zone:America/New_York}")
     @SchedulerLock(name = "sendSubscriptionExpirationEmailLock", lockAtLeastFor = "PT10M", lockAtMostFor = "PT30M")
     public void sendSubscriptionExpirationEmail() {
         LocalDate today = LocalDate.now();

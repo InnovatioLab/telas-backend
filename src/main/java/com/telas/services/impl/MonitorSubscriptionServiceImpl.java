@@ -8,6 +8,7 @@ import com.telas.enums.SubscriptionStatus;
 import com.telas.helpers.MonitorHelper;
 import com.telas.repositories.MonitorRepository;
 import com.telas.repositories.SubscriptionRepository;
+import com.telas.services.AdUnusedTrackingService;
 import com.telas.services.MonitorSubscriptionService;
 import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
@@ -16,7 +17,10 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
+import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
@@ -25,6 +29,8 @@ public class MonitorSubscriptionServiceImpl implements MonitorSubscriptionServic
     private final MonitorRepository repository;
     private final SubscriptionRepository subscriptionRepository;
     private final MonitorHelper helper;
+
+    private final AdUnusedTrackingService adUnusedTrackingService;
 
     @Override
     @Transactional
@@ -37,6 +43,7 @@ public class MonitorSubscriptionServiceImpl implements MonitorSubscriptionServic
 
         Client client = subscription.getClient();
         List<Monitor> updatedMonitors = new ArrayList<>();
+        Set<UUID> touchedAdIds = new HashSet<>();
 
         subscription.getMonitors().forEach(monitor -> {
             List<String> adNamesToRemove = monitor.getAds().stream()
@@ -45,6 +52,10 @@ public class MonitorSubscriptionServiceImpl implements MonitorSubscriptionServic
                     .toList();
 
             if (!adNamesToRemove.isEmpty()) {
+                monitor.getMonitorAds()
+                        .stream()
+                        .filter(monitorAd -> adNamesToRemove.contains(monitorAd.getAd().getName()))
+                        .forEach(monitorAd -> touchedAdIds.add(monitorAd.getAd().getId()));
                 monitor.getMonitorAds().removeIf(monitorAd -> adNamesToRemove.contains(monitorAd.getAd().getName()));
                 updatedMonitors.add(monitor);
 
@@ -60,5 +71,6 @@ public class MonitorSubscriptionServiceImpl implements MonitorSubscriptionServic
 
         subscription.getSubscriptionMonitors().clear();
         subscriptionRepository.save(subscription);
+        adUnusedTrackingService.syncUnusedStateForAdIds(touchedAdIds);
     }
 }

@@ -14,6 +14,7 @@ import com.telas.repositories.AdRepository;
 import com.telas.repositories.AdRequestRepository;
 import com.telas.repositories.AttachmentRepository;
 import com.telas.repositories.ClientRepository;
+import com.telas.services.AdUnusedTrackingService;
 import com.telas.services.BucketService;
 import com.telas.services.NotificationService;
 import com.telas.shared.audit.CustomRevisionListener;
@@ -40,6 +41,8 @@ public class AttachmentHelper {
     private final ClientRepository clientRepository;
     private final SubscriptionHelper subscriptionHelper;
     private final MonitorHelper monitorHelper;
+
+    private final AdUnusedTrackingService adUnusedTrackingService;
 
     @Value("${front.base.url}")
     private String frontBaseUrl;
@@ -277,6 +280,7 @@ public class AttachmentHelper {
         }
 
         adRepository.save(entity);
+        adUnusedTrackingService.syncUnusedStateForAdIds(List.of(entity.getId()));
     }
 
     private void validateValidatorPermissions(Ad entity, Client validator) {

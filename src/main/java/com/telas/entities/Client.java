@@ -46,6 +46,9 @@ public class Client extends BaseAudit implements Serializable {
     @Column(name = "business_name")
     private String businessName;
 
+    @Column(name = "ads_retention_days_override")
+    private Integer adsRetentionDaysOverride;
+
     @NotAudited
     @Column(name = "password", columnDefinition = "TEXT")
     private String password;

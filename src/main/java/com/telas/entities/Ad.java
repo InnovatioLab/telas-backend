@@ -14,6 +14,7 @@ import org.hibernate.envers.NotAudited;
 
 import java.io.Serial;
 import java.io.Serializable;
+import java.time.Instant;
 import java.util.*;
 
 @Getter
@@ -40,6 +41,9 @@ public class Ad extends BaseAudit implements Serializable {
     @Column(name = "validation", nullable = false)
     @Enumerated(EnumType.STRING)
     private AdValidationType validation = AdValidationType.PENDING;
+
+    @Column(name = "unused_since")
+    private Instant unusedSince;
 
     @JsonIgnore
     @ManyToOne
