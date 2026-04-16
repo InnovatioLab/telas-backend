@@ -1,6 +1,7 @@
 package com.telas.repositories;
 
 import com.telas.entities.Subscription;
+import com.telas.enums.SubscriptionStatus;
 import org.jetbrains.annotations.NotNull;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
@@ -9,6 +10,7 @@ import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.time.Instant;
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -57,4 +59,12 @@ public interface SubscriptionRepository extends JpaRepository<Subscription, UUID
                   AND s.client.role = 'PARTNER'
             """)
   Optional<Subscription> findActiveBonusSubscriptionByClientId(UUID partnerId);
+
+  @Query("""
+          SELECT DISTINCT s FROM Subscription s
+          JOIN FETCH s.client c
+          JOIN FETCH c.contact
+          WHERE s.status IN :statuses
+          """)
+  List<Subscription> findByStatusInForExport(@Param("statuses") Collection<SubscriptionStatus> statuses);
 }
