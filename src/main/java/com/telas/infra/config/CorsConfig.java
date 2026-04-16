@@ -18,21 +18,31 @@ public class CorsConfig {
     @Bean
     public CorsConfigurationSource corsConfigurationSource(
             @Value("${front.base.url}") String frontBaseUrl,
-            @Value("${cors.allowed-origin-patterns:}") String additionalPatterns) {
+            @Value("${cors.allowed-origins:}") String allowedOrigins,
+            @Value("${cors.allowed-origin-patterns:}") String allowedOriginPatterns) {
         CorsConfiguration configuration = new CorsConfiguration();
-        List<String> patterns = new ArrayList<>();
-        patterns.add("http://localhost:4200");
-        patterns.add("http://127.0.0.1:4200");
-        patterns.add("http://localhost:*");
-        patterns.add("http://127.0.0.1:*");
-        addFrontOriginVariants(frontBaseUrl, patterns);
-        if (StringUtils.hasText(additionalPatterns)) {
-            Arrays.stream(additionalPatterns.split(","))
-                    .map(String::trim)
-                    .filter(StringUtils::hasText)
-                    .forEach(patterns::add);
+        List<String> origins = new ArrayList<>();
+        addFrontOriginVariants(frontBaseUrl, origins);
+
+        if (StringUtils.hasText(allowedOrigins)) {
+            Arrays.stream(allowedOrigins.split(","))
+                .map(String::trim)
+                .filter(StringUtils::hasText)
+                .forEach(origins::add);
         }
-        configuration.setAllowedOriginPatterns(patterns);
+
+        if (StringUtils.hasText(allowedOriginPatterns)) {
+            List<String> patterns = new ArrayList<>();
+            addFrontOriginVariants(frontBaseUrl, patterns);
+            Arrays.stream(allowedOriginPatterns.split(","))
+                .map(String::trim)
+                .filter(StringUtils::hasText)
+                .forEach(patterns::add);
+            configuration.setAllowedOriginPatterns(patterns);
+        } else {
+            configuration.setAllowedOrigins(origins);
+        }
+
         configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
         configuration.setAllowedHeaders(List.of("*"));
         configuration.setAllowCredentials(true);
@@ -42,21 +52,21 @@ public class CorsConfig {
         return source;
     }
 
-    private static void addFrontOriginVariants(String frontBaseUrl, List<String> patterns) {
+    private static void addFrontOriginVariants(String frontBaseUrl, List<String> origins) {
         if (!StringUtils.hasText(frontBaseUrl)) {
             return;
         }
         String trimmed = frontBaseUrl.trim();
-        patterns.add(trimmed);
+        origins.add(trimmed);
         String lower = trimmed.toLowerCase();
         if (lower.startsWith("https://www.")) {
-            patterns.add("https://" + trimmed.substring(12));
+            origins.add("https://" + trimmed.substring(12));
         } else if (lower.startsWith("https://") && !lower.regionMatches(8, "www.", 0, 4)) {
-            patterns.add("https://www." + trimmed.substring(8));
+            origins.add("https://www." + trimmed.substring(8));
         } else if (lower.startsWith("http://www.")) {
-            patterns.add("http://" + trimmed.substring(11));
+            origins.add("http://" + trimmed.substring(11));
         } else if (lower.startsWith("http://") && !lower.regionMatches(7, "www.", 0, 4)) {
-            patterns.add("http://www." + trimmed.substring(7));
+            origins.add("http://www." + trimmed.substring(7));
         }
     }
 }
