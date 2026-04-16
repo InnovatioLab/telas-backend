@@ -46,6 +46,7 @@ public class EmailServiceImpl implements EmailService {
     @Override
     @Async
     public void send(EmailDataDto data) {
+        Exception transportError = null;
         try {
             Template template = freemarkerConfig.getTemplate(data.getTemplate());
 
@@ -63,12 +64,17 @@ public class EmailServiceImpl implements EmailService {
             helper.setTo(destination);
             helper.setText(conteudoEmail, true);
             emailSender.send(mimeMessage);
-            log.info("Message sent to email {}", data.getEmail());
-            recordEmailInApplicationLogs(data, true, null);
+            log.info(
+                    "Email enviado (transporte OK): to={} subject={} template={}",
+                    data.getEmail(),
+                    data.getSubject(),
+                    data.getTemplate());
         } catch (MailException | MessagingException | IOException | TemplateException e) {
+            transportError = e;
             log.error("Error while sending email: {}", e.getMessage());
-            recordEmailInApplicationLogs(data, false, e);
             throw new BusinessRuleException(ContactValidationMessages.ERRO_WHILE_SENDING_EMAIL);
+        } finally {
+            recordEmailInApplicationLogs(data, transportError == null, transportError);
         }
     }
 

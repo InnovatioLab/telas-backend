@@ -425,15 +425,18 @@ public class ClientServiceImpl implements ClientService {
 	@Transactional(readOnly = true)
 	public PaginationResponseDto<List<ClientMinResponseDto>> findAllFilters(ClientFilterRequestDto request) {
 		authenticatedUserService.validateAdmin();
+		Client actor = authenticatedUserService.getLoggedUser().client();
 		Sort order = request.setOrdering();
 
 		Pageable pageable = PaginationFilterUtil.getPageable(request, order);
+		Specification<Client> roleRestriction = actor.isDeveloper()
+			? (root, query, criteriaBuilder) -> criteriaBuilder.conjunction()
+			: (root, query, criteriaBuilder) -> criteriaBuilder.notEqual(root.get("role"), Role.ADMIN);
 		Specification<Client> filter = PaginationFilterUtil.addSpecificationFilter(
-			(root, query, criteriaBuilder) -> criteriaBuilder.notEqual(root.get("role"), Role.ADMIN),
+			roleRestriction,
 			request.getGenericFilter(), this::filterClients);
 
 		Page<Client> page = repository.findAll(filter, pageable);
-		Client actor = authenticatedUserService.getLoggedUser().client();
 		boolean canDeactivate = permissionService.hasPermission(actor, Permission.ADMIN_CLIENTS_DEACTIVATE);
 		UUID viewerId = actor.getId();
 		List<ClientMinResponseDto> response = page.stream()
