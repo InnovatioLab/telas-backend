@@ -76,3 +76,13 @@ jobs:
           -d '{
             "applicationId": "${{ secrets.DOKPLOY_APPLICATION_ID }}"
           }'
+
+      - name: Notificar Discord (deploy)
+        if: success()
+        continue-on-error: true
+        env:
+          DISCORD_DEPLOY_WEBHOOK_URL: ${{ secrets.DISCORD_DEPLOY_WEBHOOK_URL }}
+          APP_NAME: backend (API)
+        run: |
+          command -v jq >/dev/null 2>&1 || (sudo apt-get update -qq && sudo apt-get install -y jq)
+          bash .github/scripts/discord-notify.sh
