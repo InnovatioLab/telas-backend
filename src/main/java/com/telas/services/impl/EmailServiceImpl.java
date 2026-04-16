@@ -18,14 +18,15 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.mail.MailException;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.mail.javamail.MimeMessageHelper;
-import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 
 import java.io.IOException;
 import java.io.StringWriter;
 import java.util.HashMap;
+import java.util.Locale;
 import java.util.Map;
+import java.util.Set;
 
 @Log4j2
 @Service
@@ -35,6 +36,16 @@ public class EmailServiceImpl implements EmailService {
     private static final String EMAIL_LOG_SOURCE = "EMAIL";
     private static final int MAX_PARAM_VALUE_LEN = 800;
     private static final int MAX_ERR_MSG = 1500;
+    private static final String REDACTED = "[redacted]";
+    private static final Set<String> SENSITIVE_PARAM_KEYS_LOWER = Set.of(
+            "verificationcode",
+            "password",
+            "currentpassword",
+            "newpassword",
+            "confirmpassword",
+            "secret",
+            "accesstoken",
+            "refreshtoken");
 
     private final JavaMailSender emailSender;
     private final Configuration freemarkerConfig;
@@ -44,7 +55,6 @@ public class EmailServiceImpl implements EmailService {
     private String emailFrom;
 
     @Override
-    @Async
     public void send(EmailDataDto data) {
         Exception transportError = null;
         try {
@@ -52,7 +62,7 @@ public class EmailServiceImpl implements EmailService {
 
             StringWriter stringWriter = new StringWriter();
             template.process(data.getParams(), stringWriter);
-            String conteudoEmail = stringWriter.toString();
+            String emailBody = stringWriter.toString();
 
             MimeMessage mimeMessage = emailSender.createMimeMessage();
             MimeMessageHelper helper = new MimeMessageHelper(mimeMessage);
@@ -62,10 +72,10 @@ public class EmailServiceImpl implements EmailService {
             helper.setSubject(data.getSubject());
             helper.setFrom(sender);
             helper.setTo(destination);
-            helper.setText(conteudoEmail, true);
+            helper.setText(emailBody, true);
             emailSender.send(mimeMessage);
             log.info(
-                    "Email enviado (transporte OK): to={} subject={} template={}",
+                    "Email sent successfully: to={} subject={} template={}",
                     data.getEmail(),
                     data.getSubject(),
                     data.getTemplate());
@@ -91,27 +101,52 @@ public class EmailServiceImpl implements EmailService {
             }
             metadata.put("status", success ? "SENT" : "FAILED");
 
-            String recipient = data.getEmail() != null ? data.getEmail() : "";
-            String subject = data.getSubject() != null ? data.getSubject() : "";
-            String template = data.getTemplate() != null ? data.getTemplate() : "";
-            String message =
-                    success
-                            ? String.format(
-                                    "Email enviado: destinatário=%s | assunto=%s | template=%s",
-                                    recipient,
-                                    subject,
-                                    template)
-                            : String.format(
-                                    "Falha ao enviar email: destinatário=%s | assunto=%s | template=%s",
-                                    recipient,
-                                    subject,
-                                    template);
+            String message = buildEmailApplicationLogMessage(data, success);
 
             String level = success ? "INFO" : "ERROR";
             applicationLogService.persistSystemLog(level, message, EMAIL_LOG_SOURCE, metadata);
         } catch (RuntimeException ex) {
-            log.warn("Não foi possível registar o email em application_logs: {}", ex.getMessage());
+            log.error("Failed to persist email dispatch to application_logs", ex);
         }
+    }
+
+    private static String buildEmailApplicationLogMessage(EmailDataDto data, boolean success) {
+        String recipient = data.getEmail() != null ? data.getEmail() : "";
+        String subject = data.getSubject() != null ? data.getSubject() : "";
+        String template = data.getTemplate() != null ? data.getTemplate() : "";
+        if (SharedConstants.TEMPLATE_EMAIL_RESET_PASSWORD.equals(template)) {
+            return success
+                    ? String.format(
+                            "Password recovery: verification code email sent to %s (subject: %s)",
+                            recipient,
+                            subject)
+                    : String.format(
+                            "Password recovery: failed to send verification code email to %s (subject: %s)",
+                            recipient,
+                            subject);
+        }
+        if (SharedConstants.TEMPLATE_EMAIL_CONTACT_VERIFICATION.equals(template)) {
+            return success
+                    ? String.format(
+                            "Registration confirmation: verification code email sent to %s (subject: %s)",
+                            recipient,
+                            subject)
+                    : String.format(
+                            "Registration confirmation: failed to send email to %s (subject: %s)",
+                            recipient,
+                            subject);
+        }
+        return success
+                ? String.format(
+                        "Email sent: recipient=%s | subject=%s | template=%s",
+                        recipient,
+                        subject,
+                        template)
+                : String.format(
+                        "Failed to send email: recipient=%s | subject=%s | template=%s",
+                        recipient,
+                        subject,
+                        template);
     }
 
     private static Map<String, Object> buildEmailLogMetadata(EmailDataDto data) {
@@ -119,13 +154,18 @@ public class EmailServiceImpl implements EmailService {
         meta.put("recipientEmail", data.getEmail());
         meta.put("subject", data.getSubject());
         meta.put("template", data.getTemplate());
+        meta.put("emailPurpose", resolveEmailPurpose(data.getTemplate()));
         if (data.getParams() != null && !data.getParams().isEmpty()) {
             Map<String, String> copy = new HashMap<>();
             data.getParams()
                     .forEach(
                             (k, v) -> {
                                 if (k != null) {
-                                    copy.put(k, v == null ? "" : truncate(v, MAX_PARAM_VALUE_LEN));
+                                    String stored =
+                                            shouldRedactTemplateParamKey(k)
+                                                    ? REDACTED
+                                                    : (v == null ? "" : truncate(v, MAX_PARAM_VALUE_LEN));
+                                    copy.put(k, stored);
                                 }
                             });
             meta.put("templateParams", copy);
@@ -143,6 +183,24 @@ public class EmailServiceImpl implements EmailService {
             meta.put("clientId", clientIdStr.trim());
         }
         return meta;
+    }
+
+    private static String resolveEmailPurpose(String template) {
+        if (SharedConstants.TEMPLATE_EMAIL_RESET_PASSWORD.equals(template)) {
+            return "PASSWORD_RECOVERY";
+        }
+        if (SharedConstants.TEMPLATE_EMAIL_CONTACT_VERIFICATION.equals(template)) {
+            return "CONTACT_VERIFICATION";
+        }
+        return "OTHER";
+    }
+
+    private static boolean shouldRedactTemplateParamKey(String key) {
+        String k = key.toLowerCase(Locale.ROOT).trim();
+        if (SENSITIVE_PARAM_KEYS_LOWER.contains(k)) {
+            return true;
+        }
+        return k.contains("password") || k.contains("secret");
     }
 
     private static String truncate(String s, int max) {

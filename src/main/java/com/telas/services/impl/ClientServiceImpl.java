@@ -196,7 +196,7 @@ public class ClientServiceImpl implements ClientService {
 
 
 	@Override
-	@Transactional(readOnly = true)
+	@Transactional
 	public void sendResetPasswordCode(String email) {
 		helper.validateEmail(email);
 		Client client = findActiveByEmail(email);
