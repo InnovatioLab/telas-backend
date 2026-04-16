@@ -10,7 +10,9 @@ import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Set;
 
 @Configuration
 public class CorsConfig {
@@ -21,24 +23,15 @@ public class CorsConfig {
             @Value("${cors.allowed-origins:}") String allowedOrigins,
             @Value("${cors.allowed-origin-patterns:}") String allowedOriginPatterns) {
         CorsConfiguration configuration = new CorsConfiguration();
-        List<String> origins = new ArrayList<>();
-        addFrontOriginVariants(frontBaseUrl, origins);
-
-        if (StringUtils.hasText(allowedOrigins)) {
-            Arrays.stream(allowedOrigins.split(","))
-                .map(String::trim)
-                .filter(StringUtils::hasText)
-                .forEach(origins::add);
-        }
+        List<String> origins = new ArrayList<>(collectExplicitOrigins(frontBaseUrl, allowedOrigins));
 
         if (StringUtils.hasText(allowedOriginPatterns)) {
-            List<String> patterns = new ArrayList<>();
-            addFrontOriginVariants(frontBaseUrl, patterns);
+            Set<String> patterns = new LinkedHashSet<>(origins);
             Arrays.stream(allowedOriginPatterns.split(","))
                 .map(String::trim)
                 .filter(StringUtils::hasText)
                 .forEach(patterns::add);
-            configuration.setAllowedOriginPatterns(patterns);
+            configuration.setAllowedOriginPatterns(new ArrayList<>(patterns));
         } else {
             configuration.setAllowedOrigins(origins);
         }
@@ -52,7 +45,19 @@ public class CorsConfig {
         return source;
     }
 
-    private static void addFrontOriginVariants(String frontBaseUrl, List<String> origins) {
+    private static List<String> collectExplicitOrigins(String frontBaseUrl, String allowedOrigins) {
+        Set<String> set = new LinkedHashSet<>();
+        addFrontOriginVariants(frontBaseUrl, set);
+        if (StringUtils.hasText(allowedOrigins)) {
+            Arrays.stream(allowedOrigins.split(","))
+                .map(String::trim)
+                .filter(StringUtils::hasText)
+                .forEach(set::add);
+        }
+        return new ArrayList<>(set);
+    }
+
+    private static void addFrontOriginVariants(String frontBaseUrl, Set<String> origins) {
         if (!StringUtils.hasText(frontBaseUrl)) {
             return;
         }
