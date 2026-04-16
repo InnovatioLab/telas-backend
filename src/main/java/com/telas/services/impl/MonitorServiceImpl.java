@@ -31,6 +31,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.domain.Specification;
@@ -45,6 +46,10 @@ import java.util.stream.IntStream;
 @Service
 @RequiredArgsConstructor
 public class MonitorServiceImpl implements MonitorService {
+
+	private static final double MAX_VIEWPORT_AXIS_SPAN_DEG = 0.5;
+	private static final double VIEWPORT_AXIS_SPAN_FP_EPSILON = 1e-6;
+	private static final int VIEWPORT_MAX_RESULTS = 300;
 
 	private final Logger log = LoggerFactory.getLogger(MonitorServiceImpl.class);
 
@@ -142,6 +147,36 @@ public class MonitorServiceImpl implements MonitorService {
 	public List<MonitorMapsResponseDto> findNearestActiveMonitors(String zipCode) {
 		UUID clientId = authenticatedUserService.getLoggedUser().client().getId();
 		return repository.findAvailableMonitorsByZipCode(zipCode, clientId).stream().map(this::toMonitorMapsResponseDto).toList();
+	}
+
+	@Override
+	@Transactional(readOnly = true)
+	public List<MonitorMapsResponseDto> findAvailableMonitorsInViewport(
+			double minLat, double maxLat, double minLng, double maxLng) {
+		validateViewportBounds(minLat, maxLat, minLng, maxLng);
+		UUID clientId = authenticatedUserService.getLoggedUser().client().getId();
+		Pageable pageable = PageRequest.of(0, VIEWPORT_MAX_RESULTS);
+		return repository
+				.findAvailableMonitorsInBounds(minLat, maxLat, minLng, maxLng, clientId, pageable)
+				.getContent()
+				.stream()
+				.map(this::toMonitorMapsResponseDto)
+				.toList();
+	}
+
+	private void validateViewportBounds(double minLat, double maxLat, double minLng, double maxLng) {
+		if (minLat >= maxLat || minLng >= maxLng) {
+			throw new BusinessRuleException(MonitorValidationMessages.MONITOR_VIEWPORT_BOUNDS_INVALID);
+		}
+		if (minLat < -90 || maxLat > 90 || minLng < -180 || maxLng > 180) {
+			throw new BusinessRuleException(MonitorValidationMessages.MONITOR_VIEWPORT_BOUNDS_INVALID);
+		}
+		double latSpan = maxLat - minLat;
+		double lngSpan = maxLng - minLng;
+		if (latSpan > MAX_VIEWPORT_AXIS_SPAN_DEG + VIEWPORT_AXIS_SPAN_FP_EPSILON
+				|| lngSpan > MAX_VIEWPORT_AXIS_SPAN_DEG + VIEWPORT_AXIS_SPAN_FP_EPSILON) {
+			throw new BusinessRuleException(MonitorValidationMessages.MONITOR_VIEWPORT_BOUNDS_INVALID);
+		}
 	}
 
 	@Override

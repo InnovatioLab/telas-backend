@@ -21,6 +21,9 @@ public interface MonitorService {
 
     List<MonitorMapsResponseDto> findNearestActiveMonitors(String zipCode);
 
+    List<MonitorMapsResponseDto> findAvailableMonitorsInViewport(
+            double minLat, double maxLat, double minLng, double maxLng);
+
     List<MonitorMapsResponseDto> findMonitorsForAdminMapByZipCode(String zipCode);
 
     List<MonitorsBoxMinResponseDto> findAllMonitors();

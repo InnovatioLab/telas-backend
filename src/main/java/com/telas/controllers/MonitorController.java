@@ -65,6 +65,13 @@ public interface MonitorController {
     })
     ResponseEntity<?> findValidByZipCode(String zipCode);
 
+    @Operation(summary = "Available monitors inside a geographic rectangle (max 0.5 deg per axis, authenticated client)", responses = {
+            @ApiResponse(responseCode = "200", description = "Monitors founded successfully."),
+            @ApiResponse(responseCode = "401", description = "Unauthorized."),
+            @ApiResponse(responseCode = "422", description = "Bounds invalid or too large."),
+    })
+    ResponseEntity<?> findMonitorsInViewport(double minLat, double maxLat, double minLng, double maxLng);
+
     @Operation(summary = "Admin: monitors in ZIP including inactive (map health)", responses = {
             @ApiResponse(responseCode = "200", description = "Monitors founded successfully."),
             @ApiResponse(responseCode = "401", description = "Unauthorized."),

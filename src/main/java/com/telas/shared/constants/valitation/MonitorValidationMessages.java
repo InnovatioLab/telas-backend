@@ -20,6 +20,8 @@ public final class MonitorValidationMessages {
     public static final String ADS_LIMIT_EXCEEDED =
             "The number of ads exceeds the maximum limit for this monitor. The maximum number of ads is: ";
     public static final String ADDRESS_ALREADY_IN_USE = "Address is already in use by another monitor.";
+    public static final String MONITOR_VIEWPORT_BOUNDS_INVALID =
+            "Invalid map bounds. Zoom in or reduce the visible area (max 0.5 degrees per axis).";
     public static final String BLOCK_QUANTITY_REQUIRED = "Block quantity is required";
     public static final String BLOCK_QUANTITY_POSITIVE = "Block quantity must be a positive number";
     public static final String BLOCK_QUANTITY_INVALID = "Block quantity is invalid, It must be 1, 2, or 5 (partner slots)";

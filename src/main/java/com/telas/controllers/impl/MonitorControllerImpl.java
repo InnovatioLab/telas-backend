@@ -88,6 +88,20 @@ public class MonitorControllerImpl implements MonitorController {
     }
 
     @Override
+    @GetMapping("/search/viewport")
+    @SecurityRequirement(name = "jwt")
+    public ResponseEntity<?> findMonitorsInViewport(
+            @RequestParam double minLat,
+            @RequestParam double maxLat,
+            @RequestParam double minLng,
+            @RequestParam double maxLng) {
+        List<MonitorMapsResponseDto> monitors =
+                service.findAvailableMonitorsInViewport(minLat, maxLat, minLng, maxLng);
+        String message = monitors.isEmpty() ? MessageCommonsConstants.FIND_FILTER_EMPTY_MESSAGE : MessageCommonsConstants.FIND_ALL_SUCCESS_MESSAGE;
+        return ResponseEntity.status(HttpStatus.OK).body(ResponseDto.fromData(monitors, HttpStatus.OK, message));
+    }
+
+    @Override
     @GetMapping("/admin/map-search")
     @SecurityRequirement(name = "jwt")
     public ResponseEntity<?> findMonitorsForAdminMapByZipCode(@RequestParam String zipCode) {

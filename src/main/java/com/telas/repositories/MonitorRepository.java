@@ -2,6 +2,8 @@ package com.telas.repositories;
 
 import com.telas.entities.Monitor;
 import org.jetbrains.annotations.NotNull;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import org.springframework.data.jpa.repository.Query;
@@ -34,6 +36,31 @@ public interface MonitorRepository extends JpaRepository<Monitor, UUID>, JpaSpec
                   )
             """)
     List<Monitor> findAvailableMonitorsByZipCode(@Param("zipCode") String zipCode, @Param("clientId") UUID clientId);
+
+    @Query("""
+                SELECT m FROM Monitor m
+                JOIN m.address a
+                WHERE a.latitude BETWEEN :minLat AND :maxLat
+                  AND a.longitude BETWEEN :minLng AND :maxLng
+                  AND a.latitude IS NOT NULL
+                  AND a.longitude IS NOT NULL
+                  AND m.active = true
+                  AND m.box IS NOT NULL
+                  AND NOT EXISTS (
+                    SELECT 1 FROM SubscriptionMonitor sm
+                    WHERE sm.id.monitor.id = m.id
+                      AND sm.id.subscription.client.id = :clientId
+                      AND sm.id.subscription.status = 'ACTIVE'
+                      AND (sm.id.subscription.endsAt IS NULL OR sm.id.subscription.endsAt > CURRENT_TIMESTAMP)
+                  )
+            """)
+    Page<Monitor> findAvailableMonitorsInBounds(
+            @Param("minLat") double minLat,
+            @Param("maxLat") double maxLat,
+            @Param("minLng") double minLng,
+            @Param("maxLng") double maxLng,
+            @Param("clientId") UUID clientId,
+            Pageable pageable);
 
     @Query("""
             SELECT DISTINCT m FROM Monitor m
