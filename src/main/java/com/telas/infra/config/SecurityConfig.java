@@ -32,7 +32,10 @@ public class SecurityConfig {
                 .csrf(AbstractHttpConfigurer::disable)
                 .cors(cors -> cors.configurationSource(corsConfigurationSource))
                 .authorizeHttpRequests(auth -> {
-                    AllowedEndpointsConstants.getAllowedEndpoints().forEach((method, routes) -> routes.forEach(route -> auth.requestMatchers(method, route).permitAll()));
+                    AllowedEndpointsConstants.getAllowedEndpoints().forEach((method, routes) -> routes.forEach(route -> {
+                        auth.requestMatchers(method, route).permitAll();
+                        auth.requestMatchers(method, "/api" + route).permitAll();
+                    }));
                     auth.anyRequest().authenticated();
                 })
                 .addFilterBefore(securityFilter, UsernamePasswordAuthenticationFilter.class)

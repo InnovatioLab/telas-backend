@@ -101,8 +101,8 @@ public class ClientServiceImpl implements ClientService {
 			client.setRole(Role.CLIENT);
 		}
 
-		sendContactConfirmationEmail(client, verificationCode);
-		repository.save(client);
+		Client savedClient = repository.save(client);
+		sendContactConfirmationEmail(savedClient, verificationCode);
 	}
 
 
