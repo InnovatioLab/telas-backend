@@ -3,6 +3,8 @@ package com.telas.dtos.response;
 import lombok.Builder;
 import lombok.Value;
 
+import com.telas.enums.BoxScriptVersionStatus;
+
 import java.io.Serial;
 import java.io.Serializable;
 import java.time.Instant;
@@ -32,4 +34,9 @@ public class MonitoringTestingRowDto implements Serializable {
     String boxSmartPlugMac;
     String boxSmartPlugVendor;
     Boolean boxSmartPlugEnabled;
+    String reportedBoxScriptVersion;
+    String targetBoxScriptVersion;
+    BoxScriptVersionStatus boxScriptVersionStatus;
+    String reportedGitSha;
+    String reportedBuildId;
 }

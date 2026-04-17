@@ -1,5 +1,6 @@
 package com.telas.dtos.response;
 
+import com.telas.enums.BoxScriptVersionStatus;
 import lombok.Builder;
 import lombok.Value;
 
@@ -21,4 +22,9 @@ public class BoxHeartbeatCheckResponseDto implements Serializable {
     boolean heartbeatOnline;
     String heartbeatStatus;
     long staleAfterSeconds;
+    String reportedBoxScriptVersion;
+    String targetBoxScriptVersion;
+    BoxScriptVersionStatus boxScriptVersionStatus;
+    String reportedGitSha;
+    String reportedBuildId;
 }

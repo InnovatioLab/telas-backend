@@ -28,7 +28,7 @@ public class MonitoringApiKeyFilter extends OncePerRequestFilter {
     @Override
     protected void doFilterInternal(@NonNull HttpServletRequest request, @NonNull HttpServletResponse response,
                                     @NonNull FilterChain filterChain) throws ServletException, IOException {
-        if (!requiresApiKey(request)) {
+        if (!requiresMonitoringApiKey(request)) {
             filterChain.doFilter(request, response);
             return;
         }
@@ -44,14 +44,19 @@ public class MonitoringApiKeyFilter extends OncePerRequestFilter {
         filterChain.doFilter(request, response);
     }
 
-    private static boolean requiresApiKey(HttpServletRequest request) {
-        if (!"POST".equalsIgnoreCase(request.getMethod())) {
-            return false;
-        }
+    private static boolean requiresMonitoringApiKey(HttpServletRequest request) {
         String path = request.getServletPath();
-        return "/boxes/health".equals(path)
-                || "/monitoring/heartbeat".equals(path)
-                || "/monitoring/logs".equals(path);
+        String method = request.getMethod();
+        if ("GET".equalsIgnoreCase(method)) {
+            return "/monitoring/box-script/pending-command".equals(path);
+        }
+        if ("POST".equalsIgnoreCase(method)) {
+            return "/boxes/health".equals(path)
+                    || "/monitoring/heartbeat".equals(path)
+                    || "/monitoring/logs".equals(path)
+                    || "/monitoring/box-script/commands/ack".equals(path);
+        }
+        return false;
     }
 
     private static void writeUnauthorized(HttpServletResponse response, String message) throws IOException {

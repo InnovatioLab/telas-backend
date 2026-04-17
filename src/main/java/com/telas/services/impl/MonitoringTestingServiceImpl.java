@@ -13,10 +13,12 @@ import com.telas.monitoring.repositories.SmartPlugEntityRepository;
 import com.telas.repositories.BoxRepository;
 import com.telas.services.MonitoringTestingService;
 import com.telas.shared.constants.valitation.BoxValidationMessages;
+import com.telas.shared.utils.BoxScriptVersionUtils;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.util.StringUtils;
 
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
@@ -43,6 +45,9 @@ public class MonitoringTestingServiceImpl implements MonitoringTestingService {
     @Value("${monitoring.heartbeat.stale-seconds:180}")
     private long staleSeconds;
 
+    @Value("${monitoring.box-script.target-version:}")
+    private String configuredTargetBoxScriptVersion;
+
     @Override
     @Transactional(readOnly = true)
     public List<MonitoringTestingRowDto> getOverview() {
@@ -67,16 +72,31 @@ public class MonitoringTestingServiceImpl implements MonitoringTestingService {
         Instant now = Instant.now();
         Instant cutoff = now.minusSeconds(staleSeconds);
         List<MonitoringTestingRowDto> rows = new ArrayList<>();
+        String targetVer = normalizeTargetVersion(configuredTargetBoxScriptVersion);
         for (Box box : boxes) {
             Optional<BoxHeartbeatEntity> hb = boxHeartbeatEntityRepository.findByBox_Id(box.getId());
             Instant lastSeen = hb.map(BoxHeartbeatEntity::getLastSeenAt).orElse(null);
+            String reportedVer = hb.map(BoxHeartbeatEntity::getReportedVersion).orElse(null);
+            String gitSha = extractMetadataString(hb.map(BoxHeartbeatEntity::getMetadataJson).orElse(null), "gitSha");
+            String buildId = extractMetadataString(hb.map(BoxHeartbeatEntity::getMetadataJson).orElse(null), "buildId");
             String status = resolveHeartbeatStatus(lastSeen, cutoff);
             boolean online = HEARTBEAT_STATUS_ONLINE.equals(status);
             List<Monitor> monitors = box.getMonitors();
             SmartPlugEntity boxPlug = plugByBox.get(box.getId());
             if (monitors == null || monitors.isEmpty()) {
                 rows.add(
-                        buildRow(box, null, null, boxPlug, lastSeen, online, status));
+                        buildRow(
+                                box,
+                                null,
+                                null,
+                                boxPlug,
+                                lastSeen,
+                                online,
+                                status,
+                                reportedVer,
+                                targetVer,
+                                gitSha,
+                                buildId));
                 continue;
             }
             for (Monitor monitor : monitors) {
@@ -89,7 +109,11 @@ public class MonitoringTestingServiceImpl implements MonitoringTestingService {
                                 boxPlug,
                                 lastSeen,
                                 online,
-                                status));
+                                status,
+                                reportedVer,
+                                targetVer,
+                                gitSha,
+                                buildId));
             }
         }
         return rows;
@@ -104,6 +128,10 @@ public class MonitoringTestingServiceImpl implements MonitoringTestingService {
                         .orElseThrow(() -> new ResourceNotFoundException(BoxValidationMessages.BOX_NOT_FOUND));
         Optional<BoxHeartbeatEntity> hb = boxHeartbeatEntityRepository.findByBox_Id(box.getId());
         Instant lastSeen = hb.map(BoxHeartbeatEntity::getLastSeenAt).orElse(null);
+        String reportedVer = hb.map(BoxHeartbeatEntity::getReportedVersion).orElse(null);
+        String gitSha = extractMetadataString(hb.map(BoxHeartbeatEntity::getMetadataJson).orElse(null), "gitSha");
+        String buildId = extractMetadataString(hb.map(BoxHeartbeatEntity::getMetadataJson).orElse(null), "buildId");
+        String targetVer = normalizeTargetVersion(configuredTargetBoxScriptVersion);
         Instant now = Instant.now();
         Instant cutoff = now.minusSeconds(staleSeconds);
         String status = resolveHeartbeatStatus(lastSeen, cutoff);
@@ -117,7 +145,29 @@ public class MonitoringTestingServiceImpl implements MonitoringTestingService {
                 .heartbeatOnline(online)
                 .heartbeatStatus(status)
                 .staleAfterSeconds(staleSeconds)
+                .reportedBoxScriptVersion(reportedVer)
+                .targetBoxScriptVersion(StringUtils.hasText(targetVer) ? targetVer : null)
+                .boxScriptVersionStatus(
+                        BoxScriptVersionUtils.resolveStatus(reportedVer, targetVer))
+                .reportedGitSha(gitSha)
+                .reportedBuildId(buildId)
                 .build();
+    }
+
+    private static String normalizeTargetVersion(String raw) {
+        return StringUtils.hasText(raw) ? raw.trim() : "";
+    }
+
+    private static String extractMetadataString(Map<String, Object> metadata, String key) {
+        if (metadata == null || key == null) {
+            return null;
+        }
+        Object v = metadata.get(key);
+        if (v == null) {
+            return null;
+        }
+        String s = String.valueOf(v);
+        return StringUtils.hasText(s) ? s : null;
     }
 
     private static MonitoringTestingRowDto buildRow(
@@ -127,7 +177,11 @@ public class MonitoringTestingServiceImpl implements MonitoringTestingService {
             SmartPlugEntity boxPlug,
             Instant lastSeen,
             boolean heartbeatOnline,
-            String heartbeatStatus) {
+            String heartbeatStatus,
+            String reportedBoxScriptVersion,
+            String targetBoxScriptVersion,
+            String reportedGitSha,
+            String reportedBuildId) {
         String monitorSummary = null;
         Boolean monitorActive = null;
         UUID monitorId = null;
@@ -145,6 +199,7 @@ public class MonitoringTestingServiceImpl implements MonitoringTestingService {
         String boxMac = boxPlug != null ? boxPlug.getMacAddress() : null;
         String boxVendor = boxPlug != null ? boxPlug.getVendor() : null;
         Boolean boxPlugEnabled = boxPlug != null ? boxPlug.isEnabled() : null;
+        String target = normalizeTargetVersion(targetBoxScriptVersion);
         return MonitoringTestingRowDto.builder()
                 .boxId(box.getId())
                 .boxIp(box.getBoxAddress() != null ? box.getBoxAddress().getIp() : null)
@@ -163,6 +218,12 @@ public class MonitoringTestingServiceImpl implements MonitoringTestingService {
                 .boxSmartPlugMac(boxMac)
                 .boxSmartPlugVendor(boxVendor)
                 .boxSmartPlugEnabled(boxPlugEnabled)
+                .reportedBoxScriptVersion(reportedBoxScriptVersion)
+                .targetBoxScriptVersion(StringUtils.hasText(target) ? target : null)
+                .boxScriptVersionStatus(
+                        BoxScriptVersionUtils.resolveStatus(reportedBoxScriptVersion, target))
+                .reportedGitSha(reportedGitSha)
+                .reportedBuildId(reportedBuildId)
                 .build();
     }
 

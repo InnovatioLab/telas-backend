@@ -11,6 +11,7 @@ public class AllowedEndpointsConstants {
 
     static {
         ALLOWED_ENDPOINTS.put(HttpMethod.GET, List.of(
+                "/monitoring/box-script/pending-command",
                 "/clients/identification/**",
                 "/clients/{id}",
                 "/addresses/{zipCode}",
@@ -33,7 +34,8 @@ public class AllowedEndpointsConstants {
                 "/auth/recovery-password/**",
                 "/boxes/health",
                 "/monitoring/heartbeat",
-                "/monitoring/logs"
+                "/monitoring/logs",
+                "/monitoring/box-script/commands/ack"
         ));
         ALLOWED_ENDPOINTS.put(HttpMethod.PATCH, List.of(
                 "/clients/create-password/**",

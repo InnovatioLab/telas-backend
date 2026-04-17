@@ -5,6 +5,7 @@ import com.telas.dtos.response.MonitoringTestingRowDto;
 import com.telas.dtos.response.ResponseDto;
 import com.telas.enums.Permission;
 import com.telas.infra.security.services.AuthenticatedUserService;
+import com.telas.services.BoxScriptUpdateCommandService;
 import com.telas.services.MonitoringTestingService;
 import com.telas.shared.constants.MessageCommonsConstants;
 import io.swagger.v3.oas.annotations.Operation;
@@ -29,6 +30,7 @@ import java.util.UUID;
 public class MonitoringTestingControllerImpl {
 
     private final MonitoringTestingService monitoringTestingService;
+    private final BoxScriptUpdateCommandService boxScriptUpdateCommandService;
     private final AuthenticatedUserService authenticatedUserService;
 
     @GetMapping("/overview")
@@ -57,5 +59,14 @@ public class MonitoringTestingControllerImpl {
                                 data,
                                 HttpStatus.OK,
                                 MessageCommonsConstants.FIND_ID_SUCCESS_MESSAGE));
+    }
+
+    @PostMapping("/boxes/{boxId}/box-script-update")
+    @Operation(summary = "Enfileira atualização do box-script (artefacto configurado no servidor)")
+    @SecurityRequirement(name = "jwt")
+    public ResponseEntity<?> enqueueBoxScriptUpdate(@PathVariable UUID boxId) {
+        authenticatedUserService.validatePermission(Permission.MONITORING_TESTING_EXECUTE);
+        boxScriptUpdateCommandService.enqueue(boxId);
+        return ResponseEntity.noContent().build();
     }
 }
