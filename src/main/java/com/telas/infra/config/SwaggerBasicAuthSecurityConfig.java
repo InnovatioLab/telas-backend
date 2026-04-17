@@ -31,8 +31,13 @@ public class SwaggerBasicAuthSecurityConfig {
             @Value("${swagger.basic-auth.username:}") String username,
             @Value("${swagger.basic-auth.password:}") String password) throws Exception {
         if (!StringUtils.hasText(username) || !StringUtils.hasText(password)) {
-            throw new IllegalStateException(
-                    "swagger.basic-auth.enabled=true requires non-empty swagger.basic-auth.username and swagger.basic-auth.password");
+            return http
+                    .securityMatcher(new SwaggerUiBasicAuthRequestMatcher())
+                    .csrf(AbstractHttpConfigurer::disable)
+                    .cors(c -> c.configurationSource(corsConfigurationSource))
+                    .sessionManagement(s -> s.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+                    .authorizeHttpRequests(a -> a.anyRequest().permitAll())
+                    .build();
         }
         UserDetails user = User.builder()
                 .username(username.trim())

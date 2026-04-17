@@ -23,11 +23,22 @@ public class CorsConfig {
             @Value("${cors.allowed-origins:}") String allowedOrigins,
             @Value("${cors.allowed-origin-patterns:}") String allowedOriginPatterns) {
         CorsConfiguration configuration = new CorsConfiguration();
-        configuration.setAllowedOriginPatterns(List.of("*"));
+        List<String> origins = new ArrayList<>(collectExplicitOrigins(frontBaseUrl, allowedOrigins));
+
+        if (StringUtils.hasText(allowedOriginPatterns)) {
+            Set<String> patterns = new LinkedHashSet<>(origins);
+            Arrays.stream(allowedOriginPatterns.split(","))
+                .map(String::trim)
+                .filter(StringUtils::hasText)
+                .forEach(patterns::add);
+            configuration.setAllowedOriginPatterns(new ArrayList<>(patterns));
+        } else {
+            configuration.setAllowedOrigins(origins);
+        }
 
         configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
         configuration.setAllowedHeaders(List.of("*"));
-        configuration.setAllowCredentials(false);
+        configuration.setAllowCredentials(true);
         configuration.setMaxAge(3600L);
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/**", configuration);
