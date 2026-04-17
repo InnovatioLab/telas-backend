@@ -11,6 +11,7 @@ import org.springframework.util.StringUtils;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.UUID;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -71,6 +72,30 @@ public class ApplicationLogServiceImpl implements ApplicationLogService {
         entity.setLevel(lvl);
         entity.setMessage(truncate(message, 4000));
         entity.setSource(src);
+        entity.setMetadataJson(metadata == null || metadata.isEmpty() ? null : new HashMap<>(metadata));
+        applicationLogEntityRepository.save(entity);
+    }
+
+    @Override
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    public void persistApiRequestLog(
+        String httpMethod,
+        String endpoint,
+        UUID clientId,
+        int httpStatus,
+        Map<String, Object> metadata
+    ) {
+        String lvl = httpStatus >= 500 ? "ERROR" : httpStatus >= 400 ? "WARN" : "INFO";
+        String method = ValidateDataUtils.isNullOrEmptyString(httpMethod) ? "?" : httpMethod.trim().toUpperCase();
+        String ep = ValidateDataUtils.isNullOrEmptyString(endpoint) ? null : truncate(endpoint.trim(), 255);
+        String msg = truncate("HTTP " + method + " " + (ep != null ? ep : ""), 4000);
+
+        ApplicationLogEntity entity = new ApplicationLogEntity();
+        entity.setLevel(lvl);
+        entity.setMessage(msg);
+        entity.setSource("API");
+        entity.setEndpoint(ep);
+        entity.setClientId(clientId);
         entity.setMetadataJson(metadata == null || metadata.isEmpty() ? null : new HashMap<>(metadata));
         applicationLogEntityRepository.save(entity);
     }

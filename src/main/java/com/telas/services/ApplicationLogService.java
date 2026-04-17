@@ -3,6 +3,7 @@ package com.telas.services;
 import com.telas.dtos.request.BoxLogRequestDto;
 
 import java.util.Map;
+import java.util.UUID;
 
 public interface ApplicationLogService {
 
@@ -11,4 +12,12 @@ public interface ApplicationLogService {
     void persistBoxLog(BoxLogRequestDto request);
 
     void persistSystemLog(String level, String message, String source, Map<String, Object> metadata);
+
+    void persistApiRequestLog(
+        String httpMethod,
+        String endpoint,
+        UUID clientId,
+        int httpStatus,
+        Map<String, Object> metadata
+    );
 }
