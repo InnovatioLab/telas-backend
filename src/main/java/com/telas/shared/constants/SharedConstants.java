@@ -42,7 +42,7 @@ public final class SharedConstants {
 
 
     public static final String REGEX_ONLY_NUMBERS = "^\\d+$";
-    public static final String REGEX_ALPHANUMERIC = "^[A-Za-zÀ-ÿ0-9\\s]*$";
+    public static final String REGEX_ALPHANUMERIC = "^[A-Za-zÀ-ÿ0-9\\s.'-]*$";
     public static final String REGEX_PASSWORD = "^[a-zA-Z0-9!@#$%^&*()_+\\-=\\[\\]{};':\"\\\\|,.<>\\/?]+$";
     public static final String REGEX_ONLY_LETTERS = "^[a-zA-ZÀ-ÖØ-öø-ÿ\\s]*$";
     public static final String REGEX_ZIP_CODE = "\\d{5}";
