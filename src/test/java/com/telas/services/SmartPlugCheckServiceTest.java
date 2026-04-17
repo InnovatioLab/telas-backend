@@ -1,6 +1,9 @@
 package com.telas.services;
 
+import com.telas.dtos.request.StatusBoxMonitorsRequestDto;
 import com.telas.entities.Box;
+import com.telas.entities.Monitor;
+import com.telas.enums.DefaultStatus;
 import com.telas.monitoring.crypto.AesTextEncryptionService;
 import com.telas.monitoring.entities.BoxHeartbeatEntity;
 import com.telas.monitoring.entities.SmartPlugEntity;
@@ -25,6 +28,7 @@ import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -41,6 +45,7 @@ class SmartPlugCheckServiceTest {
     @Mock private CheckRunEntityRepository checkRunEntityRepository;
     @Mock private SmartPlugThresholdState thresholdState;
     @Mock private AdminMonitoringNotificationService adminMonitoringNotificationService;
+    @Mock private HealthUpdateService healthUpdateService;
 
     private SmartPlugCheckService service;
 
@@ -56,11 +61,14 @@ class SmartPlugCheckServiceTest {
                 incidentEntityRepository,
                 checkRunEntityRepository,
                 thresholdState,
-                adminMonitoringNotificationService);
+                adminMonitoringNotificationService,
+                healthUpdateService);
         org.springframework.test.util.ReflectionTestUtils.setField(service, "raiseIncidents", true);
         org.springframework.test.util.ReflectionTestUtils.setField(service, "powerBelowWatts", 5.0);
         org.springframework.test.util.ReflectionTestUtils.setField(service, "minReadingsBelow", 3);
         org.springframework.test.util.ReflectionTestUtils.setField(service, "staleSeconds", 180L);
+        org.springframework.test.util.ReflectionTestUtils.setField(
+                service, "deactivateMonitorOnIncidentTypesRaw", "POWER_LOSS");
     }
 
     @Test
@@ -85,6 +93,7 @@ class SmartPlugCheckServiceTest {
         verify(checkRunEntityRepository).save(any());
         verify(incidentEntityRepository, never()).save(any());
         verify(adminMonitoringNotificationService, never()).notifyAdmins(any(), any(), any());
+        verify(healthUpdateService, never()).applyHealthUpdate(any());
     }
 
     @Test
@@ -117,5 +126,44 @@ class SmartPlugCheckServiceTest {
         assertThat(captor.getValue().getMonitor()).isNull();
         assertThat(captor.getValue().getBox()).isEqualTo(box);
         verify(adminMonitoringNotificationService).notifyAdmins(any(), any(), any());
+        verify(healthUpdateService, never()).applyHealthUpdate(any());
+    }
+
+    @Test
+    void powerLoss_withMonitor_deactivatesMonitorViaHealthUpdate() {
+        UUID monitorId = UUID.randomUUID();
+        Monitor monitor = new Monitor();
+        monitor.setId(monitorId);
+        Box box = new Box();
+        box.setId(boxUuid);
+        monitor.setBox(box);
+
+        SmartPlugEntity plug = new SmartPlugEntity();
+        plug.setId(UUID.randomUUID());
+        plug.setMonitor(monitor);
+
+        BoxHeartbeatEntity hb = new BoxHeartbeatEntity();
+        hb.setBox(box);
+        hb.setLastSeenAt(Instant.now());
+
+        when(encryptionService.isConfigured()).thenReturn(false);
+        when(boxHeartbeatEntityRepository.findByBox_Id(boxUuid)).thenReturn(Optional.of(hb));
+        when(smartPlugClient.read(any(), any()))
+                .thenReturn(new PlugReading(true, true, 1.0, 120.0, 0.5, null));
+        when(thresholdState.incrementLowPower(plug.getId())).thenReturn(3);
+        when(incidentEntityRepository.existsByMonitor_IdAndIncidentTypeAndClosedAtIsNull(
+                        eq(monitorId), eq("POWER_LOSS")))
+                .thenReturn(false);
+        when(smartPlugEntityRepository.findAllEnabledForChecks()).thenReturn(List.of(plug));
+
+        service.runAllChecks();
+
+        verify(healthUpdateService)
+                .applyHealthUpdate(
+                        argThat(
+                                (StatusBoxMonitorsRequestDto dto) ->
+                                        monitorId.equals(dto.getMonitorId())
+                                                && DefaultStatus.INACTIVE.equals(dto.getStatus())
+                                                && dto.getIncidentType() == null));
     }
 }

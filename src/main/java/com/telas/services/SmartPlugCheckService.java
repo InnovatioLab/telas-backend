@@ -11,7 +11,9 @@ import com.telas.monitoring.repositories.CheckRunEntityRepository;
 import com.telas.monitoring.repositories.IncidentEntityRepository;
 import com.telas.monitoring.repositories.SmartPlugEntityRepository;
 import com.telas.monitoring.state.SmartPlugThresholdState;
+import com.telas.dtos.request.StatusBoxMonitorsRequestDto;
 import com.telas.enums.AdminEmailAlertCategory;
+import com.telas.enums.DefaultStatus;
 import com.telas.enums.NotificationReference;
 import com.telas.shared.utils.DateUtils;
 import lombok.RequiredArgsConstructor;
@@ -20,12 +22,17 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.util.StringUtils;
 
 import java.time.Instant;
+import java.util.Arrays;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -41,6 +48,7 @@ public class SmartPlugCheckService {
     private final CheckRunEntityRepository checkRunEntityRepository;
     private final SmartPlugThresholdState thresholdState;
     private final AdminMonitoringNotificationService adminMonitoringNotificationService;
+    private final HealthUpdateService healthUpdateService;
 
     @Value("${monitoring.kasa.raise-incidents:true}")
     private boolean raiseIncidents;
@@ -53,6 +61,19 @@ public class SmartPlugCheckService {
 
     @Value("${monitoring.heartbeat.stale-seconds:180}")
     private long staleSeconds;
+
+    @Value("${monitoring.kasa.deactivate-monitor-on-incident-types:POWER_LOSS}")
+    private String deactivateMonitorOnIncidentTypesRaw;
+
+    private Set<String> deactivateMonitorOnIncidentTypes() {
+        if (!StringUtils.hasText(deactivateMonitorOnIncidentTypesRaw)) {
+            return Set.of();
+        }
+        return Arrays.stream(deactivateMonitorOnIncidentTypesRaw.split(","))
+                .map(String::trim)
+                .filter(StringUtils::hasText)
+                .collect(Collectors.toCollection(HashSet::new));
+    }
 
     @Transactional
     public void runAllChecks() {
@@ -209,7 +230,22 @@ public class SmartPlugCheckService {
         incident.setOpenedAt(Instant.now());
         incident.setDetailsJson(details);
         incidentEntityRepository.save(incident);
+        maybeDeactivateMonitorAfterPlugIncident(plug, incidentType);
         notifySmartPlugAdmins(plug, incidentType, severity, reading, details);
+    }
+
+    private void maybeDeactivateMonitorAfterPlugIncident(SmartPlugEntity plug, String incidentType) {
+        if (plug.getMonitor() == null) {
+            return;
+        }
+        Set<String> types = deactivateMonitorOnIncidentTypes();
+        if (types.isEmpty() || !types.contains(incidentType)) {
+            return;
+        }
+        StatusBoxMonitorsRequestDto dto = new StatusBoxMonitorsRequestDto();
+        dto.setMonitorId(plug.getMonitor().getId());
+        dto.setStatus(DefaultStatus.INACTIVE);
+        healthUpdateService.applyHealthUpdate(dto);
     }
 
     private void notifySmartPlugAdmins(
