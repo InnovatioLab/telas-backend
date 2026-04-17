@@ -38,7 +38,7 @@ public class SecurityFilter extends OncePerRequestFilter {
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain) throws ServletException, IOException {
         String idToken = recoverToken(request);
-        String requestUri = request.getRequestURI();
+        String requestUri = stripTrailingSlash(request.getRequestURI());
         HttpMethod requestMethod = HttpMethod.valueOf(request.getMethod());
         boolean acceptTermsURL = "/api/clients/accept-terms-conditions".equals(requestUri);
         boolean authenticatedURL = "/api/clients/authenticated".equals(requestUri);
@@ -96,5 +96,16 @@ public class SecurityFilter extends OncePerRequestFilter {
         }
 
         return authHeader.replace("Bearer ", "");
+    }
+
+    private static String stripTrailingSlash(String uri) {
+        if (uri == null || uri.isBlank()) {
+            return "";
+        }
+        String u = uri.trim();
+        if (u.length() > 1 && u.endsWith("/")) {
+            return u.substring(0, u.length() - 1);
+        }
+        return u;
     }
 }
