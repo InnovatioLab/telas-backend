@@ -11,6 +11,9 @@ import com.telas.monitoring.repositories.CheckRunEntityRepository;
 import com.telas.monitoring.repositories.IncidentEntityRepository;
 import com.telas.monitoring.repositories.SmartPlugEntityRepository;
 import com.telas.monitoring.state.SmartPlugThresholdState;
+import com.telas.enums.AdminEmailAlertCategory;
+import com.telas.enums.NotificationReference;
+import com.telas.shared.utils.DateUtils;
 import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -37,6 +40,7 @@ public class SmartPlugCheckService {
     private final IncidentEntityRepository incidentEntityRepository;
     private final CheckRunEntityRepository checkRunEntityRepository;
     private final SmartPlugThresholdState thresholdState;
+    private final AdminMonitoringNotificationService adminMonitoringNotificationService;
 
     @Value("${monitoring.kasa.raise-incidents:true}")
     private boolean raiseIncidents;
@@ -129,7 +133,7 @@ public class SmartPlugCheckService {
                 details.put(
                         "hypothesis",
                         "Tomada incontactável com heartbeat da box recente; verificar rede até ao plug ou corte de energia no equipamento.");
-                maybeCreateIncident(plug, "OTHER", "WARNING", details);
+                maybeCreateIncident(plug, reading, "OTHER", "WARNING", details);
             }
             return;
         }
@@ -139,7 +143,7 @@ public class SmartPlugCheckService {
             thresholdState.resetLowPower(plug.getId());
             Map<String, Object> details = baseDetails(plug, reading, heartbeatStale);
             details.put("hypothesis", "Relay reported off (manual switch or automation).");
-            maybeCreateIncident(plug, "MONITOR_OFF", "INFO", details);
+            maybeCreateIncident(plug, reading, "MONITOR_OFF", "INFO", details);
             return;
         }
 
@@ -152,7 +156,7 @@ public class SmartPlugCheckService {
                         "hypothesis",
                         "Relay ligado mas potência abaixo do limiar (várias leituras); possível perda de carga/corrente no ramo do monitor ou falha a jusante.");
                 details.put("lowPowerStreak", streak);
-                maybeCreateIncident(plug, "POWER_LOSS", "CRITICAL", details);
+                maybeCreateIncident(plug, reading, "POWER_LOSS", "CRITICAL", details);
             }
         } else {
             thresholdState.resetLowPower(plug.getId());
@@ -175,6 +179,7 @@ public class SmartPlugCheckService {
 
     private void maybeCreateIncident(
             SmartPlugEntity plug,
+            PlugReading reading,
             String incidentType,
             String severity,
             Map<String, Object> details) {
@@ -204,6 +209,56 @@ public class SmartPlugCheckService {
         incident.setOpenedAt(Instant.now());
         incident.setDetailsJson(details);
         incidentEntityRepository.save(incident);
+        notifySmartPlugAdmins(plug, incidentType, severity, reading, details);
+    }
+
+    private void notifySmartPlugAdmins(
+            SmartPlugEntity plug,
+            String incidentType,
+            String severity,
+            PlugReading reading,
+            Map<String, Object> details) {
+        AdminEmailAlertCategory category =
+                "MONITOR_OFF".equals(incidentType)
+                        ? AdminEmailAlertCategory.SMART_PLUG_RELAY_OFF
+                        : AdminEmailAlertCategory.SMART_PLUG_UNREACHABLE_OR_POWER;
+        Map<String, String> params = new HashMap<>();
+        params.put("monitorAddress", resolveMonitorAddressLabel(plug));
+        params.put("incidentType", incidentType);
+        params.put("severity", severity);
+        params.put("boxIp", resolveBoxIpLabel(plug));
+        params.put("notifiedAt", DateUtils.formatInstantToUsDateTime(Instant.now()));
+        Object hyp = details.get("hypothesis");
+        params.put("hypothesis", hyp != null ? hyp.toString() : "");
+        Double p = reading.powerWatts();
+        params.put("powerWatts", p != null ? String.valueOf(p) : "");
+        Boolean r = reading.relayOn();
+        params.put("relayOn", r != null ? String.valueOf(r) : "");
+        adminMonitoringNotificationService.notifyAdmins(
+                NotificationReference.SMART_PLUG_INCIDENT, params, category);
+    }
+
+    private static String resolveMonitorAddressLabel(SmartPlugEntity plug) {
+        if (plug.getMonitor() != null
+                && plug.getMonitor().getAddress() != null) {
+            return plug.getMonitor().getAddress().getCoordinatesParams();
+        }
+        if (plug.getBox() != null && plug.getBox().getBoxAddress() != null) {
+            return "Box IP " + plug.getBox().getBoxAddress().getIp();
+        }
+        return "Unknown";
+    }
+
+    private static String resolveBoxIpLabel(SmartPlugEntity plug) {
+        if (plug.getMonitor() != null
+                && plug.getMonitor().getBox() != null
+                && plug.getMonitor().getBox().getBoxAddress() != null) {
+            return plug.getMonitor().getBox().getBoxAddress().getIp();
+        }
+        if (plug.getBox() != null && plug.getBox().getBoxAddress() != null) {
+            return plug.getBox().getBoxAddress().getIp();
+        }
+        return "";
     }
 
     private static UUID resolveIncidentBoxId(SmartPlugEntity plug) {

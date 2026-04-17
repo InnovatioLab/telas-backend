@@ -1,13 +1,16 @@
 package com.telas.controllers.impl;
 
+import com.telas.dtos.request.UpdateEmailAlertPreferencesRequestDto;
 import com.telas.dtos.request.UpdatePermissionsRequestDto;
 import com.telas.dtos.response.AdminPermissionRowResponseDto;
+import com.telas.dtos.response.EmailAlertPreferencesResponseDto;
 import com.telas.dtos.response.ResponseDto;
 import com.telas.entities.Client;
 import com.telas.enums.Permission;
 import com.telas.infra.security.model.AuthenticatedUser;
 import com.telas.infra.security.services.AuthenticatedUserService;
 import com.telas.repositories.ClientRepository;
+import com.telas.services.AdminEmailAlertPreferenceService;
 import com.telas.services.PermissionService;
 import com.telas.shared.constants.MessageCommonsConstants;
 import io.swagger.v3.oas.annotations.Operation;
@@ -39,6 +42,7 @@ public class DeveloperPermissionControllerImpl {
     private final AuthenticatedUserService authenticatedUserService;
     private final ClientRepository clientRepository;
     private final PermissionService permissionService;
+    private final AdminEmailAlertPreferenceService adminEmailAlertPreferenceService;
 
     @GetMapping("/admins")
     @Operation(summary = "Lista admins com permissões de monitorização")
@@ -99,5 +103,43 @@ public class DeveloperPermissionControllerImpl {
                                 codes,
                                 HttpStatus.OK,
                                 MessageCommonsConstants.FIND_ALL_SUCCESS_MESSAGE));
+    }
+
+    @GetMapping("/email-alert-preferences/catalog")
+    @Operation(summary = "Email alert categories (English labels) for admin notifications")
+    @SecurityRequirement(name = "jwt")
+    public ResponseEntity<?> emailAlertCatalog() {
+        authenticatedUserService.validateDeveloper();
+        return ResponseEntity.status(HttpStatus.OK)
+                .body(
+                        ResponseDto.fromData(
+                                adminEmailAlertPreferenceService.getCatalog(),
+                                HttpStatus.OK,
+                                MessageCommonsConstants.FIND_ALL_SUCCESS_MESSAGE));
+    }
+
+    @GetMapping("/clients/{clientId}/email-alert-preferences")
+    @Operation(summary = "Email alert preferences for an admin user")
+    @SecurityRequirement(name = "jwt")
+    public ResponseEntity<?> getEmailAlertPreferences(@PathVariable UUID clientId) {
+        authenticatedUserService.validateDeveloper();
+        EmailAlertPreferencesResponseDto data =
+                adminEmailAlertPreferenceService.getPreferencesResponseForAdmin(clientId);
+        return ResponseEntity.status(HttpStatus.OK)
+                .body(
+                        ResponseDto.fromData(
+                                data,
+                                HttpStatus.OK,
+                                MessageCommonsConstants.FIND_ALL_SUCCESS_MESSAGE));
+    }
+
+    @PutMapping("/clients/{clientId}/email-alert-preferences")
+    @Operation(summary = "Replace email alert preferences for an admin user")
+    @SecurityRequirement(name = "jwt")
+    public ResponseEntity<?> replaceEmailAlertPreferences(
+            @PathVariable UUID clientId, @Valid @RequestBody UpdateEmailAlertPreferencesRequestDto body) {
+        authenticatedUserService.validateDeveloper();
+        adminEmailAlertPreferenceService.replaceFromRequest(clientId, body.getPreferences());
+        return ResponseEntity.noContent().build();
     }
 }

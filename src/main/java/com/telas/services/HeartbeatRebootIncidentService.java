@@ -1,10 +1,11 @@
 package com.telas.services;
 
 import com.telas.entities.Box;
+import com.telas.enums.AdminEmailAlertCategory;
 import com.telas.enums.NotificationReference;
 import com.telas.monitoring.entities.IncidentEntity;
 import com.telas.monitoring.repositories.IncidentEntityRepository;
-import com.telas.repositories.ClientRepository;
+import com.telas.services.AdminMonitoringNotificationService;
 import com.telas.shared.utils.DateUtils;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
@@ -22,8 +23,7 @@ public class HeartbeatRebootIncidentService {
 
     private final IncidentEntityRepository incidentEntityRepository;
     private final ApplicationLogService applicationLogService;
-    private final ClientRepository clientRepository;
-    private final NotificationService notificationService;
+    private final AdminMonitoringNotificationService adminMonitoringNotificationService;
 
     @Value("${monitoring.heartbeat.reboot-detection-enabled:true}")
     private boolean rebootDetectionEnabled;
@@ -87,15 +87,8 @@ public class HeartbeatRebootIncidentService {
         notifParams.put("severity", "INFO");
         notifParams.put("uptimeDropSeconds", String.valueOf(drop));
         notifParams.put("notifiedAt", DateUtils.formatInstantToUsDateTime(Instant.now()));
-        clientRepository
-                .findAllAdmins()
-                .forEach(
-                        admin ->
-                                notificationService.save(
-                                        NotificationReference.MONITORING_HOST_REBOOT,
-                                        admin,
-                                        notifParams,
-                                        false));
+        adminMonitoringNotificationService.notifyAdmins(
+                NotificationReference.MONITORING_HOST_REBOOT, notifParams, AdminEmailAlertCategory.HOST_REBOOT);
     }
 
     private static Long extractHostUptimeSeconds(Map<String, Object> metadata) {

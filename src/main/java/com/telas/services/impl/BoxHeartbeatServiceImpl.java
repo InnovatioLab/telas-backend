@@ -7,6 +7,7 @@ import com.telas.monitoring.entities.BoxHeartbeatEntity;
 import com.telas.monitoring.repositories.BoxHeartbeatEntityRepository;
 import com.telas.repositories.BoxRepository;
 import com.telas.services.BoxHeartbeatService;
+import com.telas.services.HeartbeatRecoveryService;
 import com.telas.services.HeartbeatRebootIncidentService;
 import com.telas.shared.constants.valitation.BoxValidationMessages;
 import com.telas.shared.utils.ValidateDataUtils;
@@ -24,6 +25,7 @@ public class BoxHeartbeatServiceImpl implements BoxHeartbeatService {
     private final BoxRepository boxRepository;
     private final BoxHeartbeatEntityRepository boxHeartbeatEntityRepository;
     private final HeartbeatRebootIncidentService heartbeatRebootIncidentService;
+    private final HeartbeatRecoveryService heartbeatRecoveryService;
 
     @Override
     @Transactional
@@ -44,6 +46,7 @@ public class BoxHeartbeatServiceImpl implements BoxHeartbeatService {
             heartbeatRow.setMetadataJson(request.getMetadata());
             heartbeatRow.setUpdatedAt(now);
             boxHeartbeatEntityRepository.save(heartbeatRow);
+            heartbeatRecoveryService.recoverAfterSuccessfulHeartbeat(box);
             return;
         }
         BoxHeartbeatEntity entity = new BoxHeartbeatEntity();
@@ -53,5 +56,6 @@ public class BoxHeartbeatServiceImpl implements BoxHeartbeatService {
         entity.setMetadataJson(request.getMetadata());
         entity.setUpdatedAt(now);
         boxHeartbeatEntityRepository.save(entity);
+        heartbeatRecoveryService.recoverAfterSuccessfulHeartbeat(box);
     }
 }

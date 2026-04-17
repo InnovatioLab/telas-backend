@@ -34,6 +34,9 @@ public final class SharedConstants {
     public static final String TEMPLATE_EMAIL_SMART_PLUG_INCIDENT = "email_smart_plug_incident.ftlh";
     public static final String EMAIL_SUBJECT_SMART_PLUG_INCIDENT = "Monitor power/plug alert";
 
+    public static final String TEMPLATE_EMAIL_HOST_REBOOT = "email_host_reboot.ftlh";
+    public static final String EMAIL_SUBJECT_HOST_REBOOT = "Host reboot detected — Telas monitoring";
+
     public static final String TEMPLATE_EMAIL_ADMIN_NEW_PURCHASE = "email_admin_new_purchase.ftlh";
     public static final String EMAIL_SUBJECT_ADMIN_NEW_PURCHASE = "New customer purchase — Telas";
 

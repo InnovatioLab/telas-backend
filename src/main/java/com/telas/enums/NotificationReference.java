@@ -186,7 +186,15 @@ public enum NotificationReference {
 
         @Override
         public EmailDataDto getEmailData(Map<String, String> params) {
-            return null;
+            EmailDataDto emailData = new EmailDataDto();
+            emailData.setSubject(SharedConstants.EMAIL_SUBJECT_HOST_REBOOT);
+            emailData.setTemplate(SharedConstants.TEMPLATE_EMAIL_HOST_REBOOT);
+            emailData.getParams().put("boxIp", params.getOrDefault("boxIp", ""));
+            emailData.getParams().put("incidentType", params.getOrDefault("incidentType", ""));
+            emailData.getParams().put("severity", params.getOrDefault("severity", ""));
+            emailData.getParams().put("uptimeDropSeconds", params.getOrDefault("uptimeDropSeconds", ""));
+            emailData.getParams().put("notifiedAt", params.getOrDefault("notifiedAt", ""));
+            return emailData;
         }
     },
     BOX_STATUS_UPDATED {

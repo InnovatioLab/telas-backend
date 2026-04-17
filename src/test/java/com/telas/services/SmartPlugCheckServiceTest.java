@@ -40,6 +40,7 @@ class SmartPlugCheckServiceTest {
     @Mock private IncidentEntityRepository incidentEntityRepository;
     @Mock private CheckRunEntityRepository checkRunEntityRepository;
     @Mock private SmartPlugThresholdState thresholdState;
+    @Mock private AdminMonitoringNotificationService adminMonitoringNotificationService;
 
     private SmartPlugCheckService service;
 
@@ -54,7 +55,8 @@ class SmartPlugCheckServiceTest {
                 boxHeartbeatEntityRepository,
                 incidentEntityRepository,
                 checkRunEntityRepository,
-                thresholdState);
+                thresholdState,
+                adminMonitoringNotificationService);
         org.springframework.test.util.ReflectionTestUtils.setField(service, "raiseIncidents", true);
         org.springframework.test.util.ReflectionTestUtils.setField(service, "powerBelowWatts", 5.0);
         org.springframework.test.util.ReflectionTestUtils.setField(service, "minReadingsBelow", 3);
@@ -82,6 +84,7 @@ class SmartPlugCheckServiceTest {
 
         verify(checkRunEntityRepository).save(any());
         verify(incidentEntityRepository, never()).save(any());
+        verify(adminMonitoringNotificationService, never()).notifyAdmins(any(), any(), any());
     }
 
     @Test
@@ -113,5 +116,6 @@ class SmartPlugCheckServiceTest {
         verify(incidentEntityRepository).save(captor.capture());
         assertThat(captor.getValue().getMonitor()).isNull();
         assertThat(captor.getValue().getBox()).isEqualTo(box);
+        verify(adminMonitoringNotificationService).notifyAdmins(any(), any(), any());
     }
 }

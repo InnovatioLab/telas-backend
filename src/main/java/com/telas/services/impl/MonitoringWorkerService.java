@@ -6,7 +6,9 @@ import com.telas.enums.DefaultStatus;
 import com.telas.monitoring.KasMonitoringCheckRunner;
 import com.telas.monitoring.entities.BoxHeartbeatEntity;
 import com.telas.monitoring.repositories.BoxHeartbeatEntityRepository;
+import com.telas.repositories.BoxRepository;
 import com.telas.services.HealthUpdateService;
+import com.telas.shared.constants.MonitoringIncidentTypes;
 import lombok.RequiredArgsConstructor;
 import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
 import org.springframework.beans.factory.annotation.Value;
@@ -22,11 +24,15 @@ import java.util.List;
 public class MonitoringWorkerService {
 
     private final BoxHeartbeatEntityRepository boxHeartbeatEntityRepository;
+    private final BoxRepository boxRepository;
     private final HealthUpdateService healthUpdateService;
     private final KasMonitoringCheckRunner kasMonitoringCheckRunner;
 
     @Value("${monitoring.heartbeat.stale-seconds:180}")
     private long staleSeconds;
+
+    @Value("${monitoring.heartbeat.never-seen-grace-seconds:600}")
+    private long neverSeenGraceSeconds;
 
     @Value("${monitoring.kasa.enabled:true}")
     private boolean kasaEnabled;
@@ -45,7 +51,20 @@ public class MonitoringWorkerService {
             StatusBoxMonitorsRequestDto dto = new StatusBoxMonitorsRequestDto();
             dto.setIp(box.getBoxAddress().getIp());
             dto.setStatus(DefaultStatus.INACTIVE);
-            dto.setIncidentType("HEARTBEAT_STALE");
+            dto.setIncidentType(MonitoringIncidentTypes.HEARTBEAT_STALE);
+            dto.setIncidentSeverity("CRITICAL");
+            healthUpdateService.applyHealthUpdate(dto);
+        }
+        Instant graceCutoff = Instant.now().minusSeconds(neverSeenGraceSeconds);
+        List<Box> neverSeen = boxRepository.findActiveBoxesWithoutHeartbeatAfterGrace(graceCutoff);
+        for (Box box : neverSeen) {
+            if (!box.isActive()) {
+                continue;
+            }
+            StatusBoxMonitorsRequestDto dto = new StatusBoxMonitorsRequestDto();
+            dto.setIp(box.getBoxAddress().getIp());
+            dto.setStatus(DefaultStatus.INACTIVE);
+            dto.setIncidentType(MonitoringIncidentTypes.HEARTBEAT_NEVER_SEEN);
             dto.setIncidentSeverity("CRITICAL");
             healthUpdateService.applyHealthUpdate(dto);
         }

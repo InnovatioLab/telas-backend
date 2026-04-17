@@ -5,7 +5,12 @@ ALTER TABLE ads_aud
     ADD COLUMN IF NOT EXISTS unused_since TIMESTAMPTZ NULL;
 
 ALTER TABLE clients
-    ADD COLUMN IF NOT EXISTS ads_retention_days_override INTEGER NULL,
+    ADD COLUMN IF NOT EXISTS ads_retention_days_override INTEGER NULL;
+
+ALTER TABLE clients
+    DROP CONSTRAINT IF EXISTS chk_clients_ads_retention_days_override;
+
+ALTER TABLE clients
     ADD CONSTRAINT chk_clients_ads_retention_days_override CHECK (
         ads_retention_days_override IS NULL OR ads_retention_days_override > 0
         );

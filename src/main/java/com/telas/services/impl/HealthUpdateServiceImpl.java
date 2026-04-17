@@ -3,16 +3,16 @@ package com.telas.services.impl;
 import com.telas.dtos.request.StatusBoxMonitorsRequestDto;
 import com.telas.entities.Box;
 import com.telas.entities.Monitor;
+import com.telas.enums.AdminEmailAlertCategory;
 import com.telas.enums.DefaultStatus;
 import com.telas.enums.NotificationReference;
 import com.telas.infra.exceptions.ResourceNotFoundException;
 import com.telas.monitoring.entities.IncidentEntity;
 import com.telas.monitoring.repositories.IncidentEntityRepository;
 import com.telas.repositories.BoxRepository;
-import com.telas.repositories.ClientRepository;
 import com.telas.repositories.MonitorRepository;
+import com.telas.services.AdminMonitoringNotificationService;
 import com.telas.services.HealthUpdateService;
-import com.telas.services.NotificationService;
 import com.telas.shared.constants.valitation.BoxValidationMessages;
 import com.telas.shared.constants.valitation.MonitorValidationMessages;
 import com.telas.shared.utils.DateUtils;
@@ -36,8 +36,7 @@ public class HealthUpdateServiceImpl implements HealthUpdateService {
 
     private final BoxRepository boxRepository;
     private final MonitorRepository monitorRepository;
-    private final ClientRepository clientRepository;
-    private final NotificationService notificationService;
+    private final AdminMonitoringNotificationService adminMonitoringNotificationService;
     private final IncidentEntityRepository incidentEntityRepository;
 
     @Override
@@ -61,13 +60,19 @@ public class HealthUpdateServiceImpl implements HealthUpdateService {
         boxRepository.save(box);
 
         if (box.getMonitors().isEmpty()) {
+            Map<String, String> params =
+                    buildBoxStatusNotificationParams(ip, ctx, "None", request);
+            adminMonitoringNotificationService.notifyAdmins(
+                    NotificationReference.BOX_STATUS_UPDATED, params, AdminEmailAlertCategory.BOX_HEARTBEAT_CONNECTIVITY);
             recordIncidentIfNeeded(request, ctx, box, null);
             return;
         }
 
         syncMonitorsActiveState(box.getMonitors(), ctx.isActive());
-        Map<String, String> params = buildBoxStatusNotificationParams(ip, ctx, formatLinkedMonitorAddresses(box));
-        notifyAdmins(NotificationReference.BOX_STATUS_UPDATED, params);
+        Map<String, String> params =
+                buildBoxStatusNotificationParams(ip, ctx, formatLinkedMonitorAddresses(box), request);
+        adminMonitoringNotificationService.notifyAdmins(
+                NotificationReference.BOX_STATUS_UPDATED, params, AdminEmailAlertCategory.BOX_HEARTBEAT_CONNECTIVITY);
         recordIncidentIfNeeded(request, ctx, box, null);
     }
 
@@ -75,7 +80,11 @@ public class HealthUpdateServiceImpl implements HealthUpdateService {
         Monitor monitor = findMonitorById(monitorId);
         monitor.setActive(ctx.isActive());
         monitorRepository.save(monitor);
-        notifyAdmins(NotificationReference.MONITOR_STATUS_UPDATED, buildMonitorStatusNotificationParams(monitor, ctx));
+        Map<String, String> monitorParams = buildMonitorStatusNotificationParams(monitor, ctx, request);
+        adminMonitoringNotificationService.notifyAdmins(
+                NotificationReference.MONITOR_STATUS_UPDATED,
+                monitorParams,
+                AdminEmailAlertCategory.BOX_HEARTBEAT_CONNECTIVITY);
         recordIncidentIfNeeded(request, ctx, null, monitor);
     }
 
@@ -113,29 +122,31 @@ public class HealthUpdateServiceImpl implements HealthUpdateService {
         return box.getMonitors().stream().map(m -> m.getAddress().getCoordinatesParams()).collect(Collectors.joining("; "));
     }
 
-    private Map<String, String> buildBoxStatusNotificationParams(String ip, HealthUpdateContext ctx, String monitorAddresses) {
+    private Map<String, String> buildBoxStatusNotificationParams(
+            String ip, HealthUpdateContext ctx, String monitorAddresses, StatusBoxMonitorsRequestDto request) {
         Map<String, String> params = new HashMap<>();
         params.put("ip", ip);
         params.put("statusLabel", ctx.statusLabel());
         params.put("monitorAddresses", monitorAddresses);
         params.put("notifiedAt", ctx.notifiedAt());
+        params.put("incidentType", request.getIncidentType() != null ? request.getIncidentType() : "");
+        params.put("severity", request.getIncidentSeverity() != null ? request.getIncidentSeverity() : "");
         return params;
     }
 
-    private Map<String, String> buildMonitorStatusNotificationParams(Monitor monitor, HealthUpdateContext ctx) {
+    private Map<String, String> buildMonitorStatusNotificationParams(
+            Monitor monitor, HealthUpdateContext ctx, StatusBoxMonitorsRequestDto request) {
         Map<String, String> params = new HashMap<>();
         params.put("monitorAddress", resolveMonitorCoordinates(monitor));
         params.put("statusLabel", ctx.statusLabel());
         params.put("notifiedAt", ctx.notifiedAt());
+        params.put("incidentType", request.getIncidentType() != null ? request.getIncidentType() : "");
+        params.put("severity", request.getIncidentSeverity() != null ? request.getIncidentSeverity() : "");
         return params;
     }
 
     private String resolveMonitorCoordinates(Monitor monitor) {
         return monitor.getAddress() != null ? monitor.getAddress().getCoordinatesParams() : "Unknown";
-    }
-
-    private void notifyAdmins(NotificationReference reference, Map<String, String> params) {
-        clientRepository.findAllAdmins().forEach(admin -> notificationService.save(reference, admin, params, false));
     }
 
     private Monitor findMonitorById(UUID monitorId) {
