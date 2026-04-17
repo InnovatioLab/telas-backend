@@ -191,7 +191,7 @@ public class PaymentServiceImpl implements PaymentService {
 		Map<String, String> metaData = helper.createMetaData(subscription, payment, recurrence);
 
 		String successUrl = frontBaseUrl + (Objects.isNull(recurrence)
-			? helper.getSuccessUrl(subscription.getClient())
+			? helper.getSuccessUrl()
 			: "/client/subscriptions");
 
 		boolean isSubscription =
@@ -203,7 +203,10 @@ public class PaymentServiceImpl implements PaymentService {
 			.setMode(isSubscription ? SessionCreateParams.Mode.SUBSCRIPTION : SessionCreateParams.Mode.PAYMENT)
 			.setCustomer(customer.getId()).addPaymentMethodType(SessionCreateParams.PaymentMethodType.CARD)
 			.setSuccessUrl(successUrl).setExpiresAt(expiresAt).setCancelUrl(frontBaseUrl + "/client")
-			.setClientReferenceId(subscription.getId().toString());
+			.setClientReferenceId(subscription.getId().toString())
+			.setBillingAddressCollection(SessionCreateParams.BillingAddressCollection.REQUIRED)
+			.setPhoneNumberCollection(
+					SessionCreateParams.PhoneNumberCollection.builder().setEnabled(true).build());
 
 		if (isSubscription) {
 			metaData.put("invoice_description",

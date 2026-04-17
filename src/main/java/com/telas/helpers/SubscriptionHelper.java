@@ -165,10 +165,7 @@ public class SubscriptionHelper {
         inactivateCart(client);
         deleteSubscriptionFlow(client);
 
-        if (client.isFirstSubscription()) {
-            sendFirstBuyEmail(subscription);
-        }
-
+        sendPurchaseConfirmationEmail(subscription);
 
         client.getApprovedAds().stream()
                 .filter(Objects::nonNull)
@@ -184,9 +181,7 @@ public class SubscriptionHelper {
     public void handleBonusSubscription(Subscription subscription) {
         Client client = subscription.getClient();
 
-        if (client.isFirstSubscription()) {
-            sendFirstBuyEmail(subscription);
-        }
+        sendPurchaseConfirmationEmail(subscription);
 
         clientHelper.addAdToMonitor(client.getApprovedAds(), subscription);
 
@@ -309,12 +304,12 @@ public class SubscriptionHelper {
         ));
     }
 
-    public void sendFirstBuyEmail(Subscription subscription) {
+    public void sendPurchaseConfirmationEmail(Subscription subscription) {
         Map<String, String> params = new HashMap<>(Map.of(
                 "name", subscription.getClient().getBusinessName(),
                 "locations", subscription.getMonitorAddressesFormated(),
                 "startDate", DateUtils.formatInstantToString(subscription.getStartedAt()),
-                "link", getRedirectUrlAfterCreatingNewSubscription(subscription.getClient())
+                "link", getRedirectUrlAfterCreatingNewSubscription()
         ));
 
         if (subscription.getEndsAt() != null) {
@@ -347,14 +342,8 @@ public class SubscriptionHelper {
         });
     }
 
-    public String getRedirectUrlAfterCreatingNewSubscription(Client client) {
-        if (client.getAttachments().isEmpty()) {
-            return buildRedirectUrl("my-telas");
-        }
-
-        return client.getAds().isEmpty()
-                ? buildRedirectUrl("my-telas?ads=true")
-                : buildRedirectUrl("subscriptions");
+    public String getRedirectUrlAfterCreatingNewSubscription() {
+        return buildRedirectUrl("my-telas?ads=true");
     }
 
     private void validateCart(Cart cart) {

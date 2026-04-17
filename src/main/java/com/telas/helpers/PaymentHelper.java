@@ -426,7 +426,7 @@ public class PaymentHelper {
         return params;
     }
 
-    public String getSuccessUrl(Client client) {
-        return subscriptionHelper.getRedirectUrlAfterCreatingNewSubscription(client);
+    public String getSuccessUrl() {
+        return subscriptionHelper.getRedirectUrlAfterCreatingNewSubscription();
     }
 }
