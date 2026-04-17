@@ -185,6 +185,23 @@ public class Monitor extends BaseAudit implements Serializable {
         return box != null && box.isActive();
     }
 
+    public String explainInvalidBoxLinkForCheckout() {
+        UUID monitorId = getId();
+        if (box == null) {
+            return "Monitor "
+                    + monitorId
+                    + " is not linked to any box. Link an active box to this monitor before checkout.";
+        }
+        if (!box.isActive()) {
+            return "Monitor "
+                    + monitorId
+                    + " is linked to box "
+                    + box.getId()
+                    + ", but that box is inactive. Activate the box or assign another active box.";
+        }
+        return "Monitor " + monitorId + " cannot use the box pipeline (unexpected state).";
+    }
+
     public Instant getEstimatedSlotReleaseDate() {
         return getActiveSubscriptionMonitors().stream()
                 .map(SubscriptionMonitor::getSubscription)

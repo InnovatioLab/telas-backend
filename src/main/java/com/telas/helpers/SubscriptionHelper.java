@@ -399,7 +399,7 @@ public class SubscriptionHelper {
             }
 
             if (!monitor.isAbleToSendBoxRequest()) {
-                throw new BusinessRuleException(MonitorValidationMessages.MONITOR_BOX_NOT_VALID);
+                throw new BusinessRuleException(monitor.explainInvalidBoxLinkForCheckout());
             }
         }
     }
