@@ -1,6 +1,7 @@
 package com.telas.repositories;
 
 import com.telas.entities.Address;
+import com.telas.enums.DefaultStatus;
 import org.jetbrains.annotations.NotNull;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
@@ -19,6 +20,24 @@ public interface AddressRepository extends JpaRepository<Address, UUID> {
 
     @Query("SELECT a FROM Address a WHERE a.zipCode = :zipCode")
     List<Address> findByZipCode(String zipCode);
+
+    @Query("""
+        SELECT a
+        FROM Address a
+        JOIN a.client c
+        WHERE LOWER(a.street) = :street
+          AND LOWER(a.city) = :city
+          AND LOWER(a.state) = :state
+          AND a.zipCode = :zipCode
+          AND c.status = :clientStatus
+        """)
+    Optional<Address> findActiveClientConflictByAddressData(
+        String street,
+        String city,
+        String state,
+        String zipCode,
+        DefaultStatus clientStatus
+    );
 
     @Query("SELECT a FROM Address a WHERE LOWER(a.street) = :street AND LOWER(a.city) = :city AND LOWER(a.state) = :state AND a.zipCode = :zipCode")
     Optional<Address> findByStreetAndCityAndStateAndZipCode(String street, String city, String state, String zipCode);

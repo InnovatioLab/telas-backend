@@ -5,6 +5,7 @@ import com.telas.dtos.response.AddressFromZipCodeResponseDto;
 import com.telas.dtos.response.NearbySearchResponse;
 import com.telas.entities.Address;
 import com.telas.entities.Client;
+import com.telas.enums.DefaultStatus;
 import com.telas.infra.exceptions.BusinessRuleException;
 import com.telas.infra.exceptions.ResourceNotFoundException;
 import com.telas.repositories.AddressRepository;
@@ -41,7 +42,7 @@ public class AddressServiceImpl implements AddressService {
         String state = addressDto.getState().toLowerCase();
         String zip = addressDto.getZipCode().toLowerCase();
 
-        return repository.findByStreetAndCityAndStateAndZipCode(street, city, state, zip)
+        return repository.findActiveClientConflictByAddressData(street, city, state, zip, DefaultStatus.ACTIVE)
                 .map(existing -> {
                     if (client != null) {
                         if (client.getId() == null || !client.getId().equals(existing.getClient().getId())) {
