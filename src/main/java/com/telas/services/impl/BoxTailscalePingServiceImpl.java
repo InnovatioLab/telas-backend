@@ -88,13 +88,20 @@ public class BoxTailscalePingServiceImpl implements BoxTailscalePingService {
     }
 
     private BoxTailscalePingOutcome tryTcpProbes(String ip) {
-        for (int port : resolveTcpPorts()) {
+        int[] ports = resolveTcpPorts();
+        if (ports.length == 0) {
+            return null;
+        }
+        String lastFailureDetail = null;
+        for (int port : ports) {
             TcpProbeResult r = tcpProbe(ip, port);
             if (r.reachable()) {
                 return BoxTailscalePingOutcome.attempted(true, r.detail());
             }
+            lastFailureDetail = r.detail();
         }
-        return null;
+        return BoxTailscalePingOutcome.attempted(
+                false, lastFailureDetail != null ? lastFailureDetail : "tcp_probe_failed");
     }
 
     private int[] resolveTcpPorts() {

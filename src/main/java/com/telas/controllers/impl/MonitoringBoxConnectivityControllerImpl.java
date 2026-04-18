@@ -13,6 +13,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -32,6 +33,21 @@ public class MonitoringBoxConnectivityControllerImpl {
     @SecurityRequirement(name = "jwt")
     public ResponseEntity<?> list() {
         authenticatedUserService.validatePermission(Permission.MONITORING_TESTING_VIEW);
+        List<BoxConnectivityProbeRowResponseDto> data = boxConnectivityProbeService.listProbeRows();
+        return ResponseEntity.status(HttpStatus.OK)
+                .body(
+                        ResponseDto.fromData(
+                                data,
+                                HttpStatus.OK,
+                                MessageCommonsConstants.FIND_ALL_SUCCESS_MESSAGE));
+    }
+
+    @PostMapping("/run")
+    @Operation(summary = "Run TCP connectivity probes now and return the same list as GET")
+    @SecurityRequirement(name = "jwt")
+    public ResponseEntity<?> runNow() {
+        authenticatedUserService.validatePermission(Permission.MONITORING_TESTING_VIEW);
+        boxConnectivityProbeService.runProbesNow();
         List<BoxConnectivityProbeRowResponseDto> data = boxConnectivityProbeService.listProbeRows();
         return ResponseEntity.status(HttpStatus.OK)
                 .body(

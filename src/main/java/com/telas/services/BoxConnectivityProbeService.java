@@ -9,4 +9,6 @@ public interface BoxConnectivityProbeService {
     List<BoxConnectivityProbeRowResponseDto> listProbeRows();
 
     void runScheduledProbes();
+
+    void runProbesNow();
 }

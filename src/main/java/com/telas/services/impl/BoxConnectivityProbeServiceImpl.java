@@ -91,6 +91,16 @@ public class BoxConnectivityProbeServiceImpl implements BoxConnectivityProbeServ
         if (!probeEnabled) {
             return;
         }
+        executeProbeCycle();
+    }
+
+    @Override
+    @Transactional
+    public void runProbesNow() {
+        executeProbeCycle();
+    }
+
+    private void executeProbeCycle() {
         List<Box> boxes = boxRepository.findAllForTestingOverview();
         int ok = 0;
         int fail = 0;
