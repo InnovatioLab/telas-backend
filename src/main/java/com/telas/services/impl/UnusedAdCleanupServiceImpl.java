@@ -72,12 +72,59 @@ public class UnusedAdCleanupServiceImpl implements UnusedAdCleanupService {
             schedulerJobRunContext.put("deletedAdsTruncated", true);
         }
         if (removed > 0) {
+            Map<String, Object> meta = new HashMap<>();
+            meta.put("removedCount", removed);
+            meta.put("deletedAds", deletedAds);
+            if (truncated) {
+                meta.put("deletedAdsTruncated", true);
+            }
+            if (failures > 0) {
+                meta.put("deleteFailures", failures);
+            }
             applicationLogService.persistSystemLog(
                     "INFO",
-                    "Unused ad retention removed " + removed + " ad(s).",
+                    buildRetentionRemovalMessage(removed, deletedAds, truncated, failures),
                     "WORKER",
-                    new HashMap<>());
+                    meta);
         }
         return removed;
+    }
+
+    private static String buildRetentionRemovalMessage(
+            int removed,
+            List<Map<String, String>> deletedAds,
+            boolean truncated,
+            int failures) {
+        StringBuilder sb = new StringBuilder();
+        sb.append("Unused ad retention removed ")
+                .append(removed)
+                .append(" ad(s).");
+        if (!deletedAds.isEmpty()) {
+            sb.append(" Removed: ");
+            for (int i = 0; i < deletedAds.size(); i++) {
+                if (i > 0) {
+                    sb.append("; ");
+                }
+                Map<String, String> row = deletedAds.get(i);
+                String name = row.getOrDefault("adName", "").trim();
+                String aid = row.getOrDefault("adId", "");
+                if (!name.isEmpty()) {
+                    sb.append('"').append(name).append("\" (").append(aid).append(')');
+                } else {
+                    sb.append(aid);
+                }
+            }
+            if (truncated) {
+                int more = removed - deletedAds.size();
+                if (more > 0) {
+                    sb.append(" … (").append(more).append(" more not listed in message)");
+                }
+            }
+        }
+        if (failures > 0) {
+            sb.append(" Failures: ").append(failures).append('.');
+        }
+        String out = sb.toString();
+        return out.length() > 3900 ? out.substring(0, 3897) + "..." : out;
     }
 }
