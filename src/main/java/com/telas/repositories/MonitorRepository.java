@@ -65,7 +65,7 @@ public interface MonitorRepository extends JpaRepository<Monitor, UUID>, JpaSpec
     @Query("""
             SELECT DISTINCT m FROM Monitor m
             JOIN FETCH m.address a
-            LEFT JOIN FETCH m.box b
+            JOIN FETCH m.box b
             WHERE a.zipCode = :zipCode
             """)
     List<Monitor> findAllForAdminMapByZipCode(@Param("zipCode") String zipCode);
