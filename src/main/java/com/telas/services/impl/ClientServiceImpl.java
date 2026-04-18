@@ -432,8 +432,12 @@ public class ClientServiceImpl implements ClientService {
 		Specification<Client> roleRestriction = actor.isDeveloper()
 			? (root, query, criteriaBuilder) -> criteriaBuilder.conjunction()
 			: (root, query, criteriaBuilder) -> criteriaBuilder.notEqual(root.get("role"), Role.ADMIN);
+		Specification<Client> activeOnlyUnlessDeveloper = actor.isDeveloper()
+			? (root, query, criteriaBuilder) -> criteriaBuilder.conjunction()
+			: (root, query, criteriaBuilder) ->
+					criteriaBuilder.equal(root.get("status"), DefaultStatus.ACTIVE);
 		Specification<Client> filter = PaginationFilterUtil.addSpecificationFilter(
-			roleRestriction,
+			Specification.where(roleRestriction).and(activeOnlyUnlessDeveloper),
 			request.getGenericFilter(), this::filterClients);
 
 		Page<Client> page = repository.findAll(filter, pageable);

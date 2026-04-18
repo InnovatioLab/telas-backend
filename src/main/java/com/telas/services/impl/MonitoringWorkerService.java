@@ -3,10 +3,11 @@ package com.telas.services.impl;
 import com.telas.dtos.request.StatusBoxMonitorsRequestDto;
 import com.telas.entities.Box;
 import com.telas.enums.DefaultStatus;
-import com.telas.scheduler.SchedulerJobRunContext;
+import com.telas.monitoring.KasMonitoringCheckRunner;
 import com.telas.monitoring.entities.BoxHeartbeatEntity;
 import com.telas.monitoring.repositories.BoxHeartbeatEntityRepository;
 import com.telas.repositories.BoxRepository;
+import com.telas.scheduler.SchedulerJobRunContext;
 import com.telas.services.HealthUpdateService;
 import com.telas.shared.constants.MonitoringIncidentTypes;
 import lombok.RequiredArgsConstructor;
@@ -16,8 +17,7 @@ import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import com.telas.monitoring.KasMonitoringCheckRunner;
-
+import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -45,8 +45,13 @@ public class MonitoringWorkerService {
     @Value("${monitoring.kasa.enabled:true}")
     private boolean kasaEnabled;
 
-    @Scheduled(fixedDelayString = "${monitoring.worker.interval-ms:60000}")
-    @SchedulerLock(name = "monitoringWorker", lockAtMostFor = "PT120S", lockAtLeastFor = "PT5S")
+    @Value("${monitoring.worker.interval-ms:60000}")
+    private long kasaIntervalMs;
+
+    private Instant lastKasaRunAt = Instant.now();
+
+    @Scheduled(fixedDelayString = "${monitoring.worker.heartbeat-check-interval-ms:10000}")
+    @SchedulerLock(name = "monitoringWorker", lockAtMostFor = "PT120S", lockAtLeastFor = "PT2S")
     @Transactional
     public void runChecks() {
         Instant cutoff = Instant.now().minusSeconds(staleSeconds);
@@ -104,7 +109,10 @@ public class MonitoringWorkerService {
         if (neverSeenProcessed > neverSeenSummary.size()) {
             schedulerJobRunContext.put("neverSeenHeartbeatsTruncated", true);
         }
-        if (kasaEnabled) {
+        Instant now = Instant.now();
+        if (kasaEnabled
+                && Duration.between(lastKasaRunAt, now).toMillis() >= kasaIntervalMs) {
+            lastKasaRunAt = now;
             schedulerJobRunContext.putAll(kasMonitoringCheckRunner.runKasaChecks());
         }
     }

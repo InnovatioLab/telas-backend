@@ -31,7 +31,7 @@ public class SchedulerOverviewService {
     @Value("${monitoring.log.retention.cron:0 0 3 * * *}")
     private String monitoringLogRetentionCron;
 
-    @Value("${monitoring.worker.interval-ms:60000}")
+    @Value("${monitoring.worker.heartbeat-check-interval-ms:10000}")
     private long monitoringWorkerIntervalMs;
 
     @Value("${subscription.cron.remove-expired-ads:0 0 4 * * *}")
@@ -45,6 +45,9 @@ public class SchedulerOverviewService {
 
     @Value("${app.scheduler.zone:America/New_York}")
     private String appSchedulerZone;
+
+    @Value("${monitoring.box-connectivity-probe.interval-ms:300000}")
+    private long boxConnectivityProbeIntervalMs;
 
     @Transactional(readOnly = true)
     public List<SchedulerJobStatusResponseDto> listJobStatus() {
@@ -69,7 +72,16 @@ public class SchedulerOverviewService {
                         expiryEmailsCron,
                         zoneId));
         out.add(buildForCron("cleanupUnusedAds", "Unused approved ads retention (S3 + DB)", cleanupAdsCron, zoneId));
-        out.add(buildForFixedDelay("monitoringWorker", "Monitoring worker (heartbeats, Kasa)", monitoringWorkerIntervalMs));
+        out.add(
+                buildForFixedDelay(
+                        "monitoringWorker",
+                        "Monitoring worker (heartbeats + Kasa a cada monitoring.worker.interval-ms)",
+                        monitoringWorkerIntervalMs));
+        out.add(
+                buildForFixedDelay(
+                        "boxConnectivityProbe",
+                        "Box connectivity probe (TCP, Box ping logs tab)",
+                        boxConnectivityProbeIntervalMs));
         return out;
     }
 
