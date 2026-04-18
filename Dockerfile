@@ -1,17 +1,17 @@
-# Etapa de build
+# syntax=docker/dockerfile:1
 FROM eclipse-temurin:17-jdk-jammy AS builder
 
-# Instala Maven diretamente
 RUN apt-get update && apt-get install -y maven && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /opt/app
+
+COPY pom.xml .
+RUN --mount=type=cache,target=/root/.m2/repository \
+    mvn -B -q dependency:go-offline -DskipTests
+
 COPY . .
-
-# Baixa dependências para cache
-RUN mvn dependency:go-offline
-
-# Builda a aplicação
-RUN mvn clean install -DskipTests
+RUN --mount=type=cache,target=/root/.m2/repository \
+    mvn -B clean install -DskipTests
 
 # Etapa de runtime
 FROM eclipse-temurin:17-jre-jammy
