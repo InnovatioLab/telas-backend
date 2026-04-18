@@ -22,4 +22,6 @@ public interface AdminEmailAlertPreferenceService {
     void replaceFromRequest(UUID targetClientId, Map<String, Boolean> raw);
 
     List<EmailAlertCategoryOptionDto> getCatalog();
+
+    void ensureDefaultEmailPreferencesForAdmin(UUID clientId);
 }

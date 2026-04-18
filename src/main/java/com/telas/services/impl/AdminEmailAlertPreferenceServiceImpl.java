@@ -30,6 +30,28 @@ public class AdminEmailAlertPreferenceServiceImpl implements AdminEmailAlertPref
     private final ClientRepository clientRepository;
 
     @Override
+    @Transactional
+    public void ensureDefaultEmailPreferencesForAdmin(UUID clientId) {
+        Client client =
+                clientRepository
+                        .findById(clientId)
+                        .orElseThrow(() -> new ResourceNotFoundException(ClientValidationMessages.USER_NOT_FOUND));
+        if (!Role.ADMIN.equals(client.getRole())) {
+            return;
+        }
+        if (preferenceRepository
+                .findByClient_IdAndAlertCategory(clientId, AdminEmailAlertCategory.BOX_HEARTBEAT_CONNECTIVITY.name())
+                .isPresent()) {
+            return;
+        }
+        AdminEmailAlertPreference row = new AdminEmailAlertPreference();
+        row.setClient(client);
+        row.setAlertCategory(AdminEmailAlertCategory.BOX_HEARTBEAT_CONNECTIVITY.name());
+        row.setEnabled(true);
+        preferenceRepository.save(row);
+    }
+
+    @Override
     @Transactional(readOnly = true)
     public boolean wantsEmail(UUID clientId, AdminEmailAlertCategory category) {
         return preferenceRepository

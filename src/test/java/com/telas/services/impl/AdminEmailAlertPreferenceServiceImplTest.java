@@ -17,7 +17,9 @@ import java.util.Optional;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -49,6 +51,40 @@ class AdminEmailAlertPreferenceServiceImplTest {
                 .thenReturn(Optional.of(row));
 
         assertThat(service.wantsEmail(id, AdminEmailAlertCategory.BOX_HEARTBEAT_CONNECTIVITY)).isTrue();
+    }
+
+    @Test
+    void ensureDefaultEmailPreferencesForAdmin_insertsConnectivityWhenMissing() {
+        UUID id = UUID.randomUUID();
+        Client admin = new Client();
+        admin.setId(id);
+        admin.setRole(Role.ADMIN);
+        when(clientRepository.findById(id)).thenReturn(Optional.of(admin));
+        when(preferenceRepository.findByClient_IdAndAlertCategory(
+                        eq(id), eq(AdminEmailAlertCategory.BOX_HEARTBEAT_CONNECTIVITY.name())))
+                .thenReturn(Optional.empty());
+
+        service.ensureDefaultEmailPreferencesForAdmin(id);
+
+        verify(preferenceRepository).save(any(AdminEmailAlertPreference.class));
+    }
+
+    @Test
+    void ensureDefaultEmailPreferencesForAdmin_skipsWhenRowExists() {
+        UUID id = UUID.randomUUID();
+        Client admin = new Client();
+        admin.setId(id);
+        admin.setRole(Role.ADMIN);
+        when(clientRepository.findById(id)).thenReturn(Optional.of(admin));
+        AdminEmailAlertPreference row = new AdminEmailAlertPreference();
+        row.setEnabled(true);
+        when(preferenceRepository.findByClient_IdAndAlertCategory(
+                        eq(id), eq(AdminEmailAlertCategory.BOX_HEARTBEAT_CONNECTIVITY.name())))
+                .thenReturn(Optional.of(row));
+
+        service.ensureDefaultEmailPreferencesForAdmin(id);
+
+        verify(preferenceRepository, never()).save(any(AdminEmailAlertPreference.class));
     }
 
     @Test

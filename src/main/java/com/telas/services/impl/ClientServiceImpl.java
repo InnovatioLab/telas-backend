@@ -26,6 +26,7 @@ import com.telas.infra.security.model.PasswordUpdateRequestDto;
 import com.telas.infra.security.services.AuthenticatedUserService;
 import com.telas.repositories.AdRequestRepository;
 import com.telas.repositories.ClientRepository;
+import com.telas.services.AdminEmailAlertPreferenceService;
 import com.telas.services.BucketService;
 import com.telas.services.ClientService;
 import com.telas.services.PermissionService;
@@ -80,6 +81,7 @@ public class ClientServiceImpl implements ClientService {
 
 	private final PermissionService permissionService;
 
+	private final AdminEmailAlertPreferenceService adminEmailAlertPreferenceService;
 
 	@Override
 	@Transactional
@@ -102,6 +104,9 @@ public class ClientServiceImpl implements ClientService {
 		}
 
 		Client savedClient = repository.save(client);
+		if (Role.ADMIN.equals(savedClient.getRole())) {
+			adminEmailAlertPreferenceService.ensureDefaultEmailPreferencesForAdmin(savedClient.getId());
+		}
 		sendContactConfirmationEmail(savedClient, verificationCode);
 	}
 

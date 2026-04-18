@@ -9,6 +9,7 @@ import com.telas.monitoring.repositories.BoxConnectivityProbeEntityRepository;
 import com.telas.dtos.request.StatusBoxMonitorsRequestDto;
 import com.telas.enums.DefaultStatus;
 import com.telas.repositories.BoxRepository;
+import com.telas.services.ApplicationLogService;
 import com.telas.services.BoxConnectivityProbeService;
 import com.telas.services.BoxTailscalePingOutcome;
 import com.telas.services.BoxTailscalePingService;
@@ -26,6 +27,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -43,6 +45,7 @@ public class BoxConnectivityProbeServiceImpl implements BoxConnectivityProbeServ
     private final BoxConnectivityProbeEntityRepository boxConnectivityProbeEntityRepository;
     private final HealthUpdateService healthUpdateService;
     private final HeartbeatRecoveryService heartbeatRecoveryService;
+    private final ApplicationLogService applicationLogService;
 
     @Value("${monitoring.box-connectivity-probe.enabled:true}")
     private boolean probeEnabled;
@@ -171,6 +174,16 @@ public class BoxConnectivityProbeServiceImpl implements BoxConnectivityProbeServ
             if (!desiredActive) {
                 dto.setIncidentType(MonitoringIncidentTypes.CONNECTIVITY_PROBE_FAILED);
                 dto.setIncidentSeverity("CRITICAL");
+                Map<String, Object> logMeta = new HashMap<>();
+                logMeta.put("boxId", box.getId().toString());
+                logMeta.put("boxIp", ip != null ? ip : "");
+                logMeta.put("incidentType", MonitoringIncidentTypes.CONNECTIVITY_PROBE_FAILED);
+                String label = ip != null && !ip.isBlank() ? ip : box.getId().toString();
+                applicationLogService.persistSystemLog(
+                        "WARN",
+                        String.format("CONNECTIVITY_PROBE: box %s inacessível pela sonda; estado inativo.", label),
+                        "MONITORING",
+                        logMeta);
             }
             healthUpdateService.applyHealthUpdate(dto);
         }
