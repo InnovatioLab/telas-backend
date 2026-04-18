@@ -343,7 +343,7 @@ public class SubscriptionHelper {
     }
 
     public String getRedirectUrlAfterCreatingNewSubscription() {
-        return buildRedirectUrl("my-telas?ads=true");
+        return buildRedirectUrl("my-telas");
     }
 
     private void validateCart(Cart cart) {
