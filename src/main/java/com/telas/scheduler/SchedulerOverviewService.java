@@ -125,6 +125,7 @@ public class SchedulerOverviewService {
                         dto.setLastDurationMillis(
                                 Duration.between(row.getStartedAt(), Instant.now()).toMillis());
                     }
+                    dto.setLastRunSummary(row.getResultSummary());
                 });
         return dto;
     }

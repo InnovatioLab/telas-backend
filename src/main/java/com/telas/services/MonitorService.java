@@ -13,7 +13,7 @@ import java.util.UUID;
 public interface MonitorService {
     UUID save(MonitorRequestDto requestDto, UUID monitorId) throws JsonProcessingException;
 
-    void removeMonitorAdsFromSubscription(Subscription subscription);
+    RemoveMonitorAdsOutcome removeMonitorAdsFromSubscription(Subscription subscription);
 
     MonitorResponseDto findById(UUID monitorId);
 

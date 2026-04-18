@@ -5,5 +5,5 @@ import org.springframework.transaction.annotation.Transactional;
 
 public interface MonitorSubscriptionService {
     @Transactional
-    void removeMonitorAdsFromSubscription(Subscription subscription);
+    RemoveMonitorAdsOutcome removeMonitorAdsFromSubscription(Subscription subscription);
 }

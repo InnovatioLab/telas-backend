@@ -1,6 +1,7 @@
 package com.telas.services.impl;
 
 import com.telas.monitoring.repositories.ApplicationLogEntityRepository;
+import com.telas.scheduler.SchedulerJobRunContext;
 import lombok.RequiredArgsConstructor;
 import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
 import org.springframework.beans.factory.annotation.Value;
@@ -16,6 +17,7 @@ import java.time.temporal.ChronoUnit;
 public class ApplicationLogRetentionScheduler {
 
     private final ApplicationLogEntityRepository applicationLogEntityRepository;
+    private final SchedulerJobRunContext schedulerJobRunContext;
 
     @Value("${monitoring.log.retention.days:60}")
     private int retentionDays;
@@ -27,6 +29,7 @@ public class ApplicationLogRetentionScheduler {
     @Transactional
     public void purgeOldLogs() {
         Instant cutoff = Instant.now().minus(retentionDays, ChronoUnit.DAYS);
-        applicationLogEntityRepository.deleteOlderThan(cutoff);
+        int rowsDeleted = applicationLogEntityRepository.deleteOlderThan(cutoff);
+        schedulerJobRunContext.put("rowsDeleted", rowsDeleted);
     }
 }

@@ -10,6 +10,7 @@ import com.telas.repositories.MonitorRepository;
 import com.telas.repositories.SubscriptionRepository;
 import com.telas.services.AdUnusedTrackingService;
 import com.telas.services.MonitorSubscriptionService;
+import com.telas.services.RemoveMonitorAdsOutcome;
 import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -17,6 +18,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.ArrayList;
+import java.util.LinkedHashSet;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -34,16 +36,17 @@ public class MonitorSubscriptionServiceImpl implements MonitorSubscriptionServic
 
     @Override
     @Transactional
-    public void removeMonitorAdsFromSubscription(Subscription subscription) {
+    public RemoveMonitorAdsOutcome removeMonitorAdsFromSubscription(Subscription subscription) {
         List<SubscriptionStatus> validStatuses = List.of(SubscriptionStatus.EXPIRED, SubscriptionStatus.CANCELLED);
 
         if (!validStatuses.contains(subscription.getStatus())) {
-            return;
+            return RemoveMonitorAdsOutcome.none();
         }
 
         Client client = subscription.getClient();
         List<Monitor> updatedMonitors = new ArrayList<>();
         Set<UUID> touchedAdIds = new HashSet<>();
+        LinkedHashSet<String> allRemovedAdNames = new LinkedHashSet<>();
 
         subscription.getMonitors().forEach(monitor -> {
             List<String> adNamesToRemove = monitor.getAds().stream()
@@ -58,6 +61,7 @@ public class MonitorSubscriptionServiceImpl implements MonitorSubscriptionServic
                         .forEach(monitorAd -> touchedAdIds.add(monitorAd.getAd().getId()));
                 monitor.getMonitorAds().removeIf(monitorAd -> adNamesToRemove.contains(monitorAd.getAd().getName()));
                 updatedMonitors.add(monitor);
+                allRemovedAdNames.addAll(adNamesToRemove);
 
                 if (monitor.isAbleToSendBoxRequest()) {
                     helper.sendBoxesMonitorsRemoveAds(monitor, adNamesToRemove);
@@ -72,5 +76,6 @@ public class MonitorSubscriptionServiceImpl implements MonitorSubscriptionServic
         subscription.getSubscriptionMonitors().clear();
         subscriptionRepository.save(subscription);
         adUnusedTrackingService.syncUnusedStateForAdIds(touchedAdIds);
+        return new RemoveMonitorAdsOutcome(List.copyOf(allRemovedAdNames));
     }
 }

@@ -8,6 +8,7 @@ import com.telas.monitoring.KasMonitoringCheckRunner;
 import com.telas.monitoring.entities.BoxHeartbeatEntity;
 import com.telas.monitoring.repositories.BoxHeartbeatEntityRepository;
 import com.telas.repositories.BoxRepository;
+import com.telas.scheduler.SchedulerJobRunContext;
 import com.telas.services.HealthUpdateService;
 import com.telas.shared.constants.MonitoringIncidentTypes;
 import org.junit.jupiter.api.BeforeEach;
@@ -34,13 +35,18 @@ class MonitoringWorkerServiceTest {
     @Mock private BoxRepository boxRepository;
     @Mock private HealthUpdateService healthUpdateService;
     @Mock private KasMonitoringCheckRunner kasMonitoringCheckRunner;
+    @Mock private SchedulerJobRunContext schedulerJobRunContext;
 
     private MonitoringWorkerService service;
 
     @BeforeEach
     void setUp() {
         service = new MonitoringWorkerService(
-                boxHeartbeatEntityRepository, boxRepository, healthUpdateService, kasMonitoringCheckRunner);
+                boxHeartbeatEntityRepository,
+                boxRepository,
+                healthUpdateService,
+                kasMonitoringCheckRunner,
+                schedulerJobRunContext);
         org.springframework.test.util.ReflectionTestUtils.setField(service, "staleSeconds", 180L);
         org.springframework.test.util.ReflectionTestUtils.setField(service, "neverSeenGraceSeconds", 600L);
         org.springframework.test.util.ReflectionTestUtils.setField(service, "kasaEnabled", false);
@@ -49,6 +55,7 @@ class MonitoringWorkerServiceTest {
     @Test
     void runChecks_appliesNeverSeenForActiveBoxWithoutHeartbeatRow() {
         Box box = new Box();
+        box.setId(UUID.randomUUID());
         box.setActive(true);
         BoxAddress addr = new BoxAddress();
         addr.setIp("10.0.0.1");
@@ -69,6 +76,7 @@ class MonitoringWorkerServiceTest {
     void runChecks_staleHeartbeatUsesMonitoringIncidentTypeConstant() {
         BoxHeartbeatEntity hb = new BoxHeartbeatEntity();
         Box box = new Box();
+        box.setId(UUID.randomUUID());
         box.setActive(true);
         BoxAddress addr = new BoxAddress();
         addr.setIp("10.0.0.2");

@@ -25,9 +25,11 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -75,16 +77,32 @@ public class SmartPlugCheckService {
                 .collect(Collectors.toCollection(HashSet::new));
     }
 
+    private static final int KASA_SUMMARY_MAX_FAILED_IDS = 50;
+
     @Transactional
-    public void runAllChecks() {
+    public Map<String, Object> runAllChecks() {
         List<SmartPlugEntity> plugs = smartPlugEntityRepository.findAllEnabledForChecks();
+        int failures = 0;
+        List<String> failedPlugIds = new ArrayList<>();
         for (SmartPlugEntity plug : plugs) {
             try {
                 runSingle(plug);
             } catch (Exception e) {
+                failures++;
                 log.warn("Smart plug check failed plugId={}", plug.getId(), e);
+                if (failedPlugIds.size() < KASA_SUMMARY_MAX_FAILED_IDS) {
+                    failedPlugIds.add(plug.getId().toString());
+                }
             }
         }
+        Map<String, Object> summary = new LinkedHashMap<>();
+        summary.put("kasaPlugsChecked", plugs.size());
+        summary.put("kasaFailures", failures);
+        summary.put("kasaFailedPlugIds", failedPlugIds);
+        if (failures > failedPlugIds.size()) {
+            summary.put("kasaFailedIdsTruncated", true);
+        }
+        return summary;
     }
 
     private void runSingle(SmartPlugEntity plug) {

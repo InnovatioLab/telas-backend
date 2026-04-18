@@ -7,9 +7,14 @@ import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 
 import java.io.IOException;
+import java.net.ConnectException;
 import java.net.InetAddress;
+import java.net.InetSocketAddress;
+import java.net.Socket;
+import java.net.SocketTimeoutException;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Locale;
 import java.util.concurrent.TimeUnit;
@@ -28,6 +33,21 @@ public class BoxTailscalePingServiceImpl implements BoxTailscalePingService {
     @Value("${monitoring.ping.timeout-seconds:3}")
     private int timeoutSeconds;
 
+    @Value("${monitoring.ping.tcp-probe-enabled:true}")
+    private boolean tcpProbeEnabled;
+
+    @Value("${monitoring.ping.tcp-probe-ports:8081}")
+    private String tcpProbePortsRaw;
+
+    @Value("${monitoring.ping.tcp-probe-timeout-ms:3000}")
+    private int tcpProbeTimeoutMs;
+
+    @Value("${monitoring.ping.icmp-enabled:true}")
+    private boolean icmpEnabled;
+
+    @Value("${monitoring.ping.java-reachable-fallback-enabled:true}")
+    private boolean javaReachableFallbackEnabled;
+
     @Override
     public BoxTailscalePingOutcome pingBoxAddressIp(String ipFromBoxAddress) {
         if (!pingEnabled) {
@@ -41,13 +61,85 @@ public class BoxTailscalePingServiceImpl implements BoxTailscalePingService {
             return BoxTailscalePingOutcome.attempted(
                     false, "expected_ipv4_literal_like_tailscale");
         }
+        if (tcpProbeEnabled) {
+            BoxTailscalePingOutcome tcp = tryTcpProbes(ip);
+            if (tcp != null) {
+                return tcp;
+            }
+        }
+        if (icmpEnabled) {
+            try {
+                return runSystemPing(ip);
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                return BoxTailscalePingOutcome.attempted(false, "interrupted");
+            } catch (Exception e) {
+                if (javaReachableFallbackEnabled) {
+                    return fallbackIsReachable(ip, "ping_process:" + e.getMessage());
+                }
+                return BoxTailscalePingOutcome.attempted(
+                        false, "icmp_failed:" + e.getMessage());
+            }
+        }
+        if (javaReachableFallbackEnabled) {
+            return fallbackIsReachable(ip, "probes_exhausted");
+        }
+        return BoxTailscalePingOutcome.attempted(false, "unreachable_no_connectivity_probe_ok");
+    }
+
+    private BoxTailscalePingOutcome tryTcpProbes(String ip) {
+        for (int port : resolveTcpPorts()) {
+            TcpProbeResult r = tcpProbe(ip, port);
+            if (r.reachable()) {
+                return BoxTailscalePingOutcome.attempted(true, r.detail());
+            }
+        }
+        return null;
+    }
+
+    private int[] resolveTcpPorts() {
+        if (!StringUtils.hasText(tcpProbePortsRaw)) {
+            return new int[] {8081};
+        }
+        int[] parsed =
+                Arrays.stream(tcpProbePortsRaw.split(","))
+                        .map(String::trim)
+                        .filter(StringUtils::hasText)
+                        .mapToInt(this::parsePortOrDefault)
+                        .filter(p -> p > 0 && p <= 65535)
+                        .toArray();
+        return parsed.length > 0 ? parsed : new int[] {8081};
+    }
+
+    private int parsePortOrDefault(String s) {
         try {
-            return runSystemPing(ip);
-        } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
-            return BoxTailscalePingOutcome.attempted(false, "interrupted");
-        } catch (Exception e) {
-            return fallbackIsReachable(ip, "ping_process:" + e.getMessage());
+            return Integer.parseInt(s);
+        } catch (NumberFormatException e) {
+            return -1;
+        }
+    }
+
+    private record TcpProbeResult(boolean reachable, String detail) {}
+
+    private TcpProbeResult tcpProbe(String ip, int port) {
+        InetSocketAddress address = new InetSocketAddress(ip, port);
+        try (Socket socket = new Socket()) {
+            socket.connect(address, Math.max(200, tcpProbeTimeoutMs));
+            return new TcpProbeResult(true, "tcp_connect_ok:" + port);
+        } catch (SocketTimeoutException e) {
+            return new TcpProbeResult(false, "tcp_timeout:" + port);
+        } catch (ConnectException e) {
+            String m = e.getMessage();
+            if (m != null
+                    && (m.contains("Connection refused")
+                            || m.toLowerCase(Locale.ROOT).contains("refused"))) {
+                return new TcpProbeResult(
+                        true,
+                        "tcp_peer_reachable_connection_refused:" + port);
+            }
+            return new TcpProbeResult(false, "tcp_connect_ex:" + port + ":" + m);
+        } catch (IOException e) {
+            return new TcpProbeResult(false, "tcp_io:" + port + ":" + e.getMessage());
         }
     }
 

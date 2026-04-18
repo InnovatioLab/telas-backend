@@ -18,6 +18,8 @@ import com.telas.repositories.MonitorRepository;
 import com.telas.services.AdUnusedTrackingService;
 import com.telas.services.BucketService;
 import com.telas.services.MonitorService;
+import com.telas.services.MonitorSubscriptionService;
+import com.telas.services.RemoveMonitorAdsOutcome;
 import com.telas.services.SubscriptionService;
 import com.telas.shared.audit.CustomRevisionListener;
 import com.telas.shared.constants.valitation.AuthValidationMessageConstants;
@@ -66,6 +68,8 @@ public class MonitorServiceImpl implements MonitorService {
 	private final MonitorHelper helper;
 
 	private final AdUnusedTrackingService adUnusedTrackingService;
+
+	private final MonitorSubscriptionService monitorSubscriptionService;
 
 	@Value("${stripe.product.id}")
 	private String productId;
@@ -122,33 +126,8 @@ public class MonitorServiceImpl implements MonitorService {
 
 	@Override
 	@Transactional
-	public void removeMonitorAdsFromSubscription(Subscription subscription) {
-		List<SubscriptionStatus> validStatuses = List.of(SubscriptionStatus.EXPIRED, SubscriptionStatus.CANCELLED);
-
-		if (!validStatuses.contains(subscription.getStatus())) {
-			return;
-		}
-
-		Client client = subscription.getClient();
-		List<Monitor> updatedMonitors = new ArrayList<>();
-
-		subscription.getMonitors().forEach(monitor -> {
-			List<String> adNamesToRemove = monitor.getAds().stream()
-				.filter(ad -> ad.getClient().getId().equals(client.getId())).map(Ad::getName).toList();
-
-			if (!adNamesToRemove.isEmpty()) {
-				monitor.getMonitorAds().removeIf(monitorAd -> adNamesToRemove.contains(monitorAd.getAd().getName()));
-				updatedMonitors.add(monitor);
-
-				if (monitor.isAbleToSendBoxRequest()) {
-					helper.sendBoxesMonitorsRemoveAds(monitor, adNamesToRemove);
-				}
-			}
-		});
-
-		if (!updatedMonitors.isEmpty()) {
-			repository.saveAll(updatedMonitors);
-		}
+	public RemoveMonitorAdsOutcome removeMonitorAdsFromSubscription(Subscription subscription) {
+		return monitorSubscriptionService.removeMonitorAdsFromSubscription(subscription);
 	}
 
 

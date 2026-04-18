@@ -19,6 +19,8 @@ import com.telas.infra.exceptions.ResourceNotFoundException;
 import com.telas.infra.security.services.AuthenticatedUserService;
 import com.telas.repositories.ClientRepository;
 import com.telas.repositories.SubscriptionRepository;
+import com.telas.scheduler.SchedulerJobRunContext;
+import com.telas.services.RemoveMonitorAdsOutcome;
 import com.telas.services.SubscriptionService;
 import com.telas.shared.constants.valitation.SubscriptionValidationMessages;
 import com.telas.shared.utils.PaginationFilterUtil;
@@ -49,11 +51,15 @@ import static java.util.Locale.US;
 @Service
 @RequiredArgsConstructor
 public class SubscriptionServiceImpl implements SubscriptionService {
+
+    private static final int SCHEDULER_SUMMARY_MAX_ITEMS = 80;
+
     private final Logger log = LoggerFactory.getLogger(SubscriptionServiceImpl.class);
     private final SubscriptionRepository repository;
     private final ClientRepository clientRepository;
     private final AuthenticatedUserService authenticatedUserService;
     private final SubscriptionHelper helper;
+    private final SchedulerJobRunContext schedulerJobRunContext;
 
     @Override
     @Transactional
@@ -221,19 +227,32 @@ public class SubscriptionServiceImpl implements SubscriptionService {
 
         if (expiredSubscriptions.isEmpty()) {
             log.info("No expired subscriptions found.");
+            schedulerJobRunContext.putAll(buildRemoveExpiredAdsSummary(0, List.of(), false));
             return;
         }
 
         log.info("Found {} expired subscriptions, removing ads.", expiredSubscriptions.size());
 
-        expiredSubscriptions.forEach(subscription -> {
+        List<Map<String, Object>> items = new ArrayList<>();
+        boolean truncated = false;
+        for (Subscription subscription : expiredSubscriptions) {
             log.info("Removing ads from expired subscription with id: {}", subscription.getId());
             subscription.setUsernameUpdate("Virtual Assistant");
             subscription.setStatus(SubscriptionStatus.EXPIRED);
-            helper.removeMonitorAdsFromSubscription(subscription);
+            RemoveMonitorAdsOutcome outcome = helper.removeMonitorAdsFromSubscription(subscription);
             repository.save(subscription);
             notifyClientsWishList(subscription);
-        });
+            if (items.size() < SCHEDULER_SUMMARY_MAX_ITEMS) {
+                Map<String, Object> row = new LinkedHashMap<>();
+                row.put("subscriptionId", subscription.getId().toString());
+                row.put("clientBusinessName", subscription.getClient().getBusinessName());
+                row.put("removedAdNames", outcome.removedAdNames());
+                items.add(row);
+            } else {
+                truncated = true;
+            }
+        }
+        schedulerJobRunContext.putAll(buildRemoveExpiredAdsSummary(expiredSubscriptions.size(), items, truncated));
     }
 
     @Override
@@ -285,6 +304,48 @@ public class SubscriptionServiceImpl implements SubscriptionService {
                 && subscriptionsReminder3.isEmpty() && subscriptionsPenultimateDay.isEmpty()) {
             log.info("No subscription expiry reminders to send (15/10/5/3 days or penultimate day).");
         }
+
+        Map<String, Object> emailSummary = new LinkedHashMap<>();
+        emailSummary.put("reminder15", buildExpiryEmailBucket(subscriptionsReminder15));
+        emailSummary.put("reminder10", buildExpiryEmailBucket(subscriptionsReminder10));
+        emailSummary.put("reminder5", buildExpiryEmailBucket(subscriptionsReminder5));
+        emailSummary.put("reminder3", buildExpiryEmailBucket(subscriptionsReminder3));
+        emailSummary.put("penultimate", buildExpiryEmailBucket(subscriptionsPenultimateDay));
+        schedulerJobRunContext.putAll(emailSummary);
+    }
+
+    private Map<String, Object> buildRemoveExpiredAdsSummary(
+            int subscriptionsProcessed, List<Map<String, Object>> items, boolean truncated) {
+        Map<String, Object> m = new LinkedHashMap<>();
+        m.put("subscriptionsProcessed", subscriptionsProcessed);
+        m.put("items", items);
+        if (truncated) {
+            m.put("truncated", true);
+        }
+        return m;
+    }
+
+    private Map<String, Object> buildExpiryEmailBucket(List<Subscription> subscriptions) {
+        Map<String, Object> bucket = new LinkedHashMap<>();
+        bucket.put("count", subscriptions.size());
+        List<Map<String, Object>> items = new ArrayList<>();
+        boolean truncated = false;
+        for (Subscription s : subscriptions) {
+            if (items.size() >= SCHEDULER_SUMMARY_MAX_ITEMS) {
+                truncated = true;
+                break;
+            }
+            Map<String, Object> row = new LinkedHashMap<>();
+            row.put("subscriptionId", s.getId().toString());
+            row.put("clientBusinessName", s.getClient().getBusinessName());
+            row.put("clientEmail", s.getClient().getContact().getEmail());
+            items.add(row);
+        }
+        bucket.put("items", items);
+        if (truncated) {
+            bucket.put("truncated", true);
+        }
+        return bucket;
     }
 
 

@@ -108,8 +108,8 @@ public class SubscriptionHelper {
     }
 
     @Transactional
-    public void removeMonitorAdsFromSubscription(Subscription subscription) {
-        monitorSubscriptionService.removeMonitorAdsFromSubscription(subscription);
+    public RemoveMonitorAdsOutcome removeMonitorAdsFromSubscription(Subscription subscription) {
+        return monitorSubscriptionService.removeMonitorAdsFromSubscription(subscription);
     }
 
     @Transactional

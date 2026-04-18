@@ -15,6 +15,10 @@ class BoxTailscalePingServiceImplTest {
     void setUp() {
         ReflectionTestUtils.setField(service, "pingEnabled", true);
         ReflectionTestUtils.setField(service, "timeoutSeconds", 3);
+        ReflectionTestUtils.setField(service, "tcpProbeEnabled", false);
+        ReflectionTestUtils.setField(service, "icmpEnabled", false);
+        ReflectionTestUtils.setField(service, "javaReachableFallbackEnabled", false);
+        ReflectionTestUtils.setField(service, "tcpProbePortsRaw", "8081");
     }
 
     @Test

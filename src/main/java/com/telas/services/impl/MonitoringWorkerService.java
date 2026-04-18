@@ -3,7 +3,7 @@ package com.telas.services.impl;
 import com.telas.dtos.request.StatusBoxMonitorsRequestDto;
 import com.telas.entities.Box;
 import com.telas.enums.DefaultStatus;
-import com.telas.monitoring.KasMonitoringCheckRunner;
+import com.telas.scheduler.SchedulerJobRunContext;
 import com.telas.monitoring.entities.BoxHeartbeatEntity;
 import com.telas.monitoring.repositories.BoxHeartbeatEntityRepository;
 import com.telas.repositories.BoxRepository;
@@ -16,17 +16,25 @@ import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.telas.monitoring.KasMonitoringCheckRunner;
+
 import java.time.Instant;
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 
 @Service
 @RequiredArgsConstructor
 public class MonitoringWorkerService {
 
+    private static final int HEARTBEAT_SUMMARY_MAX_ROWS = 50;
+
     private final BoxHeartbeatEntityRepository boxHeartbeatEntityRepository;
     private final BoxRepository boxRepository;
     private final HealthUpdateService healthUpdateService;
     private final KasMonitoringCheckRunner kasMonitoringCheckRunner;
+    private final SchedulerJobRunContext schedulerJobRunContext;
 
     @Value("${monitoring.heartbeat.stale-seconds:180}")
     private long staleSeconds;
@@ -43,33 +51,61 @@ public class MonitoringWorkerService {
     public void runChecks() {
         Instant cutoff = Instant.now().minusSeconds(staleSeconds);
         List<BoxHeartbeatEntity> stale = boxHeartbeatEntityRepository.findStaleHeartbeats(cutoff);
+        List<Map<String, String>> staleSummary = new ArrayList<>();
+        int staleProcessed = 0;
         for (BoxHeartbeatEntity h : stale) {
             Box box = h.getBox();
             if (!box.isActive()) {
                 continue;
             }
+            staleProcessed++;
             StatusBoxMonitorsRequestDto dto = new StatusBoxMonitorsRequestDto();
             dto.setIp(box.getBoxAddress().getIp());
             dto.setStatus(DefaultStatus.INACTIVE);
             dto.setIncidentType(MonitoringIncidentTypes.HEARTBEAT_STALE);
             dto.setIncidentSeverity("CRITICAL");
             healthUpdateService.applyHealthUpdate(dto);
+            if (staleSummary.size() < HEARTBEAT_SUMMARY_MAX_ROWS) {
+                Map<String, String> row = new LinkedHashMap<>();
+                row.put("boxId", box.getId().toString());
+                row.put("ip", box.getBoxAddress().getIp());
+                staleSummary.add(row);
+            }
         }
         Instant graceCutoff = Instant.now().minusSeconds(neverSeenGraceSeconds);
         List<Box> neverSeen = boxRepository.findActiveBoxesWithoutHeartbeatAfterGrace(graceCutoff);
+        List<Map<String, String>> neverSeenSummary = new ArrayList<>();
+        int neverSeenProcessed = 0;
         for (Box box : neverSeen) {
             if (!box.isActive()) {
                 continue;
             }
+            neverSeenProcessed++;
             StatusBoxMonitorsRequestDto dto = new StatusBoxMonitorsRequestDto();
             dto.setIp(box.getBoxAddress().getIp());
             dto.setStatus(DefaultStatus.INACTIVE);
             dto.setIncidentType(MonitoringIncidentTypes.HEARTBEAT_NEVER_SEEN);
             dto.setIncidentSeverity("CRITICAL");
             healthUpdateService.applyHealthUpdate(dto);
+            if (neverSeenSummary.size() < HEARTBEAT_SUMMARY_MAX_ROWS) {
+                Map<String, String> row = new LinkedHashMap<>();
+                row.put("boxId", box.getId().toString());
+                row.put("ip", box.getBoxAddress().getIp());
+                neverSeenSummary.add(row);
+            }
+        }
+        schedulerJobRunContext.put("staleHeartbeatsProcessed", staleProcessed);
+        schedulerJobRunContext.put("staleHeartbeats", staleSummary);
+        if (staleProcessed > staleSummary.size()) {
+            schedulerJobRunContext.put("staleHeartbeatsTruncated", true);
+        }
+        schedulerJobRunContext.put("neverSeenHeartbeatsProcessed", neverSeenProcessed);
+        schedulerJobRunContext.put("neverSeenHeartbeats", neverSeenSummary);
+        if (neverSeenProcessed > neverSeenSummary.size()) {
+            schedulerJobRunContext.put("neverSeenHeartbeatsTruncated", true);
         }
         if (kasaEnabled) {
-            kasMonitoringCheckRunner.runKasaChecks();
+            schedulerJobRunContext.putAll(kasMonitoringCheckRunner.runKasaChecks());
         }
     }
 }

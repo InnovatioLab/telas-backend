@@ -20,12 +20,15 @@ public class ScheduledJobsObservationAspect {
 
     private final SchedulerJobRunService schedulerJobRunService;
     private final SchedulerPreRunNotificationService schedulerPreRunNotificationService;
+    private final SchedulerJobRunContext schedulerJobRunContext;
 
     public ScheduledJobsObservationAspect(
             SchedulerJobRunService schedulerJobRunService,
-            SchedulerPreRunNotificationService schedulerPreRunNotificationService) {
+            SchedulerPreRunNotificationService schedulerPreRunNotificationService,
+            SchedulerJobRunContext schedulerJobRunContext) {
         this.schedulerJobRunService = schedulerJobRunService;
         this.schedulerPreRunNotificationService = schedulerPreRunNotificationService;
+        this.schedulerJobRunContext = schedulerJobRunContext;
     }
 
     @Around("@annotation(org.springframework.scheduling.annotation.Scheduled)")
@@ -42,12 +45,13 @@ public class ScheduledJobsObservationAspect {
             schedulerPreRunNotificationService.notifyCronStarting(jobId);
         }
         UUID runId = schedulerJobRunService.start(jobId);
+        schedulerJobRunContext.begin(runId);
         try {
             Object result = pjp.proceed();
-            schedulerJobRunService.finishSuccess(runId);
+            schedulerJobRunService.finishSuccess(runId, schedulerJobRunContext.takeSummary());
             return result;
         } catch (Throwable t) {
-            schedulerJobRunService.finishFailure(runId, t);
+            schedulerJobRunService.finishFailure(runId, t, schedulerJobRunContext.takeSummary());
             throw t;
         }
     }
