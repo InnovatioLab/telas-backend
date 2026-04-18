@@ -8,6 +8,8 @@ import com.telas.monitoring.entities.BoxHeartbeatEntity;
 import com.telas.monitoring.repositories.BoxHeartbeatEntityRepository;
 import com.telas.monitoring.repositories.SmartPlugEntityRepository;
 import com.telas.repositories.BoxRepository;
+import com.telas.services.BoxTailscalePingOutcome;
+import com.telas.services.BoxTailscalePingService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -22,6 +24,8 @@ import java.util.Optional;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -30,6 +34,7 @@ class MonitoringTestingServiceImplTest {
     @Mock private BoxRepository boxRepository;
     @Mock private BoxHeartbeatEntityRepository boxHeartbeatEntityRepository;
     @Mock private SmartPlugEntityRepository smartPlugEntityRepository;
+    @Mock private BoxTailscalePingService boxTailscalePingService;
 
     private MonitoringTestingServiceImpl service;
 
@@ -39,7 +44,13 @@ class MonitoringTestingServiceImplTest {
     void setUp() {
         service =
                 new MonitoringTestingServiceImpl(
-                        boxRepository, boxHeartbeatEntityRepository, smartPlugEntityRepository);
+                        boxRepository,
+                        boxHeartbeatEntityRepository,
+                        smartPlugEntityRepository,
+                        boxTailscalePingService);
+        lenient()
+                .when(boxTailscalePingService.pingBoxAddressIp(any()))
+                .thenReturn(BoxTailscalePingOutcome.notAttempted("ping_disabled"));
         ReflectionTestUtils.setField(service, "staleSeconds", 180L);
         ReflectionTestUtils.setField(service, "configuredTargetBoxScriptVersion", "1.0.0");
     }

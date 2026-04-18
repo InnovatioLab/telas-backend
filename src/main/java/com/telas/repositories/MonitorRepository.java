@@ -93,6 +93,20 @@ public interface MonitorRepository extends JpaRepository<Monitor, UUID>, JpaSpec
     """)
     List<Monitor> findMonitorsWithActiveSubscriptionsByClientId(@Param("clientId") UUID clientId);
 
+    @Query(
+            """
+            SELECT CASE WHEN COUNT(m) > 0 THEN true ELSE false END
+            FROM Monitor m
+            JOIN m.subscriptionMonitors sm
+            JOIN sm.id.subscription s
+            WHERE m.id = :monitorId
+              AND s.client.id = :clientId
+              AND s.status = 'ACTIVE'
+              AND (s.endsAt IS NULL OR s.endsAt > CURRENT_TIMESTAMP)
+            """)
+    boolean hasActiveSubscriptionForClientAndMonitor(
+            @Param("clientId") UUID clientId, @Param("monitorId") UUID monitorId);
+
     boolean existsByAddressId(UUID addressId);
 
     boolean existsByAddressIdAndIdNot(UUID addressId, UUID monitorId);

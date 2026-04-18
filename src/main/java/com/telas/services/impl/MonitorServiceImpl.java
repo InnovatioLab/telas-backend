@@ -10,6 +10,7 @@ import com.telas.entities.*;
 import com.telas.enums.SubscriptionStatus;
 import com.telas.helpers.MonitorHelper;
 import com.telas.infra.exceptions.BusinessRuleException;
+import com.telas.infra.exceptions.ForbiddenException;
 import com.telas.infra.exceptions.ResourceNotFoundException;
 import com.telas.infra.security.model.AuthenticatedUser;
 import com.telas.infra.security.services.AuthenticatedUserService;
@@ -19,6 +20,7 @@ import com.telas.services.BucketService;
 import com.telas.services.MonitorService;
 import com.telas.services.SubscriptionService;
 import com.telas.shared.audit.CustomRevisionListener;
+import com.telas.shared.constants.valitation.AuthValidationMessageConstants;
 import com.telas.shared.constants.SharedConstants;
 import com.telas.shared.constants.valitation.MonitorValidationMessages;
 import com.telas.shared.utils.AttachmentUtils;
@@ -72,7 +74,8 @@ public class MonitorServiceImpl implements MonitorService {
 	@Override
 	@Transactional
 	public UUID save(MonitorRequestDto request, UUID monitorId) throws JsonProcessingException {
-		AuthenticatedUser authenticatedUser = authenticatedUserService.validateAdmin();
+		AuthenticatedUser authenticatedUser = authenticatedUserService.getLoggedUser();
+		validateSaveAccess(monitorId, authenticatedUser);
 		request.validate();
 		Address address = helper.getAddress(request);
 
@@ -89,6 +92,33 @@ public class MonitorServiceImpl implements MonitorService {
 		return created.getId();
 	}
 
+	private void validateSaveAccess(UUID monitorId, AuthenticatedUser user) {
+		Client c = user.client();
+		if (monitorId == null) {
+			if (!c.isPrivilegedPanelUser()) {
+				throw new ForbiddenException(AuthValidationMessageConstants.ERROR_NO_PERMISSION);
+			}
+			return;
+		}
+		if (c.isPrivilegedPanelUser()) {
+			return;
+		}
+		Monitor monitor = findEntityById(monitorId);
+		if (c.isPartner() && partnerOwnsMonitorAddress(c, monitor)) {
+			return;
+		}
+		if (repository.hasActiveSubscriptionForClientAndMonitor(c.getId(), monitorId)) {
+			return;
+		}
+		throw new ForbiddenException(AuthValidationMessageConstants.ERROR_NO_PERMISSION);
+	}
+
+	private static boolean partnerOwnsMonitorAddress(Client partner, Monitor monitor) {
+		if (monitor.getAddress() == null || monitor.getAddress().getClient() == null) {
+			return false;
+		}
+		return monitor.getAddress().getClient().getId().equals(partner.getId());
+	}
 
 	@Override
 	@Transactional

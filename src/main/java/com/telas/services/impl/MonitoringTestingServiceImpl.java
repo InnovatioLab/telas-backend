@@ -11,6 +11,8 @@ import com.telas.monitoring.entities.SmartPlugEntity;
 import com.telas.monitoring.repositories.BoxHeartbeatEntityRepository;
 import com.telas.monitoring.repositories.SmartPlugEntityRepository;
 import com.telas.repositories.BoxRepository;
+import com.telas.services.BoxTailscalePingOutcome;
+import com.telas.services.BoxTailscalePingService;
 import com.telas.services.MonitoringTestingService;
 import com.telas.shared.constants.valitation.BoxValidationMessages;
 import com.telas.shared.utils.BoxScriptVersionUtils;
@@ -41,6 +43,7 @@ public class MonitoringTestingServiceImpl implements MonitoringTestingService {
     private final BoxRepository boxRepository;
     private final BoxHeartbeatEntityRepository boxHeartbeatEntityRepository;
     private final SmartPlugEntityRepository smartPlugEntityRepository;
+    private final BoxTailscalePingService boxTailscalePingService;
 
     @Value("${monitoring.heartbeat.stale-seconds:180}")
     private long staleSeconds;
@@ -138,6 +141,9 @@ public class MonitoringTestingServiceImpl implements MonitoringTestingService {
         boolean online = HEARTBEAT_STATUS_ONLINE.equals(status);
         Long secondsSince =
                 lastSeen == null ? null : ChronoUnit.SECONDS.between(lastSeen, now);
+        String boxAddressIp = box.getBoxAddress() != null ? box.getBoxAddress().getIp() : null;
+        BoxTailscalePingOutcome ping = boxTailscalePingService.pingBoxAddressIp(boxAddressIp);
+        Boolean pingReachable = ping.attempted() ? ping.reachable() : null;
         return BoxHeartbeatCheckResponseDto.builder()
                 .boxId(box.getId())
                 .lastHeartbeatAt(lastSeen)
@@ -151,6 +157,9 @@ public class MonitoringTestingServiceImpl implements MonitoringTestingService {
                         BoxScriptVersionUtils.resolveStatus(reportedVer, targetVer))
                 .reportedGitSha(gitSha)
                 .reportedBuildId(buildId)
+                .boxAddressIp(boxAddressIp)
+                .networkPingReachable(pingReachable)
+                .networkPingDetail(ping.detail())
                 .build();
     }
 

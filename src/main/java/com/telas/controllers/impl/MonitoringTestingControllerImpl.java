@@ -48,7 +48,9 @@ public class MonitoringTestingControllerImpl {
     }
 
     @PostMapping("/boxes/{boxId}/check")
-    @Operation(summary = "Verifica último heartbeat da box (lógico, não ICMP)")
+    @Operation(
+            summary =
+                    "Verifica último heartbeat e reachability ICMP (ou fallback) para o IP da box (ex.: Tailscale)")
     @SecurityRequirement(name = "jwt")
     public ResponseEntity<?> checkBox(@PathVariable UUID boxId) {
         authenticatedUserService.validatePermission(Permission.MONITORING_TESTING_EXECUTE);

@@ -27,4 +27,8 @@ public class BoxHeartbeatCheckResponseDto implements Serializable {
     BoxScriptVersionStatus boxScriptVersionStatus;
     String reportedGitSha;
     String reportedBuildId;
+
+    String boxAddressIp;
+    Boolean networkPingReachable;
+    String networkPingDetail;
 }
