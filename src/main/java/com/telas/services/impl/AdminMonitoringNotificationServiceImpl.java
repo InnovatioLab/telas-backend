@@ -23,9 +23,9 @@ public class AdminMonitoringNotificationServiceImpl implements AdminMonitoringNo
     @Override
     public void notifyAdmins(
             NotificationReference reference, Map<String, String> params, AdminEmailAlertCategory emailCategory) {
-        for (Client admin : clientRepository.findAllAdmins()) {
-            boolean sendEmail = adminEmailAlertPreferenceService.wantsEmail(admin.getId(), emailCategory);
-            notificationService.save(reference, admin, params, sendEmail);
+        for (Client recipient : clientRepository.findAllAdminsAndDevelopers()) {
+            boolean sendEmail = adminEmailAlertPreferenceService.wantsEmail(recipient.getId(), emailCategory);
+            notificationService.save(reference, recipient, params, sendEmail);
         }
     }
 }

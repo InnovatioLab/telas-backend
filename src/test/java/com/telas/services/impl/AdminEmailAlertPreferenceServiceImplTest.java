@@ -32,13 +32,31 @@ class AdminEmailAlertPreferenceServiceImplTest {
     @InjectMocks private AdminEmailAlertPreferenceServiceImpl service;
 
     @Test
-    void wantsEmail_falseWhenNoRow() {
+    void wantsEmail_falseWhenNoRowAndNotDeveloper() {
         UUID id = UUID.randomUUID();
+        Client admin = new Client();
+        admin.setId(id);
+        admin.setRole(Role.ADMIN);
         when(preferenceRepository.findByClient_IdAndAlertCategory(
                         eq(id), eq(AdminEmailAlertCategory.HOST_REBOOT.name())))
                 .thenReturn(Optional.empty());
+        when(clientRepository.findById(id)).thenReturn(Optional.of(admin));
 
         assertThat(service.wantsEmail(id, AdminEmailAlertCategory.HOST_REBOOT)).isFalse();
+    }
+
+    @Test
+    void wantsEmail_trueWhenDeveloperAndNoPreferenceRow() {
+        UUID id = UUID.randomUUID();
+        Client developer = new Client();
+        developer.setId(id);
+        developer.setRole(Role.DEVELOPER);
+        when(preferenceRepository.findByClient_IdAndAlertCategory(
+                        eq(id), eq(AdminEmailAlertCategory.BOX_HEARTBEAT_CONNECTIVITY.name())))
+                .thenReturn(Optional.empty());
+        when(clientRepository.findById(id)).thenReturn(Optional.of(developer));
+
+        assertThat(service.wantsEmail(id, AdminEmailAlertCategory.BOX_HEARTBEAT_CONNECTIVITY)).isTrue();
     }
 
     @Test

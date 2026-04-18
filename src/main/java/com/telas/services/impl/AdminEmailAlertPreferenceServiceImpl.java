@@ -20,6 +20,7 @@ import java.util.EnumMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.UUID;
 
 @Service
@@ -54,9 +55,14 @@ public class AdminEmailAlertPreferenceServiceImpl implements AdminEmailAlertPref
     @Override
     @Transactional(readOnly = true)
     public boolean wantsEmail(UUID clientId, AdminEmailAlertCategory category) {
-        return preferenceRepository
-                .findByClient_IdAndAlertCategory(clientId, category.name())
-                .map(AdminEmailAlertPreference::isEnabled)
+        Optional<AdminEmailAlertPreference> row =
+                preferenceRepository.findByClient_IdAndAlertCategory(clientId, category.name());
+        if (row.isPresent()) {
+            return row.get().isEnabled();
+        }
+        return clientRepository
+                .findById(clientId)
+                .map(c -> Role.DEVELOPER.equals(c.getRole()))
                 .orElse(false);
     }
 
