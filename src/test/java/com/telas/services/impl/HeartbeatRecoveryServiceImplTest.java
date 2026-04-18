@@ -50,12 +50,7 @@ class HeartbeatRecoveryServiceImplTest {
         IncidentEntity inc = new IncidentEntity();
         inc.setIncidentType(MonitoringIncidentTypes.HEARTBEAT_STALE);
         when(incidentEntityRepository.findAllByBox_IdAndIncidentTypeInAndClosedAtIsNull(
-                        eq(boxId),
-                        eq(
-                                List.of(
-                                        MonitoringIncidentTypes.HEARTBEAT_STALE,
-                                        MonitoringIncidentTypes.HEARTBEAT_NEVER_SEEN,
-                                        MonitoringIncidentTypes.CONNECTIVITY_PROBE_FAILED))))
+                        eq(boxId), eq(MonitoringIncidentTypes.BOX_OUTAGE_INCIDENT_TYPES)))
                 .thenReturn(List.of(inc));
 
         Box managed = new Box();

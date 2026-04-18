@@ -13,6 +13,7 @@ import com.telas.repositories.BoxRepository;
 import com.telas.repositories.MonitorRepository;
 import com.telas.services.AdminMonitoringNotificationService;
 import com.telas.services.HealthUpdateService;
+import com.telas.shared.constants.MonitoringIncidentTypes;
 import com.telas.shared.constants.valitation.BoxValidationMessages;
 import com.telas.shared.constants.valitation.MonitorValidationMessages;
 import com.telas.shared.utils.DateUtils;
@@ -22,6 +23,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
+import java.time.Duration;
 import java.time.Instant;
 import java.util.HashMap;
 import java.util.List;
@@ -61,7 +63,7 @@ public class HealthUpdateServiceImpl implements HealthUpdateService {
 
         if (box.getMonitors().isEmpty()) {
             Map<String, String> params =
-                    buildBoxStatusNotificationParams(ip, ctx, "None", request);
+                    buildBoxStatusNotificationParams(box, ip, ctx, "None", request);
             adminMonitoringNotificationService.notifyAdmins(
                     NotificationReference.BOX_STATUS_UPDATED, params, AdminEmailAlertCategory.BOX_HEARTBEAT_CONNECTIVITY);
             recordIncidentIfNeeded(request, ctx, box, null);
@@ -70,7 +72,7 @@ public class HealthUpdateServiceImpl implements HealthUpdateService {
 
         syncMonitorsActiveState(box.getMonitors(), ctx.isActive());
         Map<String, String> params =
-                buildBoxStatusNotificationParams(ip, ctx, formatLinkedMonitorAddresses(box), request);
+                buildBoxStatusNotificationParams(box, ip, ctx, formatLinkedMonitorAddresses(box), request);
         adminMonitoringNotificationService.notifyAdmins(
                 NotificationReference.BOX_STATUS_UPDATED, params, AdminEmailAlertCategory.BOX_HEARTBEAT_CONNECTIVITY);
         recordIncidentIfNeeded(request, ctx, box, null);
@@ -123,7 +125,11 @@ public class HealthUpdateServiceImpl implements HealthUpdateService {
     }
 
     private Map<String, String> buildBoxStatusNotificationParams(
-            String ip, HealthUpdateContext ctx, String monitorAddresses, StatusBoxMonitorsRequestDto request) {
+            Box box,
+            String ip,
+            HealthUpdateContext ctx,
+            String monitorAddresses,
+            StatusBoxMonitorsRequestDto request) {
         Map<String, String> params = new HashMap<>();
         params.put("ip", ip);
         params.put("statusLabel", ctx.statusLabel());
@@ -131,7 +137,26 @@ public class HealthUpdateServiceImpl implements HealthUpdateService {
         params.put("notifiedAt", ctx.notifiedAt());
         params.put("incidentType", request.getIncidentType() != null ? request.getIncidentType() : "");
         params.put("severity", request.getIncidentSeverity() != null ? request.getIncidentSeverity() : "");
+        params.put("downtime", resolveReactivationDowntimeLabel(ctx, box));
         return params;
+    }
+
+    private String resolveReactivationDowntimeLabel(HealthUpdateContext ctx, Box box) {
+        if (!ctx.isActive()) {
+            return "";
+        }
+        List<IncidentEntity> open =
+                incidentEntityRepository.findAllByBox_IdAndIncidentTypeInAndClosedAtIsNull(
+                        box.getId(), MonitoringIncidentTypes.BOX_OUTAGE_INCIDENT_TYPES);
+        if (open.isEmpty()) {
+            return "";
+        }
+        Instant outageStart =
+                open.stream().map(IncidentEntity::getOpenedAt).min(Instant::compareTo).orElse(null);
+        if (outageStart == null) {
+            return "";
+        }
+        return DateUtils.formatDurationHuman(Duration.between(outageStart, Instant.now()));
     }
 
     private Map<String, String> buildMonitorStatusNotificationParams(

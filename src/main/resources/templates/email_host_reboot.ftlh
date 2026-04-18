@@ -1,14 +1,27 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8"/>
-    <title>Telas monitoring</title>
-</head>
-<body style="font-family: Montserrat, Arial, sans-serif; font-size: 16px; color: #111519;">
-<p><strong>Host reboot detected</strong></p>
-<p>Box IP: <strong>${boxIp}</strong></p>
-<p>Incident: ${incidentType} (severity ${severity})</p>
-<p>Uptime drop (seconds): ${uptimeDropSeconds}</p>
-<p>Time: ${notifiedAt}</p>
-</body>
-</html>
+<#import "email_monitoring_layout.ftlh" as mon>
+<@mon.monitoringEmail title="Host reboot detected" emphasis="warning">
+    <tr>
+        <td style="padding: 14px 0; border-bottom: 1px solid #eceff1;">
+            <p class="field-label">Box IP</p>
+            <p class="field-value">${boxIp!""}</p>
+        </td>
+    </tr>
+    <tr>
+        <td style="padding: 14px 0; border-bottom: 1px solid #eceff1;">
+            <p class="field-label">Incident</p>
+            <p class="field-value">${incidentType!""}<#if (severity!"")?has_content> (severity ${severity!""})</#if></p>
+        </td>
+    </tr>
+    <tr>
+        <td style="padding: 14px 0; border-bottom: 1px solid #eceff1;">
+            <p class="field-label">Uptime drop (seconds)</p>
+            <p class="field-value">${uptimeDropSeconds!""}</p>
+        </td>
+    </tr>
+    <tr>
+        <td style="padding: 14px 0;">
+            <p class="field-label">Notification time</p>
+            <p class="field-value">${notifiedAt!""}</p>
+        </td>
+    </tr>
+</@mon.monitoringEmail>

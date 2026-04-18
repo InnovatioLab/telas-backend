@@ -200,7 +200,22 @@ public enum NotificationReference {
     BOX_STATUS_UPDATED {
         @Override
         public String getNotificationMessage(Map<String, String> params) {
-            return String.format("""
+            String downtime = params.getOrDefault("downtime", "");
+            String downtimeBlock = "";
+            if (downtime != null && !downtime.isBlank()) {
+                downtimeBlock =
+                        """
+                        <div class="field">
+                            <span class="field-label">Downtime: </span>
+                            <span class="field-value">"""
+                        + downtime
+                        + """
+                        </span>
+                        </div>
+                        """;
+            }
+            return String.format(
+                    """
                     <div class="informacoes">
                         <h4 id="notification-title" class="notification-title">Box status updated</h4>
                         <p>The box with IP <strong>%s</strong> was <strong>%s</strong>.</p>
@@ -211,13 +226,14 @@ public enum NotificationReference {
                         <div class="field">
                             <span class="field-label">Notification time: </span>
                             <span class="field-value">%s</span>
-                        </div>
+                        </div>%s
                     </div>
                     """,
                     params.get("ip"),
                     params.get("statusLabel"),
                     params.get("monitorAddresses"),
-                    params.get("notifiedAt"));
+                    params.get("notifiedAt"),
+                    downtimeBlock);
         }
 
         @Override
@@ -231,6 +247,7 @@ public enum NotificationReference {
             emailData.getParams().put("notifiedAt", params.get("notifiedAt"));
             emailData.getParams().put("incidentType", params.getOrDefault("incidentType", ""));
             emailData.getParams().put("severity", params.getOrDefault("severity", ""));
+            emailData.getParams().put("downtime", params.getOrDefault("downtime", ""));
             return emailData;
         }
     },

@@ -53,11 +53,7 @@ public class HeartbeatRecoveryServiceImpl implements HeartbeatRecoveryService {
         }
         List<IncidentEntity> open =
                 incidentEntityRepository.findAllByBox_IdAndIncidentTypeInAndClosedAtIsNull(
-                        box.getId(),
-                        List.of(
-                                MonitoringIncidentTypes.HEARTBEAT_STALE,
-                                MonitoringIncidentTypes.HEARTBEAT_NEVER_SEEN,
-                                MonitoringIncidentTypes.CONNECTIVITY_PROBE_FAILED));
+                        box.getId(), MonitoringIncidentTypes.BOX_OUTAGE_INCIDENT_TYPES);
         if (open.isEmpty()) {
             return;
         }
