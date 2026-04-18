@@ -50,6 +50,7 @@ class MonitoringWorkerServiceTest {
         org.springframework.test.util.ReflectionTestUtils.setField(service, "staleSeconds", 180L);
         org.springframework.test.util.ReflectionTestUtils.setField(service, "neverSeenGraceSeconds", 600L);
         org.springframework.test.util.ReflectionTestUtils.setField(service, "kasaEnabled", false);
+        org.springframework.test.util.ReflectionTestUtils.setField(service, "probeDrivesBoxActiveState", false);
     }
 
     @Test
@@ -107,6 +108,17 @@ class MonitoringWorkerServiceTest {
 
         service.runChecks();
 
+        verify(healthUpdateService, never()).applyHealthUpdate(any());
+    }
+
+    @Test
+    void runChecks_skipsHeartbeatDeactivationWhenProbeDrivesBoxState() {
+        org.springframework.test.util.ReflectionTestUtils.setField(service, "probeDrivesBoxActiveState", true);
+
+        service.runChecks();
+
+        verify(boxHeartbeatEntityRepository, never()).findStaleHeartbeats(any());
+        verify(boxRepository, never()).findActiveBoxesWithoutHeartbeatAfterGrace(any());
         verify(healthUpdateService, never()).applyHealthUpdate(any());
     }
 }

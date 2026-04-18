@@ -48,6 +48,9 @@ public class MonitoringWorkerService {
     @Value("${monitoring.worker.interval-ms:60000}")
     private long kasaIntervalMs;
 
+    @Value("${monitoring.box-connectivity-probe.drives-box-active-state:true}")
+    private boolean probeDrivesBoxActiveState;
+
     private Instant lastKasaRunAt = Instant.now();
 
     @Scheduled(fixedDelayString = "${monitoring.worker.heartbeat-check-interval-ms:10000}")
@@ -55,48 +58,54 @@ public class MonitoringWorkerService {
     @Transactional
     public void runChecks() {
         Instant cutoff = Instant.now().minusSeconds(staleSeconds);
-        List<BoxHeartbeatEntity> stale = boxHeartbeatEntityRepository.findStaleHeartbeats(cutoff);
+        List<BoxHeartbeatEntity> stale = List.of();
         List<Map<String, String>> staleSummary = new ArrayList<>();
         int staleProcessed = 0;
-        for (BoxHeartbeatEntity h : stale) {
-            Box box = h.getBox();
-            if (!box.isActive()) {
-                continue;
-            }
-            staleProcessed++;
-            StatusBoxMonitorsRequestDto dto = new StatusBoxMonitorsRequestDto();
-            dto.setIp(box.getBoxAddress().getIp());
-            dto.setStatus(DefaultStatus.INACTIVE);
-            dto.setIncidentType(MonitoringIncidentTypes.HEARTBEAT_STALE);
-            dto.setIncidentSeverity("CRITICAL");
-            healthUpdateService.applyHealthUpdate(dto);
-            if (staleSummary.size() < HEARTBEAT_SUMMARY_MAX_ROWS) {
-                Map<String, String> row = new LinkedHashMap<>();
-                row.put("boxId", box.getId().toString());
-                row.put("ip", box.getBoxAddress().getIp());
-                staleSummary.add(row);
+        if (!probeDrivesBoxActiveState) {
+            stale = boxHeartbeatEntityRepository.findStaleHeartbeats(cutoff);
+            for (BoxHeartbeatEntity h : stale) {
+                Box box = h.getBox();
+                if (!box.isActive()) {
+                    continue;
+                }
+                staleProcessed++;
+                StatusBoxMonitorsRequestDto dto = new StatusBoxMonitorsRequestDto();
+                dto.setIp(box.getBoxAddress().getIp());
+                dto.setStatus(DefaultStatus.INACTIVE);
+                dto.setIncidentType(MonitoringIncidentTypes.HEARTBEAT_STALE);
+                dto.setIncidentSeverity("CRITICAL");
+                healthUpdateService.applyHealthUpdate(dto);
+                if (staleSummary.size() < HEARTBEAT_SUMMARY_MAX_ROWS) {
+                    Map<String, String> row = new LinkedHashMap<>();
+                    row.put("boxId", box.getId().toString());
+                    row.put("ip", box.getBoxAddress().getIp());
+                    staleSummary.add(row);
+                }
             }
         }
         Instant graceCutoff = Instant.now().minusSeconds(neverSeenGraceSeconds);
-        List<Box> neverSeen = boxRepository.findActiveBoxesWithoutHeartbeatAfterGrace(graceCutoff);
+        List<Box> neverSeen = List.of();
         List<Map<String, String>> neverSeenSummary = new ArrayList<>();
         int neverSeenProcessed = 0;
-        for (Box box : neverSeen) {
-            if (!box.isActive()) {
-                continue;
-            }
-            neverSeenProcessed++;
-            StatusBoxMonitorsRequestDto dto = new StatusBoxMonitorsRequestDto();
-            dto.setIp(box.getBoxAddress().getIp());
-            dto.setStatus(DefaultStatus.INACTIVE);
-            dto.setIncidentType(MonitoringIncidentTypes.HEARTBEAT_NEVER_SEEN);
-            dto.setIncidentSeverity("CRITICAL");
-            healthUpdateService.applyHealthUpdate(dto);
-            if (neverSeenSummary.size() < HEARTBEAT_SUMMARY_MAX_ROWS) {
-                Map<String, String> row = new LinkedHashMap<>();
-                row.put("boxId", box.getId().toString());
-                row.put("ip", box.getBoxAddress().getIp());
-                neverSeenSummary.add(row);
+        if (!probeDrivesBoxActiveState) {
+            neverSeen = boxRepository.findActiveBoxesWithoutHeartbeatAfterGrace(graceCutoff);
+            for (Box box : neverSeen) {
+                if (!box.isActive()) {
+                    continue;
+                }
+                neverSeenProcessed++;
+                StatusBoxMonitorsRequestDto dto = new StatusBoxMonitorsRequestDto();
+                dto.setIp(box.getBoxAddress().getIp());
+                dto.setStatus(DefaultStatus.INACTIVE);
+                dto.setIncidentType(MonitoringIncidentTypes.HEARTBEAT_NEVER_SEEN);
+                dto.setIncidentSeverity("CRITICAL");
+                healthUpdateService.applyHealthUpdate(dto);
+                if (neverSeenSummary.size() < HEARTBEAT_SUMMARY_MAX_ROWS) {
+                    Map<String, String> row = new LinkedHashMap<>();
+                    row.put("boxId", box.getId().toString());
+                    row.put("ip", box.getBoxAddress().getIp());
+                    neverSeenSummary.add(row);
+                }
             }
         }
         schedulerJobRunContext.put("staleHeartbeatsProcessed", staleProcessed);

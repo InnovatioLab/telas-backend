@@ -48,7 +48,8 @@ class HeartbeatRecoveryServiceImplTest {
                         eq(
                                 List.of(
                                         MonitoringIncidentTypes.HEARTBEAT_STALE,
-                                        MonitoringIncidentTypes.HEARTBEAT_NEVER_SEEN))))
+                                        MonitoringIncidentTypes.HEARTBEAT_NEVER_SEEN,
+                                        MonitoringIncidentTypes.CONNECTIVITY_PROBE_FAILED))))
                 .thenReturn(List.of(inc));
 
         Box managed = new Box();

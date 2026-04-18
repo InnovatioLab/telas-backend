@@ -31,7 +31,8 @@ public class HeartbeatRecoveryServiceImpl implements HeartbeatRecoveryService {
                         box.getId(),
                         List.of(
                                 MonitoringIncidentTypes.HEARTBEAT_STALE,
-                                MonitoringIncidentTypes.HEARTBEAT_NEVER_SEEN));
+                                MonitoringIncidentTypes.HEARTBEAT_NEVER_SEEN,
+                                MonitoringIncidentTypes.CONNECTIVITY_PROBE_FAILED));
         if (open.isEmpty()) {
             return;
         }

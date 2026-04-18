@@ -6,10 +6,15 @@ import com.telas.entities.Box;
 import com.telas.entities.Monitor;
 import com.telas.monitoring.entities.BoxConnectivityProbeEntity;
 import com.telas.monitoring.repositories.BoxConnectivityProbeEntityRepository;
+import com.telas.dtos.request.StatusBoxMonitorsRequestDto;
+import com.telas.enums.DefaultStatus;
 import com.telas.repositories.BoxRepository;
 import com.telas.services.BoxConnectivityProbeService;
 import com.telas.services.BoxTailscalePingOutcome;
 import com.telas.services.BoxTailscalePingService;
+import com.telas.services.HealthUpdateService;
+import com.telas.services.HeartbeatRecoveryService;
+import com.telas.shared.constants.MonitoringIncidentTypes;
 import lombok.RequiredArgsConstructor;
 import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
 import org.slf4j.Logger;
@@ -36,9 +41,14 @@ public class BoxConnectivityProbeServiceImpl implements BoxConnectivityProbeServ
     private final BoxRepository boxRepository;
     private final BoxTailscalePingService boxTailscalePingService;
     private final BoxConnectivityProbeEntityRepository boxConnectivityProbeEntityRepository;
+    private final HealthUpdateService healthUpdateService;
+    private final HeartbeatRecoveryService heartbeatRecoveryService;
 
     @Value("${monitoring.box-connectivity-probe.enabled:true}")
     private boolean probeEnabled;
+
+    @Value("${monitoring.box-connectivity-probe.drives-box-active-state:true}")
+    private boolean drivesBoxActiveState;
 
     @Override
     @Transactional(readOnly = true)
@@ -139,11 +149,33 @@ public class BoxConnectivityProbeServiceImpl implements BoxConnectivityProbeServ
                     ip,
                     reachable,
                     detail);
+            applyActiveStateFromProbeIfEnabled(box, ip, outcome, reachable);
         }
         log.info(
                 "box.connectivity.probe.summary totalBoxes={} reachableCount={} unreachableCount={}",
                 boxes.size(),
                 ok,
                 fail);
+    }
+
+    private void applyActiveStateFromProbeIfEnabled(
+            Box box, String ip, BoxTailscalePingOutcome outcome, boolean reachable) {
+        if (!drivesBoxActiveState || !outcome.attempted()) {
+            return;
+        }
+        boolean desiredActive = reachable;
+        if (desiredActive != box.isActive()) {
+            StatusBoxMonitorsRequestDto dto = new StatusBoxMonitorsRequestDto();
+            dto.setIp(ip);
+            dto.setStatus(desiredActive ? DefaultStatus.ACTIVE : DefaultStatus.INACTIVE);
+            if (!desiredActive) {
+                dto.setIncidentType(MonitoringIncidentTypes.CONNECTIVITY_PROBE_FAILED);
+                dto.setIncidentSeverity("CRITICAL");
+            }
+            healthUpdateService.applyHealthUpdate(dto);
+        }
+        if (desiredActive) {
+            heartbeatRecoveryService.recoverAfterSuccessfulHeartbeat(box);
+        }
     }
 }
