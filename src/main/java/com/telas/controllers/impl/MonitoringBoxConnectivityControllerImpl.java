@@ -32,7 +32,7 @@ public class MonitoringBoxConnectivityControllerImpl {
     @Operation(summary = "List last connectivity probe per box/monitor row")
     @SecurityRequirement(name = "jwt")
     public ResponseEntity<?> list() {
-        authenticatedUserService.validatePermission(Permission.MONITORING_TESTING_VIEW);
+        authenticatedUserService.validatePermission(Permission.MONITORING_BOX_PING_VIEW);
         List<BoxConnectivityProbeRowResponseDto> data = boxConnectivityProbeService.listProbeRows();
         return ResponseEntity.status(HttpStatus.OK)
                 .body(
@@ -46,7 +46,7 @@ public class MonitoringBoxConnectivityControllerImpl {
     @Operation(summary = "Run TCP connectivity probes now and return the same list as GET")
     @SecurityRequirement(name = "jwt")
     public ResponseEntity<?> runNow() {
-        authenticatedUserService.validatePermission(Permission.MONITORING_TESTING_VIEW);
+        authenticatedUserService.validatePermission(Permission.MONITORING_BOX_PING_VIEW);
         boxConnectivityProbeService.runProbesNow();
         List<BoxConnectivityProbeRowResponseDto> data = boxConnectivityProbeService.listProbeRows();
         return ResponseEntity.status(HttpStatus.OK)
