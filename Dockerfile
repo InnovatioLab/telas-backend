@@ -1,7 +1,5 @@
 # syntax=docker/dockerfile:1
-FROM eclipse-temurin:17-jdk-jammy AS builder
-
-RUN apt-get update && apt-get install -y maven && rm -rf /var/lib/apt/lists/*
+FROM maven:3-eclipse-temurin-17 AS builder
 
 WORKDIR /opt/app
 

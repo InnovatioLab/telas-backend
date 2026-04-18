@@ -39,7 +39,7 @@ jobs:
             ghcr.io/${{ env.OWNER_LC }}/telas-api:latest
           platforms: linux/amd64
           cache-from: type=gha
-          cache-to: type=gha,mode=max
+          cache-to: type=gha,mode=min
           build-args: |
             TZ=America/New_York
             DB_URL=${{ secrets.DB_URL }}
