@@ -17,11 +17,9 @@ import com.telas.services.HealthUpdateService;
 import com.telas.services.HeartbeatRecoveryService;
 import com.telas.shared.constants.MonitoringIncidentTypes;
 import lombok.RequiredArgsConstructor;
-import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -98,8 +96,6 @@ public class BoxConnectivityProbeServiceImpl implements BoxConnectivityProbeServ
 
     @Override
     @Transactional
-    @Scheduled(fixedDelayString = "${monitoring.box-connectivity-probe.interval-ms:300000}")
-    @SchedulerLock(name = "boxConnectivityProbe", lockAtMostFor = "PT10M", lockAtLeastFor = "PT30S")
     public void runScheduledProbes() {
         if (!probeEnabled) {
             return;

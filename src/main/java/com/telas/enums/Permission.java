@@ -1,6 +1,7 @@
 package com.telas.enums;
 
 public enum Permission {
+    MONITORING_CONNECTIVITY_PROBE_SETTINGS,
     MONITORING_BOX_PING_VIEW,
     MONITORING_LOGS_VIEW,
     MONITORING_SCHEDULER_VIEW,

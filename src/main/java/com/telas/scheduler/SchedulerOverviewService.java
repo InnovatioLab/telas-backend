@@ -4,6 +4,7 @@ import com.telas.dtos.response.SchedulerJobStatusResponseDto;
 import com.telas.scheduler.model.SchedulerJobRunEntity;
 import com.telas.scheduler.model.SchedulerJobRunStatus;
 import com.telas.scheduler.repository.SchedulerJobRunRepository;
+import com.telas.services.MonitoringConnectivityProbeSettingsService;
 import com.cronutils.model.Cron;
 import com.cronutils.model.CronType;
 import com.cronutils.model.definition.CronDefinitionBuilder;
@@ -27,6 +28,7 @@ import java.util.Optional;
 public class SchedulerOverviewService {
 
     private final SchedulerJobRunRepository schedulerJobRunRepository;
+    private final MonitoringConnectivityProbeSettingsService monitoringConnectivityProbeSettingsService;
 
     @Value("${monitoring.log.retention.cron:0 0 3 * * *}")
     private String monitoringLogRetentionCron;
@@ -46,11 +48,9 @@ public class SchedulerOverviewService {
     @Value("${app.scheduler.zone:America/New_York}")
     private String appSchedulerZone;
 
-    @Value("${monitoring.box-connectivity-probe.interval-ms:300000}")
-    private long boxConnectivityProbeIntervalMs;
-
     @Transactional(readOnly = true)
     public List<SchedulerJobStatusResponseDto> listJobStatus() {
+        long boxConnectivityProbeIntervalMs = monitoringConnectivityProbeSettingsService.getIntervalMs();
         ZoneId zoneId = ZoneId.of(appSchedulerZone);
         List<SchedulerJobStatusResponseDto> out = new ArrayList<>();
         out.add(
