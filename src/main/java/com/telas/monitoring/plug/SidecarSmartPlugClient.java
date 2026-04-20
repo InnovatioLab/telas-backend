@@ -2,6 +2,8 @@ package com.telas.monitoring.plug;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.telas.monitoring.entities.SmartPlugEntity;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.http.MediaType;
@@ -17,6 +19,8 @@ import java.util.Map;
 @ConditionalOnProperty(name = "monitoring.kasa.mode", havingValue = "sidecar")
 public class SidecarSmartPlugClient implements SmartPlugClient {
 
+    private static final Logger log = LoggerFactory.getLogger(SidecarSmartPlugClient.class);
+
     private final WebClient webClient;
     private final Duration timeout;
 
@@ -30,9 +34,20 @@ public class SidecarSmartPlugClient implements SmartPlugClient {
 
     @Override
     public PlugReading read(SmartPlugEntity plug, SmartPlugCredentials credentials) {
+        String host = plug.getLastSeenIp();
+        if (host == null || host.isBlank()) {
+            log.warn(
+                    "smartPlug.read.missingHost plugId={} mac={} vendor={} monitorId={} boxId={}",
+                    plug.getId(),
+                    plug.getMacAddress(),
+                    plug.getVendor(),
+                    plug.getMonitor() != null ? plug.getMonitor().getId() : null,
+                    plug.getBox() != null ? plug.getBox().getId() : null);
+            return PlugReading.unreachable("missing_host");
+        }
         Map<String, Object> body = new HashMap<>();
         body.put("macAddress", plug.getMacAddress());
-        body.put("host", plug.getLastSeenIp());
+        body.put("host", host);
         body.put("vendor", plug.getVendor());
         String username = credentials != null ? credentials.username() : null;
         String password = credentials != null ? credentials.password() : null;
@@ -64,8 +79,27 @@ public class SidecarSmartPlugClient implements SmartPlugClient {
                     readNullableDouble(root, "currentAmperes"),
                     textOrNull(root.path("errorCode")));
         } catch (WebClientResponseException e) {
+            String responseBody = e.getResponseBodyAsString();
+            String bodyHint = responseBody != null && responseBody.length() > 300
+                    ? responseBody.substring(0, 300) + "…"
+                    : responseBody;
+            log.warn(
+                    "smartPlug.read.sidecarHttp plugId={} mac={} vendor={} host={} status={} body={}",
+                    plug.getId(),
+                    plug.getMacAddress(),
+                    plug.getVendor(),
+                    host,
+                    e.getStatusCode().value(),
+                    bodyHint);
             return PlugReading.unreachable("http_" + e.getStatusCode().value());
         } catch (Exception e) {
+            log.warn(
+                    "smartPlug.read.sidecarError plugId={} mac={} vendor={} host={}",
+                    plug.getId(),
+                    plug.getMacAddress(),
+                    plug.getVendor(),
+                    host,
+                    e);
             return PlugReading.unreachable("sidecar_error");
         }
     }
