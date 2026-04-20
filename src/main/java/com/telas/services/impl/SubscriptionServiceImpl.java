@@ -153,8 +153,11 @@ public class SubscriptionServiceImpl implements SubscriptionService {
         Subscription subscription = helper.findEntityById(subscriptionId);
 
         if (!SubscriptionStatus.ACTIVE.equals(subscription.getStatus())) {
-            log.info("Subscription with id: {} isn't active", subscriptionId);
-            return;
+            throw new BusinessRuleException(SubscriptionValidationMessages.SUBSCRIPTION_CANCEL_NOT_ALLOWED_FOR_NON_ACTIVE);
+        }
+
+        if (subscription.isCancelAtPeriodEnd()) {
+            throw new BusinessRuleException(SubscriptionValidationMessages.SUBSCRIPTION_ALREADY_SCHEDULED_TO_CANCEL);
         }
 
         Client client = authenticatedUserService.validateSelfOrAdmin(subscription.getClient().getId()).client();
@@ -401,6 +404,9 @@ public class SubscriptionServiceImpl implements SubscriptionService {
             } else {
                 stripeSubscription.update(Map.of("cancel_at_period_end", true));
                 log.info("Subscription with id: {} set to cancel at the end of the billing period.", subscription.getId());
+                subscription.setCancelAtPeriodEnd(true);
+                helper.setAuditInfo(subscription, client.getBusinessName());
+                repository.save(subscription);
             }
 
         } catch (StripeException e) {

@@ -54,6 +54,9 @@ public class Subscription extends BaseAudit implements Serializable {
     @Column(name = "fl_upgrade", nullable = false)
     private boolean upgrade = false;
 
+    @Column(name = "fl_cancel_at_period_end", nullable = false)
+    private boolean cancelAtPeriodEnd = false;
+
     @NotAudited
     @Version
     @Column(name = "version")
@@ -205,6 +208,7 @@ public class Subscription extends BaseAudit implements Serializable {
     public boolean ableToCancel() {
         return SubscriptionStatus.ACTIVE.equals(status)
                 && !bonus
+                && !cancelAtPeriodEnd
                 && (endsAt == null || endsAt.isAfter(Instant.now()));
     }
 

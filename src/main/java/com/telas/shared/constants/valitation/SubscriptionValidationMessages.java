@@ -12,6 +12,8 @@ public final class SubscriptionValidationMessages {
     public static final String SUBSCRIPTION_UPGRADE_NOT_ALLOWED_FOR_NON_ACTIVE_OR_EXPIRED = "Subscription upgrade not allowed for non-active or expired subscriptions.";
     public static final String SUBSCRIPTION_UPGRADE_NOT_ALLOWED_FOR_SHORT_BILLING_CYCLE = "Subscription upgrade not allowed for subscriptions with a short billing cycle. The billing cycle must be at least 30 days.";
     public static final String SUBSCRIPTION_CANCELLATION_ERROR_DURING_DISPUTE = "Subscription cancellation error during dispute, subscription id: ";
+    public static final String SUBSCRIPTION_CANCEL_NOT_ALLOWED_FOR_NON_ACTIVE = "Subscription cancel not allowed for non-active subscriptions.";
+    public static final String SUBSCRIPTION_ALREADY_SCHEDULED_TO_CANCEL = "Subscription is already scheduled to cancel at period end.";
     public static final String SUBSCRIPTION_UPGRADE_NOT_ALLOWED_FOR_RECURRENCE = "Subscription upgrade not allowed with a recurrence of 30 days.";
     public static final String SUBSCRIPTION_UPGRADE_NOT_ALLOWED_TO_SAME_RECURRENCE = "Subscription upgrade not allowed to the same recurrence.";
     public static final String SUBSCRIPTION_UPGRADE_NOT_ALLOWED_FROM_SIXTY_DAYS = "Subscription upgrade not allowed from a 60-day subscription, it can only be upgraded to a 90-day subscription or monthly.";
