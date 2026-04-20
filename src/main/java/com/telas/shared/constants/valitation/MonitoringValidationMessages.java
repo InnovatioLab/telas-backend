@@ -20,4 +20,9 @@ public final class MonitoringValidationMessages {
             "Configure monitoring.kasa.encryption-key before storing plug passwords.";
 
     public static final String SMART_PLUG_NOT_FOUND = "Smart plug not found.";
+
+    public static final String SMART_PLUG_ACCOUNT_NOT_FOUND = "Smart plug account not found.";
+
+    public static final String SMART_PLUG_ACCOUNT_BOX_VENDOR_DUPLICATE =
+            "A default account for this box and vendor already exists.";
 }
