@@ -4,10 +4,13 @@ import com.telas.dtos.request.SmartPlugInventoryRequestDto;
 import com.telas.dtos.request.SmartPlugRequestDto;
 import com.telas.dtos.request.SmartPlugUpdateRequestDto;
 import com.telas.dtos.response.ResponseDto;
+import com.telas.dtos.response.SmartPlugHistoryPointResponseDto;
 import com.telas.dtos.response.SmartPlugReadingResponseDto;
+import com.telas.dtos.response.SmartPlugOverviewResponseDto;
 import com.telas.dtos.response.SmartPlugResponseDto;
 import com.telas.enums.Permission;
 import com.telas.infra.security.services.AuthenticatedUserService;
+import com.telas.services.SmartPlugOverviewService;
 import com.telas.services.SmartPlugAdminService;
 import com.telas.shared.constants.MessageCommonsConstants;
 import io.swagger.v3.oas.annotations.Operation;
@@ -19,6 +22,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
 
@@ -29,14 +33,39 @@ import java.util.UUID;
 public class SmartPlugAdminController {
 
     private final SmartPlugAdminService smartPlugAdminService;
+    private final SmartPlugOverviewService smartPlugOverviewService;
     private final AuthenticatedUserService authenticatedUserService;
 
     @GetMapping
     @Operation(summary = "Lista tomadas configuradas")
     @SecurityRequirement(name = "jwt")
     public ResponseEntity<?> list() {
-        authenticatedUserService.validateAdmin();
+        authenticatedUserService.validatePermission(Permission.MONITORING_SMART_PLUG_VIEW);
         List<SmartPlugResponseDto> list = smartPlugAdminService.findAll();
+        return ResponseEntity.status(HttpStatus.OK)
+                .body(ResponseDto.fromData(list, HttpStatus.OK, MessageCommonsConstants.FIND_ALL_SUCCESS_MESSAGE));
+    }
+
+    @GetMapping("/overview")
+    @Operation(summary = "Visão operacional: tomadas + última leitura")
+    @SecurityRequirement(name = "jwt")
+    public ResponseEntity<?> overview() {
+        authenticatedUserService.validatePermission(Permission.MONITORING_SMART_PLUG_VIEW);
+        List<SmartPlugOverviewResponseDto> list = smartPlugOverviewService.overview();
+        return ResponseEntity.status(HttpStatus.OK)
+                .body(ResponseDto.fromData(list, HttpStatus.OK, MessageCommonsConstants.FIND_ALL_SUCCESS_MESSAGE));
+    }
+
+    @GetMapping("/{id}/history")
+    @Operation(summary = "Histórico de leituras (check_runs) por tomada")
+    @SecurityRequirement(name = "jwt")
+    public ResponseEntity<?> history(
+            @PathVariable UUID id,
+            @RequestParam(name = "from", required = false) Instant from,
+            @RequestParam(name = "to", required = false) Instant to,
+            @RequestParam(name = "limit", required = false, defaultValue = "200") int limit) {
+        authenticatedUserService.validatePermission(Permission.MONITORING_SMART_PLUG_VIEW);
+        List<SmartPlugHistoryPointResponseDto> list = smartPlugOverviewService.history(id, from, to, limit);
         return ResponseEntity.status(HttpStatus.OK)
                 .body(ResponseDto.fromData(list, HttpStatus.OK, MessageCommonsConstants.FIND_ALL_SUCCESS_MESSAGE));
     }

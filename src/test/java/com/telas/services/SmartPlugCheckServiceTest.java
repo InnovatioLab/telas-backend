@@ -9,6 +9,7 @@ import com.telas.monitoring.entities.BoxHeartbeatEntity;
 import com.telas.monitoring.entities.SmartPlugEntity;
 import com.telas.monitoring.plug.PlugReading;
 import com.telas.monitoring.plug.SmartPlugClient;
+import com.telas.monitoring.repositories.SmartPlugAccountEntityRepository;
 import com.telas.monitoring.repositories.BoxHeartbeatEntityRepository;
 import com.telas.monitoring.repositories.CheckRunEntityRepository;
 import com.telas.monitoring.repositories.IncidentEntityRepository;
@@ -40,6 +41,7 @@ class SmartPlugCheckServiceTest {
     @Mock private SmartPlugEntityRepository smartPlugEntityRepository;
     @Mock private SmartPlugClient smartPlugClient;
     @Mock private AesTextEncryptionService encryptionService;
+    @Mock private SmartPlugAccountEntityRepository smartPlugAccountEntityRepository;
     @Mock private BoxHeartbeatEntityRepository boxHeartbeatEntityRepository;
     @Mock private IncidentEntityRepository incidentEntityRepository;
     @Mock private CheckRunEntityRepository checkRunEntityRepository;
@@ -57,6 +59,7 @@ class SmartPlugCheckServiceTest {
                 smartPlugEntityRepository,
                 smartPlugClient,
                 encryptionService,
+                smartPlugAccountEntityRepository,
                 boxHeartbeatEntityRepository,
                 incidentEntityRepository,
                 checkRunEntityRepository,

@@ -18,6 +18,7 @@ public interface SmartPlugEntityRepository extends JpaRepository<SmartPlugEntity
                     + "LEFT JOIN FETCH p.monitor m "
                     + "LEFT JOIN FETCH m.box mb "
                     + "LEFT JOIN FETCH p.box bx "
+                    + "LEFT JOIN FETCH p.smartPlugAccount spa "
                     + "WHERE p.enabled = true AND (m IS NOT NULL OR bx IS NOT NULL)")
     List<SmartPlugEntity> findAllEnabledForChecks();
 
@@ -37,4 +38,16 @@ public interface SmartPlugEntityRepository extends JpaRepository<SmartPlugEntity
                     + "LEFT JOIN FETCH p.box b "
                     + "ORDER BY p.createdAt DESC")
     List<SmartPlugEntity> findAllWithMonitor();
+
+    @Query(
+            "SELECT DISTINCT p FROM SmartPlugEntity p "
+                    + "LEFT JOIN FETCH p.monitor m "
+                    + "LEFT JOIN FETCH m.address ma "
+                    + "LEFT JOIN FETCH m.box mb "
+                    + "LEFT JOIN FETCH mb.boxAddress mba "
+                    + "LEFT JOIN FETCH p.box bx "
+                    + "LEFT JOIN FETCH bx.boxAddress bxa "
+                    + "WHERE p.enabled = true "
+                    + "ORDER BY p.updatedAt DESC")
+    List<SmartPlugEntity> findAllEnabledForOverview();
 }

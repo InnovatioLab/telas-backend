@@ -9,7 +9,7 @@ import org.springframework.stereotype.Component;
 public class StubSmartPlugClient implements SmartPlugClient {
 
     @Override
-    public PlugReading read(SmartPlugEntity plug, String decryptedPassword) {
+    public PlugReading read(SmartPlugEntity plug, SmartPlugCredentials credentials) {
         return new PlugReading(true, true, 42.0, 120.0, 0.35, null);
     }
 }

@@ -13,6 +13,7 @@ import com.telas.monitoring.crypto.AesTextEncryptionService;
 import com.telas.monitoring.entities.SmartPlugEntity;
 import com.telas.monitoring.plug.PlugReading;
 import com.telas.monitoring.plug.SmartPlugClient;
+import com.telas.monitoring.plug.SmartPlugCredentials;
 import com.telas.monitoring.repositories.SmartPlugEntityRepository;
 import com.telas.repositories.BoxRepository;
 import com.telas.repositories.MonitorRepository;
@@ -276,7 +277,13 @@ public class SmartPlugAdminServiceImpl implements SmartPlugAdminService {
         if (encryptionService.isConfigured() && entity.getPasswordCipher() != null) {
             password = encryptionService.decrypt(entity.getPasswordCipher());
         }
-        PlugReading reading = smartPlugClient.read(entity, password);
+        SmartPlugCredentials creds = null;
+        if (entity.getAccountEmail() != null && !entity.getAccountEmail().isBlank()) {
+            creds = new SmartPlugCredentials(entity.getAccountEmail(), password);
+        } else if (password != null && !password.isBlank()) {
+            creds = new SmartPlugCredentials(null, password);
+        }
+        PlugReading reading = smartPlugClient.read(entity, creds);
         return new SmartPlugReadingResponseDto(reading);
     }
 

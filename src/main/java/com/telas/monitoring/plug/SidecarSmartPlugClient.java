@@ -29,13 +29,15 @@ public class SidecarSmartPlugClient implements SmartPlugClient {
     }
 
     @Override
-    public PlugReading read(SmartPlugEntity plug, String decryptedPassword) {
+    public PlugReading read(SmartPlugEntity plug, SmartPlugCredentials credentials) {
         Map<String, Object> body = new HashMap<>();
         body.put("macAddress", plug.getMacAddress());
         body.put("host", plug.getLastSeenIp());
         body.put("vendor", plug.getVendor());
-        body.put("username", plug.getAccountEmail());
-        body.put("password", decryptedPassword != null ? decryptedPassword : "");
+        String username = credentials != null ? credentials.username() : null;
+        String password = credentials != null ? credentials.password() : null;
+        body.put("username", username != null ? username : "");
+        body.put("password", password != null ? password : "");
         try {
             JsonNode root =
                     webClient

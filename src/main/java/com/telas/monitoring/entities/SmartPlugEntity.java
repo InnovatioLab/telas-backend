@@ -42,6 +42,10 @@ public class SmartPlugEntity {
     @JoinColumn(name = "box_id", nullable = true)
     private Box box;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "smart_plug_account_id", nullable = true)
+    private SmartPlugAccountEntity smartPlugAccount;
+
     @Column(name = "enabled", nullable = false)
     private boolean enabled = true;
 
