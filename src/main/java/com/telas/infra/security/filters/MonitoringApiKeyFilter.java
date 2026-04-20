@@ -54,6 +54,7 @@ public class MonitoringApiKeyFilter extends OncePerRequestFilter {
             return "/boxes/health".equals(path)
                     || "/monitoring/heartbeat".equals(path)
                     || "/monitoring/logs".equals(path)
+                    || "/monitoring/smart-plugs/ingest".equals(path)
                     || "/monitoring/box-script/commands/ack".equals(path);
         }
         return false;

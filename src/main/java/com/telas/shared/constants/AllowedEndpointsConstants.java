@@ -35,6 +35,7 @@ public class AllowedEndpointsConstants {
                 "/boxes/health",
                 "/monitoring/heartbeat",
                 "/monitoring/logs",
+                "/monitoring/smart-plugs/ingest",
                 "/monitoring/box-script/commands/ack"
         ));
         ALLOWED_ENDPOINTS.put(HttpMethod.PATCH, List.of(
