@@ -14,6 +14,7 @@ import org.springframework.web.reactive.function.client.WebClientResponseExcepti
 import java.time.Duration;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.UUID;
 
 @Component
 @ConditionalOnProperty(name = "monitoring.kasa.mode", havingValue = "sidecar")
@@ -41,12 +42,13 @@ public class SidecarSmartPlugClient implements SmartPlugClient {
     public PlugReading readAtHost(SmartPlugEntity plug, String host, SmartPlugCredentials credentials) {
         if (host == null || host.isBlank()) {
             log.warn(
-                    "smartPlug.read.missingHost plugId={} mac={} vendor={} monitorId={} boxId={}",
+                    "smartPlug.read.missingHost plugId={} mac={} vendor={} monitorId={} plugBoxId={} effectiveBoxId={}",
                     plug.getId(),
                     plug.getMacAddress(),
                     plug.getVendor(),
                     plug.getMonitor() != null ? plug.getMonitor().getId() : null,
-                    plug.getBox() != null ? plug.getBox().getId() : null);
+                    plug.getBox() != null ? plug.getBox().getId() : null,
+                    resolveBoxIdForDiscovery(plug));
             return PlugReading.unreachable("missing_host");
         }
         Map<String, Object> body = new HashMap<>();
@@ -106,6 +108,16 @@ public class SidecarSmartPlugClient implements SmartPlugClient {
                     e);
             return PlugReading.unreachable("sidecar_error");
         }
+    }
+
+    private static UUID resolveBoxIdForDiscovery(SmartPlugEntity plug) {
+        if (plug.getMonitor() != null && plug.getMonitor().getBox() != null) {
+            return plug.getMonitor().getBox().getId();
+        }
+        if (plug.getBox() != null) {
+            return plug.getBox().getId();
+        }
+        return null;
     }
 
     private static String textOrNull(JsonNode node) {
