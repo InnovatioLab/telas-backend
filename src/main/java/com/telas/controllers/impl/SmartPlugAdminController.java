@@ -54,7 +54,8 @@ public class SmartPlugAdminController {
     @Operation(
             summary = "Executa agora um ciclo de descoberta de IP (varredura /24 + sidecar)",
             description =
-                    "Respeita monitoring.kasa.discovery.enabled. Requer rotas em monitoring.box_subnet_routes e sidecar acessível.")
+                    "Respeita monitoring.kasa.discovery.enabled. Requer rotas em monitoring.box_subnet_routes e sidecar acessível. "
+                            + "Acesso: cliente DEVELOPER ou permissão MONITORING_SMART_PLUG_ADMIN.")
     @SecurityRequirement(name = "jwt")
     public ResponseEntity<?> runDiscoveryNow() {
         AuthenticatedUser user = authenticatedUserService.getLoggedUser();
