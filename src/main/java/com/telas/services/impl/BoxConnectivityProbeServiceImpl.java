@@ -142,19 +142,35 @@ public class BoxConnectivityProbeServiceImpl implements BoxConnectivityProbeServ
             row.setBoxIp(ip);
             row.setUpdatedAt(now);
             boxConnectivityProbeEntityRepository.save(row);
-            log.info(
-                    "box.connectivity.probe boxId={} ip={} reachable={} detail={}",
-                    box.getId(),
-                    ip,
-                    reachable,
-                    detail);
+            if (reachable) {
+                log.debug(
+                        "box.connectivity.probe boxId={} ip={} reachable={} detail={}",
+                        box.getId(),
+                        ip,
+                        true,
+                        detail);
+            } else {
+                log.warn(
+                        "box.connectivity.probe.failed boxId={} ip={} detail={}",
+                        box.getId(),
+                        ip,
+                        detail);
+            }
             applyActiveStateFromProbeIfEnabled(box, ip, outcome, reachable);
         }
-        log.info(
-                "box.connectivity.probe.summary totalBoxes={} reachableCount={} unreachableCount={}",
-                boxes.size(),
-                ok,
-                fail);
+        if (fail > 0) {
+            log.info(
+                    "box.connectivity.probe.summary totalBoxes={} reachableCount={} unreachableCount={}",
+                    boxes.size(),
+                    ok,
+                    fail);
+        } else {
+            log.debug(
+                    "box.connectivity.probe.summary totalBoxes={} reachableCount={} unreachableCount={}",
+                    boxes.size(),
+                    ok,
+                    0);
+        }
     }
 
     private void applyActiveStateFromProbeIfEnabled(
