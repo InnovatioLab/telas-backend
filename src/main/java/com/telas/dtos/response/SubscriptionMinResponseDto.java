@@ -44,6 +44,10 @@ public class SubscriptionMinResponseDto implements Serializable {
 
     private boolean cancelAtPeriodEnd;
 
+    private Instant cancelRequestedAt;
+
+    private Instant cancelAtPeriodEndAt;
+
     private List<SubscriptionMonitorMinResponseDto> monitors;
 
     public SubscriptionMinResponseDto(Subscription entity) {
@@ -59,6 +63,8 @@ public class SubscriptionMinResponseDto implements Serializable {
         ableToRenew = entity.ableToRenew();
         ableToCancel = entity.ableToCancel();
         cancelAtPeriodEnd = entity.isCancelAtPeriodEnd();
+        cancelRequestedAt = entity.getCancelRequestedAt();
+        cancelAtPeriodEndAt = entity.getCancelAtPeriodEndAt();
         monitors = entity.getMonitors().stream()
                 .map(SubscriptionMonitorMinResponseDto::new)
                 .toList();

@@ -15,8 +15,6 @@ import lombok.Setter;
 import org.hibernate.envers.AuditTable;
 import org.hibernate.envers.NotAudited;
 
-import java.io.Serial;
-import java.io.Serializable;
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.*;
@@ -28,9 +26,7 @@ import java.util.stream.Collectors;
 @Table(name = "subscriptions")
 @AuditTable("subscriptions_aud")
 @NoArgsConstructor
-public class Subscription extends BaseAudit implements Serializable {
-    @Serial
-    private static final long serialVersionUID = 1084934057135367842L;
+public class Subscription extends BaseAudit {
 
     @Id
     @GeneratedValue
@@ -56,6 +52,12 @@ public class Subscription extends BaseAudit implements Serializable {
 
     @Column(name = "fl_cancel_at_period_end", nullable = false)
     private boolean cancelAtPeriodEnd = false;
+
+    @Column(name = "cancel_requested_at", columnDefinition = "TIMESTAMP WITHOUT TIME ZONE")
+    private Instant cancelRequestedAt;
+
+    @Column(name = "cancel_at_period_end_at", columnDefinition = "TIMESTAMP WITHOUT TIME ZONE")
+    private Instant cancelAtPeriodEndAt;
 
     @NotAudited
     @Version

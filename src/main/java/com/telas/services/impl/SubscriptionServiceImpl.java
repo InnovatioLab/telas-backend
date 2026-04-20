@@ -165,6 +165,7 @@ public class SubscriptionServiceImpl implements SubscriptionService {
         if (Recurrence.MONTHLY.equals(subscription.getRecurrence()) && !subscription.isBonus()) {
             handleStripeCancellation(subscription, client);
         } else {
+            subscription.setCancelRequestedAt(Instant.now());
             updateSubscriptionStatusCancelled(subscription, Instant.now(), client.getBusinessName());
             helper.removeMonitorAdsFromSubscription(subscription);
             notifyClientsWishList(subscription);
@@ -405,6 +406,12 @@ public class SubscriptionServiceImpl implements SubscriptionService {
                 stripeSubscription.update(Map.of("cancel_at_period_end", true));
                 log.info("Subscription with id: {} set to cancel at the end of the billing period.", subscription.getId());
                 subscription.setCancelAtPeriodEnd(true);
+                subscription.setCancelRequestedAt(Instant.now());
+                if (stripeSubscription.getCancelAt() != null) {
+                    Instant effectiveAt = Instant.ofEpochSecond(stripeSubscription.getCancelAt());
+                    subscription.setCancelAtPeriodEndAt(effectiveAt);
+                    subscription.setEndsAt(effectiveAt);
+                }
                 helper.setAuditInfo(subscription, client.getBusinessName());
                 repository.save(subscription);
             }
