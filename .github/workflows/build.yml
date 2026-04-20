@@ -71,33 +71,17 @@ jobs:
             ROUTING_KEY=${{ secrets.ROUTING_KEY }}
             SENDGRID_API_KEY=${{ secrets.SENDGRID_API_KEY }}
 
-  dokploy:
-    name: Dokploy + Discord
-    needs: [build]
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
       - name: Trigger Dokploy Deployment
         run: |
-          set -e
-          for i in 1 2 3 4 5; do
-            if curl -fsS --connect-timeout 30 --max-time 120 \
-              -X POST \
-              "${{ secrets.DOCKPLOY_WEBHOOK_URL }}" \
-              -H "accept: application/json" \
-              -H "Content-Type: application/json" \
-              -H "Authorization: Bearer ${{ secrets.DOCKPLOY_TOKEN }}" \
-              -H "x-api-key: ${{ secrets.DOCKPLOY_TOKEN }}" \
-              -d "{\"applicationId\": \"${{ secrets.DOKPLOY_APPLICATION_ID }}\"}"; then
-              exit 0
-            fi
-            sleep $((i * 10))
-          done
-          exit 1
+          curl -X POST \
+          "${{ secrets.DOCKPLOY_WEBHOOK_URL }}" \
+          -H "accept: application/json" \
+          -H "Content-Type: application/json" \
+          -H "Authorization: Bearer ${{ secrets.DOCKPLOY_TOKEN }}" \
+          -H "x-api-key: ${{ secrets.DOCKPLOY_TOKEN }}" \
+          -d '{
+            "applicationId": "${{ secrets.DOKPLOY_APPLICATION_ID }}"
+          }'
 
       - name: Notificar Discord (deploy)
         if: success()
