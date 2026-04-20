@@ -10,6 +10,7 @@ import com.telas.dtos.response.SmartPlugOverviewResponseDto;
 import com.telas.dtos.response.SmartPlugResponseDto;
 import com.telas.enums.Permission;
 import com.telas.infra.security.services.AuthenticatedUserService;
+import com.telas.services.SmartPlugIpDiscoveryService;
 import com.telas.services.SmartPlugOverviewService;
 import com.telas.services.SmartPlugAdminService;
 import com.telas.shared.constants.MessageCommonsConstants;
@@ -24,6 +25,7 @@ import org.springframework.web.bind.annotation.*;
 
 import java.time.Instant;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 @RestController
@@ -34,6 +36,7 @@ public class SmartPlugAdminController {
 
     private final SmartPlugAdminService smartPlugAdminService;
     private final SmartPlugOverviewService smartPlugOverviewService;
+    private final SmartPlugIpDiscoveryService smartPlugIpDiscoveryService;
     private final AuthenticatedUserService authenticatedUserService;
 
     @GetMapping
@@ -44,6 +47,19 @@ public class SmartPlugAdminController {
         List<SmartPlugResponseDto> list = smartPlugAdminService.findAll();
         return ResponseEntity.status(HttpStatus.OK)
                 .body(ResponseDto.fromData(list, HttpStatus.OK, MessageCommonsConstants.FIND_ALL_SUCCESS_MESSAGE));
+    }
+
+    @PostMapping("/discovery/run")
+    @Operation(
+            summary = "Executa agora um ciclo de descoberta de IP (varredura /24 + sidecar)",
+            description =
+                    "Respeita monitoring.kasa.discovery.enabled. Requer rotas em monitoring.box_subnet_routes e sidecar acessível.")
+    @SecurityRequirement(name = "jwt")
+    public ResponseEntity<?> runDiscoveryNow() {
+        authenticatedUserService.validatePermission(Permission.MONITORING_SMART_PLUG_ADMIN);
+        Map<String, Object> summary = smartPlugIpDiscoveryService.runDiscoveryCycle();
+        return ResponseEntity.status(HttpStatus.OK)
+                .body(ResponseDto.fromData(summary, HttpStatus.OK, MessageCommonsConstants.FIND_ALL_SUCCESS_MESSAGE));
     }
 
     @GetMapping("/overview")
