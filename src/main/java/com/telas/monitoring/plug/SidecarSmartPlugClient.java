@@ -34,7 +34,11 @@ public class SidecarSmartPlugClient implements SmartPlugClient {
 
     @Override
     public PlugReading read(SmartPlugEntity plug, SmartPlugCredentials credentials) {
-        String host = plug.getLastSeenIp();
+        return readAtHost(plug, plug.getLastSeenIp(), credentials);
+    }
+
+    @Override
+    public PlugReading readAtHost(SmartPlugEntity plug, String host, SmartPlugCredentials credentials) {
         if (host == null || host.isBlank()) {
             log.warn(
                     "smartPlug.read.missingHost plugId={} mac={} vendor={} monitorId={} boxId={}",

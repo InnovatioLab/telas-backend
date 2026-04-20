@@ -10,6 +10,7 @@ import com.telas.monitoring.repositories.BoxHeartbeatEntityRepository;
 import com.telas.repositories.BoxRepository;
 import com.telas.scheduler.SchedulerJobRunContext;
 import com.telas.services.HealthUpdateService;
+import com.telas.services.SmartPlugIpDiscoveryService;
 import com.telas.shared.constants.MonitoringIncidentTypes;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -35,6 +36,7 @@ class MonitoringWorkerServiceTest {
     @Mock private BoxRepository boxRepository;
     @Mock private HealthUpdateService healthUpdateService;
     @Mock private KasMonitoringCheckRunner kasMonitoringCheckRunner;
+    @Mock private SmartPlugIpDiscoveryService smartPlugIpDiscoveryService;
     @Mock private SchedulerJobRunContext schedulerJobRunContext;
 
     private MonitoringWorkerService service;
@@ -46,6 +48,7 @@ class MonitoringWorkerServiceTest {
                 boxRepository,
                 healthUpdateService,
                 kasMonitoringCheckRunner,
+                smartPlugIpDiscoveryService,
                 schedulerJobRunContext);
         org.springframework.test.util.ReflectionTestUtils.setField(service, "staleSeconds", 180L);
         org.springframework.test.util.ReflectionTestUtils.setField(service, "neverSeenGraceSeconds", 600L);

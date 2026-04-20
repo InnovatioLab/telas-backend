@@ -1,13 +1,10 @@
 package com.telas.services;
 
-import com.telas.monitoring.crypto.AesTextEncryptionService;
 import com.telas.monitoring.entities.CheckRunEntity;
-import com.telas.monitoring.entities.SmartPlugAccountEntity;
 import com.telas.monitoring.entities.SmartPlugEntity;
 import com.telas.monitoring.plug.PlugReading;
 import com.telas.monitoring.plug.SmartPlugClient;
 import com.telas.monitoring.plug.SmartPlugCredentials;
-import com.telas.monitoring.repositories.SmartPlugAccountEntityRepository;
 import com.telas.monitoring.repositories.BoxHeartbeatEntityRepository;
 import com.telas.monitoring.repositories.CheckRunEntityRepository;
 import com.telas.monitoring.repositories.SmartPlugEntityRepository;
@@ -34,8 +31,7 @@ public class SmartPlugCheckService {
 
     private final SmartPlugEntityRepository smartPlugEntityRepository;
     private final SmartPlugClient smartPlugClient;
-    private final AesTextEncryptionService encryptionService;
-    private final SmartPlugAccountEntityRepository smartPlugAccountEntityRepository;
+    private final SmartPlugCredentialsResolver credentialsResolver;
     private final BoxHeartbeatEntityRepository boxHeartbeatEntityRepository;
     private final CheckRunEntityRepository checkRunEntityRepository;
     private final SmartPlugRulesService smartPlugRulesService;
@@ -75,7 +71,7 @@ public class SmartPlugCheckService {
     }
 
     private void runSingle(SmartPlugEntity plug) {
-        SmartPlugCredentials credentials = resolveCredentials(plug);
+        SmartPlugCredentials credentials = credentialsResolver.resolve(plug);
         PlugReading reading = smartPlugClient.read(plug, credentials);
         persistCheckRun(plug, reading);
         if (!raiseIncidents) {
@@ -83,55 +79,6 @@ public class SmartPlugCheckService {
         }
         boolean heartbeatStale = isHeartbeatStale(plug);
         smartPlugRulesService.evaluate(plug, reading, heartbeatStale);
-    }
-
-    private SmartPlugCredentials resolveCredentials(SmartPlugEntity plug) {
-        String username = resolveUsername(plug);
-        String password = resolvePassword(plug);
-        if ((username == null || username.isBlank()) && (password == null || password.isBlank())) {
-            return null;
-        }
-        return new SmartPlugCredentials(username, password);
-    }
-
-    private String resolveUsername(SmartPlugEntity plug) {
-        SmartPlugAccountEntity a = resolveAccount(plug);
-        if (a != null && a.getAccountEmail() != null && !a.getAccountEmail().isBlank()) {
-            return a.getAccountEmail();
-        }
-        return plug.getAccountEmail();
-    }
-
-    private String resolvePassword(SmartPlugEntity plug) {
-        SmartPlugAccountEntity a = resolveAccount(plug);
-        if (a != null) {
-            return decryptOrNull(a.getPasswordCipher());
-        }
-        return decryptOrNull(plug.getPasswordCipher());
-    }
-
-    private SmartPlugAccountEntity resolveAccount(SmartPlugEntity plug) {
-        if (plug.getSmartPlugAccount() != null) {
-            SmartPlugAccountEntity a = plug.getSmartPlugAccount();
-            return a.isEnabled() ? a : null;
-        }
-        UUID boxId = resolveHeartbeatBoxId(plug);
-        if (boxId == null) {
-            return null;
-        }
-        return smartPlugAccountEntityRepository
-                .findByBox_IdAndVendorAndEnabledTrue(boxId, plug.getVendor())
-                .orElse(null);
-    }
-
-    private String decryptOrNull(String cipher) {
-        if (cipher == null || cipher.isBlank()) {
-            return null;
-        }
-        if (!encryptionService.isConfigured()) {
-            return null;
-        }
-        return encryptionService.decrypt(cipher);
     }
 
     private boolean isHeartbeatStale(SmartPlugEntity plug) {

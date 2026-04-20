@@ -9,6 +9,7 @@ import com.telas.monitoring.repositories.BoxHeartbeatEntityRepository;
 import com.telas.repositories.BoxRepository;
 import com.telas.scheduler.SchedulerJobRunContext;
 import com.telas.services.HealthUpdateService;
+import com.telas.services.SmartPlugIpDiscoveryService;
 import com.telas.shared.constants.MonitoringIncidentTypes;
 import lombok.RequiredArgsConstructor;
 import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
@@ -34,6 +35,7 @@ public class MonitoringWorkerService {
     private final BoxRepository boxRepository;
     private final HealthUpdateService healthUpdateService;
     private final KasMonitoringCheckRunner kasMonitoringCheckRunner;
+    private final SmartPlugIpDiscoveryService smartPlugIpDiscoveryService;
     private final SchedulerJobRunContext schedulerJobRunContext;
 
     @Value("${monitoring.heartbeat.stale-seconds:180}")
@@ -44,6 +46,9 @@ public class MonitoringWorkerService {
 
     @Value("${monitoring.kasa.enabled:true}")
     private boolean kasaEnabled;
+
+    @Value("${monitoring.kasa.discovery.enabled:false}")
+    private boolean kasDiscoveryEnabled;
 
     @Value("${monitoring.worker.interval-ms:60000}")
     private long kasaIntervalMs;
@@ -122,6 +127,9 @@ public class MonitoringWorkerService {
         if (kasaEnabled
                 && Duration.between(lastKasaRunAt, now).toMillis() >= kasaIntervalMs) {
             lastKasaRunAt = now;
+            if (kasDiscoveryEnabled) {
+                schedulerJobRunContext.putAll(smartPlugIpDiscoveryService.runDiscoveryCycle());
+            }
             schedulerJobRunContext.putAll(kasMonitoringCheckRunner.runKasaChecks());
         }
     }

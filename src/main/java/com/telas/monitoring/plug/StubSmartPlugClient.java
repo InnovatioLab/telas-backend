@@ -10,6 +10,18 @@ public class StubSmartPlugClient implements SmartPlugClient {
 
     @Override
     public PlugReading read(SmartPlugEntity plug, SmartPlugCredentials credentials) {
-        return new PlugReading(true, true, 42.0, 120.0, 0.35, null);
+        return readAtHost(plug, plug.getLastSeenIp(), credentials);
+    }
+
+    @Override
+    public PlugReading readAtHost(SmartPlugEntity plug, String host, SmartPlugCredentials credentials) {
+        if (host == null || host.isBlank()) {
+            return PlugReading.unreachable("missing_host");
+        }
+        String last = plug.getLastSeenIp();
+        if (last != null && host.trim().equals(last.trim())) {
+            return new PlugReading(true, true, 42.0, 120.0, 0.35, null);
+        }
+        return PlugReading.unreachable("stub_probe_miss");
     }
 }

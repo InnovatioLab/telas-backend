@@ -36,4 +36,7 @@ public interface BoxRepository extends JpaRepository<Box, UUID> {
               + "WHERE b.active = true AND b.createdAt < :graceCutoff "
               + "AND NOT EXISTS (SELECT 1 FROM BoxHeartbeatEntity h WHERE h.box.id = b.id)")
   List<Box> findActiveBoxesWithoutHeartbeatAfterGrace(@Param("graceCutoff") Instant graceCutoff);
+
+  @Query("SELECT DISTINCT b FROM Box b JOIN FETCH b.boxAddress WHERE b.active = true")
+  List<Box> findAllActiveWithBoxAddress();
 }
