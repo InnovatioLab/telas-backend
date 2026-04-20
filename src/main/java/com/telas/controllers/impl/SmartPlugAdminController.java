@@ -8,6 +8,7 @@ import com.telas.dtos.response.SmartPlugHistoryPointResponseDto;
 import com.telas.dtos.response.SmartPlugReadingResponseDto;
 import com.telas.dtos.response.SmartPlugOverviewResponseDto;
 import com.telas.dtos.response.SmartPlugResponseDto;
+import com.telas.entities.Client;
 import com.telas.enums.Permission;
 import com.telas.infra.security.model.AuthenticatedUser;
 import com.telas.infra.security.services.AuthenticatedUserService;
@@ -55,11 +56,12 @@ public class SmartPlugAdminController {
             summary = "Executa agora um ciclo de descoberta de IP (varredura /24 + sidecar)",
             description =
                     "Respeita monitoring.kasa.discovery.enabled. Requer rotas em monitoring.box_subnet_routes e sidecar acessível. "
-                            + "Acesso: cliente DEVELOPER ou permissão MONITORING_SMART_PLUG_ADMIN.")
+                            + "Acesso: utilizador de painel (ADMIN ou DEVELOPER) ou permissão MONITORING_SMART_PLUG_ADMIN.")
     @SecurityRequirement(name = "jwt")
     public ResponseEntity<?> runDiscoveryNow() {
         AuthenticatedUser user = authenticatedUserService.getLoggedUser();
-        if (!user.isDeveloper()) {
+        Client client = user.client();
+        if (!client.isPrivilegedPanelUser()) {
             authenticatedUserService.validatePermission(Permission.MONITORING_SMART_PLUG_ADMIN);
         }
         Map<String, Object> summary = smartPlugIpDiscoveryService.runDiscoveryCycle();
