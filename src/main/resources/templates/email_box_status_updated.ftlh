@@ -1,7 +1,7 @@
 <#import "email_monitoring_layout.ftlh" as mon>
-<#assign down = (statusLabel!"" == "deactivated") />
+<#assign isDown = (statusLabel!"" == "deactivated") />
 <#assign emphasisVariant = "" />
-<#if down><#assign emphasisVariant = "warning" /></#if>
+<#if isDown><#assign emphasisVariant = "warning" /></#if>
 <@mon.monitoringEmail title="Box status updated" emphasis=emphasisVariant>
     <tr>
         <td style="padding: 14px 0; border-bottom: 1px solid #eceff1;">

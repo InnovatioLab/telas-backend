@@ -55,9 +55,13 @@ public class SubscriptionHelper {
     private final PaymentService paymentService;
     private final ClientHelper clientHelper;
     private final ClientRepository clientRepository;
+    private final EmailService emailService;
 
     @Value("${front.base.url}")
     private String frontBaseUrl;
+
+    @Value("${admin.purchase.notification.email:}")
+    private String adminPurchaseNotificationEmail;
 
     public SubscriptionHelper(
             SubscriptionRepository repository,
@@ -69,7 +73,8 @@ public class SubscriptionHelper {
             NotificationService notificationService,
             PaymentService paymentService,
             ClientHelper clientHelper,
-            ClientRepository clientRepository
+            ClientRepository clientRepository,
+            EmailService emailService
     ) {
         this.repository = repository;
         this.subscriptionFlowRepository = subscriptionFlowRepository;
@@ -81,6 +86,7 @@ public class SubscriptionHelper {
         this.paymentService = paymentService;
         this.clientHelper = clientHelper;
         this.clientRepository = clientRepository;
+        this.emailService = emailService;
     }
 
     @Transactional
@@ -343,7 +349,7 @@ public class SubscriptionHelper {
     }
 
     public String getRedirectUrlAfterCreatingNewSubscription() {
-        return buildRedirectUrl("my-telas");
+        return buildRedirectUrl("next-steps");
     }
 
     private void validateCart(Cart cart) {
@@ -413,6 +419,19 @@ public class SubscriptionHelper {
         Map<String, String> params = buildAdminNewPurchaseParams(subscription);
         clientRepository.findAllAdmins().forEach(admin ->
                 notificationService.save(NotificationReference.ADMIN_NEW_PURCHASE, admin, params, true));
+
+        if (!ValidateDataUtils.isNullOrEmptyString(adminPurchaseNotificationEmail)) {
+            try {
+                var emailData = NotificationReference.ADMIN_NEW_PURCHASE.getEmailData(params);
+                if (emailData != null) {
+                    emailData.setEmail(adminPurchaseNotificationEmail.trim());
+                    emailData.getParams().put("clientId", subscription.getClient().getId().toString());
+                    emailService.send(emailData);
+                }
+            } catch (RuntimeException e) {
+                log.error("Failed to send admin new purchase email to configured address", e);
+            }
+        }
     }
 
     private Map<String, String> buildAdminNewPurchaseParams(Subscription subscription) {

@@ -4,6 +4,7 @@ import com.telas.dtos.EmailDataDto;
 import com.telas.shared.constants.SharedConstants;
 import org.springframework.util.ObjectUtils;
 
+import java.util.HashMap;
 import java.util.Map;
 
 public enum NotificationReference {
@@ -187,6 +188,7 @@ public enum NotificationReference {
         @Override
         public EmailDataDto getEmailData(Map<String, String> params) {
             EmailDataDto emailData = new EmailDataDto();
+            emailData.setParams(new HashMap<>());
             emailData.setSubject(SharedConstants.EMAIL_SUBJECT_HOST_REBOOT);
             emailData.setTemplate(SharedConstants.TEMPLATE_EMAIL_HOST_REBOOT);
             emailData.getParams().put("boxIp", params.getOrDefault("boxIp", ""));
@@ -239,6 +241,7 @@ public enum NotificationReference {
         @Override
         public EmailDataDto getEmailData(Map<String, String> params) {
             EmailDataDto emailData = new EmailDataDto();
+            emailData.setParams(new HashMap<>());
             emailData.setSubject(SharedConstants.EMAIL_SUBJECT_BOX_STATUS_UPDATED);
             emailData.setTemplate(SharedConstants.TEMPLATE_EMAIL_BOX_STATUS_UPDATED);
             emailData.getParams().put("ip", params.get("ip"));
@@ -272,6 +275,7 @@ public enum NotificationReference {
         @Override
         public EmailDataDto getEmailData(Map<String, String> params) {
             EmailDataDto emailData = new EmailDataDto();
+            emailData.setParams(new HashMap<>());
             emailData.setSubject(SharedConstants.EMAIL_SUBJECT_MONITOR_STATUS_UPDATED);
             emailData.setTemplate(SharedConstants.TEMPLATE_EMAIL_MONITOR_STATUS_UPDATED);
             emailData.getParams().put("monitorAddress", params.get("monitorAddress"));
@@ -309,6 +313,7 @@ public enum NotificationReference {
         @Override
         public EmailDataDto getEmailData(Map<String, String> params) {
             EmailDataDto emailData = new EmailDataDto();
+            emailData.setParams(new HashMap<>());
             emailData.setSubject(SharedConstants.EMAIL_SUBJECT_SMART_PLUG_INCIDENT);
             emailData.setTemplate(SharedConstants.TEMPLATE_EMAIL_SMART_PLUG_INCIDENT);
             emailData.getParams().put("monitorAddress", params.getOrDefault("monitorAddress", ""));

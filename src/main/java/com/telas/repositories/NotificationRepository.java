@@ -9,6 +9,7 @@ import org.springframework.stereotype.Repository;
 
 import java.util.Collection;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 @Repository
@@ -26,4 +27,13 @@ public interface NotificationRepository extends JpaRepository<Notification, UUID
           @Param("refs") Collection<NotificationReference> refs);
 
   List<Notification> findByIdIn(List<UUID> ids);
+
+  @Query(
+          """
+          SELECT n FROM Notification n
+          JOIN FETCH n.client c
+          JOIN FETCH c.contact
+          WHERE n.id = :id
+          """)
+  Optional<Notification> findWithClientAndContactForEmail(@Param("id") UUID id);
 }

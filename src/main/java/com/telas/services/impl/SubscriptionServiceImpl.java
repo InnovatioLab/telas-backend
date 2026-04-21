@@ -18,6 +18,7 @@ import com.telas.infra.exceptions.BusinessRuleException;
 import com.telas.infra.exceptions.ResourceNotFoundException;
 import com.telas.infra.security.services.AuthenticatedUserService;
 import com.telas.repositories.ClientRepository;
+import com.telas.repositories.MonitorRepository;
 import com.telas.repositories.SubscriptionRepository;
 import com.telas.scheduler.SchedulerJobRunContext;
 import com.telas.services.RemoveMonitorAdsOutcome;
@@ -38,6 +39,7 @@ import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
@@ -57,6 +59,7 @@ public class SubscriptionServiceImpl implements SubscriptionService {
     private final Logger log = LoggerFactory.getLogger(SubscriptionServiceImpl.class);
     private final SubscriptionRepository repository;
     private final ClientRepository clientRepository;
+    private final MonitorRepository monitorRepository;
     private final AuthenticatedUserService authenticatedUserService;
     private final SubscriptionHelper helper;
     private final SchedulerJobRunContext schedulerJobRunContext;
@@ -84,12 +87,32 @@ public class SubscriptionServiceImpl implements SubscriptionService {
     @Override
     @Transactional
     public void savePartnerBonusSubscription(Client partner, Monitor monitor) {
+        executePartnerBonusSubscription(partner, monitor);
+    }
+
+    @Override
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    public void schedulePartnerBonusAfterMonitorCommit(UUID partnerId, UUID monitorId) {
+        try {
+            Client partner = clientRepository.findById(partnerId).orElse(null);
+            Monitor monitor = monitorRepository.findById(monitorId).orElse(null);
+            if (partner == null || monitor == null) {
+                return;
+            }
+            executePartnerBonusSubscription(partner, monitor);
+        } catch (RuntimeException e) {
+            log.error("schedulePartnerBonusAfterMonitorCommit failed partnerId={} monitorId={}", partnerId, monitorId, e);
+        }
+    }
+
+    private void executePartnerBonusSubscription(Client partner, Monitor monitor) {
         if (repository.findActiveBonusSubscriptionByClientId(partner.getId()).isPresent()) {
             log.info("Partner with id: {} already has a bonus subscription, skipping creation.", partner.getId());
             return;
         }
 
-        if (Role.PARTNER.equals(partner.getRole()) && Objects.equals(monitor.getAddress().getClient().getId(), partner.getId())) {
+        if (Role.PARTNER.equals(partner.getRole()) && monitor.getAddress() != null && monitor.getAddress().getClient() != null
+                && Objects.equals(monitor.getAddress().getClient().getId(), partner.getId())) {
             log.info("Partner with id: {} is eligible for a bonus subscription.", partner.getId());
             Subscription subscription = new Subscription(partner, monitor);
             log.info("Subscription generated with id: {} for partner id: {}", subscription.getId(), partner.getId());
@@ -175,8 +198,11 @@ public class SubscriptionServiceImpl implements SubscriptionService {
     @Override
     @Transactional
     public void cancelBonusSubscription(Client partner) {
-        Subscription subscription = repository.findActiveBonusSubscriptionByClientId(partner.getId())
-                .orElseThrow(() -> new ResourceNotFoundException(SubscriptionValidationMessages.BONUS_SUBSCRIPTION_NOT_FOUND + partner.getId()));
+        Optional<Subscription> existing = repository.findActiveBonusSubscriptionByClientId(partner.getId());
+        if (existing.isEmpty()) {
+            return;
+        }
+        Subscription subscription = existing.get();
         updateSubscriptionStatusCancelled(subscription, Instant.now(), subscription.getClient().getBusinessName());
         helper.removeMonitorAdsFromSubscription(subscription);
         notifyClientsWishList(subscription);

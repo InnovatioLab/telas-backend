@@ -41,6 +41,8 @@ import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import java.util.*;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -85,9 +87,13 @@ public class MonitorServiceImpl implements MonitorService {
 
 		if (monitorId != null) {
 			validateAddressAvailability(address, monitorId);
-			List<Ad> ads = !ValidateDataUtils.isNullOrEmpty(request.getAds())
-				? helper.getAds(request, monitorId)
-				: Collections.emptyList();
+			List<Ad> ads;
+			if (!ValidateDataUtils.isNullOrEmpty(request.getAds())) {
+				ads = helper.getAds(request, monitorId);
+			} else {
+				Monitor current = findEntityById(monitorId);
+				ads = new ArrayList<>(current.getAds());
+			}
 			updateExistingMonitor(request, monitorId, authenticatedUser, address, ads);
 			return null;
 		}
@@ -98,14 +104,11 @@ public class MonitorServiceImpl implements MonitorService {
 
 	private void validateSaveAccess(UUID monitorId, AuthenticatedUser user) {
 		Client c = user.client();
-		if (monitorId == null) {
-			if (!c.isPrivilegedPanelUser()) {
-				throw new ForbiddenException(AuthValidationMessageConstants.ERROR_NO_PERMISSION);
-			}
+		if (c.isAdmin() || c.isDeveloper()) {
 			return;
 		}
-		if (c.isPrivilegedPanelUser()) {
-			return;
+		if (monitorId == null) {
+			throw new ForbiddenException(AuthValidationMessageConstants.ERROR_NO_PERMISSION);
 		}
 		Monitor monitor = findEntityById(monitorId);
 		if (c.isPartner() && partnerOwnsMonitorAddress(c, monitor)) {
@@ -410,7 +413,18 @@ public class MonitorServiceImpl implements MonitorService {
 			cancelPartnerBonusSubscription(oldPartner);
 		}
 		if (newPartner != null && newPartner.isPartner()) {
-			subscriptionService.savePartnerBonusSubscription(newPartner, monitor);
+			UUID partnerId = newPartner.getId();
+			UUID monitorId = monitor.getId();
+			if (TransactionSynchronizationManager.isSynchronizationActive()) {
+				TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+					@Override
+					public void afterCommit() {
+						subscriptionService.schedulePartnerBonusAfterMonitorCommit(partnerId, monitorId);
+					}
+				});
+			} else {
+				subscriptionService.schedulePartnerBonusAfterMonitorCommit(partnerId, monitorId);
+			}
 		}
 	}
 
@@ -418,8 +432,8 @@ public class MonitorServiceImpl implements MonitorService {
 	private void cancelPartnerBonusSubscription(Client partner) {
 		try {
 			subscriptionService.cancelBonusSubscription(partner);
-		} catch (ResourceNotFoundException e) {
-			log.info("Old partner {} had no bonus subscription to cancel.", partner.getId());
+		} catch (RuntimeException e) {
+			log.error("cancelPartnerBonusSubscription failed for partner {}: {}", partner.getId(), e.getMessage(), e);
 		}
 	}
 
@@ -580,7 +594,11 @@ public class MonitorServiceImpl implements MonitorService {
 
 
 	private Map<UUID, MonitorAdRequestDto> mapAdsById(MonitorRequestDto request) {
-		return request.getAds().stream().collect(Collectors.toMap(MonitorAdRequestDto::getId, dto -> dto));
+		if (ValidateDataUtils.isNullOrEmpty(request.getAds())) {
+			return Collections.emptyMap();
+		}
+		return request.getAds().stream()
+			.collect(Collectors.toMap(MonitorAdRequestDto::getId, dto -> dto, (a, b) -> a));
 	}
 
 

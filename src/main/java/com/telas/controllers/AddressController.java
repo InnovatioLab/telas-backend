@@ -11,4 +11,9 @@ public interface AddressController {
             @ApiResponse(responseCode = "200", description = "Success.")
     })
     ResponseEntity<?> findByZipCode(String zipCode);
+
+    @Operation(summary = "List available partner addresses for screen/monitor", responses = {
+            @ApiResponse(responseCode = "200", description = "Success.")
+    })
+    ResponseEntity<?> findAvailablePartnerAddresses(String q);
 }

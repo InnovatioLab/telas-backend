@@ -19,6 +19,8 @@ public interface SubscriptionService {
 
     void savePartnerBonusSubscription(Client partner, Monitor monitor);
 
+    void schedulePartnerBonusAfterMonitorCommit(UUID partnerId, UUID monitorId);
+
     String generateCustomerPortalSession() throws StripeException;
 
     SubscriptionResponseDto findById(UUID subscriptionId);

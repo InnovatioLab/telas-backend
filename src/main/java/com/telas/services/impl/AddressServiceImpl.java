@@ -2,10 +2,12 @@ package com.telas.services.impl;
 
 import com.telas.dtos.request.AddressRequestDto;
 import com.telas.dtos.response.AddressFromZipCodeResponseDto;
+import com.telas.dtos.response.AvailablePartnerAddressResponseDto;
 import com.telas.dtos.response.NearbySearchResponse;
 import com.telas.entities.Address;
 import com.telas.entities.Client;
 import com.telas.enums.DefaultStatus;
+import com.telas.enums.Role;
 import com.telas.infra.exceptions.BusinessRuleException;
 import com.telas.infra.exceptions.ResourceNotFoundException;
 import com.telas.repositories.AddressRepository;
@@ -113,6 +115,16 @@ public class AddressServiceImpl implements AddressService {
     public Address createAddress(AddressRequestDto addressRequestDto, Client client) {
         return Optional.ofNullable(verifyUniqueAddress(addressRequestDto, client))
                 .orElseGet(() -> createAddressForClient(addressRequestDto, client));
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<AvailablePartnerAddressResponseDto> findAvailablePartnerAddresses(String q) {
+        List<Address> addresses =
+                (q == null || q.trim().isEmpty())
+                        ? repository.findAvailablePartnerAddresses(Role.PARTNER, DefaultStatus.ACTIVE)
+                        : repository.findAvailablePartnerAddressesFiltered(Role.PARTNER, DefaultStatus.ACTIVE, q.trim());
+        return addresses.stream().map(AvailablePartnerAddressResponseDto::new).toList();
     }
 
     private Address createAddressForClient(AddressRequestDto addressRequestDto, Client client) {
