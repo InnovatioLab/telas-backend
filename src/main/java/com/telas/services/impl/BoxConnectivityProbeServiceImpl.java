@@ -214,46 +214,60 @@ public class BoxConnectivityProbeServiceImpl implements BoxConnectivityProbeServ
         SideApiAlertState next = prev.withLatest(outcome.up(), now);
         sideApiAlertStates.put(boxId, next);
 
-        if (outcome.up()) {
-            return;
-        }
-
-        boolean cooldownOk =
-                next.lastAlertAt == null
-                        || now.toEpochMilli() - next.lastAlertAt.toEpochMilli() >= sideApiAlertCooldownMs;
-        boolean stateChangedToDown = prev.lastUp != null && prev.lastUp && !next.lastUp;
-
-        if (!cooldownOk && !stateChangedToDown) {
-            return;
-        }
-
         String url = "http://" + ip + ":" + sideApiPort + normalizePath(sideApiPath);
         String notifiedAt = DateTimeFormatter.ISO_INSTANT.format(now.atOffset(ZoneOffset.UTC));
-        String detail = outcome.detail() != null ? outcome.detail() : "DOWN";
+        boolean prevUp = Boolean.TRUE.equals(prev.lastUp);
+        boolean prevDown = Boolean.FALSE.equals(prev.lastUp);
+        boolean isInitial = prev.lastUp == null;
 
-        Map<String, Object> meta = new HashMap<>();
-        meta.put("boxId", boxId.toString());
-        meta.put("boxIp", ip);
-        meta.put("sideApiUrl", url);
-        meta.put("detail", detail);
-        if (outcome.httpStatus() != null) {
-            meta.put("httpStatus", outcome.httpStatus());
+        if (!outcome.up()) {
+            if (isInitial || prevUp) {
+                String detail = outcome.detail() != null ? outcome.detail() : "DOWN";
+
+                Map<String, Object> meta = new HashMap<>();
+                meta.put("boxId", boxId.toString());
+                meta.put("boxIp", ip);
+                meta.put("sideApiUrl", url);
+                meta.put("detail", detail);
+                if (outcome.httpStatus() != null) {
+                    meta.put("httpStatus", outcome.httpStatus());
+                }
+                applicationLogService.persistSystemLog(
+                        "WARN",
+                        String.format("SIDE_API: box %s side API DOWN (%s)", ip, detail),
+                        "MONITORING",
+                        meta
+                );
+
+                Map<String, String> params = new HashMap<>();
+                params.put("boxIp", ip);
+                params.put("sideApiUrl", url);
+                params.put("detail", detail);
+                params.put("notifiedAt", notifiedAt);
+                developerNotificationService.notifyDevelopers(com.telas.enums.NotificationReference.SIDE_API_DOWN, params);
+            }
+            sideApiAlertStates.put(boxId, next.withAlertAt(now));
+            return;
         }
-        applicationLogService.persistSystemLog(
-                "WARN",
-                String.format("SIDE_API: box %s side API DOWN (%s)", ip, detail),
-                "MONITORING",
-                meta
-        );
 
-        Map<String, String> params = new HashMap<>();
-        params.put("boxIp", ip);
-        params.put("sideApiUrl", url);
-        params.put("detail", detail);
-        params.put("notifiedAt", notifiedAt);
-        developerNotificationService.notifyDevelopers(com.telas.enums.NotificationReference.SIDE_API_DOWN, params);
+        if (prevDown) {
+            Map<String, Object> meta = new HashMap<>();
+            meta.put("boxId", boxId.toString());
+            meta.put("boxIp", ip);
+            meta.put("sideApiUrl", url);
+            applicationLogService.persistSystemLog(
+                    "INFO",
+                    String.format("SIDE_API: box %s side API reactivated.", ip),
+                    "MONITORING",
+                    meta
+            );
 
-        sideApiAlertStates.put(boxId, next.withAlertAt(now));
+            Map<String, String> params = new HashMap<>();
+            params.put("boxIp", ip);
+            params.put("sideApiUrl", url);
+            params.put("notifiedAt", notifiedAt);
+            developerNotificationService.notifyDevelopers(com.telas.enums.NotificationReference.SIDE_API_UP, params);
+        }
     }
 
     private static String normalizePath(String p) {

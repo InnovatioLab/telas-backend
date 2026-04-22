@@ -35,6 +35,8 @@ public final class ClientMinResponseDto implements Serializable {
 
     private final String partnerAddressSummary;
 
+    private final int adsCount;
+
     private final Instant createdAt;
 
     private final Instant updatedAt;
@@ -54,6 +56,7 @@ public final class ClientMinResponseDto implements Serializable {
         status = entity.getStatus();
         contact = entity.getContact();
         partnerAddressSummary = resolvePartnerAddressSummary(entity);
+        adsCount = resolveAdsCount(entity);
         createdAt = entity.getCreatedAt();
         updatedAt = entity.getUpdatedAt();
         reactivatableByCurrentUser = computeReactivatable(entity, viewerClientId, hasDeactivatePermission);
@@ -84,5 +87,12 @@ public final class ClientMinResponseDto implements Serializable {
                 .map(Address::getCoordinatesParams)
                 .filter(s -> s != null && !s.isBlank())
                 .collect(Collectors.joining(" · "));
+    }
+
+    private static int resolveAdsCount(Client entity) {
+        if (!Role.PARTNER.equals(entity.getRole()) || entity.getAds() == null) {
+            return 0;
+        }
+        return entity.getAds().size();
     }
 }
