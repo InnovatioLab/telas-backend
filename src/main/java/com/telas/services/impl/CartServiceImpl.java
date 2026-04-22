@@ -11,15 +11,14 @@ import com.telas.infra.security.services.AuthenticatedUserService;
 import com.telas.repositories.CartItemRepository;
 import com.telas.repositories.CartRepository;
 import com.telas.repositories.MonitorRepository;
+import com.telas.repositories.SubscriptionRepository;
 import com.telas.repositories.SubscriptionFlowRepository;
 import com.telas.services.CartService;
-import com.telas.services.MonitorService;
 import com.telas.shared.constants.SharedConstants;
 import com.telas.shared.constants.valitation.CartValidationMessages;
 import com.telas.shared.constants.valitation.MonitorValidationMessages;
 import com.telas.shared.utils.ValidateDataUtils;
 import lombok.RequiredArgsConstructor;
-import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -32,6 +31,7 @@ public class CartServiceImpl implements CartService {
     private final CartRepository repository;
     private final CartItemRepository cartItemRepository;
     private final SubscriptionFlowRepository subscriptionFlowRepository;
+    private final SubscriptionRepository subscriptionRepository;
     private final AuthenticatedUserService authenticatedUserService;
     private final MonitorRepository monitorRepository;
 
@@ -75,10 +75,16 @@ public class CartServiceImpl implements CartService {
     @Override
     @Transactional
     public void inactivateCart(Cart cart) {
+        if (cart == null) {
+            return;
+        }
+        if (cart.getItems() != null && !cart.getItems().isEmpty()) {
+            cart.getItems().clear();
+        }
         if (cart.isActive()) {
             cart.inactivate();
-            repository.save(cart);
         }
+        repository.save(cart);
     }
 
     @Override
@@ -95,9 +101,18 @@ public class CartServiceImpl implements CartService {
     }
 
     @Override
-    @Transactional(readOnly = true)
+    @Transactional
     public Object getLoggedUserCart() {
         Client client = authenticatedUserService.getLoggedUser().client();
+
+        boolean hasActiveSubscription =
+                subscriptionRepository.findActiveSubscriptionsByClientId(client.getId()).stream().findAny().isPresent();
+
+        if (hasActiveSubscription) {
+            repository.findActiveByClientIdWithItens(client.getId()).ifPresent(this::inactivateCart);
+            return null;
+        }
+
         return repository.findActiveByClientIdWithItens(client.getId())
                 .map(cart -> getCartResponse(cart, cart.getItems().stream().map(CartItemResponseDto::new).toList()))
                 .orElse(null);
