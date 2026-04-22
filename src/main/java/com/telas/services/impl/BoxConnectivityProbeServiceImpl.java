@@ -13,8 +13,10 @@ import com.telas.services.ApplicationLogService;
 import com.telas.services.BoxConnectivityProbeService;
 import com.telas.services.BoxTailscalePingOutcome;
 import com.telas.services.BoxTailscalePingService;
+import com.telas.services.DeveloperNotificationService;
 import com.telas.services.HealthUpdateService;
 import com.telas.services.HeartbeatRecoveryService;
+import com.telas.services.SideApiHealthCheckService;
 import com.telas.shared.constants.MonitoringIncidentTypes;
 import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
@@ -24,12 +26,15 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
+import java.time.ZoneOffset;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 
 @Service
@@ -44,12 +49,28 @@ public class BoxConnectivityProbeServiceImpl implements BoxConnectivityProbeServ
     private final HealthUpdateService healthUpdateService;
     private final HeartbeatRecoveryService heartbeatRecoveryService;
     private final ApplicationLogService applicationLogService;
+    private final SideApiHealthCheckService sideApiHealthCheckService;
+    private final DeveloperNotificationService developerNotificationService;
+
+    private final Map<UUID, SideApiAlertState> sideApiAlertStates = new ConcurrentHashMap<>();
 
     @Value("${monitoring.box-connectivity-probe.enabled:true}")
     private boolean probeEnabled;
 
     @Value("${monitoring.box-connectivity-probe.drives-box-active-state:true}")
     private boolean drivesBoxActiveState;
+
+    @Value("${monitoring.sideapi.enabled:true}")
+    private boolean sideApiEnabled;
+
+    @Value("${monitoring.sideapi.port:8099}")
+    private int sideApiPort;
+
+    @Value("${monitoring.sideapi.path:/health}")
+    private String sideApiPath;
+
+    @Value("${monitoring.sideapi.alert.cooldown-ms:600000}")
+    private long sideApiAlertCooldownMs;
 
     @Override
     @Transactional(readOnly = true)
@@ -156,6 +177,11 @@ public class BoxConnectivityProbeServiceImpl implements BoxConnectivityProbeServ
                         ip,
                         detail);
             }
+
+            if (reachable) {
+                checkSideApiAndAlertDevIfDown(box, ip, now);
+            }
+
             applyActiveStateFromProbeIfEnabled(box, ip, outcome, reachable);
         }
         if (fail > 0) {
@@ -170,6 +196,85 @@ public class BoxConnectivityProbeServiceImpl implements BoxConnectivityProbeServ
                     boxes.size(),
                     ok,
                     0);
+        }
+    }
+
+    private void checkSideApiAndAlertDevIfDown(Box box, String ip, Instant now) {
+        if (!sideApiEnabled) {
+            return;
+        }
+        if (ip == null || ip.isBlank()) {
+            return;
+        }
+
+        SideApiHealthCheckService.SideApiHealthOutcome outcome = sideApiHealthCheckService.check(ip);
+
+        UUID boxId = box.getId();
+        SideApiAlertState prev = sideApiAlertStates.getOrDefault(boxId, SideApiAlertState.initial());
+        SideApiAlertState next = prev.withLatest(outcome.up(), now);
+        sideApiAlertStates.put(boxId, next);
+
+        if (outcome.up()) {
+            return;
+        }
+
+        boolean cooldownOk =
+                next.lastAlertAt == null
+                        || now.toEpochMilli() - next.lastAlertAt.toEpochMilli() >= sideApiAlertCooldownMs;
+        boolean stateChangedToDown = prev.lastUp != null && prev.lastUp && !next.lastUp;
+
+        if (!cooldownOk && !stateChangedToDown) {
+            return;
+        }
+
+        String url = "http://" + ip + ":" + sideApiPort + normalizePath(sideApiPath);
+        String notifiedAt = DateTimeFormatter.ISO_INSTANT.format(now.atOffset(ZoneOffset.UTC));
+        String detail = outcome.detail() != null ? outcome.detail() : "DOWN";
+
+        Map<String, Object> meta = new HashMap<>();
+        meta.put("boxId", boxId.toString());
+        meta.put("boxIp", ip);
+        meta.put("sideApiUrl", url);
+        meta.put("detail", detail);
+        if (outcome.httpStatus() != null) {
+            meta.put("httpStatus", outcome.httpStatus());
+        }
+        applicationLogService.persistSystemLog(
+                "WARN",
+                String.format("SIDE_API: box %s side API DOWN (%s)", ip, detail),
+                "MONITORING",
+                meta
+        );
+
+        Map<String, String> params = new HashMap<>();
+        params.put("boxIp", ip);
+        params.put("sideApiUrl", url);
+        params.put("detail", detail);
+        params.put("notifiedAt", notifiedAt);
+        developerNotificationService.notifyDevelopers(com.telas.enums.NotificationReference.SIDE_API_DOWN, params);
+
+        sideApiAlertStates.put(boxId, next.withAlertAt(now));
+    }
+
+    private static String normalizePath(String p) {
+        if (p == null || p.trim().isEmpty()) {
+            return "/health";
+        }
+        String trimmed = p.trim();
+        return trimmed.startsWith("/") ? trimmed : "/" + trimmed;
+    }
+
+    private record SideApiAlertState(Boolean lastUp, Instant lastCheckedAt, Instant lastAlertAt) {
+        static SideApiAlertState initial() {
+            return new SideApiAlertState(null, null, null);
+        }
+
+        SideApiAlertState withLatest(boolean up, Instant checkedAt) {
+            return new SideApiAlertState(up, checkedAt, lastAlertAt);
+        }
+
+        SideApiAlertState withAlertAt(Instant alertAt) {
+            return new SideApiAlertState(lastUp, lastCheckedAt, alertAt);
         }
     }
 

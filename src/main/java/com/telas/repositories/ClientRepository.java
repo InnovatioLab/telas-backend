@@ -35,6 +35,9 @@ public interface ClientRepository extends JpaRepository<Client, UUID>, JpaSpecif
     @Query("SELECT c FROM Client c WHERE c.role IN ('ADMIN', 'DEVELOPER')")
     List<Client> findAllAdminsAndDevelopers();
 
+    @Query("SELECT c FROM Client c WHERE c.role = 'DEVELOPER'")
+    List<Client> findAllDevelopers();
+
     @Query("SELECT c FROM Client c JOIN FETCH c.wishlist w LEFT JOIN FETCH w.monitors m WHERE m IN :monitors")
     List<Client> findAllByMonitorsInWishlist(Set<Monitor> monitors);
 }

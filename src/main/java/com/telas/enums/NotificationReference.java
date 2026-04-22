@@ -349,6 +349,38 @@ public enum NotificationReference {
             return createAdminNewPurchaseEmailData(params);
         }
     },
+    SIDE_API_DOWN {
+        @Override
+        public String getNotificationMessage(Map<String, String> params) {
+            return String.format("""
+                    <div class="informacoes">
+                        <h4 id="notification-title" class="notification-title">Side API DOWN</h4>
+                        <p>Box <strong>%s</strong> side API is <strong>DOWN</strong>.</p>
+                        <div class="field">
+                            <span class="field-label">Endpoint: </span>
+                            <span class="field-value">%s</span>
+                        </div>
+                        <div class="field">
+                            <span class="field-label">Detail: </span>
+                            <span class="field-value">%s</span>
+                        </div>
+                        <div class="field">
+                            <span class="field-label">Notification time: </span>
+                            <span class="field-value">%s</span>
+                        </div>
+                    </div>
+                    """,
+                    params.getOrDefault("boxIp", ""),
+                    params.getOrDefault("sideApiUrl", ""),
+                    params.getOrDefault("detail", ""),
+                    params.getOrDefault("notifiedAt", ""));
+        }
+
+        @Override
+        public EmailDataDto getEmailData(Map<String, String> params) {
+            return null;
+        }
+    },
     SUBSCRIPTION_ABOUT_TO_EXPIRY_5_DAYS {
         @Override
         public String getNotificationMessage(Map<String, String> params) {
