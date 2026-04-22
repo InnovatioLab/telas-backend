@@ -327,7 +327,6 @@ public class PaymentHelper {
             return;
         }
 
-
         if (recurrence.equals(subscription.getRecurrence())) {
             subscription.setEndsAt(recurrence.calculateEndsAtRenew(subscription));
             createRenewSubscriptionNotification(subscription);
@@ -337,6 +336,11 @@ public class PaymentHelper {
             subscription.setUpgrade(false);
             createUpgradeSubscriptionNotification(subscription);
         }
+
+        if (subscription.getStartedAt() == null) {
+            subscription.initialize();
+        }
+        handleSuccessfulPayment(payment, false);
     }
 
     @Transactional

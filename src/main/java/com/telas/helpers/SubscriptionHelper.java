@@ -109,8 +109,11 @@ public class SubscriptionHelper {
 
     @Transactional
     public void inactivateCart(Client client) {
-        Cart cart = cartService.findActiveByClientIdWithItens(client.getId());
-        cartService.inactivateCart(cart);
+        try {
+            Cart cart = cartService.findActiveByClientIdWithItens(client.getId());
+            cartService.inactivateCart(cart);
+        } catch (ResourceNotFoundException ignored) {
+        }
     }
 
     @Transactional
