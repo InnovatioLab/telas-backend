@@ -31,6 +31,7 @@ public interface AddressRepository extends JpaRepository<Address, UUID> {
           AND LOWER(a.city) = :city
           AND LOWER(a.state) = :state
           AND a.zipCode = :zipCode
+          AND COALESCE(LOWER(TRIM(a.address2)), '') = :address2
           AND c.status = :clientStatus
         """)
     Optional<Address> findActiveClientConflictByAddressData(
@@ -38,11 +39,25 @@ public interface AddressRepository extends JpaRepository<Address, UUID> {
         String city,
         String state,
         String zipCode,
+        String address2,
         DefaultStatus clientStatus
     );
 
-    @Query("SELECT a FROM Address a WHERE LOWER(a.street) = :street AND LOWER(a.city) = :city AND LOWER(a.state) = :state AND a.zipCode = :zipCode")
-    Optional<Address> findByStreetAndCityAndStateAndZipCode(String street, String city, String state, String zipCode);
+    @Query("""
+        SELECT a FROM Address a
+        WHERE LOWER(a.street) = :street
+          AND LOWER(a.city) = :city
+          AND LOWER(a.state) = :state
+          AND a.zipCode = :zipCode
+          AND COALESCE(LOWER(TRIM(a.address2)), '') = :address2
+        """)
+    Optional<Address> findByStreetAndCityAndStateAndZipCode(
+        String street,
+        String city,
+        String state,
+        String zipCode,
+        String address2
+    );
 
     @Query("""
         SELECT a

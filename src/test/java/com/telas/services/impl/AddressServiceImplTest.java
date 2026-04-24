@@ -16,6 +16,7 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
@@ -33,7 +34,7 @@ class AddressServiceImplTest {
         Address existing = new Address();
         existing.setClient(existingClient);
 
-        when(repo.findActiveClientConflictByAddressData(any(), any(), any(), any(), eq(DefaultStatus.ACTIVE)))
+        when(repo.findActiveClientConflictByAddressData(any(), any(), any(), any(), any(), eq(DefaultStatus.ACTIVE)))
             .thenReturn(Optional.of(existing));
 
         Client newClient = new Client();
@@ -62,7 +63,7 @@ class AddressServiceImplTest {
         Address existing = new Address();
         existing.setClient(client);
 
-        when(repo.findActiveClientConflictByAddressData(any(), any(), any(), any(), eq(DefaultStatus.ACTIVE)))
+        when(repo.findActiveClientConflictByAddressData(any(), any(), any(), any(), any(), eq(DefaultStatus.ACTIVE)))
             .thenReturn(Optional.of(existing));
 
         AddressRequestDto dto = new AddressRequestDto();
@@ -81,7 +82,7 @@ class AddressServiceImplTest {
         AddressRepository repo = mock(AddressRepository.class);
         AddressServiceImpl service = new AddressServiceImpl(repo);
 
-        when(repo.findActiveClientConflictByAddressData(any(), any(), any(), any(), eq(DefaultStatus.ACTIVE)))
+        when(repo.findActiveClientConflictByAddressData(any(), any(), any(), any(), any(), eq(DefaultStatus.ACTIVE)))
             .thenReturn(Optional.empty());
 
         Client client = new Client();
@@ -98,6 +99,34 @@ class AddressServiceImplTest {
 
         assertNotNull(result);
         assertEquals(client, result.getClient());
+    }
+
+    @Test
+    void createAddress_whenSameStreetCityStateZipButDifferentAddress2_resolvesNoConflict() {
+        AddressRepository repo = mock(AddressRepository.class);
+        AddressServiceImpl service = new AddressServiceImpl(repo);
+
+        when(repo.findActiveClientConflictByAddressData(
+                eq("1 main st"), eq("austin"), eq("tx"), eq("78701"), eq("suite b"), eq(DefaultStatus.ACTIVE)))
+            .thenReturn(Optional.empty());
+
+        Client client = new Client();
+        client.setId(UUID.randomUUID());
+        client.setStatus(DefaultStatus.ACTIVE);
+
+        AddressRequestDto dto = new AddressRequestDto();
+        dto.setStreet("1 main st");
+        dto.setCity("Austin");
+        dto.setState("TX");
+        dto.setZipCode("78701");
+        dto.setAddress2("  Suite B  ");
+
+        Address result = service.createAddress(dto, client);
+
+        assertNotNull(result);
+        assertEquals(client, result.getClient());
+        verify(repo).findActiveClientConflictByAddressData(
+                eq("1 main st"), eq("austin"), eq("tx"), eq("78701"), eq("suite b"), eq(DefaultStatus.ACTIVE));
     }
 }
 

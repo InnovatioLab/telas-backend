@@ -38,13 +38,21 @@ public class AddressServiceImpl implements AddressService {
         addresses.forEach(request -> createAddress(request, client));
     }
 
+    private static String normalizeAddress2Key(String address2) {
+        if (address2 == null || address2.isBlank()) {
+            return "";
+        }
+        return address2.trim().toLowerCase();
+    }
+
     private Address verifyUniqueAddress(AddressRequestDto addressDto, Client client) {
         String street = addressDto.getStreet().toLowerCase();
         String city = addressDto.getCity().toLowerCase();
         String state = addressDto.getState().toLowerCase();
         String zip = addressDto.getZipCode().toLowerCase();
+        String address2Key = normalizeAddress2Key(addressDto.getAddress2());
 
-        return repository.findActiveClientConflictByAddressData(street, city, state, zip, DefaultStatus.ACTIVE)
+        return repository.findActiveClientConflictByAddressData(street, city, state, zip, address2Key, DefaultStatus.ACTIVE)
                 .map(existing -> {
                     if (client != null) {
                         if (client.getId() == null || !client.getId().equals(existing.getClient().getId())) {
@@ -102,11 +110,13 @@ public class AddressServiceImpl implements AddressService {
     @Override
     @Transactional
     public Address getPartnerAddress(AddressRequestDto addressRequestDto) {
+        String address2Key = normalizeAddress2Key(addressRequestDto.getAddress2());
         return repository.findByStreetAndCityAndStateAndZipCode(
                 addressRequestDto.getStreet().toLowerCase(),
                 addressRequestDto.getCity().toLowerCase(),
                 addressRequestDto.getState().toLowerCase(),
-                addressRequestDto.getZipCode().toLowerCase()
+                addressRequestDto.getZipCode().toLowerCase(),
+                address2Key
         ).orElseThrow(() -> new ResourceNotFoundException(AddressValidationMessages.PARTNER_ADDRESS_NOT_FOUND));
     }
 
