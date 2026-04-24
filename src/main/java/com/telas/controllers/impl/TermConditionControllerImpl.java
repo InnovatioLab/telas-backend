@@ -17,13 +17,12 @@ import org.springframework.web.bind.annotation.RestController;
 @RequiredArgsConstructor
 public class TermConditionControllerImpl implements TermConditionController {
     private final TermConditionService service;
-    private final CacheControl oneDayCacheControl;
 
     @Override
     @GetMapping
     public ResponseEntity<?> getTerms() {
         return ResponseEntity.status(HttpStatus.OK)
-                .cacheControl(oneDayCacheControl)
+                .cacheControl(CacheControl.noStore())
                 .body(ResponseDto.fromData(service.getActualTermCondition(), HttpStatus.OK, MessageCommonsConstants.FIND_ID_SUCCESS_MESSAGE));
     }
 }

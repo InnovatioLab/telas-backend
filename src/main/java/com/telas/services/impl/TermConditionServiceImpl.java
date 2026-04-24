@@ -16,12 +16,12 @@ public class TermConditionServiceImpl implements TermConditionService {
   @Override
   @Transactional(readOnly = true)
   public TermConditionResponseDto getActualTermCondition() {
-    return new TermConditionResponseDto(termConditionRepository.findLatest());
+    return new TermConditionResponseDto(termConditionRepository.findTopByOrderByUpdatedAtDesc());
   }
 
   @Override
   @Transactional(readOnly = true)
   public TermCondition getLastTermCondition() {
-    return termConditionRepository.findLatest();
+    return termConditionRepository.findTopByOrderByUpdatedAtDesc();
   }
 }
