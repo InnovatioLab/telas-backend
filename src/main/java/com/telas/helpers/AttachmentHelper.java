@@ -191,7 +191,7 @@ public class AttachmentHelper {
         notificationService.save(
                 NotificationReference.AD_RECEIVED,
                 client,
-                Map.of("link", frontBaseUrl + "/client/my-telas"),
+                Map.of("link", frontBaseUrl + "/client/my-telas?tab=ads"),
                 false
         );
 
@@ -217,7 +217,7 @@ public class AttachmentHelper {
         notificationService.save(
                 NotificationReference.AD_RECEIVED,
                 ad.getClient(),
-                Map.of("link", frontBaseUrl + "/client/my-telas"),
+                Map.of("link", frontBaseUrl + "/client/my-telas?tab=ads"),
                 false
         );
 

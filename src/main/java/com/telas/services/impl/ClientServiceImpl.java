@@ -146,8 +146,11 @@ public class ClientServiceImpl implements ClientService {
 	@Transactional(readOnly = true)
 	public ClientResponseDto getDataFromToken() {
 		UUID clientId = authenticatedUserService.getLoggedUser().client().getId();
-		return buildClientResponse(repository.findActiveIdFromToken(clientId)
-			.orElseThrow(() -> new ResourceNotFoundException(ClientValidationMessages.USER_NOT_FOUND)));
+		Client client = repository.findActiveIdFromToken(clientId)
+			.orElseThrow(() -> new ResourceNotFoundException(ClientValidationMessages.USER_NOT_FOUND));
+		client.getAttachments().size();
+		client.getAds().size();
+		return buildClientResponse(client);
 	}
 
 
