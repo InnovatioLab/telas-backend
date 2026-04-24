@@ -17,13 +17,12 @@ import org.springframework.web.bind.annotation.RestController;
 @RequiredArgsConstructor
 public class PrivacyPolicyControllerImpl implements PrivacyPolicyController {
     private final PrivacyPolicyService service;
-    private final CacheControl oneDayCacheControl;
 
     @Override
     @GetMapping
     public ResponseEntity<?> getPolicyPrivacy() {
         return ResponseEntity.status(HttpStatus.OK)
-                .cacheControl(oneDayCacheControl)
+                .cacheControl(CacheControl.noStore())
                 .body(ResponseDto.fromData(service.getActualPolicyPrivacy(), HttpStatus.OK, MessageCommonsConstants.FIND_ID_SUCCESS_MESSAGE));
     }
 }

@@ -15,6 +15,6 @@ public class PrivacyPolicyServiceImpl implements PrivacyPolicyService {
   @Override
   @Transactional(readOnly = true)
   public PrivacyPolicyResponseDto getActualPolicyPrivacy() {
-    return new PrivacyPolicyResponseDto(repository.findLatest());
+    return new PrivacyPolicyResponseDto(repository.findTopByOrderByUpdatedAtDesc());
   }
 }
