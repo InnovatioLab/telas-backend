@@ -3,6 +3,7 @@ package com.telas.shared.constants.valitation;
 public final class ClientValidationMessages {
     public static final String BUSINESS_NAME_REQUIRED = "Business name is required.";
     public static final String BUSINESS_NAME_SIZE = "Business name must be lass than 255 characters.";
+    public static final String BUSINESS_NAME_RESERVED = "Business name is reserved and cannot be used.";
     public static final String INDUSTRY_SIZE = "Industry must be less than 50 characters.";
     public static final String CONTACT_REQUIRED = "Contact is required.";
     public static final String ADDRESSES_REQUIRED = "Addresses are required.";

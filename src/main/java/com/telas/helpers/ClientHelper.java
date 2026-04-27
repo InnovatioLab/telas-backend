@@ -59,7 +59,18 @@ public class ClientHelper {
     @Transactional(readOnly = true)
     public void validateClientRequest(ClientRequestDto request, Client client) {
         request.validate();
+        validateReservedBusinessName(request.getBusinessName());
         verifyUniqueEmail(request, client);
+    }
+
+    private void validateReservedBusinessName(String businessName) {
+        if (businessName == null) {
+            return;
+        }
+        String normalized = businessName.trim();
+        if (normalized.equalsIgnoreCase("admin")) {
+            throw new BusinessRuleException(ClientValidationMessages.BUSINESS_NAME_RESERVED);
+        }
     }
 
     @Transactional
