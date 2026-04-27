@@ -236,7 +236,7 @@ public class AttachmentHelper {
     private void setAdValidationDuringUpdate(Ad entity) {
         Client client = entity.getClient();
 
-        if (client.isPrivilegedPanelUser() || (client.isPartner() && !client.getApprovedAds().isEmpty())) {
+        if (client.isPrivilegedPanelUser()) {
             entity.setValidation(AdValidationType.APPROVED);
             return;
         }
