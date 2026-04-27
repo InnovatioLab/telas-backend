@@ -97,14 +97,7 @@ public class ClientServiceImpl implements ClientService {
 
 		client.setVerificationCode(verificationCode);
 
-		if (Objects.equals(client.getBusinessName(), "Admin")) {
-			client.setRole(Role.ADMIN);
-			TermCondition actualTermCondition = termConditionService.getLastTermCondition();
-			client.setTermCondition(actualTermCondition);
-			client.setTermAcceptedAt(Instant.now());
-		} else {
-			client.setRole(Role.CLIENT);
-		}
+		client.setRole(Role.CLIENT);
 
 		Client savedClient = repository.save(client);
 		if (Role.ADMIN.equals(savedClient.getRole())) {
