@@ -14,6 +14,20 @@ import java.util.UUID;
 @Repository
 public interface AdRepository extends JpaRepository<Ad, UUID>, JpaSpecificationExecutor<Ad> {
 
+	interface ApprovedCountByClientRow {
+		UUID getClientId();
+		long getApprovedCount();
+	}
+
+	@Query("""
+		SELECT ad.client.id as clientId, COUNT(ad) as approvedCount
+		FROM Ad ad
+		WHERE ad.client.id IN :clientIds
+		  AND ad.validation = 'APPROVED'
+		GROUP BY ad.client.id
+		""")
+	List<ApprovedCountByClientRow> countApprovedAdsByClientIds(@Param("clientIds") List<UUID> clientIds);
+
 	@Query(
 			value = """
 					SELECT a.id FROM ads a

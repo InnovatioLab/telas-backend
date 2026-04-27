@@ -384,6 +384,20 @@ public enum NotificationReference {
     SIDE_API_UP {
         @Override
         public String getNotificationMessage(Map<String, String> params) {
+            String downtime = params.getOrDefault("downtime", "");
+            String downtimeBlock = "";
+            if (downtime != null && !downtime.isBlank()) {
+                downtimeBlock =
+                        """
+                        <div class="field">
+                            <span class="field-label">Downtime: </span>
+                            <span class="field-value">"""
+                        + downtime
+                        + """
+                        </span>
+                        </div>
+                        """;
+            }
             return String.format("""
                     <div class="informacoes">
                         <h4 id="notification-title" class="notification-title">Side API reactivated</h4>
@@ -395,12 +409,13 @@ public enum NotificationReference {
                         <div class="field">
                             <span class="field-label">Notification time: </span>
                             <span class="field-value">%s</span>
-                        </div>
+                        </div>%s
                     </div>
                     """,
                     params.getOrDefault("boxIp", ""),
                     params.getOrDefault("sideApiUrl", ""),
-                    params.getOrDefault("notifiedAt", ""));
+                    params.getOrDefault("notifiedAt", ""),
+                    downtimeBlock);
         }
 
         @Override

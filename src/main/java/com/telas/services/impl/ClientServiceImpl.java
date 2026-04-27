@@ -25,6 +25,7 @@ import com.telas.infra.security.model.PasswordRequestDto;
 import com.telas.infra.security.model.PasswordUpdateRequestDto;
 import com.telas.infra.security.services.AuthenticatedUserService;
 import com.telas.repositories.AdRequestRepository;
+import com.telas.repositories.AdRepository;
 import com.telas.repositories.ClientRepository;
 import com.telas.services.AdminEmailAlertPreferenceService;
 import com.telas.services.BucketService;
@@ -78,6 +79,8 @@ public class ClientServiceImpl implements ClientService {
 	private final TermConditionService termConditionService;
 
 	private final AdRequestRepository adRequestRepository;
+
+	private final AdRepository adRepository;
 
 	private final PermissionService permissionService;
 
@@ -451,8 +454,27 @@ public class ClientServiceImpl implements ClientService {
 		Page<Client> page = repository.findAll(filter, pageable);
 		boolean canDeactivate = permissionService.hasPermission(actor, Permission.ADMIN_CLIENTS_DEACTIVATE);
 		UUID viewerId = actor.getId();
-		List<ClientMinResponseDto> response = page.stream()
-				.map(c -> new ClientMinResponseDto(c, viewerId, canDeactivate))
+
+		List<Client> clients = page.getContent();
+		List<UUID> partnerIds = clients.stream()
+				.filter(c -> Role.PARTNER.equals(c.getRole()))
+				.map(Client::getId)
+				.filter(Objects::nonNull)
+				.toList();
+
+		Map<UUID, Integer> approvedAdsCountByClientId = new HashMap<>();
+		if (!partnerIds.isEmpty()) {
+			adRepository.countApprovedAdsByClientIds(partnerIds).forEach(row ->
+					approvedAdsCountByClientId.put(row.getClientId(), Math.toIntExact(row.getApprovedCount())));
+		}
+
+		List<ClientMinResponseDto> response = clients.stream()
+				.map(c -> new ClientMinResponseDto(
+						c,
+						viewerId,
+						canDeactivate,
+						approvedAdsCountByClientId.get(c.getId())
+				))
 				.toList();
 		return PaginationResponseDto.fromResult(response, (int) page.getTotalElements(), page.getTotalPages(),
 				request.getPage());

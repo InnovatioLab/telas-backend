@@ -27,6 +27,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
 import java.time.ZoneOffset;
+import java.time.Duration;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -36,6 +37,7 @@ import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
+import com.telas.shared.utils.DateUtils;
 
 @Service
 @RequiredArgsConstructor
@@ -211,9 +213,6 @@ public class BoxConnectivityProbeServiceImpl implements BoxConnectivityProbeServ
 
         UUID boxId = box.getId();
         SideApiAlertState prev = sideApiAlertStates.getOrDefault(boxId, SideApiAlertState.initial());
-        SideApiAlertState next = prev.withLatest(outcome.up(), now);
-        sideApiAlertStates.put(boxId, next);
-
         String url = "http://" + ip + ":" + sideApiPort + normalizePath(sideApiPath);
         String notifiedAt = DateTimeFormatter.ISO_INSTANT.format(now.atOffset(ZoneOffset.UTC));
         boolean prevUp = Boolean.TRUE.equals(prev.lastUp);
@@ -221,7 +220,13 @@ public class BoxConnectivityProbeServiceImpl implements BoxConnectivityProbeServ
         boolean isInitial = prev.lastUp == null;
 
         if (!outcome.up()) {
-            if (isInitial || prevUp) {
+            Instant downSinceAt = prevDown ? prev.downSinceAt : now;
+            SideApiAlertState next = prev.withLatest(false, now, downSinceAt);
+
+            boolean cooldownOk = prev.lastAlertAt == null
+                    || Duration.between(prev.lastAlertAt, now).toMillis() >= sideApiAlertCooldownMs;
+
+            if ((isInitial || prevUp) && cooldownOk) {
                 String detail = outcome.detail() != null ? outcome.detail() : "DOWN";
 
                 Map<String, Object> meta = new HashMap<>();
@@ -245,8 +250,10 @@ public class BoxConnectivityProbeServiceImpl implements BoxConnectivityProbeServ
                 params.put("detail", detail);
                 params.put("notifiedAt", notifiedAt);
                 developerNotificationService.notifyDevelopers(com.telas.enums.NotificationReference.SIDE_API_DOWN, params);
+
+                next = next.withAlertAt(now);
             }
-            sideApiAlertStates.put(boxId, next.withAlertAt(now));
+            sideApiAlertStates.put(boxId, next);
             return;
         }
 
@@ -266,8 +273,16 @@ public class BoxConnectivityProbeServiceImpl implements BoxConnectivityProbeServ
             params.put("boxIp", ip);
             params.put("sideApiUrl", url);
             params.put("notifiedAt", notifiedAt);
+            if (prev.downSinceAt != null) {
+                String downtime = DateUtils.formatDurationHuman(Duration.between(prev.downSinceAt, now));
+                if (downtime != null && !downtime.isBlank()) {
+                    params.put("downtime", downtime);
+                }
+            }
             developerNotificationService.notifyDevelopers(com.telas.enums.NotificationReference.SIDE_API_UP, params);
         }
+
+        sideApiAlertStates.put(boxId, prev.withLatest(true, now, null));
     }
 
     private static String normalizePath(String p) {
@@ -278,17 +293,17 @@ public class BoxConnectivityProbeServiceImpl implements BoxConnectivityProbeServ
         return trimmed.startsWith("/") ? trimmed : "/" + trimmed;
     }
 
-    private record SideApiAlertState(Boolean lastUp, Instant lastCheckedAt, Instant lastAlertAt) {
+    private record SideApiAlertState(Boolean lastUp, Instant lastCheckedAt, Instant lastAlertAt, Instant downSinceAt) {
         static SideApiAlertState initial() {
-            return new SideApiAlertState(null, null, null);
+            return new SideApiAlertState(null, null, null, null);
         }
 
-        SideApiAlertState withLatest(boolean up, Instant checkedAt) {
-            return new SideApiAlertState(up, checkedAt, lastAlertAt);
+        SideApiAlertState withLatest(boolean up, Instant checkedAt, Instant downSinceAt) {
+            return new SideApiAlertState(up, checkedAt, lastAlertAt, downSinceAt);
         }
 
         SideApiAlertState withAlertAt(Instant alertAt) {
-            return new SideApiAlertState(lastUp, lastCheckedAt, alertAt);
+            return new SideApiAlertState(lastUp, lastCheckedAt, alertAt, downSinceAt);
         }
     }
 

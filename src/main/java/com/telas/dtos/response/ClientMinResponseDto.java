@@ -3,6 +3,7 @@ package com.telas.dtos.response;
 import com.telas.entities.Address;
 import com.telas.entities.Client;
 import com.telas.entities.Contact;
+import com.telas.enums.AdValidationType;
 import com.telas.enums.DefaultStatus;
 import com.telas.enums.Role;
 import lombok.Getter;
@@ -62,6 +63,22 @@ public final class ClientMinResponseDto implements Serializable {
         reactivatableByCurrentUser = computeReactivatable(entity, viewerClientId, hasDeactivatePermission);
     }
 
+    public ClientMinResponseDto(
+            Client entity, UUID viewerClientId, boolean hasDeactivatePermission, Integer approvedAdsCount) {
+        id = entity.getId();
+        businessName = entity.getBusinessName();
+        role = entity.getRole();
+        industry = entity.getIndustry();
+        websiteUrl = entity.getWebsiteUrl();
+        status = entity.getStatus();
+        contact = entity.getContact();
+        partnerAddressSummary = resolvePartnerAddressSummary(entity);
+        adsCount = approvedAdsCount != null ? approvedAdsCount : resolveAdsCount(entity);
+        createdAt = entity.getCreatedAt();
+        updatedAt = entity.getUpdatedAt();
+        reactivatableByCurrentUser = computeReactivatable(entity, viewerClientId, hasDeactivatePermission);
+    }
+
     private static boolean computeReactivatable(
             Client entity, UUID viewerId, boolean hasDeactivatePermission) {
         if (!hasDeactivatePermission || viewerId == null) {
@@ -93,6 +110,8 @@ public final class ClientMinResponseDto implements Serializable {
         if (!Role.PARTNER.equals(entity.getRole()) || entity.getAds() == null) {
             return 0;
         }
-        return entity.getAds().size();
+        return (int) entity.getAds().stream()
+                .filter(ad -> ad != null && AdValidationType.APPROVED.equals(ad.getValidation()))
+                .count();
     }
 }
