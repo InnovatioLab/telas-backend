@@ -62,7 +62,7 @@ public class SmartPlugAdminController {
         AuthenticatedUser user = authenticatedUserService.getLoggedUser();
         Client client = user.client();
         if (!client.isPrivilegedPanelUser()) {
-            authenticatedUserService.validatePermission(Permission.MONITORING_SMART_PLUG_ADMIN);
+            authenticatedUserService.validatePermission(Permission.MONITORING_SMART_PLUG_DISCOVERY_RUN);
         }
         Map<String, Object> summary = smartPlugIpDiscoveryService.runDiscoveryCycle();
         return ResponseEntity.status(HttpStatus.OK)
@@ -87,7 +87,7 @@ public class SmartPlugAdminController {
             @RequestParam(name = "from", required = false) Instant from,
             @RequestParam(name = "to", required = false) Instant to,
             @RequestParam(name = "limit", required = false, defaultValue = "200") int limit) {
-        authenticatedUserService.validatePermission(Permission.MONITORING_SMART_PLUG_VIEW);
+        authenticatedUserService.validatePermission(Permission.MONITORING_SMART_PLUG_HISTORY_VIEW);
         List<SmartPlugHistoryPointResponseDto> list = smartPlugOverviewService.history(id, from, to, limit);
         return ResponseEntity.status(HttpStatus.OK)
                 .body(ResponseDto.fromData(list, HttpStatus.OK, MessageCommonsConstants.FIND_ALL_SUCCESS_MESSAGE));
@@ -99,7 +99,7 @@ public class SmartPlugAdminController {
     public ResponseEntity<?> listUnassigned(
             @RequestParam(name = "forMonitorId", required = false) UUID forMonitorId,
             @RequestParam(name = "forBoxId", required = false) UUID forBoxId) {
-        authenticatedUserService.validateAdmin();
+        authenticatedUserService.validatePermission(Permission.MONITORING_SMART_PLUG_VIEW);
         List<SmartPlugResponseDto> list =
                 smartPlugAdminService.findUnassignedInventory(forMonitorId, forBoxId);
         return ResponseEntity.status(HttpStatus.OK)
@@ -112,7 +112,7 @@ public class SmartPlugAdminController {
             description = "Apenas DEVELOPER: criação já associada a um ecrã.")
     @SecurityRequirement(name = "jwt")
     public ResponseEntity<?> create(@Valid @RequestBody SmartPlugRequestDto dto) {
-        authenticatedUserService.validateDeveloper();
+        authenticatedUserService.validatePermission(Permission.MONITORING_SMART_PLUG_ASSIGN_MONITOR);
         SmartPlugResponseDto data = smartPlugAdminService.create(dto);
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(ResponseDto.fromData(data, HttpStatus.CREATED, MessageCommonsConstants.SAVE_SUCCESS_MESSAGE));
@@ -124,7 +124,7 @@ public class SmartPlugAdminController {
             description = "Apenas DEVELOPER.")
     @SecurityRequirement(name = "jwt")
     public ResponseEntity<?> createInventory(@Valid @RequestBody SmartPlugInventoryRequestDto dto) {
-        authenticatedUserService.validateDeveloper();
+        authenticatedUserService.validatePermission(Permission.MONITORING_SMART_PLUG_INVENTORY_CREATE);
         SmartPlugResponseDto data = smartPlugAdminService.createInventory(dto);
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(ResponseDto.fromData(data, HttpStatus.CREATED, MessageCommonsConstants.SAVE_SUCCESS_MESSAGE));
@@ -135,7 +135,7 @@ public class SmartPlugAdminController {
     @SecurityRequirement(name = "jwt")
     public ResponseEntity<?> assign(
             @PathVariable UUID plugId, @PathVariable UUID monitorId) {
-        authenticatedUserService.validateDeveloper();
+        authenticatedUserService.validatePermission(Permission.MONITORING_SMART_PLUG_ASSIGN_MONITOR);
         SmartPlugResponseDto data = smartPlugAdminService.assignToMonitor(plugId, monitorId);
         return ResponseEntity.status(HttpStatus.OK)
                 .body(ResponseDto.fromData(data, HttpStatus.OK, MessageCommonsConstants.UPDATE_SUCCESS_MESSAGE));
@@ -146,7 +146,7 @@ public class SmartPlugAdminController {
     @SecurityRequirement(name = "jwt")
     public ResponseEntity<?> assignToBox(
             @PathVariable UUID plugId, @PathVariable UUID boxId) {
-        authenticatedUserService.validateDeveloper();
+        authenticatedUserService.validatePermission(Permission.MONITORING_SMART_PLUG_ASSIGN_BOX);
         SmartPlugResponseDto data = smartPlugAdminService.assignToBox(plugId, boxId);
         return ResponseEntity.status(HttpStatus.OK)
                 .body(ResponseDto.fromData(data, HttpStatus.OK, MessageCommonsConstants.UPDATE_SUCCESS_MESSAGE));
@@ -156,7 +156,7 @@ public class SmartPlugAdminController {
     @Operation(summary = "Devolve tomada ao inventário", description = "Apenas DEVELOPER.")
     @SecurityRequirement(name = "jwt")
     public ResponseEntity<?> unassign(@PathVariable UUID plugId) {
-        authenticatedUserService.validateDeveloper();
+        authenticatedUserService.validatePermission(Permission.MONITORING_SMART_PLUG_ASSIGN_MONITOR);
         SmartPlugResponseDto data = smartPlugAdminService.unassign(plugId);
         return ResponseEntity.status(HttpStatus.OK)
                 .body(ResponseDto.fromData(data, HttpStatus.OK, MessageCommonsConstants.UPDATE_SUCCESS_MESSAGE));
@@ -166,7 +166,7 @@ public class SmartPlugAdminController {
     @Operation(summary = "Atualiza metadados da tomada (sem alterar associação por aqui)")
     @SecurityRequirement(name = "jwt")
     public ResponseEntity<?> update(@PathVariable UUID id, @Valid @RequestBody SmartPlugUpdateRequestDto dto) {
-        authenticatedUserService.validatePermission(Permission.MONITORING_SMART_PLUG_ADMIN);
+        authenticatedUserService.validatePermission(Permission.MONITORING_SMART_PLUG_INVENTORY_EDIT);
         SmartPlugResponseDto data = smartPlugAdminService.update(id, dto);
         return ResponseEntity.status(HttpStatus.OK)
                 .body(ResponseDto.fromData(data, HttpStatus.OK, MessageCommonsConstants.UPDATE_SUCCESS_MESSAGE));
@@ -176,7 +176,7 @@ public class SmartPlugAdminController {
     @Operation(summary = "Remove tomada")
     @SecurityRequirement(name = "jwt")
     public ResponseEntity<?> delete(@PathVariable UUID id) {
-        authenticatedUserService.validatePermission(Permission.MONITORING_SMART_PLUG_ADMIN);
+        authenticatedUserService.validatePermission(Permission.MONITORING_SMART_PLUG_INVENTORY_DELETE);
         smartPlugAdminService.delete(id);
         return ResponseEntity.status(HttpStatus.OK)
                 .body(ResponseDto.fromData(null, HttpStatus.OK, MessageCommonsConstants.DELETE_SUCCESS_MESSAGE));
@@ -186,7 +186,7 @@ public class SmartPlugAdminController {
     @Operation(summary = "Testa leitura da tomada (stub ou sidecar)")
     @SecurityRequirement(name = "jwt")
     public ResponseEntity<?> testRead(@PathVariable UUID id) {
-        authenticatedUserService.validatePermission(Permission.MONITORING_TESTING_EXECUTE);
+        authenticatedUserService.validatePermission(Permission.MONITORING_SMART_PLUG_TEST_READ);
         SmartPlugReadingResponseDto data = smartPlugAdminService.testRead(id);
         return ResponseEntity.status(HttpStatus.OK)
                 .body(ResponseDto.fromData(data, HttpStatus.OK, MessageCommonsConstants.FIND_ID_SUCCESS_MESSAGE));

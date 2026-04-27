@@ -17,6 +17,7 @@ import com.telas.monitoring.plug.SmartPlugCredentials;
 import com.telas.monitoring.repositories.SmartPlugEntityRepository;
 import com.telas.repositories.BoxRepository;
 import com.telas.repositories.MonitorRepository;
+import com.telas.services.ApplicationLogService;
 import com.telas.services.SmartPlugAdminService;
 import com.telas.shared.constants.valitation.BoxValidationMessages;
 import com.telas.shared.constants.valitation.MonitorValidationMessages;
@@ -27,9 +28,11 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
 import java.time.Instant;
+import java.util.HashMap;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
@@ -42,6 +45,7 @@ public class SmartPlugAdminServiceImpl implements SmartPlugAdminService {
     private final BoxRepository boxRepository;
     private final AesTextEncryptionService encryptionService;
     private final SmartPlugClient smartPlugClient;
+    private final ApplicationLogService applicationLogService;
 
     @Override
     @Transactional(readOnly = true)
@@ -106,6 +110,17 @@ public class SmartPlugAdminServiceImpl implements SmartPlugAdminService {
         entity.setCreatedAt(Instant.now());
         entity.setUpdatedAt(Instant.now());
         smartPlugEntityRepository.save(entity);
+        applicationLogService.persistSystemLog(
+                "INFO",
+                "Smart plug registered and linked to monitor",
+                "SMART_PLUG",
+                Map.of(
+                        "plugId",
+                        entity.getId(),
+                        "macAddress",
+                        entity.getMacAddress(),
+                        "monitorId",
+                        monitor.getId()));
         return new SmartPlugResponseDto(entity);
     }
 
@@ -130,6 +145,11 @@ public class SmartPlugAdminServiceImpl implements SmartPlugAdminService {
         entity.setCreatedAt(Instant.now());
         entity.setUpdatedAt(Instant.now());
         smartPlugEntityRepository.save(entity);
+        applicationLogService.persistSystemLog(
+                "INFO",
+                "Smart plug saved to inventory",
+                "SMART_PLUG",
+                Map.of("plugId", entity.getId(), "macAddress", entity.getMacAddress()));
         return new SmartPlugResponseDto(entity);
     }
 
@@ -162,6 +182,11 @@ public class SmartPlugAdminServiceImpl implements SmartPlugAdminService {
         plug.setBox(null);
         plug.setUpdatedAt(Instant.now());
         smartPlugEntityRepository.save(plug);
+        applicationLogService.persistSystemLog(
+                "INFO",
+                "Smart plug assigned to monitor",
+                "SMART_PLUG",
+                Map.of("plugId", plug.getId(), "monitorId", monitor.getId()));
         return new SmartPlugResponseDto(plug);
     }
 
@@ -194,6 +219,11 @@ public class SmartPlugAdminServiceImpl implements SmartPlugAdminService {
         plug.setMonitor(null);
         plug.setUpdatedAt(Instant.now());
         smartPlugEntityRepository.save(plug);
+        applicationLogService.persistSystemLog(
+                "INFO",
+                "Smart plug assigned to box",
+                "SMART_PLUG",
+                Map.of("plugId", plug.getId(), "boxId", box.getId()));
         return new SmartPlugResponseDto(plug);
     }
 
@@ -211,6 +241,11 @@ public class SmartPlugAdminServiceImpl implements SmartPlugAdminService {
         plug.setBox(null);
         plug.setUpdatedAt(Instant.now());
         smartPlugEntityRepository.save(plug);
+        applicationLogService.persistSystemLog(
+                "INFO",
+                "Smart plug unassigned back to inventory",
+                "SMART_PLUG",
+                Map.of("plugId", plug.getId()));
         return new SmartPlugResponseDto(plug);
     }
 
@@ -261,6 +296,11 @@ public class SmartPlugAdminServiceImpl implements SmartPlugAdminService {
                                         new ResourceNotFoundException(
                                                 MonitoringValidationMessages.SMART_PLUG_NOT_FOUND));
         smartPlugEntityRepository.delete(entity);
+        applicationLogService.persistSystemLog(
+                "WARN",
+                "Smart plug deleted from inventory",
+                "SMART_PLUG",
+                Map.of("plugId", entity.getId(), "macAddress", entity.getMacAddress()));
     }
 
     @Override
@@ -284,6 +324,18 @@ public class SmartPlugAdminServiceImpl implements SmartPlugAdminService {
             creds = new SmartPlugCredentials(null, password);
         }
         PlugReading reading = smartPlugClient.read(entity, creds);
+        Map<String, Object> meta = new HashMap<>();
+        meta.put("plugId", entity.getId());
+        meta.put("macAddress", entity.getMacAddress());
+        meta.put("reachable", reading.reachable());
+        if (!reading.reachable()) {
+            meta.put("errorCode", reading.errorCode());
+        }
+        applicationLogService.persistSystemLog(
+                reading.reachable() ? "INFO" : "WARN",
+                "Smart plug test read executed",
+                "SMART_PLUG",
+                meta);
         return new SmartPlugReadingResponseDto(reading);
     }
 

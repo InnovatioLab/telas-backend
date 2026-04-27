@@ -55,7 +55,7 @@ public class SmartPlugAccountAdminController {
     @Operation(summary = "Cria conta padrão (box + vendor únicos)")
     @SecurityRequirement(name = "jwt")
     public ResponseEntity<?> create(@Valid @RequestBody SmartPlugAccountCreateRequestDto dto) {
-        authenticatedUserService.validatePermission(Permission.MONITORING_SMART_PLUG_ADMIN);
+        authenticatedUserService.validatePermission(Permission.MONITORING_SMART_PLUG_ACCOUNTS_MANAGE);
         SmartPlugAccountResponseDto data = smartPlugAccountAdminService.create(dto);
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(ResponseDto.fromData(data, HttpStatus.CREATED, MessageCommonsConstants.SAVE_SUCCESS_MESSAGE));
@@ -66,7 +66,7 @@ public class SmartPlugAccountAdminController {
     @SecurityRequirement(name = "jwt")
     public ResponseEntity<?> update(
             @PathVariable UUID id, @Valid @RequestBody SmartPlugAccountUpdateRequestDto dto) {
-        authenticatedUserService.validatePermission(Permission.MONITORING_SMART_PLUG_ADMIN);
+        authenticatedUserService.validatePermission(Permission.MONITORING_SMART_PLUG_ACCOUNTS_MANAGE);
         SmartPlugAccountResponseDto data = smartPlugAccountAdminService.update(id, dto);
         return ResponseEntity.status(HttpStatus.OK)
                 .body(ResponseDto.fromData(data, HttpStatus.OK, MessageCommonsConstants.UPDATE_SUCCESS_MESSAGE));
@@ -76,7 +76,7 @@ public class SmartPlugAccountAdminController {
     @Operation(summary = "Remove conta")
     @SecurityRequirement(name = "jwt")
     public ResponseEntity<?> delete(@PathVariable UUID id) {
-        authenticatedUserService.validatePermission(Permission.MONITORING_SMART_PLUG_ADMIN);
+        authenticatedUserService.validatePermission(Permission.MONITORING_SMART_PLUG_ACCOUNTS_MANAGE);
         smartPlugAccountAdminService.delete(id);
         return ResponseEntity.status(HttpStatus.OK)
                 .body(ResponseDto.fromData(null, HttpStatus.OK, MessageCommonsConstants.DELETE_SUCCESS_MESSAGE));

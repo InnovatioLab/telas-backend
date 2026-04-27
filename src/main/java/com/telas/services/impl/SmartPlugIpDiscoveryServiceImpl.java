@@ -8,6 +8,7 @@ import com.telas.monitoring.plug.SmartPlugCredentials;
 import com.telas.monitoring.repositories.BoxSubnetRouteEntityRepository;
 import com.telas.monitoring.repositories.SmartPlugCheckRunRepository;
 import com.telas.monitoring.repositories.SmartPlugEntityRepository;
+import com.telas.services.ApplicationLogService;
 import com.telas.services.SmartPlugCredentialsResolver;
 import com.telas.services.SmartPlugIpDiscoveryService;
 import com.telas.shared.utils.Ipv4CidrUtil;
@@ -52,6 +53,7 @@ public class SmartPlugIpDiscoveryServiceImpl implements SmartPlugIpDiscoveryServ
     private final SmartPlugCredentialsResolver credentialsResolver;
     private final SmartPlugIpDiscoveryPersistence smartPlugIpDiscoveryPersistence;
     private final ExecutorService discoveryExecutor;
+    private final ApplicationLogService applicationLogService;
 
     public SmartPlugIpDiscoveryServiceImpl(
             SmartPlugEntityRepository smartPlugEntityRepository,
@@ -60,7 +62,8 @@ public class SmartPlugIpDiscoveryServiceImpl implements SmartPlugIpDiscoveryServ
             SmartPlugClient smartPlugClient,
             SmartPlugCredentialsResolver credentialsResolver,
             SmartPlugIpDiscoveryPersistence smartPlugIpDiscoveryPersistence,
-            @Qualifier("smartPlugDiscoveryExecutor") ExecutorService discoveryExecutor) {
+            @Qualifier("smartPlugDiscoveryExecutor") ExecutorService discoveryExecutor,
+            ApplicationLogService applicationLogService) {
         this.smartPlugEntityRepository = smartPlugEntityRepository;
         this.boxSubnetRouteEntityRepository = boxSubnetRouteEntityRepository;
         this.smartPlugCheckRunRepository = smartPlugCheckRunRepository;
@@ -68,6 +71,7 @@ public class SmartPlugIpDiscoveryServiceImpl implements SmartPlugIpDiscoveryServ
         this.credentialsResolver = credentialsResolver;
         this.smartPlugIpDiscoveryPersistence = smartPlugIpDiscoveryPersistence;
         this.discoveryExecutor = discoveryExecutor;
+        this.applicationLogService = applicationLogService;
     }
 
     @Value("${monitoring.kasa.discovery.enabled:false}")
@@ -109,6 +113,19 @@ public class SmartPlugIpDiscoveryServiceImpl implements SmartPlugIpDiscoveryServ
         summary.put("discoverySkipped", skipped);
         summary.put("discoveryEligible", eligible);
         summary.put("discoveryResolved", resolved);
+        applicationLogService.persistSystemLog(
+                "INFO",
+                "Smart plug discovery cycle finished",
+                "SMART_PLUG",
+                Map.of(
+                        "plugsTotal",
+                        plugs.size(),
+                        "skipped",
+                        skipped,
+                        "eligible",
+                        eligible,
+                        "resolved",
+                        resolved));
         return summary;
     }
 
