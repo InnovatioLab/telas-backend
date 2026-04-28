@@ -1,5 +1,6 @@
 package com.telas.dtos.response;
 
+import com.telas.entities.Address;
 import com.telas.entities.CartItem;
 import com.telas.entities.Monitor;
 import com.telas.shared.constants.SharedConstants;
@@ -34,16 +35,23 @@ public final class MonitorMapsResponseDto implements Serializable {
     public MonitorMapsResponseDto(Monitor entity, Integer adsDailyDisplayTimeInMinutes) {
         id = entity.getId();
         active = entity.isActive();
-        latitude = entity.getAddress() != null ? entity.getAddress().getLatitude() : null;
-        longitude = entity.getAddress() != null ? entity.getAddress().getLongitude() : null;
         CartItem cartItem = new CartItem();
         cartItem.setBlockQuantity(SharedConstants.MIN_QUANTITY_MONITOR_BLOCK);
+        Address address = entity.getAddress();
+        latitude = address != null ? address.getLatitude() : null;
+        longitude = address != null ? address.getLongitude() : null;
         hasAvailableSlots = entity.hasAvailableBlocks(cartItem);
         estimatedSlotReleaseDate = entity.hasAvailableBlocks(cartItem) ? null : entity.getEstimatedSlotReleaseDate();
         this.adsDailyDisplayTimeInMinutes = adsDailyDisplayTimeInMinutes;
-        addressLocationName = entity.getAddress() != null ? entity.getAddress().getLocationName() : null;
-        addressLocationDescription = entity.getAddress() != null ? entity.getAddress().getLocationDescription() : null;
-        photoUrl = entity.getAddress() != null && entity.getAddress().getPhotoUrl() != null ? entity.getAddress().getPhotoUrl() : null;
+        if (address != null) {
+            addressLocationName = address.resolveMapLocationName();
+            addressLocationDescription = address.resolveMapLocationDescription();
+            photoUrl = address.getPhotoUrl();
+        } else {
+            addressLocationName = null;
+            addressLocationDescription = null;
+            photoUrl = null;
+        }
         boxActive = entity.getBox() != null ? entity.getBox().isActive() : null;
     }
 }

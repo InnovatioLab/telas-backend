@@ -122,6 +122,58 @@ public class Address extends BaseAudit implements Serializable {
         return result + ".<br/>";
     }
 
+    public String resolveMapLocationName() {
+        if (locationName != null && !locationName.isBlank()) {
+            return locationName.trim();
+        }
+        if (street != null && !street.isBlank() && city != null && !city.isBlank()) {
+            return street.trim() + ", " + city.trim();
+        }
+        if (city != null && !city.isBlank()) {
+            return city.trim();
+        }
+        return null;
+    }
+
+    public String resolveMapLocationDescription() {
+        if (locationDescription != null && !locationDescription.isBlank()) {
+            return locationDescription.trim();
+        }
+        StringJoiner line = new StringJoiner(", ");
+        if (street != null && !street.isBlank()) {
+            line.add(street.trim());
+        }
+        if (address2 != null && !address2.isBlank()) {
+            line.add(address2.trim());
+        }
+        String csz = formatCityStateZipPlain();
+        if (!csz.isEmpty()) {
+            line.add(csz);
+        }
+        String joined = line.toString();
+        return joined.isEmpty() ? null : joined;
+    }
+
+    private String formatCityStateZipPlain() {
+        StringBuilder b = new StringBuilder();
+        if (city != null && !city.isBlank()) {
+            b.append(city.trim());
+        }
+        if (state != null && !state.isBlank()) {
+            if (b.length() > 0) {
+                b.append(", ");
+            }
+            b.append(state.trim());
+        }
+        if (zipCode != null && !zipCode.isBlank()) {
+            if (b.length() > 0) {
+                b.append(' ');
+            }
+            b.append(zipCode.trim());
+        }
+        return b.toString();
+    }
+
     public String getFullAddressFormattedHtml() {
         List<String> parts = new ArrayList<>();
         if (locationName != null && !locationName.isBlank()) {
