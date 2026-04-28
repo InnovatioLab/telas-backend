@@ -40,6 +40,9 @@ public final class SharedConstants {
     public static final String TEMPLATE_EMAIL_ADMIN_NEW_PURCHASE = "email_admin_new_purchase.ftlh";
     public static final String EMAIL_SUBJECT_ADMIN_NEW_PURCHASE = "New customer purchase — Telas";
 
+    public static final String TEMPLATE_EMAIL_CLIENT_AD_REJECTED = "email_client_ad_rejected.ftlh";
+    public static final String EMAIL_SUBJECT_CLIENT_AD_REJECTED = "Ad rejected by customer — Telas";
+
     public static final String TEMPLATE_EMAIL_SCHEDULER_PRERUN = "email_scheduler_prerun.ftlh";
     public static final String EMAIL_SUBJECT_SCHEDULER_PRERUN = "Scheduled job starting — Telas";
 

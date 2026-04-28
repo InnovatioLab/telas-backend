@@ -126,6 +126,7 @@ public class AdminEmailAlertPreferenceServiceImpl implements AdminEmailAlertPref
             case SMART_PLUG_UNREACHABLE_OR_POWER -> "Smart plug — unreachable or power loss";
             case SMART_PLUG_RELAY_OFF -> "Smart plug — relay off (manual off)";
             case HOST_REBOOT -> "Host reboot detected";
+            case ADS_MANAGEMENT -> "Ads management";
         };
     }
 

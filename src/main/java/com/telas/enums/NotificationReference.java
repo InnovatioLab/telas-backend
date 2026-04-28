@@ -129,6 +129,33 @@ public enum NotificationReference {
             return null;
         }
     },
+    CLIENT_AD_REJECTED {
+        @Override
+        public String getNotificationMessage(Map<String, String> params) {
+            String name = params.getOrDefault("name", "Customer");
+            String adName = params.getOrDefault("adName", "Ad");
+            String link = params.getOrDefault("link", "");
+            return formatNotificationMessage(
+                    "Ad rejected by customer",
+                    String.format("%s rejected the ad %s.", name, adName),
+                    params,
+                    null,
+                    ObjectUtils.isEmpty(link) ? null : "Open details",
+                    false
+            );
+        }
+
+        @Override
+        public EmailDataDto getEmailData(Map<String, String> params) {
+            return createEmailData(
+                    SharedConstants.EMAIL_SUBJECT_CLIENT_AD_REJECTED,
+                    SharedConstants.TEMPLATE_EMAIL_CLIENT_AD_REJECTED,
+                    params,
+                    null,
+                    null
+            );
+        }
+    },
     MONITOR_IN_WISHLIST_NOW_AVAILABLE {
         @Override
         public String getNotificationMessage(Map<String, String> params) {

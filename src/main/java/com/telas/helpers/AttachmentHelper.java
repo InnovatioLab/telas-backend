@@ -6,6 +6,7 @@ import com.telas.dtos.response.LinkResponseDto;
 import com.telas.entities.*;
 import com.telas.enums.AdValidationType;
 import com.telas.enums.NotificationReference;
+import com.telas.enums.Permission;
 import com.telas.enums.Role;
 import com.telas.infra.exceptions.BusinessRuleException;
 import com.telas.infra.exceptions.ForbiddenException;
@@ -16,7 +17,9 @@ import com.telas.repositories.AttachmentRepository;
 import com.telas.repositories.ClientRepository;
 import com.telas.services.AdUnusedTrackingService;
 import com.telas.services.BucketService;
+import com.telas.services.AdminEmailAlertPreferenceService;
 import com.telas.services.NotificationService;
+import com.telas.services.PermissionService;
 import com.telas.shared.audit.CustomRevisionListener;
 import com.telas.shared.constants.valitation.AdValidationMessages;
 import com.telas.shared.constants.valitation.AttachmentValidationMessages;
@@ -41,6 +44,8 @@ public class AttachmentHelper {
     private final ClientRepository clientRepository;
     private final SubscriptionHelper subscriptionHelper;
     private final MonitorHelper monitorHelper;
+    private final PermissionService permissionService;
+    private final AdminEmailAlertPreferenceService adminEmailAlertPreferenceService;
 
     private final AdUnusedTrackingService adUnusedTrackingService;
 
@@ -294,6 +299,37 @@ public class AttachmentHelper {
 
         adRepository.save(entity);
         adUnusedTrackingService.syncUnusedStateForAdIds(List.of(entity.getId()));
+
+        if (AdValidationType.REJECTED.equals(validation)) {
+            notifyAdminsClientRejectedAd(entity, request);
+        }
+    }
+
+    private void notifyAdminsClientRejectedAd(Ad entity, RefusedAdRequestDto request) {
+        Client client = entity.getClient();
+        String link = frontBaseUrl + "/admin/ads";
+        Map<String, String> params = new HashMap<>();
+        params.put("name", client.getBusinessName());
+        params.put("adName", entity.getName());
+        params.put("link", link);
+        if (request != null) {
+            if (!ValidateDataUtils.isNullOrEmptyString(request.getJustification())) {
+                params.put("justification", request.getJustification());
+            }
+            if (!ValidateDataUtils.isNullOrEmptyString(request.getDescription())) {
+                params.put("description", request.getDescription());
+            }
+        }
+        for (Client recipient : clientRepository.findAllAdminsAndDevelopers()) {
+            boolean canManageAds = recipient.isDeveloper()
+                    || permissionService.hasPermission(recipient, Permission.ADMIN_ADS_MANAGE);
+            if (!canManageAds) {
+                continue;
+            }
+            boolean sendEmail = adminEmailAlertPreferenceService.wantsEmail(
+                    recipient.getId(), com.telas.enums.AdminEmailAlertCategory.ADS_MANAGEMENT);
+            notificationService.save(NotificationReference.CLIENT_AD_REJECTED, recipient, params, sendEmail);
+        }
     }
 
     private void validateValidatorPermissions(Ad entity, Client validator) {
