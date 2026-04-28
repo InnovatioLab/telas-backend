@@ -100,4 +100,36 @@ public class BucketServiceImpl implements BucketService {
               AttachmentValidationMessages.ERROR_ATTACHMENT_LINK + objectName + " message: " + e.getMessage());
     }
   }
+
+  @Override
+  public String getDownloadLink(String objectName, String fileName) {
+    try {
+      String safe = sanitizeDownloadFileName(fileName);
+      GetObjectRequest getObjectRequest = GetObjectRequest.builder()
+              .bucket(bucketProperties.getName())
+              .key(objectName)
+              .responseContentDisposition("attachment; filename=\"" + safe + "\"")
+              .build();
+
+      GetObjectPresignRequest presignRequest = GetObjectPresignRequest.builder()
+              .signatureDuration(Duration.ofSeconds(SharedConstants.ATTACHMENT_LINK_EXPIRY_TIME))
+              .getObjectRequest(getObjectRequest)
+              .build();
+
+      PresignedGetObjectRequest presignedRequest = s3Presigner.presignGetObject(presignRequest);
+      return presignedRequest.url().toString();
+    } catch (Exception e) {
+      log.error("Error generating download presigned URL for object '{}': {}", objectName, e.getMessage());
+      throw new BusinessRuleException(
+              AttachmentValidationMessages.ERROR_ATTACHMENT_LINK + objectName + " message: " + e.getMessage());
+    }
+  }
+
+  private static String sanitizeDownloadFileName(String fileName) {
+    if (fileName == null || fileName.isBlank()) {
+      return "download";
+    }
+    String s = fileName.replace("\"", "_").replace("\r", "").replace("\n", "").trim();
+    return s.length() > 200 ? s.substring(0, 200) : s;
+  }
 }

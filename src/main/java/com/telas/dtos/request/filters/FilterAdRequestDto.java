@@ -13,6 +13,8 @@ import org.springframework.data.domain.Sort;
 public class FilterAdRequestDto extends PaginationRequestDto {
     private String genericFilter;
 
+    private Boolean includeInactiveRequests;
+
     public Sort setOrdering() {
         return switch (getSortBy()) {
             case "slogan" -> Sort.by(Sort.Order.by("slogan").ignoreCase());

@@ -130,6 +130,12 @@ public interface ClientController {
 
     ResponseEntity<?> reactivateClientByDeveloper(UUID clientId);
 
+    ResponseEntity<?> softDeleteClientByDeveloper(UUID clientId);
+
+    ResponseEntity<?> getPermanentDeletionRequirements(UUID clientId);
+
+    ResponseEntity<?> permanentlyDeleteClientByDeveloper(UUID clientId, UUID monitorSuccessorClientId);
+
     @Operation(summary = "Endpoint contract to filter and list ads request", responses = {
             @ApiResponse(responseCode = "200", description = "Ads requests filtered successfully."),
             @ApiResponse(responseCode = "422", description = "Erro while filtering ads"),

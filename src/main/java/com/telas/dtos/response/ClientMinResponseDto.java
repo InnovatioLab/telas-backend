@@ -60,11 +60,20 @@ public final class ClientMinResponseDto implements Serializable {
         adsCount = resolveAdsCount(entity);
         createdAt = entity.getCreatedAt();
         updatedAt = entity.getUpdatedAt();
-        reactivatableByCurrentUser = computeReactivatable(entity, viewerClientId, hasDeactivatePermission);
+        reactivatableByCurrentUser = computeReactivatable(entity, false);
     }
 
     public ClientMinResponseDto(
             Client entity, UUID viewerClientId, boolean hasDeactivatePermission, Integer approvedAdsCount) {
+        this(entity, viewerClientId, hasDeactivatePermission, false, approvedAdsCount);
+    }
+
+    public ClientMinResponseDto(
+            Client entity,
+            UUID viewerClientId,
+            boolean hasDeactivatePermission,
+            boolean hasReactivatePermission,
+            Integer approvedAdsCount) {
         id = entity.getId();
         businessName = entity.getBusinessName();
         role = entity.getRole();
@@ -76,21 +85,20 @@ public final class ClientMinResponseDto implements Serializable {
         adsCount = approvedAdsCount != null ? approvedAdsCount : resolveAdsCount(entity);
         createdAt = entity.getCreatedAt();
         updatedAt = entity.getUpdatedAt();
-        reactivatableByCurrentUser = computeReactivatable(entity, viewerClientId, hasDeactivatePermission);
+        reactivatableByCurrentUser = computeReactivatable(entity, hasReactivatePermission);
     }
 
-    private static boolean computeReactivatable(
-            Client entity, UUID viewerId, boolean hasDeactivatePermission) {
-        if (!hasDeactivatePermission || viewerId == null) {
+    private static boolean computeReactivatable(Client entity, boolean hasReactivatePermission) {
+        if (!hasReactivatePermission) {
             return false;
         }
         if (!DefaultStatus.INACTIVE.equals(entity.getStatus())) {
             return false;
         }
-        if (entity.getInactiveByClientId() == null) {
+        if (entity.isAdmin() || entity.isDeveloper()) {
             return false;
         }
-        return entity.getInactiveByClientId().equals(viewerId);
+        return true;
     }
 
     private static String resolvePartnerAddressSummary(Client entity) {

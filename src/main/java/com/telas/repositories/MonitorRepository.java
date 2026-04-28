@@ -111,5 +111,11 @@ public interface MonitorRepository extends JpaRepository<Monitor, UUID>, JpaSpec
 
     boolean existsByAddressIdAndIdNot(UUID addressId, UUID monitorId);
 
+    @Query("""
+            SELECT DISTINCT m FROM Monitor m
+            JOIN FETCH m.address a
+            WHERE a.client.id = :clientId
+            """)
+    List<Monitor> findAllByAddressClientId(@Param("clientId") UUID clientId);
 
 }

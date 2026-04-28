@@ -25,17 +25,20 @@ public final class AdResponseDto implements Serializable {
 
     private final String link;
 
+    private final String downloadLink;
+
     private final AdValidationType validation;
 
     private final int refusedCount;
 
     private final long waitingDays;
 
-    public AdResponseDto(Ad ad, String link) {
+    public AdResponseDto(Ad ad, String link, String downloadLink) {
         id = ad.getId();
         name = ad.getName();
         submissionDate = ad.getCreatedAt().atZone(ZoneId.systemDefault()).toLocalDate();
         this.link = link;
+        this.downloadLink = downloadLink;
         validation = ad.getValidation();
         waitingDays = ChronoUnit.DAYS.between(ad.getCreatedAt(), Instant.now());
         refusedCount = ad.getRefusedAds().size();

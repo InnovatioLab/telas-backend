@@ -57,6 +57,12 @@ public interface ClientService {
 
     void reactivateClientByDeveloper(UUID clientId);
 
+    void softDeleteClientByDeveloper(UUID clientId);
+
+    PermanentDeletionRequirementsDto getPermanentDeletionRequirements(UUID clientId);
+
+    void permanentlyDeleteClientByDeveloper(UUID clientId, UUID monitorSuccessorClientId);
+
     void validateAd(UUID adId, AdValidationType validation, RefusedAdRequestDto request);
 
     void incrementSubscriptionFlow();

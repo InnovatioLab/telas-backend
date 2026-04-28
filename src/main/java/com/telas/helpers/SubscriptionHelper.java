@@ -176,11 +176,6 @@ public class SubscriptionHelper {
 
         sendPurchaseConfirmationEmail(subscription);
 
-        client.getApprovedAds().stream()
-                .filter(Objects::nonNull)
-                .min(Comparator.comparing(Ad::getCreatedAt, Comparator.nullsLast(Comparator.naturalOrder())))
-                .ifPresent(ad -> clientHelper.addAdToMonitor(List.of(ad), subscription));
-
         notifyAdminsNewPurchase(subscription);
 
         createNewSubscriptionNotification(subscription);
@@ -191,9 +186,6 @@ public class SubscriptionHelper {
         Client client = subscription.getClient();
 
         sendPurchaseConfirmationEmail(subscription);
-
-        clientHelper.addAdToMonitor(client.getApprovedAds(), subscription);
-
 
         createNewSubscriptionNotification(subscription);
     }

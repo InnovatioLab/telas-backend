@@ -68,7 +68,11 @@ public class AttachmentHelper {
 
         List<Attachment> attachments = getAttachmentsFromAdRequest(adRequestEntity);
         return attachments.stream()
-                .map(attachment -> new LinkResponseDto(attachment.getId(), attachment.getName(), bucketService.getLink(AttachmentUtils.format(attachment))))
+                .map(attachment -> new LinkResponseDto(
+                        attachment.getId(),
+                        attachment.getName(),
+                        bucketService.getLink(AttachmentUtils.format(attachment)),
+                        bucketService.getDownloadLink(AttachmentUtils.format(attachment), attachment.getName())))
                 .toList();
     }
 
@@ -78,7 +82,11 @@ public class AttachmentHelper {
             return null;
         }
         Ad ad = adRequestEntity.getAd();
-        return new LinkResponseDto(ad.getId(), ad.getName(), bucketService.getLink(AttachmentUtils.format(ad)));
+        return new LinkResponseDto(
+                ad.getId(),
+                ad.getName(),
+                bucketService.getLink(AttachmentUtils.format(ad)),
+                bucketService.getDownloadLink(AttachmentUtils.format(ad), ad.getName()));
     }
 
     @Transactional(readOnly = true)
@@ -92,6 +100,11 @@ public class AttachmentHelper {
     @Transactional(readOnly = true)
     public String getStringLinkFromAd(Ad adEntity) {
         return bucketService.getLink(AttachmentUtils.format(adEntity));
+    }
+
+    @Transactional(readOnly = true)
+    public String getDownloadLinkFromAd(Ad adEntity) {
+        return bucketService.getDownloadLink(AttachmentUtils.format(adEntity), adEntity.getName());
     }
 
 
@@ -205,7 +218,7 @@ public class AttachmentHelper {
             monitorHelper.sendBoxesMonitorsRemoveAd(ad, Collections.singletonList(ad.getName()));
         }
 
-        ad.getAdRequest().closeRequest();
+        ad.getAdRequest().openRequest();
         adRequestRepository.save(ad.getAdRequest());
 
         if (!ad.canBeRefused()) {

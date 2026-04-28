@@ -28,6 +28,7 @@ import com.telas.repositories.AdRequestRepository;
 import com.telas.repositories.AdRepository;
 import com.telas.repositories.ClientRepository;
 import com.telas.services.AdminEmailAlertPreferenceService;
+import com.telas.services.ClientPermanentDeletionService;
 import com.telas.services.BucketService;
 import com.telas.services.ClientService;
 import com.telas.services.PermissionService;
@@ -85,6 +86,8 @@ public class ClientServiceImpl implements ClientService {
 	private final PermissionService permissionService;
 
 	private final AdminEmailAlertPreferenceService adminEmailAlertPreferenceService;
+
+	private final ClientPermanentDeletionService clientPermanentDeletionService;
 
 	@Override
 	@Transactional
@@ -368,7 +371,8 @@ public class ClientServiceImpl implements ClientService {
 		if (target.isAdmin() || target.isDeveloper()) {
 			throw new ForbiddenException(ClientValidationMessages.CANNOT_DEACTIVATE_USER);
 		}
-		if (DefaultStatus.INACTIVE.equals(target.getStatus())) {
+		if (DefaultStatus.INACTIVE.equals(target.getStatus())
+				|| DefaultStatus.DELETED.equals(target.getStatus())) {
 			return;
 		}
 		CustomRevisionListener.setUsername(actor.getBusinessName());
@@ -381,7 +385,7 @@ public class ClientServiceImpl implements ClientService {
 	@Override
 	@Transactional
 	public void reactivateClientByDeveloper(UUID clientId) {
-		authenticatedUserService.validatePermission(Permission.ADMIN_CLIENTS_DEACTIVATE);
+		authenticatedUserService.validatePermission(Permission.ADMIN_CLIENTS_REACTIVATE);
 		Client actor = authenticatedUserService.getLoggedUser().client();
 		Client target = repository.findById(clientId)
 				.orElseThrow(() -> new ResourceNotFoundException(ClientValidationMessages.USER_NOT_FOUND));
@@ -394,9 +398,6 @@ public class ClientServiceImpl implements ClientService {
 		if (!DefaultStatus.INACTIVE.equals(target.getStatus())) {
 			throw new ForbiddenException(ClientValidationMessages.CLIENT_NOT_INACTIVE);
 		}
-		if (target.getInactiveByClientId() == null || !target.getInactiveByClientId().equals(actor.getId())) {
-			throw new ForbiddenException(ClientValidationMessages.ONLY_INACTIVATOR_CAN_REACTIVATE);
-		}
 		CustomRevisionListener.setUsername(actor.getBusinessName());
 		target.setStatus(DefaultStatus.ACTIVE);
 		target.setInactiveByClientId(null);
@@ -406,13 +407,54 @@ public class ClientServiceImpl implements ClientService {
 
 	@Override
 	@Transactional
+	public void softDeleteClientByDeveloper(UUID clientId) {
+		authenticatedUserService.validatePermission(Permission.ADMIN_CLIENTS_SOFT_DELETE);
+		Client actor = authenticatedUserService.getLoggedUser().client();
+		Client target = repository.findById(clientId)
+				.orElseThrow(() -> new ResourceNotFoundException(ClientValidationMessages.USER_NOT_FOUND));
+		if (target.getId().equals(actor.getId())) {
+			throw new ForbiddenException(ClientValidationMessages.CANNOT_DEACTIVATE_USER);
+		}
+		if (target.isAdmin() || target.isDeveloper()) {
+			throw new ForbiddenException(ClientValidationMessages.CANNOT_DEACTIVATE_USER);
+		}
+		if (DefaultStatus.DELETED.equals(target.getStatus())) {
+			return;
+		}
+		CustomRevisionListener.setUsername(actor.getBusinessName());
+		target.setStatus(DefaultStatus.DELETED);
+		target.setUsernameUpdate(actor.getBusinessName());
+		repository.save(target);
+	}
+
+	@Override
+	@Transactional(readOnly = true)
+	public PermanentDeletionRequirementsDto getPermanentDeletionRequirements(UUID clientId) {
+		authenticatedUserService.validatePermission(Permission.ADMIN_CLIENTS_PERMANENT_DELETE);
+		return clientPermanentDeletionService.getRequirements(clientId);
+	}
+
+	@Override
+	@Transactional
+	public void permanentlyDeleteClientByDeveloper(UUID clientId, UUID monitorSuccessorClientId) {
+		authenticatedUserService.validatePermission(Permission.ADMIN_CLIENTS_PERMANENT_DELETE);
+		Client actor = authenticatedUserService.getLoggedUser().client();
+		Client target = repository.findById(clientId)
+				.orElseThrow(() -> new ResourceNotFoundException(ClientValidationMessages.USER_NOT_FOUND));
+		if (target.getId().equals(actor.getId())) {
+			throw new ForbiddenException(ClientValidationMessages.CANNOT_DEACTIVATE_USER);
+		}
+		if (target.isAdmin() || target.isDeveloper()) {
+			throw new ForbiddenException(ClientValidationMessages.CANNOT_DEACTIVATE_USER);
+		}
+		clientPermanentDeletionService.deleteClientAndOwnedData(clientId, monitorSuccessorClientId);
+	}
+
+	@Override
+	@Transactional
 	public void validateAd(UUID adId, AdValidationType validation, RefusedAdRequestDto request) {
 		Ad ad = helper.getAdById(adId);
 		attachmentHelper.validateAd(ad, validation, request);
-
-		if (AdValidationType.APPROVED.equals(validation)) {
-			helper.addAdToMonitor(List.of(ad), ad.getClient());
-		}
 	}
 
 
@@ -436,16 +478,27 @@ public class ClientServiceImpl implements ClientService {
 		Specification<Client> roleRestriction = actor.isDeveloper()
 			? (root, query, criteriaBuilder) -> criteriaBuilder.conjunction()
 			: (root, query, criteriaBuilder) -> criteriaBuilder.notEqual(root.get("role"), Role.ADMIN);
-		Specification<Client> activeOnlyUnlessDeveloper = actor.isDeveloper()
-			? (root, query, criteriaBuilder) -> criteriaBuilder.conjunction()
-			: (root, query, criteriaBuilder) ->
-					criteriaBuilder.equal(root.get("status"), DefaultStatus.ACTIVE);
+		Specification<Client> statusVisibilityForPanel = (root, query, criteriaBuilder) -> {
+			if (actor.isDeveloper()) {
+				return criteriaBuilder.conjunction();
+			}
+			List<Predicate> allowed = new ArrayList<>();
+			allowed.add(criteriaBuilder.equal(root.get("status"), DefaultStatus.ACTIVE));
+			if (permissionService.hasPermission(actor, Permission.ADMIN_CLIENTS_VIEW_INACTIVE)) {
+				allowed.add(criteriaBuilder.equal(root.get("status"), DefaultStatus.INACTIVE));
+			}
+			if (permissionService.hasPermission(actor, Permission.ADMIN_CLIENTS_VIEW_DELETED)) {
+				allowed.add(criteriaBuilder.equal(root.get("status"), DefaultStatus.DELETED));
+			}
+			return criteriaBuilder.or(allowed.toArray(new jakarta.persistence.criteria.Predicate[0]));
+		};
 		Specification<Client> filter = PaginationFilterUtil.addSpecificationFilter(
-			Specification.where(roleRestriction).and(activeOnlyUnlessDeveloper),
+			Specification.where(roleRestriction).and(statusVisibilityForPanel),
 			request.getGenericFilter(), this::filterClients);
 
 		Page<Client> page = repository.findAll(filter, pageable);
 		boolean canDeactivate = permissionService.hasPermission(actor, Permission.ADMIN_CLIENTS_DEACTIVATE);
+		boolean canReactivate = permissionService.hasPermission(actor, Permission.ADMIN_CLIENTS_REACTIVATE);
 		UUID viewerId = actor.getId();
 
 		List<Client> clients = page.getContent();
@@ -466,6 +519,7 @@ public class ClientServiceImpl implements ClientService {
 						c,
 						viewerId,
 						canDeactivate,
+						canReactivate,
 						approvedAdsCountByClientId.get(c.getId())
 				))
 				.toList();
@@ -491,11 +545,13 @@ public class ClientServiceImpl implements ClientService {
 				clientJoin.get("role"));
 
 			Expression<Long> refusedCount = criteriaBuilder.count(refusedAdsJoin.get("id"));
-			Predicate isActive = criteriaBuilder.equal(root.get("isActive"), true);
 
 			query.having(criteriaBuilder.le(refusedCount, (long) SharedConstants.MAX_ADS_VALIDATION));
 
-			return criteriaBuilder.and(isActive);
+			if (Boolean.TRUE.equals(request.getIncludeInactiveRequests())) {
+				return criteriaBuilder.conjunction();
+			}
+			return criteriaBuilder.equal(root.get("isActive"), true);
 		}, request.getGenericFilter(), this::filterAdRequests);
 
 		Page<AdRequest> page = adRequestRepository.findAll(filter, pageable);
@@ -598,11 +654,19 @@ public class ClientServiceImpl implements ClientService {
 
 	ClientResponseDto buildClientResponse(Client client) {
 		List<LinkResponseDto> attachmentLinks = client.getAttachments().stream()
-			.map(attachment -> new LinkResponseDto(attachment.getId(), attachment.getName(),
-				bucketService.getLink(AttachmentUtils.format(attachment)))).toList();
+				.map(attachment -> new LinkResponseDto(
+						attachment.getId(),
+						attachment.getName(),
+						bucketService.getLink(AttachmentUtils.format(attachment)),
+						bucketService.getDownloadLink(AttachmentUtils.format(attachment), attachment.getName())))
+				.toList();
 
 		List<AdResponseDto> ads = client.getAds().stream()
-			.map(ad -> new AdResponseDto(ad, attachmentHelper.getStringLinkFromAd(ad))).toList();
+				.map(ad -> new AdResponseDto(
+						ad,
+						attachmentHelper.getStringLinkFromAd(ad),
+						attachmentHelper.getDownloadLinkFromAd(ad)))
+				.toList();
 
 		return new ClientResponseDto(
 			client, attachmentLinks, ads, permissionService.listEffectivePermissionCodesForDisplay(client));

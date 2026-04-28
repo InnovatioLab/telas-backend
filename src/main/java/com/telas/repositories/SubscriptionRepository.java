@@ -73,4 +73,6 @@ public interface SubscriptionRepository extends JpaRepository<Subscription, UUID
           WHERE s.status IN :statuses
           """)
   List<Subscription> findByStatusInForExport(@Param("statuses") Collection<SubscriptionStatus> statuses);
+
+  List<Subscription> findByClient_Id(UUID clientId);
 }

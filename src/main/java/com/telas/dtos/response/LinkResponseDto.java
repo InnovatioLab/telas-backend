@@ -18,4 +18,6 @@ public final class LinkResponseDto implements Serializable {
   private final String attachmentName;
 
   private final String attachmentLink;
+
+  private final String attachmentDownloadLink;
 }

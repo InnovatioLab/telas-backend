@@ -11,4 +11,6 @@ public interface BucketService {
     List<String> getLinksDownload(List<String> objectNames);
 
     String getLink(String objectName);
+
+    String getDownloadLink(String objectName, String fileName);
 }

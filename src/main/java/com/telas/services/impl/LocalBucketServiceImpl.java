@@ -23,6 +23,7 @@ import java.io.InputStream;
 import java.security.InvalidKeyException;
 import java.security.NoSuchAlgorithmException;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 @Service
@@ -85,4 +86,32 @@ public class LocalBucketServiceImpl implements BucketService {
                     AttachmentValidationMessages.ERROR_ATTACHMENT_LINK + objectName + " message: " + e.getMessage());
         }
     }
+
+  @Override
+  public String getDownloadLink(String objectName, String fileName) {
+    try {
+      String safe = sanitizeDownloadFileName(fileName);
+      Map<String, String> extra =
+          Map.of("response-content-disposition", "attachment; filename=\"" + safe + "\"");
+      return minioClient.getPresignedObjectUrl(
+          GetPresignedObjectUrlArgs.builder()
+              .method(Method.GET)
+              .bucket(bucketProperties.getName())
+              .object(objectName)
+              .expiry(SharedConstants.ATTACHMENT_LINK_EXPIRY_TIME)
+              .extraQueryParams(extra)
+              .build());
+    } catch (Exception e) {
+      throw new BusinessRuleException(
+          AttachmentValidationMessages.ERROR_ATTACHMENT_LINK + objectName + " message: " + e.getMessage());
+    }
+  }
+
+  private static String sanitizeDownloadFileName(String fileName) {
+    if (fileName == null || fileName.isBlank()) {
+      return "download";
+    }
+    String s = fileName.replace("\"", "_").replace("\r", "").replace("\n", "").trim();
+    return s.length() > 200 ? s.substring(0, 200) : s;
+  }
 }

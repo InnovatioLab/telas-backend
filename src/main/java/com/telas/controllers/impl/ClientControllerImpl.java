@@ -10,6 +10,7 @@ import com.telas.dtos.request.filters.FilterAdRequestDto;
 import com.telas.dtos.response.AdRequestAdminResponseDto;
 import com.telas.dtos.response.ClientMinResponseDto;
 import com.telas.dtos.response.PaginationResponseDto;
+import com.telas.dtos.response.PermanentDeletionRequirementsDto;
 import com.telas.dtos.response.ResponseDto;
 import com.telas.enums.AdValidationType;
 import com.telas.infra.security.model.PasswordRequestDto;
@@ -165,6 +166,35 @@ public class ClientControllerImpl implements ClientController {
     @SecurityRequirement(name = "jwt")
     public ResponseEntity<?> reactivateClientByDeveloper(@PathVariable(name = "id") UUID clientId) {
         service.reactivateClientByDeveloper(clientId);
+        return ResponseEntity.status(HttpStatus.OK)
+                .body(ResponseDto.fromData(null, HttpStatus.OK, MessageCommonsConstants.UPDATE_SUCCESS_MESSAGE));
+    }
+
+    @Override
+    @PatchMapping("/{id}/soft-delete")
+    @SecurityRequirement(name = "jwt")
+    public ResponseEntity<?> softDeleteClientByDeveloper(@PathVariable(name = "id") UUID clientId) {
+        service.softDeleteClientByDeveloper(clientId);
+        return ResponseEntity.status(HttpStatus.OK)
+                .body(ResponseDto.fromData(null, HttpStatus.OK, MessageCommonsConstants.UPDATE_SUCCESS_MESSAGE));
+    }
+
+    @Override
+    @GetMapping("/{id}/permanent-deletion-requirements")
+    @SecurityRequirement(name = "jwt")
+    public ResponseEntity<?> getPermanentDeletionRequirements(@PathVariable(name = "id") UUID clientId) {
+        PermanentDeletionRequirementsDto data = service.getPermanentDeletionRequirements(clientId);
+        return ResponseEntity.status(HttpStatus.OK)
+                .body(ResponseDto.fromData(data, HttpStatus.OK, MessageCommonsConstants.FIND_ALL_SUCCESS_MESSAGE));
+    }
+
+    @Override
+    @DeleteMapping("/{id}/permanent")
+    @SecurityRequirement(name = "jwt")
+    public ResponseEntity<?> permanentlyDeleteClientByDeveloper(
+            @PathVariable(name = "id") UUID clientId,
+            @RequestParam(name = "monitorSuccessorId", required = false) UUID monitorSuccessorClientId) {
+        service.permanentlyDeleteClientByDeveloper(clientId, monitorSuccessorClientId);
         return ResponseEntity.status(HttpStatus.OK)
                 .body(ResponseDto.fromData(null, HttpStatus.OK, MessageCommonsConstants.UPDATE_SUCCESS_MESSAGE));
     }
