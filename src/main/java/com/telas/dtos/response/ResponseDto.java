@@ -1,5 +1,6 @@
 package com.telas.dtos.response;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import org.springframework.http.HttpStatus;
 
 import java.io.Serial;
@@ -37,6 +38,11 @@ public class ResponseDto<T> implements Serializable {
                 .setErrors(errors);
     }
 
+    public String getMessage() {
+        return message;
+    }
+
+    @JsonIgnore
     public String getMensagem() {
         return message;
     }

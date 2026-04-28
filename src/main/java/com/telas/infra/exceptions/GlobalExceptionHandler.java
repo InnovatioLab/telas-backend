@@ -233,7 +233,7 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
             return objectMapper.writeValueAsString(res);
         } catch (Exception ignored) {
             return "status=" + res.getStatus()
-                    + ", message=" + res.getMensagem()
+                    + ", message=" + res.getMessage()
                     + ", errors=" + res.getErrors();
         }
     }

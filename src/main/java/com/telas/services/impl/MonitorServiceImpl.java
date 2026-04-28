@@ -569,11 +569,17 @@ public class MonitorServiceImpl implements MonitorService {
 
 	private List<UpdateBoxMonitorsAdRequestDto> buildRequestList(List<Ad> ads, Map<UUID, MonitorAd> existingAfterRemoval,
 		Map<UUID, MonitorAd> newMonitorAdsByAdId) {
-		List<UpdateBoxMonitorsAdRequestDto> requestList = ads.stream().map(ad -> {
-			MonitorAd monitorAd = existingAfterRemoval.getOrDefault(ad.getId(), newMonitorAdsByAdId.get(ad.getId()));
-			String link = bucketService.getLink(AttachmentUtils.format(ad));
-			return new UpdateBoxMonitorsAdRequestDto(ad, monitorAd, link);
-		}).toList();
+		List<UpdateBoxMonitorsAdRequestDto> requestList = ads.stream()
+			.map(ad -> {
+				MonitorAd monitorAd = existingAfterRemoval.getOrDefault(ad.getId(), newMonitorAdsByAdId.get(ad.getId()));
+				if (monitorAd == null || monitorAd.getMonitor() == null || monitorAd.getMonitor().getBox() == null) {
+					return null;
+				}
+				String link = bucketService.getLink(AttachmentUtils.format(ad));
+				return new UpdateBoxMonitorsAdRequestDto(ad, monitorAd, link);
+			})
+			.filter(Objects::nonNull)
+			.toList();
 
 		int totalBlockQuantity = requestList.stream().mapToInt(dto -> Optional.ofNullable(dto.getBlockQuantity()).orElse(0))
 			.sum();
