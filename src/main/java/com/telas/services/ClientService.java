@@ -4,6 +4,7 @@ import com.telas.dtos.request.AttachmentRequestDto;
 import com.telas.dtos.request.ClientAdRequestToAdminDto;
 import com.telas.dtos.request.ClientRequestDto;
 import com.telas.dtos.request.RefusedAdRequestDto;
+import com.telas.dtos.request.PermanentDeleteClientRequestDto;
 import com.telas.dtos.request.filters.ClientFilterRequestDto;
 import com.telas.dtos.request.filters.FilterAdRequestDto;
 import com.telas.dtos.response.*;
@@ -61,7 +62,7 @@ public interface ClientService {
 
     PermanentDeletionRequirementsDto getPermanentDeletionRequirements(UUID clientId);
 
-    void permanentlyDeleteClientByDeveloper(UUID clientId, UUID monitorSuccessorClientId);
+    void permanentlyDeleteClientByDeveloper(UUID clientId, PermanentDeleteClientRequestDto request);
 
     void validateAd(UUID adId, AdValidationType validation, RefusedAdRequestDto request);
 

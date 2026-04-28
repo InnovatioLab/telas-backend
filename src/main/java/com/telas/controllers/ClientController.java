@@ -3,6 +3,7 @@ package com.telas.controllers;
 import com.telas.dtos.request.AttachmentRequestDto;
 import com.telas.dtos.request.ClientAdRequestToAdminDto;
 import com.telas.dtos.request.ClientRequestDto;
+import com.telas.dtos.request.PermanentDeleteClientRequestDto;
 import com.telas.dtos.request.RefusedAdRequestDto;
 import com.telas.dtos.request.filters.ClientFilterRequestDto;
 import com.telas.dtos.request.filters.FilterAdRequestDto;
@@ -14,6 +15,7 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.RequestBody;
 
 import java.util.List;
 import java.util.UUID;
@@ -134,7 +136,9 @@ public interface ClientController {
 
     ResponseEntity<?> getPermanentDeletionRequirements(UUID clientId);
 
-    ResponseEntity<?> permanentlyDeleteClientByDeveloper(UUID clientId, UUID monitorSuccessorClientId);
+    ResponseEntity<?> permanentlyDeleteClientByDeveloper(
+            UUID clientId,
+            @Valid @RequestBody PermanentDeleteClientRequestDto request);
 
     @Operation(summary = "Endpoint contract to filter and list ads request", responses = {
             @ApiResponse(responseCode = "200", description = "Ads requests filtered successfully."),

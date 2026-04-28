@@ -5,6 +5,7 @@ import com.telas.dtos.request.AttachmentRequestDto;
 import com.telas.dtos.request.ClientAdRequestToAdminDto;
 import com.telas.dtos.request.ClientRequestDto;
 import com.telas.dtos.request.RefusedAdRequestDto;
+import com.telas.dtos.request.PermanentDeleteClientRequestDto;
 import com.telas.dtos.request.filters.ClientFilterRequestDto;
 import com.telas.dtos.request.filters.FilterAdRequestDto;
 import com.telas.dtos.response.AdRequestAdminResponseDto;
@@ -189,12 +190,12 @@ public class ClientControllerImpl implements ClientController {
     }
 
     @Override
-    @DeleteMapping("/{id}/permanent")
+    @PostMapping("/{id}/permanent-delete")
     @SecurityRequirement(name = "jwt")
     public ResponseEntity<?> permanentlyDeleteClientByDeveloper(
             @PathVariable(name = "id") UUID clientId,
-            @RequestParam(name = "monitorSuccessorId", required = false) UUID monitorSuccessorClientId) {
-        service.permanentlyDeleteClientByDeveloper(clientId, monitorSuccessorClientId);
+            @Valid @RequestBody PermanentDeleteClientRequestDto request) {
+        service.permanentlyDeleteClientByDeveloper(clientId, request);
         return ResponseEntity.status(HttpStatus.OK)
                 .body(ResponseDto.fromData(null, HttpStatus.OK, MessageCommonsConstants.UPDATE_SUCCESS_MESSAGE));
     }

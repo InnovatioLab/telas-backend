@@ -5,6 +5,7 @@ import com.telas.dtos.request.AttachmentRequestDto;
 import com.telas.dtos.request.ClientAdRequestToAdminDto;
 import com.telas.dtos.request.ClientRequestDto;
 import com.telas.dtos.request.RefusedAdRequestDto;
+import com.telas.dtos.request.PermanentDeleteClientRequestDto;
 import com.telas.dtos.request.filters.ClientFilterRequestDto;
 import com.telas.dtos.request.filters.FilterAdRequestDto;
 import com.telas.dtos.response.*;
@@ -37,6 +38,7 @@ import com.telas.services.VerificationCodeService;
 import com.telas.shared.audit.CustomRevisionListener;
 import com.telas.shared.constants.SharedConstants;
 import com.telas.shared.constants.valitation.AdValidationMessages;
+import com.telas.shared.constants.valitation.AuthValidationMessageConstants;
 import com.telas.shared.constants.valitation.AuthValidationMessageConstants;
 import com.telas.shared.constants.valitation.ClientValidationMessages;
 import com.telas.shared.utils.AttachmentUtils;
@@ -436,9 +438,13 @@ public class ClientServiceImpl implements ClientService {
 
 	@Override
 	@Transactional
-	public void permanentlyDeleteClientByDeveloper(UUID clientId, UUID monitorSuccessorClientId) {
+	public void permanentlyDeleteClientByDeveloper(UUID clientId, PermanentDeleteClientRequestDto request) {
 		authenticatedUserService.validatePermission(Permission.ADMIN_CLIENTS_PERMANENT_DELETE);
-		Client actor = authenticatedUserService.getLoggedUser().client();
+		AuthenticatedUser logged = authenticatedUserService.getLoggedUser();
+		if (!passwordEncoder.matches(request.getPassword(), logged.getPassword())) {
+			throw new BusinessRuleException(AuthValidationMessageConstants.INVALID_CREDENTIALS);
+		}
+		Client actor = logged.client();
 		Client target = repository.findById(clientId)
 				.orElseThrow(() -> new ResourceNotFoundException(ClientValidationMessages.USER_NOT_FOUND));
 		if (target.getId().equals(actor.getId())) {
@@ -447,7 +453,7 @@ public class ClientServiceImpl implements ClientService {
 		if (target.isAdmin() || target.isDeveloper()) {
 			throw new ForbiddenException(ClientValidationMessages.CANNOT_DEACTIVATE_USER);
 		}
-		clientPermanentDeletionService.deleteClientAndOwnedData(clientId, monitorSuccessorClientId);
+		clientPermanentDeletionService.deleteClientAndOwnedData(clientId, request.getMonitorSuccessorClientId());
 	}
 
 	@Override
