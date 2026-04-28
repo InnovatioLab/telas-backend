@@ -14,8 +14,23 @@ import org.springframework.stereotype.Repository;
 @Repository
 public interface MonitorAdRepository extends JpaRepository<MonitorAd, MonitorAdPK> {
 
+    interface CountByPartnerRow {
+        java.util.UUID getPartnerId();
+        long getAdsCount();
+    }
+
     @Query("SELECT COUNT(ma) FROM MonitorAd ma WHERE ma.id.ad.id = :adId")
     long countByAdId(@Param("adId") java.util.UUID adId);
+
+    @Query("""
+            SELECT addr.client.id as partnerId, COUNT(ma) as adsCount
+            FROM MonitorAd ma
+            JOIN ma.id.monitor mon
+            JOIN mon.address addr
+            WHERE addr.client.id IN :partnerIds
+            GROUP BY addr.client.id
+            """)
+    java.util.List<CountByPartnerRow> countAdsInPartnerMonitors(@Param("partnerIds") java.util.List<java.util.UUID> partnerIds);
 
     @Query(
             countQuery = """

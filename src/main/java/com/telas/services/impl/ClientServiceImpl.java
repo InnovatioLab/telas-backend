@@ -28,6 +28,7 @@ import com.telas.infra.security.services.AuthenticatedUserService;
 import com.telas.repositories.AdRequestRepository;
 import com.telas.repositories.AdRepository;
 import com.telas.repositories.ClientRepository;
+import com.telas.repositories.MonitorAdRepository;
 import com.telas.services.AdminEmailAlertPreferenceService;
 import com.telas.services.ClientPermanentDeletionService;
 import com.telas.services.BucketService;
@@ -84,6 +85,8 @@ public class ClientServiceImpl implements ClientService {
 	private final AdRequestRepository adRequestRepository;
 
 	private final AdRepository adRepository;
+
+	private final MonitorAdRepository monitorAdRepository;
 
 	private final PermissionService permissionService;
 
@@ -514,10 +517,10 @@ public class ClientServiceImpl implements ClientService {
 				.filter(Objects::nonNull)
 				.toList();
 
-		Map<UUID, Integer> approvedAdsCountByClientId = new HashMap<>();
+		Map<UUID, Integer> adsCountByPartnerId = new HashMap<>();
 		if (!partnerIds.isEmpty()) {
-			adRepository.countApprovedAdsByClientIds(partnerIds).forEach(row ->
-					approvedAdsCountByClientId.put(row.getClientId(), Math.toIntExact(row.getApprovedCount())));
+			monitorAdRepository.countAdsInPartnerMonitors(partnerIds).forEach(row ->
+					adsCountByPartnerId.put(row.getPartnerId(), Math.toIntExact(row.getAdsCount())));
 		}
 
 		List<ClientMinResponseDto> response = clients.stream()
@@ -526,7 +529,7 @@ public class ClientServiceImpl implements ClientService {
 						viewerId,
 						canDeactivate,
 						canReactivate,
-						approvedAdsCountByClientId.get(c.getId())
+						adsCountByPartnerId.get(c.getId())
 				))
 				.toList();
 		return PaginationResponseDto.fromResult(response, (int) page.getTotalElements(), page.getTotalPages(),

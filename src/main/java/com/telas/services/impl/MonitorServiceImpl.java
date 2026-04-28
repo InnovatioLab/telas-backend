@@ -88,8 +88,8 @@ public class MonitorServiceImpl implements MonitorService {
 		if (monitorId != null) {
 			validateAddressAvailability(address, monitorId);
 			List<Ad> ads;
-			if (!ValidateDataUtils.isNullOrEmpty(request.getAds())) {
-				ads = helper.getAds(request, monitorId);
+			if (request.getAds() != null) {
+				ads = request.getAds().isEmpty() ? List.of() : helper.getAds(request, monitorId);
 			} else {
 				Monitor current = findEntityById(monitorId);
 				ads = new ArrayList<>(current.getAds());
