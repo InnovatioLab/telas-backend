@@ -376,10 +376,6 @@ public class SubscriptionHelper {
         for (CartItem item : items) {
             Monitor monitor = monitors.get(item.getMonitor().getId());
 
-            if (!monitor.isActive()) {
-                throw new BusinessRuleException(MonitorValidationMessages.MONITOR_INACTIVE);
-            }
-
             if (!monitor.hasAvailableBlocks(item)) {
                 throw new BusinessRuleException(MonitorValidationMessages.MONITOR_BLOCKS_UNAVAILABLE);
             }
