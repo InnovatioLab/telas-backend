@@ -106,6 +106,9 @@ public class AdminAdOperationRowDto implements Serializable {
         if (AdValidationType.REJECTED.equals(validation)) {
             return "REJECTED";
         }
+        if (boxIp != null && !boxIp.isBlank()) {
+            return "IN_BOX";
+        }
         if (subscriptionStatus == null) {
             return "APPROVED_NO_ACTIVE_SUBSCRIPTION";
         }
