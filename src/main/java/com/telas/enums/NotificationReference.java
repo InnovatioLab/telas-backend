@@ -129,6 +129,45 @@ public enum NotificationReference {
             return null;
         }
     },
+    AD_RESUBMITTED_FOR_VALIDATION {
+        @Override
+        public String getNotificationMessage(Map<String, String> params) {
+            String adName = params.getOrDefault("adName", "your ad");
+            return String.format("""
+                    <div class="informacoes">
+                        <h4 id="notification-title" class="notification-title">Revised ad ready for validation</h4>
+                        <p>We updated <strong>%s</strong> after your feedback. Review and approve or reject again.</p>
+                    </div>
+                    <p>Please use this <a id="link-details" class='details link-text' href="%s">link</a> to open My Telas (Ads tab).</p>
+                    """, adName, params.get("link"));
+        }
+
+        @Override
+        public EmailDataDto getEmailData(Map<String, String> params) {
+            return createAdResubmittedClientEmailData(params);
+        }
+    },
+    ADMIN_AD_RESUBMITTED_TO_CLIENT {
+        @Override
+        public String getNotificationMessage(Map<String, String> params) {
+            return String.format("""
+                    <div class="informacoes">
+                        <h4 id="notification-title" class="notification-title">Ad sent back to customer</h4>
+                        <p><strong>%s</strong> — ad <strong>%s</strong> was updated by <strong>%s</strong> and awaits client validation again.</p>
+                    </div>
+                    <a id="link-details" class='details link-text' href="%s">Open Ads management</a>
+                    """,
+                    params.getOrDefault("clientName", "Client"),
+                    params.getOrDefault("adName", "Ad"),
+                    params.getOrDefault("adminName", "Admin"),
+                    params.get("link"));
+        }
+
+        @Override
+        public EmailDataDto getEmailData(Map<String, String> params) {
+            return createAdminAdResubmittedEmailData(params);
+        }
+    },
     CLIENT_AD_REJECTED {
         @Override
         public String getNotificationMessage(Map<String, String> params) {
@@ -637,6 +676,29 @@ public enum NotificationReference {
         emailData.getParams().put("name", params.get("name"));
         emailData.getParams().put("link", params.get("link"));
         emailData.getParams().put("endDate", ObjectUtils.isEmpty(params.get("endDate")) ? "" : params.get("endDate"));
+        return emailData;
+    }
+
+    private static EmailDataDto createAdResubmittedClientEmailData(Map<String, String> params) {
+        EmailDataDto emailData = new EmailDataDto();
+        emailData.setSubject(SharedConstants.EMAIL_SUBJECT_AD_RESUBMITTED_CLIENT);
+        emailData.setTemplate(SharedConstants.TEMPLATE_EMAIL_AD_RESUBMITTED_CLIENT);
+        emailData.setParams(new HashMap<>());
+        emailData.getParams().put("name", params.getOrDefault("name", ""));
+        emailData.getParams().put("adName", params.getOrDefault("adName", "Ad"));
+        emailData.getParams().put("link", params.getOrDefault("link", ""));
+        return emailData;
+    }
+
+    private static EmailDataDto createAdminAdResubmittedEmailData(Map<String, String> params) {
+        EmailDataDto emailData = new EmailDataDto();
+        emailData.setSubject(SharedConstants.EMAIL_SUBJECT_ADMIN_AD_RESUBMITTED);
+        emailData.setTemplate(SharedConstants.TEMPLATE_EMAIL_ADMIN_AD_RESUBMITTED);
+        emailData.setParams(new HashMap<>());
+        emailData.getParams().put("clientName", params.getOrDefault("clientName", ""));
+        emailData.getParams().put("adName", params.getOrDefault("adName", ""));
+        emailData.getParams().put("adminName", params.getOrDefault("adminName", ""));
+        emailData.getParams().put("link", params.getOrDefault("link", ""));
         return emailData;
     }
 

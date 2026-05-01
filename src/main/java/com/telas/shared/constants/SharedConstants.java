@@ -43,6 +43,12 @@ public final class SharedConstants {
     public static final String TEMPLATE_EMAIL_CLIENT_AD_REJECTED = "email_client_ad_rejected.ftlh";
     public static final String EMAIL_SUBJECT_CLIENT_AD_REJECTED = "Ad rejected by customer — Telas";
 
+    public static final String TEMPLATE_EMAIL_AD_RESUBMITTED_CLIENT = "email_ad_resubmitted_client.ftlh";
+    public static final String EMAIL_SUBJECT_AD_RESUBMITTED_CLIENT = "Your ad was updated — please validate — Telas";
+
+    public static final String TEMPLATE_EMAIL_ADMIN_AD_RESUBMITTED = "email_admin_ad_resubmitted.ftlh";
+    public static final String EMAIL_SUBJECT_ADMIN_AD_RESUBMITTED = "Ad resent to customer for validation — Telas";
+
     public static final String TEMPLATE_EMAIL_SCHEDULER_PRERUN = "email_scheduler_prerun.ftlh";
     public static final String EMAIL_SUBJECT_SCHEDULER_PRERUN = "Scheduled job starting — Telas";
 

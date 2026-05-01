@@ -171,7 +171,7 @@ public class AttachmentHelper {
     public void saveAds(AttachmentRequestDto request, Client client) {
         Ad ad = client.isPrivilegedPanelUser() || (client.isPartner() && !client.getApprovedAds().isEmpty())
                 ? (request.getId() == null ? createNewAd(request, client) : updateExistingAd(request))
-                : (client.getAdRequest().getAd() == null ? createNewAdFromRequest(client.getAdRequest(), request) : updateExistingAdFromRequest(client.getAdRequest().getAd(), request));
+                : (client.getAdRequest().getAd() == null ? createNewAdFromRequest(client.getAdRequest(), request) : updateExistingAdFromRequest(client.getAdRequest().getAd(), request, client));
         uploadAttachment(request, ad);
         clientRepository.save(client);
     }
@@ -215,7 +215,9 @@ public class AttachmentHelper {
         return newAd;
     }
 
-    private Ad updateExistingAdFromRequest(Ad ad, AttachmentRequestDto adRequest) {
+    private Ad updateExistingAdFromRequest(Ad ad, AttachmentRequestDto adRequest, Client actor) {
+        boolean resubmitAfterClientRejection = AdValidationType.REJECTED.equals(ad.getValidation());
+
         updateAdDetails(adRequest, ad);
 
         if (shouldRemoveAdFromMonitors(ad)) {
@@ -231,14 +233,52 @@ public class AttachmentHelper {
 
         adRepository.save(ad);
 
-        notificationService.save(
-                NotificationReference.AD_RECEIVED,
-                ad.getClient(),
-                Map.of("link", frontBaseUrl + "/client/my-telas?tab=ads"),
-                false
-        );
+        if (resubmitAfterClientRejection) {
+            Map<String, String> clientParams = new HashMap<>();
+            clientParams.put("link", frontBaseUrl + "/client/my-telas?tab=ads");
+            clientParams.put("adName", ad.getName());
+            clientParams.put("name", ad.getClient().getBusinessName());
+            notificationService.save(
+                    NotificationReference.AD_RESUBMITTED_FOR_VALIDATION,
+                    ad.getClient(),
+                    clientParams,
+                    true
+            );
+            notifyAdminsAdResubmittedToClient(ad, actor);
+        } else {
+            notificationService.save(
+                    NotificationReference.AD_RECEIVED,
+                    ad.getClient(),
+                    Map.of("link", frontBaseUrl + "/client/my-telas?tab=ads"),
+                    false
+            );
+        }
 
         return ad;
+    }
+
+    private void notifyAdminsAdResubmittedToClient(Ad ad, Client actingAdmin) {
+        String adminLink = frontBaseUrl + "/admin/ads";
+        Map<String, String> params = new HashMap<>();
+        params.put("clientName", ad.getClient().getBusinessName());
+        params.put("adName", ad.getName());
+        params.put("adminName", actingAdmin != null ? actingAdmin.getBusinessName() : "");
+        params.put("link", adminLink);
+        for (Client recipient : clientRepository.findAllAdminsAndDevelopers()) {
+            boolean canManageAds = recipient.isDeveloper()
+                    || permissionService.hasPermission(recipient, Permission.ADMIN_ADS_MANAGE);
+            if (!canManageAds) {
+                continue;
+            }
+            boolean sendEmail = adminEmailAlertPreferenceService.wantsEmail(
+                    recipient.getId(), com.telas.enums.AdminEmailAlertCategory.ADS_MANAGEMENT);
+            notificationService.save(
+                    NotificationReference.ADMIN_AD_RESUBMITTED_TO_CLIENT,
+                    recipient,
+                    new HashMap<>(params),
+                    sendEmail
+            );
+        }
     }
 
     private Ad updateAdDetails(AttachmentRequestDto request, Ad ad) {
