@@ -44,9 +44,7 @@ public final class MonitorResponseDto implements Serializable {
         int partner = (int) entity.getMonitorAds().stream().filter(ma -> {
             var c = ma.getAd() != null ? ma.getAd().getClient() : null;
             if (c == null) return false;
-            if (c.isAdmin() || c.isDeveloper()) return true;
-            return c.isPartner() && entity.getAddress() != null && entity.getAddress().getClient() != null
-                    && c.getId().equals(entity.getAddress().getClient().getId());
+            return c.isPartner() || c.isAdmin() || c.isDeveloper();
         }).count();
         partnerAdsCount = partner;
         clientAdsCount = Math.max(0, activeAdsCount - partnerAdsCount);

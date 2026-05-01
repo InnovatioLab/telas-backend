@@ -330,6 +330,8 @@ public class AttachmentHelper {
                     recipient.getId(), com.telas.enums.AdminEmailAlertCategory.ADS_MANAGEMENT);
             notificationService.save(NotificationReference.CLIENT_AD_REJECTED, recipient, params, sendEmail);
         }
+
+        notificationService.save(NotificationReference.CLIENT_AD_REJECTED, client, params, true);
     }
 
     private void validateValidatorPermissions(Ad entity, Client validator) {

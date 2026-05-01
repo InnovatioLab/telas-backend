@@ -299,15 +299,10 @@ public class MonitorServiceImpl implements MonitorService {
 		int partnerCap = Math.min(10, totalCap);
 		int clientCap = Math.max(0, totalCap - partnerCap);
 
-		UUID ownerPartnerId = monitor.getAddress() != null && monitor.getAddress().getClient() != null
-			? monitor.getAddress().getClient().getId()
-			: null;
-
 		long partnerCount = ads.stream().filter(ad -> {
 			Client c = ad.getClient();
 			if (c == null) return false;
-			if (c.isAdmin() || c.isDeveloper()) return true;
-			return c.isPartner() && ownerPartnerId != null && ownerPartnerId.equals(c.getId());
+			return c.isPartner() || c.isAdmin() || c.isDeveloper();
 		}).count();
 
 		long clientCount = ads.size() - partnerCount;
