@@ -72,7 +72,7 @@ public final class SharedConstants {
     public static final int MAX_QUANTITY_MONITOR_BLOCK = 1;
     public static final int PARTNER_RESERVED_SLOTS = 5;
 
-    public static final int MAX_ADS_PER_CLIENT = 1;
+    public static final int MAX_ADS_PER_CLIENT = 5;
 
     public static final long MAX_BILLING_CYCLE_ANCHOR = 30L * 24 * 60 * 60;
 

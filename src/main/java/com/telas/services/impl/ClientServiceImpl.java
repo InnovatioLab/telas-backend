@@ -335,7 +335,10 @@ public class ClientServiceImpl implements ClientService {
 			throw new ResourceNotFoundException(ClientValidationMessages.AD_REQUEST_NOT_FOUND);
 		}
 
-		validateMaxAds(client);
+		boolean isReplacingExistingAd = client.getAdRequest() != null && client.getAdRequest().getAd() != null;
+		if (!isReplacingExistingAd) {
+			validateMaxAds(client);
+		}
 		attachmentHelper.saveAds(request, client);
 	}
 
@@ -742,9 +745,7 @@ public class ClientServiceImpl implements ClientService {
 
 
 	private void validateMaxAds(Client client) {
-		boolean hasReachedMaxAds = client.isPartner()
-			? client.getAds().size() >= SharedConstants.PARTNER_RESERVED_SLOTS
-			: !client.getAds().isEmpty();
+		boolean hasReachedMaxAds = client.getAds().size() >= SharedConstants.MAX_ADS_PER_CLIENT;
 
 		if (hasReachedMaxAds) {
 			throw new BusinessRuleException(ClientValidationMessages.MAX_ADS_REACHED);
