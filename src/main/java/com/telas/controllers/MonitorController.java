@@ -1,6 +1,7 @@
 package com.telas.controllers;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
+import com.telas.dtos.request.AttachmentRequestDto;
 import com.telas.dtos.request.MonitorRequestDto;
 import com.telas.dtos.request.filters.FilterMonitorRequestDto;
 import io.swagger.v3.oas.annotations.Operation;
@@ -95,4 +96,13 @@ public interface MonitorController {
             @ApiResponse(responseCode = "404", description = "Monitor not found."),
     })
     ResponseEntity<?> delete(UUID monitorId);
+
+    @Operation(summary = "Admin: upload and attach an ad directly to a monitor", responses = {
+            @ApiResponse(responseCode = "201", description = "Created."),
+            @ApiResponse(responseCode = "422", description = "Request with invalid data."),
+            @ApiResponse(responseCode = "401", description = "Unauthorized."),
+            @ApiResponse(responseCode = "403", description = "Forbidden."),
+            @ApiResponse(responseCode = "404", description = "Monitor not found."),
+    })
+    ResponseEntity<?> uploadDirectAdToMonitor(UUID monitorId, AttachmentRequestDto request);
 }

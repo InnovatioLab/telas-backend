@@ -274,7 +274,7 @@ public class AttachmentHelper {
     }
 
     @Transactional
-    public void validateAd(Ad entity, AdValidationType validation, RefusedAdRequestDto request) {
+    public void validateAd(Ad entity, Client actor, AdValidationType validation, RefusedAdRequestDto request) {
         if (AdValidationType.PENDING.equals(validation)) {
             throw new BusinessRuleException(AdValidationMessages.PENDING_VALIDATION_NOT_ACCEPTED);
         }
@@ -283,7 +283,7 @@ public class AttachmentHelper {
             return;
         }
 
-        validateValidatorPermissions(entity, entity.getClient());
+        validateValidatorPermissions(entity, actor);
 
         if (!entity.canBeRefused() && AdValidationType.REJECTED.equals(validation)) {
             throw new BusinessRuleException(AdValidationMessages.AD_EXCEEDS_MAX_VALIDATION);
@@ -337,7 +337,10 @@ public class AttachmentHelper {
             throw new BusinessRuleException(AdValidationMessages.AD_ALREADY_VALIDATED);
         }
 
-        if (!validator.getId().equals(entity.getClient().getId())) {
+        boolean isOwner = validator.getId().equals(entity.getClient().getId());
+        boolean isPanel = validator.isAdmin() || validator.isDeveloper();
+
+        if (!isOwner && !isPanel) {
             throw new ForbiddenException(AdValidationMessages.VALIDATION_NOT_ALLOWED);
         }
     }

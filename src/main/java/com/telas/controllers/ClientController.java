@@ -1,6 +1,7 @@
 package com.telas.controllers;
 
 import com.telas.dtos.request.AttachmentRequestDto;
+import com.telas.dtos.request.AdMessageRequestDto;
 import com.telas.dtos.request.ClientAdRequestToAdminDto;
 import com.telas.dtos.request.ClientRequestDto;
 import com.telas.dtos.request.PermanentDeleteClientRequestDto;
@@ -157,6 +158,31 @@ public interface ClientController {
             @ApiResponse(responseCode = "404", description = "Some data not found."),
     })
     ResponseEntity<?> validateAd(AdValidationType validation, RefusedAdRequestDto request, UUID attachmentId);
+
+    @Operation(summary = "Endpoint contract to list ad messages", responses = {
+            @ApiResponse(responseCode = "200", description = "Success."),
+            @ApiResponse(responseCode = "401", description = "Unauthorized."),
+            @ApiResponse(responseCode = "403", description = "Forbidden."),
+            @ApiResponse(responseCode = "404", description = "Ad not found."),
+    })
+    ResponseEntity<?> listAdMessages(UUID adId);
+
+    @Operation(summary = "Endpoint contract to send a message about an ad", responses = {
+            @ApiResponse(responseCode = "201", description = "Created."),
+            @ApiResponse(responseCode = "422", description = "Request with invalid data."),
+            @ApiResponse(responseCode = "401", description = "Unauthorized."),
+            @ApiResponse(responseCode = "403", description = "Forbidden."),
+            @ApiResponse(responseCode = "404", description = "Ad not found."),
+    })
+    ResponseEntity<?> sendAdMessage(UUID adId, @Valid @RequestBody AdMessageRequestDto request);
+
+    @Operation(summary = "Admin: list message history (admin/client) for a client", responses = {
+            @ApiResponse(responseCode = "200", description = "Success."),
+            @ApiResponse(responseCode = "401", description = "Unauthorized."),
+            @ApiResponse(responseCode = "403", description = "Forbidden."),
+            @ApiResponse(responseCode = "404", description = "Client not found."),
+    })
+    ResponseEntity<?> listClientMessagesHistory(UUID clientId);
 
     @Operation(summary = "Endpoint contract to increment logged client subscription flow", responses = {
             @ApiResponse(responseCode = "200", description = "Subscription flow incremented successfully."),

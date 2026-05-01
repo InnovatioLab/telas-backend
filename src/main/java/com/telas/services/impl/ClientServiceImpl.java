@@ -2,6 +2,7 @@ package com.telas.services.impl;
 
 import com.telas.dtos.EmailDataDto;
 import com.telas.dtos.request.AttachmentRequestDto;
+import com.telas.dtos.request.AdMessageRequestDto;
 import com.telas.dtos.request.ClientAdRequestToAdminDto;
 import com.telas.dtos.request.ClientRequestDto;
 import com.telas.dtos.request.RefusedAdRequestDto;
@@ -26,6 +27,7 @@ import com.telas.infra.security.model.PasswordRequestDto;
 import com.telas.infra.security.model.PasswordUpdateRequestDto;
 import com.telas.infra.security.services.AuthenticatedUserService;
 import com.telas.repositories.AdRequestRepository;
+import com.telas.repositories.AdMessageRepository;
 import com.telas.repositories.AdRepository;
 import com.telas.repositories.ClientRepository;
 import com.telas.repositories.MonitorAdRepository;
@@ -85,6 +87,8 @@ public class ClientServiceImpl implements ClientService {
 	private final AdRequestRepository adRequestRepository;
 
 	private final AdRepository adRepository;
+
+	private final AdMessageRepository adMessageRepository;
 
 	private final MonitorAdRepository monitorAdRepository;
 
@@ -463,7 +467,50 @@ public class ClientServiceImpl implements ClientService {
 	@Transactional
 	public void validateAd(UUID adId, AdValidationType validation, RefusedAdRequestDto request) {
 		Ad ad = helper.getAdById(adId);
-		attachmentHelper.validateAd(ad, validation, request);
+		Client actor = authenticatedUserService.getLoggedUser().client();
+		attachmentHelper.validateAd(ad, actor, validation, request);
+	}
+
+	@Override
+	@Transactional(readOnly = true)
+	public List<AdMessageResponseDto> listAdMessages(UUID adId) {
+		Client actor = authenticatedUserService.getLoggedUser().client();
+		Ad ad = helper.getAdById(adId);
+		validateCanSeeAdConversation(actor, ad);
+		return adMessageRepository.findAllByAdIdOrderByCreatedAtAsc(adId).stream()
+				.map(AdMessageResponseDto::new)
+				.toList();
+	}
+
+	@Override
+	@Transactional
+	public void sendAdMessage(UUID adId, AdMessageRequestDto request) {
+		Client actor = authenticatedUserService.getLoggedUser().client();
+		Ad ad = helper.getAdById(adId);
+		validateCanSeeAdConversation(actor, ad);
+
+		AdMessage msg = new AdMessage(ad, actor.getRole(), request.getMessage());
+		msg.setUsernameCreate(actor.getBusinessName());
+		adMessageRepository.save(msg);
+	}
+
+	@Override
+	@Transactional(readOnly = true)
+	public List<AdminClientMessageRowDto> listClientMessagesHistory(UUID clientId) {
+		authenticatedUserService.validateAdmin();
+		return adMessageRepository.findAllByClientIdOrderByCreatedAtAsc(clientId).stream()
+				.map(AdminClientMessageRowDto::new)
+				.toList();
+	}
+
+	private void validateCanSeeAdConversation(Client actor, Ad ad) {
+		if (actor.isAdmin() || actor.isDeveloper()) {
+			return;
+		}
+		if (ad.getClient() != null && actor.getId().equals(ad.getClient().getId())) {
+			return;
+		}
+		throw new ForbiddenException("You are not allowed to access this ad conversation.");
 	}
 
 

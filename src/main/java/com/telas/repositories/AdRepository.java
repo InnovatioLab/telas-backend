@@ -78,4 +78,14 @@ public interface AdRepository extends JpaRepository<Ad, UUID>, JpaSpecificationE
 		""")
 	List<Ad> findAllApprovedNotInMonitorFiltered(@Param("monitorId") UUID monitorId, @Param("name") String name);
 
+	@Query("""
+		SELECT COUNT(ad) FROM Ad ad
+		WHERE ad.validation = 'APPROVED'
+		  AND ad.id NOT IN (
+		      SELECT ma.id.ad.id FROM MonitorAd ma WHERE ma.id.monitor.id = :monitorId
+		  )
+		  AND ad.type <> 'application/pdf'
+		""")
+	long countAllApprovedNotInMonitor(@Param("monitorId") UUID monitorId);
+
 }

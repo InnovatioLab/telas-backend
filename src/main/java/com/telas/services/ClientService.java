@@ -3,6 +3,7 @@ package com.telas.services;
 import com.telas.dtos.request.AttachmentRequestDto;
 import com.telas.dtos.request.ClientAdRequestToAdminDto;
 import com.telas.dtos.request.ClientRequestDto;
+import com.telas.dtos.request.AdMessageRequestDto;
 import com.telas.dtos.request.RefusedAdRequestDto;
 import com.telas.dtos.request.PermanentDeleteClientRequestDto;
 import com.telas.dtos.request.filters.ClientFilterRequestDto;
@@ -65,6 +66,12 @@ public interface ClientService {
     void permanentlyDeleteClientByDeveloper(UUID clientId, PermanentDeleteClientRequestDto request);
 
     void validateAd(UUID adId, AdValidationType validation, RefusedAdRequestDto request);
+
+    List<AdMessageResponseDto> listAdMessages(UUID adId);
+
+    void sendAdMessage(UUID adId, AdMessageRequestDto request);
+
+    List<AdminClientMessageRowDto> listClientMessagesHistory(UUID clientId);
 
     void incrementSubscriptionFlow();
 

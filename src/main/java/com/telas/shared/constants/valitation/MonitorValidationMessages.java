@@ -28,4 +28,9 @@ public final class MonitorValidationMessages {
     public static final String MONITOR_BLOCKS_BEYOND_LIMIT = "Total block quantity exceeds the maximum allowed for the monitor.";
     public static final String BLOCK_QUANTITY_PARTNER_DUPLICATED = "Only one ad with partner reserved slots (5) is allowed per monitor.";
     public static final String BLOCK_QUANTITY_MAXIMUM = "Block quantity exceeds the maximum of 5 allowed per ad.";
+
+    public static final String PARTNER_ADS_LIMIT_EXCEEDED =
+            "Partner/admin ads exceed the maximum allowed for this monitor.";
+    public static final String CLIENT_ADS_LIMIT_EXCEEDED =
+            "Client ads exceed the maximum allowed for this monitor.";
 }

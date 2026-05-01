@@ -1,6 +1,7 @@
 package com.telas.services.impl;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
+import com.telas.dtos.request.AttachmentRequestDto;
 import com.telas.dtos.request.MonitorAdRequestDto;
 import com.telas.dtos.request.MonitorRequestDto;
 import com.telas.dtos.request.UpdateBoxMonitorsAdRequestDto;
@@ -14,6 +15,7 @@ import com.telas.infra.exceptions.ForbiddenException;
 import com.telas.infra.exceptions.ResourceNotFoundException;
 import com.telas.infra.security.model.AuthenticatedUser;
 import com.telas.infra.security.services.AuthenticatedUserService;
+import com.telas.repositories.AdRepository;
 import com.telas.repositories.MonitorRepository;
 import com.telas.services.AdUnusedTrackingService;
 import com.telas.services.BucketService;
@@ -62,6 +64,8 @@ public class MonitorServiceImpl implements MonitorService {
 	private final AuthenticatedUserService authenticatedUserService;
 
 	private final MonitorRepository repository;
+
+	private final AdRepository adRepository;
 
 	private final BucketService bucketService;
 
@@ -142,7 +146,7 @@ public class MonitorServiceImpl implements MonitorService {
 
 		List<MonitorAdResponseDto> adLinks = helper.getMonitorAdsResponse(entity);
 
-		return new MonitorResponseDto(entity, adLinks);
+		return new MonitorResponseDto(entity, adLinks, adRepository.countAllApprovedNotInMonitor(entity.getId()));
 	}
 
 
@@ -248,10 +252,75 @@ public class MonitorServiceImpl implements MonitorService {
 
 		Page<Monitor> page = repository.findAll(filter, pageable);
 		List<MonitorResponseDto> response = page.stream()
-			.map(monitor -> new MonitorResponseDto(monitor, helper.getMonitorAdsResponse(monitor))).toList();
+			.map(monitor -> new MonitorResponseDto(
+				monitor,
+				helper.getMonitorAdsResponse(monitor),
+				adRepository.countAllApprovedNotInMonitor(monitor.getId())
+			)).toList();
 
 		return PaginationResponseDto.fromResult(response, (int) page.getTotalElements(), page.getTotalPages(),
 			request.getPage());
+	}
+
+	@Override
+	@Transactional
+	public UUID uploadDirectAdToMonitor(UUID monitorId, AttachmentRequestDto request) {
+		authenticatedUserService.validateAdmin();
+		Client actor = authenticatedUserService.getLoggedUser().client();
+		Monitor monitor = findEntityById(monitorId);
+
+		Ad ad = new Ad(request, actor);
+		ad.setValidation(com.telas.enums.AdValidationType.APPROVED);
+		ad.setUsernameCreate(actor.getBusinessName());
+		Ad saved = adRepository.save(ad);
+
+		bucketService.upload(
+			request.getBytes(),
+			AttachmentUtils.format(saved),
+			request.getType(),
+			new java.io.ByteArrayInputStream(request.getBytes())
+		);
+
+		List<Ad> nextAds = new ArrayList<>(monitor.getAds());
+		nextAds.add(saved);
+		validateMonitorAdsQuotas(monitor, nextAds);
+
+		monitor.getMonitorAds().add(new MonitorAd(monitor, saved));
+		repository.save(monitor);
+		adUnusedTrackingService.syncUnusedStateForAdIds(List.of(saved.getId()));
+
+		return saved.getId();
+	}
+
+	private void validateMonitorAdsQuotas(Monitor monitor, List<Ad> ads) {
+		int totalCap = monitor.getMaxBlocks() != null ? monitor.getMaxBlocks() : SharedConstants.MAX_MONITOR_ADS;
+		totalCap = Math.min(totalCap, SharedConstants.MAX_MONITOR_ADS);
+
+		int partnerCap = Math.min(10, totalCap);
+		int clientCap = Math.max(0, totalCap - partnerCap);
+
+		UUID ownerPartnerId = monitor.getAddress() != null && monitor.getAddress().getClient() != null
+			? monitor.getAddress().getClient().getId()
+			: null;
+
+		long partnerCount = ads.stream().filter(ad -> {
+			Client c = ad.getClient();
+			if (c == null) return false;
+			if (c.isAdmin() || c.isDeveloper()) return true;
+			return c.isPartner() && ownerPartnerId != null && ownerPartnerId.equals(c.getId());
+		}).count();
+
+		long clientCount = ads.size() - partnerCount;
+
+		if (ads.size() > totalCap) {
+			throw new BusinessRuleException(MonitorValidationMessages.ADS_LIMIT_EXCEEDED + totalCap);
+		}
+		if (partnerCount > partnerCap) {
+			throw new BusinessRuleException(MonitorValidationMessages.PARTNER_ADS_LIMIT_EXCEEDED);
+		}
+		if (clientCount > clientCap) {
+			throw new BusinessRuleException(MonitorValidationMessages.CLIENT_ADS_LIMIT_EXCEEDED);
+		}
 	}
 
 
@@ -453,6 +522,7 @@ public class MonitorServiceImpl implements MonitorService {
 
 
 	private void updateMonitorAds(MonitorRequestDto request, Monitor monitor, List<Ad> ads) {
+		validateMonitorAdsQuotas(monitor, ads);
 		Set<UUID> newAdIds = buildNewAdIds(ads);
 		Set<UUID> removedAdIds =
 				monitor.getMonitorAds().stream()

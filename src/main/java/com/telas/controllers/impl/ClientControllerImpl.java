@@ -2,6 +2,7 @@ package com.telas.controllers.impl;
 
 import com.telas.controllers.ClientController;
 import com.telas.dtos.request.AttachmentRequestDto;
+import com.telas.dtos.request.AdMessageRequestDto;
 import com.telas.dtos.request.ClientAdRequestToAdminDto;
 import com.telas.dtos.request.ClientRequestDto;
 import com.telas.dtos.request.RefusedAdRequestDto;
@@ -221,6 +222,33 @@ public class ClientControllerImpl implements ClientController {
 
         service.validateAd(adId, validation, request);
         return ResponseEntity.status(HttpStatus.OK).body(ResponseDto.fromData(null, HttpStatus.OK, MessageCommonsConstants.AD_VALIDATION_MESSAGE));
+    }
+
+    @Override
+    @GetMapping("/ads/{id}/messages")
+    @SecurityRequirement(name = "jwt")
+    public ResponseEntity<?> listAdMessages(@PathVariable(name = "id") UUID adId) {
+        return ResponseEntity.status(HttpStatus.OK)
+                .body(ResponseDto.fromData(service.listAdMessages(adId), HttpStatus.OK, MessageCommonsConstants.FIND_ALL_SUCCESS_MESSAGE));
+    }
+
+    @Override
+    @PostMapping("/ads/{id}/messages")
+    @SecurityRequirement(name = "jwt")
+    public ResponseEntity<?> sendAdMessage(
+            @PathVariable(name = "id") UUID adId,
+            @Valid @RequestBody AdMessageRequestDto request) {
+        service.sendAdMessage(adId, request);
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(ResponseDto.fromData(null, HttpStatus.CREATED, MessageCommonsConstants.SAVE_SUCCESS_MESSAGE));
+    }
+
+    @Override
+    @GetMapping("/{id}/messages-history")
+    @SecurityRequirement(name = "jwt")
+    public ResponseEntity<?> listClientMessagesHistory(@PathVariable(name = "id") UUID clientId) {
+        return ResponseEntity.status(HttpStatus.OK)
+                .body(ResponseDto.fromData(service.listClientMessagesHistory(clientId), HttpStatus.OK, MessageCommonsConstants.FIND_ALL_SUCCESS_MESSAGE));
     }
 
     @Override
