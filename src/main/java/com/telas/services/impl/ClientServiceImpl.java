@@ -594,22 +594,29 @@ public class ClientServiceImpl implements ClientService {
 		Pageable pageable = PaginationFilterUtil.getPageable(request, order);
 		Specification<AdRequest> filter = PaginationFilterUtil.addSpecificationFilter((root, query, criteriaBuilder) -> {
 
+			Join<AdRequest, Client> clientJoin = root.join("client", JoinType.INNER);
 			Join<AdRequest, Ad> adJoin = root.join("ad", JoinType.LEFT);
-			Join<Ad, RefusedAd> refusedAdsJoin = adJoin.join("refusedAds", JoinType.LEFT);
-			Join<AdRequest, Client> clientJoin = root.join("client", JoinType.LEFT);
-
-			query.groupBy(root.get("id"), root.get("slogan"), root.get("createdAt"), clientJoin.get("businessName"),
-				clientJoin.get("role"));
-
-			Expression<Long> refusedCount = criteriaBuilder.count(refusedAdsJoin.get("id"));
-
-			query.having(criteriaBuilder.le(refusedCount, (long) SharedConstants.MAX_ADS_VALIDATION));
 
 			Predicate activeClient = criteriaBuilder.equal(clientJoin.get("status"), DefaultStatus.ACTIVE);
-			if (Boolean.TRUE.equals(request.getIncludeInactiveRequests())) {
-				return activeClient;
-			}
-			return criteriaBuilder.and(activeClient, criteriaBuilder.equal(root.get("isActive"), true));
+
+			Predicate noAdYet = criteriaBuilder.isNull(adJoin.get("id"));
+			Predicate clientRejectedAd =
+				criteriaBuilder.equal(adJoin.get("validation"), AdValidationType.REJECTED);
+
+			Predicate needsAdminAction = criteriaBuilder.or(noAdYet, clientRejectedAd);
+
+			Predicate refusalHistoryOk = criteriaBuilder.or(
+				noAdYet,
+				criteriaBuilder.and(
+					criteriaBuilder.isNotNull(adJoin.get("id")),
+					criteriaBuilder.le(
+						criteriaBuilder.size(adJoin.get("refusedAds")),
+						SharedConstants.MAX_ADS_VALIDATION
+					)
+				)
+			);
+
+			return criteriaBuilder.and(activeClient, needsAdminAction, refusalHistoryOk);
 		}, request.getGenericFilter(), this::filterAdRequests);
 
 		Page<AdRequest> page = adRequestRepository.findAll(filter, pageable);
