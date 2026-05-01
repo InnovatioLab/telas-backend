@@ -138,4 +138,15 @@ public class MonitorControllerImpl implements MonitorController {
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(ResponseDto.fromData(adId, HttpStatus.CREATED, MessageCommonsConstants.SAVE_SUCCESS_MESSAGE));
     }
+
+    @Override
+    @DeleteMapping("/{monitorId}/available-ads/{adId}")
+    @SecurityRequirement(name = "jwt")
+    public ResponseEntity<?> deleteAvailableAd(
+            @PathVariable UUID monitorId,
+            @PathVariable UUID adId) {
+        service.deleteAvailableAd(monitorId, adId);
+        return ResponseEntity.status(HttpStatus.NO_CONTENT)
+                .body(ResponseDto.fromData(null, HttpStatus.NO_CONTENT, MessageCommonsConstants.DELETE_SUCCESS_MESSAGE));
+    }
 }

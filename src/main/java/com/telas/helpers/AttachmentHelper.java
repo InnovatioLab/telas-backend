@@ -307,11 +307,12 @@ public class AttachmentHelper {
 
     private void notifyAdminsClientRejectedAd(Ad entity, RefusedAdRequestDto request) {
         Client client = entity.getClient();
-        String link = frontBaseUrl + "/admin/ads";
+        String adminLink = frontBaseUrl + "/admin/clients/" + client.getId() + "/messages";
+        String clientLink = frontBaseUrl + "/client/my-telas?tab=ads";
         Map<String, String> params = new HashMap<>();
         params.put("name", client.getBusinessName());
         params.put("adName", entity.getName());
-        params.put("link", link);
+        params.put("locations", "");
         if (request != null) {
             if (!ValidateDataUtils.isNullOrEmptyString(request.getJustification())) {
                 params.put("justification", request.getJustification());
@@ -328,9 +329,11 @@ public class AttachmentHelper {
             }
             boolean sendEmail = adminEmailAlertPreferenceService.wantsEmail(
                     recipient.getId(), com.telas.enums.AdminEmailAlertCategory.ADS_MANAGEMENT);
+            params.put("link", adminLink);
             notificationService.save(NotificationReference.CLIENT_AD_REJECTED, recipient, params, sendEmail);
         }
 
+        params.put("link", clientLink);
         notificationService.save(NotificationReference.CLIENT_AD_REJECTED, client, params, true);
     }
 

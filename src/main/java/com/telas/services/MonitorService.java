@@ -7,7 +7,6 @@ import com.telas.dtos.request.filters.FilterMonitorRequestDto;
 import com.telas.dtos.response.*;
 import com.telas.entities.Monitor;
 import com.telas.entities.Subscription;
-
 import java.util.List;
 import java.util.UUID;
 
@@ -34,6 +33,8 @@ public interface MonitorService {
     PaginationResponseDto<List<MonitorResponseDto>> findAllByFilters(FilterMonitorRequestDto request);
 
     UUID uploadDirectAdToMonitor(UUID monitorId, AttachmentRequestDto request);
+
+    void deleteAvailableAd(UUID monitorId, UUID adId);
 
     void delete(UUID monitorId);
 

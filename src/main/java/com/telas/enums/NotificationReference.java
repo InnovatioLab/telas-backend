@@ -567,20 +567,31 @@ public enum NotificationReference {
                 </div>
                 """, params.get("startDate")) : "";
 
+        String locations = params.get("locations");
+        String servicesBlock = "";
+        if (!ObjectUtils.isEmpty(locations)) {
+            servicesBlock = String.format("""
+                    <div class="field flex-column">
+                        <span class="field-label">Services:</span>
+                        <span class="field-value">%s</span>
+                    </div>
+                    """, locations);
+        }
+
+        String link = ObjectUtils.isEmpty(params.get("link")) ? "#" : params.get("link");
+        String safeLinkText = ObjectUtils.isEmpty(linkText) ? "Open" : linkText;
+
         return String.format("""
                 <div class="informacoes">
                     <h4 id="notification-title" class="notification-title">%s</h4>
                     <p>%s</p>
                     %s
                     %s
-                    <div class="field flex-column">
-                        <span class="field-label">Services:</span>
-                        <span class="field-value">%s</span>
-                    </div>
+                    %s
                 </div>
                 <a id="link-details" class='details link-text' href="%s">%s</a>
                 <p>Need help? Contact us anytime at support@telas-ads.com</p>
-                """, title, message, startDateDiv, endDateDiv, params.get("locations"), params.get("link"), linkText);
+                """, title, message, startDateDiv, endDateDiv, servicesBlock, link, safeLinkText);
     }
 
 

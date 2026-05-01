@@ -23,6 +23,7 @@ import com.telas.services.MonitorService;
 import com.telas.services.MonitorSubscriptionService;
 import com.telas.services.RemoveMonitorAdsOutcome;
 import com.telas.services.SubscriptionService;
+import com.telas.services.impl.UnusedSingleAdDeletionService;
 import com.telas.shared.audit.CustomRevisionListener;
 import com.telas.shared.constants.valitation.AuthValidationMessageConstants;
 import com.telas.shared.constants.SharedConstants;
@@ -76,6 +77,8 @@ public class MonitorServiceImpl implements MonitorService {
 	private final AdUnusedTrackingService adUnusedTrackingService;
 
 	private final MonitorSubscriptionService monitorSubscriptionService;
+
+	private final UnusedSingleAdDeletionService unusedSingleAdDeletionService;
 
 	@Value("${stripe.product.id}")
 	private String productId;
@@ -290,6 +293,25 @@ public class MonitorServiceImpl implements MonitorService {
 		adUnusedTrackingService.syncUnusedStateForAdIds(List.of(saved.getId()));
 
 		return saved.getId();
+	}
+
+	@Override
+	@Transactional
+	public void deleteAvailableAd(UUID monitorId, UUID adId) {
+		authenticatedUserService.validateAdmin();
+		Monitor monitor = findEntityById(monitorId);
+		Ad ad = adRepository.findById(adId)
+				.orElseThrow(() -> new ResourceNotFoundException("Ad not found"));
+
+		boolean alreadyInMonitor = monitor.getMonitorAds().stream()
+				.anyMatch(ma -> ma.getAd() != null && adId.equals(ma.getAd().getId()));
+		if (alreadyInMonitor) {
+			throw new BusinessRuleException("Ad is already attached to this monitor.");
+		}
+		if (ad.getMonitorAds() != null && !ad.getMonitorAds().isEmpty()) {
+			throw new BusinessRuleException("Ad is attached to a monitor and cannot be removed.");
+		}
+		unusedSingleAdDeletionService.deleteAdInNewTransaction(adId);
 	}
 
 	private void validateMonitorAdsQuotas(Monitor monitor, List<Ad> ads) {
