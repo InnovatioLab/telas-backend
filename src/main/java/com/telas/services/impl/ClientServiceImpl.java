@@ -28,7 +28,6 @@ import com.telas.infra.security.model.PasswordUpdateRequestDto;
 import com.telas.infra.security.services.AuthenticatedUserService;
 import com.telas.repositories.AdRequestRepository;
 import com.telas.repositories.AdMessageRepository;
-import com.telas.repositories.AdRepository;
 import com.telas.repositories.ClientRepository;
 import com.telas.repositories.MonitorAdRepository;
 import com.telas.services.AdminEmailAlertPreferenceService;
@@ -40,8 +39,6 @@ import com.telas.services.TermConditionService;
 import com.telas.services.VerificationCodeService;
 import com.telas.shared.audit.CustomRevisionListener;
 import com.telas.shared.constants.SharedConstants;
-import com.telas.shared.constants.valitation.AdValidationMessages;
-import com.telas.shared.constants.valitation.AuthValidationMessageConstants;
 import com.telas.shared.constants.valitation.AuthValidationMessageConstants;
 import com.telas.shared.constants.valitation.ClientValidationMessages;
 import com.telas.shared.utils.AttachmentUtils;
@@ -85,8 +82,6 @@ public class ClientServiceImpl implements ClientService {
 	private final TermConditionService termConditionService;
 
 	private final AdRequestRepository adRequestRepository;
-
-	private final AdRepository adRepository;
 
 	private final AdMessageRepository adMessageRepository;
 
@@ -391,6 +386,9 @@ public class ClientServiceImpl implements ClientService {
 		target.setStatus(DefaultStatus.INACTIVE);
 		target.setInactiveByClientId(actor.getId());
 		target.setUsernameUpdate(actor.getBusinessName());
+		if (target.getAdRequest() != null && target.getAdRequest().isActive()) {
+			target.getAdRequest().closeRequest();
+		}
 		repository.save(target);
 	}
 
@@ -607,10 +605,11 @@ public class ClientServiceImpl implements ClientService {
 
 			query.having(criteriaBuilder.le(refusedCount, (long) SharedConstants.MAX_ADS_VALIDATION));
 
+			Predicate activeClient = criteriaBuilder.equal(clientJoin.get("status"), DefaultStatus.ACTIVE);
 			if (Boolean.TRUE.equals(request.getIncludeInactiveRequests())) {
-				return criteriaBuilder.conjunction();
+				return activeClient;
 			}
-			return criteriaBuilder.equal(root.get("isActive"), true);
+			return criteriaBuilder.and(activeClient, criteriaBuilder.equal(root.get("isActive"), true));
 		}, request.getGenericFilter(), this::filterAdRequests);
 
 		Page<AdRequest> page = adRequestRepository.findAll(filter, pageable);
@@ -642,12 +641,6 @@ public class ClientServiceImpl implements ClientService {
 		return new WishlistResponseDto(client.getWishlist());
 	}
 
-
-	private void validateAdRequestId(UUID adRequestId) {
-		if (adRequestId == null) {
-			throw new BusinessRuleException(AdValidationMessages.AD_REQUEST_ID_REQUIRED);
-		}
-	}
 
 
 	private void sendContactConfirmationEmail(Client client, VerificationCode verificationCode) {

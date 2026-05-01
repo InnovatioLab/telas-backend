@@ -102,8 +102,31 @@ public class MonitorHelper {
 
 	@Transactional(readOnly = true)
 	public List<MonitorAdResponseDto> getMonitorAdsResponse(Monitor entity) {
-		return entity.getMonitorAds().stream().map(monitorAd -> new MonitorAdResponseDto(monitorAd,
-			bucketService.getLink(AttachmentUtils.format(monitorAd.getAd())))).toList();
+		Map<UUID, SubscriptionMonitor> activeSubscriptionByClientId = subscriptionMonitorRepository
+				.findByMonitorId(entity.getId())
+				.stream()
+				.collect(Collectors.toMap(
+						sm -> sm.getId().getSubscription().getClient().getId(),
+						sm -> sm,
+						(a, b) -> a
+				));
+
+		return entity.getMonitorAds().stream().map(monitorAd -> {
+			MonitorAdResponseDto dto = new MonitorAdResponseDto(
+					monitorAd,
+					bucketService.getLink(AttachmentUtils.format(monitorAd.getAd()))
+			);
+			UUID clientId = monitorAd.getAd() != null && monitorAd.getAd().getClient() != null
+					? monitorAd.getAd().getClient().getId()
+					: null;
+			if (clientId != null) {
+				SubscriptionMonitor sm = activeSubscriptionByClientId.get(clientId);
+				if (sm != null) {
+					dto.setSubscriptionEndsAt(sm.getId().getSubscription().getEndsAt());
+				}
+			}
+			return dto;
+		}).toList();
 	}
 
 
@@ -192,7 +215,11 @@ public class MonitorHelper {
 		try {
 			log.info("Sending request to get current displayed ads from box for monitor with ID: {}, URL: {}",
 				monitor.getId(), url);
-			return (List<String>) httpClient.makeGetRequest(url, List.class, null);
+			Object raw = httpClient.makeGetRequest(url, List.class, null);
+			if (!(raw instanceof List<?> list)) {
+				return Collections.emptyList();
+			}
+			return list.stream().map(String::valueOf).toList();
 		} catch (Exception e) {
 			log.error(
 				"Error while sending request to get current displayed ads from box for monitor with ID: {}, URL: {}, message: {}",

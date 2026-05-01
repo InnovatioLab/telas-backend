@@ -7,7 +7,6 @@ import com.telas.entities.*;
 import com.telas.enums.AdValidationType;
 import com.telas.enums.NotificationReference;
 import com.telas.enums.Permission;
-import com.telas.enums.Role;
 import com.telas.infra.exceptions.BusinessRuleException;
 import com.telas.infra.exceptions.ForbiddenException;
 import com.telas.infra.exceptions.ResourceNotFoundException;
@@ -223,7 +222,7 @@ public class AttachmentHelper {
             monitorHelper.sendBoxesMonitorsRemoveAd(ad, Collections.singletonList(ad.getName()));
         }
 
-        ad.getAdRequest().openRequest();
+        ad.getAdRequest().closeRequest();
         adRequestRepository.save(ad.getAdRequest());
 
         if (!ad.canBeRefused()) {

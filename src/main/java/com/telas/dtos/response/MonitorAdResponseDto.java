@@ -7,6 +7,8 @@ import lombok.Setter;
 
 import java.io.Serial;
 import java.io.Serializable;
+import java.time.Duration;
+import java.time.Instant;
 import java.util.UUID;
 
 @Getter
@@ -26,11 +28,23 @@ public final class MonitorAdResponseDto implements Serializable {
 
   private Integer blockQuantity;
 
+  private String clientName;
+
+  private Instant subscriptionEndsAt;
+
+  private Long subscriptionDaysLeft;
+
   public MonitorAdResponseDto(MonitorAd entity, String adLink) {
     id = entity.getAd().getId();
     orderIndex = entity.getOrderIndex();
     link = adLink;
     fileName = entity.getAd().getName();
     blockQuantity = entity.getBlockQuantity();
+    clientName = entity.getAd().getClient() != null ? entity.getAd().getClient().getBusinessName() : null;
+  }
+
+  public void setSubscriptionEndsAt(Instant endsAt) {
+    subscriptionEndsAt = endsAt;
+    subscriptionDaysLeft = (endsAt != null) ? Duration.between(Instant.now(), endsAt).toDays() : null;
   }
 }
