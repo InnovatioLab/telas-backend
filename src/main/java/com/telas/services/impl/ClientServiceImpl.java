@@ -440,14 +440,14 @@ public class ClientServiceImpl implements ClientService {
 	@Override
 	@Transactional(readOnly = true)
 	public PermanentDeletionRequirementsDto getPermanentDeletionRequirements(UUID clientId) {
-		authenticatedUserService.validatePermission(Permission.ADMIN_CLIENTS_PERMANENT_DELETE);
+		validatePermanentDeleteAccess();
 		return clientPermanentDeletionService.getRequirements(clientId);
 	}
 
 	@Override
 	@Transactional
 	public void permanentlyDeleteClientByDeveloper(UUID clientId, PermanentDeleteClientRequestDto request) {
-		authenticatedUserService.validatePermission(Permission.ADMIN_CLIENTS_PERMANENT_DELETE);
+		validatePermanentDeleteAccess();
 		AuthenticatedUser logged = authenticatedUserService.getLoggedUser();
 		if (!passwordEncoder.matches(request.getPassword(), logged.getPassword())) {
 			throw new BusinessRuleException(AuthValidationMessageConstants.INVALID_CREDENTIALS);
@@ -750,6 +750,15 @@ public class ClientServiceImpl implements ClientService {
 		if (hasReachedMaxAds) {
 			throw new BusinessRuleException(ClientValidationMessages.MAX_ADS_REACHED);
 		}
+	}
+
+	private void validatePermanentDeleteAccess() {
+		Client actor = authenticatedUserService.getLoggedUser().client();
+		if (permissionService.hasPermission(actor, Permission.ADMIN_CLIENTS_PERMANENT_DELETE)
+				|| permissionService.hasPermission(actor, Permission.ADMIN_CLIENTS_SOFT_DELETE)) {
+			return;
+		}
+		throw new ForbiddenException(AuthValidationMessageConstants.ERROR_NO_PERMISSION);
 	}
 
 }

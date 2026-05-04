@@ -9,7 +9,6 @@ import com.telas.monitoring.plug.SmartPlugCredentials;
 import com.telas.monitoring.repositories.BoxSubnetRouteEntityRepository;
 import com.telas.monitoring.repositories.SmartPlugCheckRunRepository;
 import com.telas.monitoring.repositories.SmartPlugEntityRepository;
-import com.telas.services.ApplicationLogService;
 import com.telas.services.SmartPlugCredentialsResolver;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -41,7 +40,6 @@ class SmartPlugIpDiscoveryServiceImplTest {
     @Mock private SmartPlugClient smartPlugClient;
     @Mock private SmartPlugCredentialsResolver credentialsResolver;
     @Mock private SmartPlugIpDiscoveryPersistence smartPlugIpDiscoveryPersistence;
-    @Mock private ApplicationLogService applicationLogService;
 
     private ExecutorService executor;
 
@@ -63,8 +61,7 @@ class SmartPlugIpDiscoveryServiceImplTest {
                         smartPlugClient,
                         credentialsResolver,
                         smartPlugIpDiscoveryPersistence,
-                        executor,
-                        applicationLogService);
+                        executor);
         ReflectionTestUtils.setField(service, "discoveryEnabled", true);
         ReflectionTestUtils.setField(service, "maxParallel", 20);
         ReflectionTestUtils.setField(service, "perPlugMaxAttempts", 500);

@@ -186,13 +186,25 @@ public enum NotificationReference {
 
         @Override
         public EmailDataDto getEmailData(Map<String, String> params) {
-            return createEmailData(
-                    SharedConstants.EMAIL_SUBJECT_CLIENT_AD_REJECTED,
-                    SharedConstants.TEMPLATE_EMAIL_CLIENT_AD_REJECTED,
-                    params,
-                    null,
-                    null
-            );
+            return createClientAdRejectedAdminEmailData(params);
+        }
+    },
+    CLIENT_AD_REJECTION_CONFIRMED {
+        @Override
+        public String getNotificationMessage(Map<String, String> params) {
+            String adName = params.getOrDefault("adName", "your ad");
+            return String.format("""
+                    <div class="informacoes">
+                        <h4 id="notification-title" class="notification-title">Feedback received</h4>
+                        <p>We registered your feedback on <strong>%s</strong>. Our team will review it and may send a revised version for your approval.</p>
+                    </div>
+                    <p>Open <a id="link-details" class='details link-text' href="%s">My Telas — Ads</a> anytime.</p>
+                    """, adName, params.getOrDefault("link", "#"));
+        }
+
+        @Override
+        public EmailDataDto getEmailData(Map<String, String> params) {
+            return createClientAdRejectionConfirmedEmailData(params);
         }
     },
     MONITOR_IN_WISHLIST_NOW_AVAILABLE {
@@ -676,6 +688,30 @@ public enum NotificationReference {
         emailData.getParams().put("name", params.get("name"));
         emailData.getParams().put("link", params.get("link"));
         emailData.getParams().put("endDate", ObjectUtils.isEmpty(params.get("endDate")) ? "" : params.get("endDate"));
+        return emailData;
+    }
+
+    private static EmailDataDto createClientAdRejectedAdminEmailData(Map<String, String> params) {
+        EmailDataDto emailData = new EmailDataDto();
+        emailData.setSubject(SharedConstants.EMAIL_SUBJECT_CLIENT_AD_REJECTED);
+        emailData.setTemplate(SharedConstants.TEMPLATE_EMAIL_CLIENT_AD_REJECTED);
+        emailData.setParams(new HashMap<>());
+        emailData.getParams().put("clientName", params.getOrDefault("name", ""));
+        emailData.getParams().put("adName", params.getOrDefault("adName", "Ad"));
+        emailData.getParams().put("link", params.getOrDefault("link", ""));
+        emailData.getParams().put("justification", params.getOrDefault("justification", ""));
+        emailData.getParams().put("description", params.getOrDefault("description", ""));
+        return emailData;
+    }
+
+    private static EmailDataDto createClientAdRejectionConfirmedEmailData(Map<String, String> params) {
+        EmailDataDto emailData = new EmailDataDto();
+        emailData.setSubject(SharedConstants.EMAIL_SUBJECT_CLIENT_AD_REJECTION_CONFIRMED);
+        emailData.setTemplate(SharedConstants.TEMPLATE_EMAIL_CLIENT_AD_REJECTION_CONFIRMED);
+        emailData.setParams(new HashMap<>());
+        emailData.getParams().put("name", params.getOrDefault("name", ""));
+        emailData.getParams().put("adName", params.getOrDefault("adName", "Ad"));
+        emailData.getParams().put("link", params.getOrDefault("link", ""));
         return emailData;
     }
 

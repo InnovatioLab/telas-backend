@@ -373,7 +373,7 @@ public class AttachmentHelper {
         }
 
         params.put("link", clientLink);
-        notificationService.save(NotificationReference.CLIENT_AD_REJECTED, client, params, true);
+        notificationService.save(NotificationReference.CLIENT_AD_REJECTION_CONFIRMED, client, params, true);
     }
 
     private void validateValidatorPermissions(Ad entity, Client validator) {

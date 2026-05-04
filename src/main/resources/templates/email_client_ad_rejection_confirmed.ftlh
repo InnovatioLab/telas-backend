@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <title>Telas — Ad rejected by customer</title>
+    <title>Telas — Feedback received</title>
     <meta charset="UTF-8"/>
     <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
     <link rel="preconnect" href="https://fonts.googleapis.com"/>
@@ -23,41 +23,29 @@
     <div class="content">
         <table role="presentation" style="width: 100%; border-collapse: collapse;">
             <tr>
-                <td style="padding-bottom: 16px"><h3>Customer rejected an ad</h3></td>
+                <td style="padding-bottom: 16px"><h3>We received your feedback</h3></td>
             </tr>
             <tr>
-                <td style="padding-bottom: 8px"><strong>Customer:</strong> ${clientName!""}</td>
+                <td style="padding-bottom: 8px">
+                    Hello<#if name?has_content> <strong>${name}</strong></#if>,
+                </td>
             </tr>
             <tr>
-                <td style="padding-bottom: 16px"><strong>Ad:</strong> ${adName!""}</td>
+                <td style="padding-bottom: 16px">
+                    Your notes about <strong>${adName!""}</strong> were saved. Our team will review them and may upload a revised ad for you to approve.
+                </td>
             </tr>
-            <#if justification?has_content>
-            <tr>
-                <td style="padding-bottom: 8px"><strong>Summary:</strong></td>
-            </tr>
-            <tr>
-                <td style="padding-bottom: 16px">${justification}</td>
-            </tr>
-            </#if>
-            <#if description?has_content>
-            <tr>
-                <td style="padding-bottom: 8px"><strong>Details:</strong></td>
-            </tr>
-            <tr>
-                <td style="padding-bottom: 16px">${description?html?replace("\n", "<br/>")}</td>
-            </tr>
-            </#if>
             <tr>
                 <td style="padding-top: 8px;">
                     <#if link?has_content>
-                    <a href="${link}" style="color: #075473; font-weight: 600;">Open client messages</a>
+                    <a href="${link}" style="color: #075473; font-weight: 600;">Open My Telas — Ads</a>
                     </#if>
                 </td>
             </tr>
         </table>
     </div>
     <div class="footer">
-        <p style="margin: 0">Telas — Ads management</p>
+        <p style="margin: 0">Telas</p>
         <p class="muted" style="margin: 12px 0 0 0;">Need help? Contact us at support@telas-ads.com</p>
     </div>
 </div>
