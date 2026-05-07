@@ -40,14 +40,23 @@ public class AdminEmailAlertPreferenceServiceImpl implements AdminEmailAlertPref
         if (!Role.ADMIN.equals(client.getRole())) {
             return;
         }
+        ensureEnabledIfMissing(client, AdminEmailAlertCategory.BOX_HEARTBEAT_CONNECTIVITY);
+        ensureEnabledIfMissing(client, AdminEmailAlertCategory.ADS_MANAGEMENT);
+    }
+
+    private void ensureEnabledIfMissing(Client client, AdminEmailAlertCategory category) {
+        UUID clientId = client.getId();
+        if (clientId == null) {
+            return;
+        }
         if (preferenceRepository
-                .findByClient_IdAndAlertCategory(clientId, AdminEmailAlertCategory.BOX_HEARTBEAT_CONNECTIVITY.name())
+                .findByClient_IdAndAlertCategory(clientId, category.name())
                 .isPresent()) {
             return;
         }
         AdminEmailAlertPreference row = new AdminEmailAlertPreference();
         row.setClient(client);
-        row.setAlertCategory(AdminEmailAlertCategory.BOX_HEARTBEAT_CONNECTIVITY.name());
+        row.setAlertCategory(category.name());
         row.setEnabled(true);
         preferenceRepository.save(row);
     }

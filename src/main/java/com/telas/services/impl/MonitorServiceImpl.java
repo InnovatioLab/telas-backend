@@ -9,6 +9,7 @@ import com.telas.dtos.request.filters.FilterMonitorRequestDto;
 import com.telas.dtos.response.*;
 import com.telas.entities.*;
 import com.telas.enums.SubscriptionStatus;
+import com.telas.helpers.AdOnAirNotificationHelper;
 import com.telas.helpers.MonitorHelper;
 import com.telas.infra.exceptions.BusinessRuleException;
 import com.telas.infra.exceptions.ForbiddenException;
@@ -73,6 +74,8 @@ public class MonitorServiceImpl implements MonitorService {
 	private final SubscriptionService subscriptionService;
 
 	private final MonitorHelper helper;
+
+	private final AdOnAirNotificationHelper adOnAirNotificationHelper;
 
 	private final AdUnusedTrackingService adUnusedTrackingService;
 
@@ -567,6 +570,7 @@ public class MonitorServiceImpl implements MonitorService {
 
 		if (monitor.isAbleToSendBoxRequest()) {
 			helper.sendBoxesMonitorsUpdateAds(requestList);
+			adOnAirNotificationHelper.notifyOnAirForNewMonitorAds(newMonitorAds, monitor);
 		}
 
 		Set<UUID> toSync = new HashSet<>(newAdIds);

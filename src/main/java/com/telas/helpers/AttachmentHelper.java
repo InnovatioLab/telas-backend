@@ -208,8 +208,11 @@ public class AttachmentHelper {
         notificationService.save(
                 NotificationReference.AD_RECEIVED,
                 client,
-                Map.of("link", frontBaseUrl + "/client/my-telas?tab=ads"),
-                false
+                Map.of(
+                        "name", client.getBusinessName(),
+                        "link", frontBaseUrl + "/client/my-telas?tab=ads"
+                ),
+                true
         );
 
         return newAd;
@@ -249,8 +252,11 @@ public class AttachmentHelper {
             notificationService.save(
                     NotificationReference.AD_RECEIVED,
                     ad.getClient(),
-                    Map.of("link", frontBaseUrl + "/client/my-telas?tab=ads"),
-                    false
+                    Map.of(
+                            "name", ad.getClient().getBusinessName(),
+                            "link", frontBaseUrl + "/client/my-telas?tab=ads"
+                    ),
+                    true
             );
         }
 
@@ -341,6 +347,38 @@ public class AttachmentHelper {
 
         if (AdValidationType.REJECTED.equals(validation)) {
             notifyAdminsClientRejectedAd(entity, request);
+        } else if (AdValidationType.APPROVED.equals(validation)) {
+            notifyClientApprovedAd(entity);
+            notifyAdminsClientApprovedAd(entity);
+        }
+    }
+
+    private void notifyClientApprovedAd(Ad entity) {
+        Client client = entity.getClient();
+        String clientLink = frontBaseUrl + "/client/my-telas?tab=ads";
+        Map<String, String> params = new HashMap<>();
+        params.put("name", client.getBusinessName());
+        params.put("adName", entity.getName());
+        params.put("link", clientLink);
+        notificationService.save(NotificationReference.CLIENT_AD_APPROVED_CONFIRMATION, client, params, true);
+    }
+
+    private void notifyAdminsClientApprovedAd(Ad entity) {
+        Client client = entity.getClient();
+        String adminLink = frontBaseUrl + "/admin/clients/" + client.getId() + "/messages";
+        Map<String, String> params = new HashMap<>();
+        params.put("clientName", client.getBusinessName());
+        params.put("adName", entity.getName());
+        params.put("link", adminLink);
+        for (Client recipient : clientRepository.findAllAdminsAndDevelopers()) {
+            boolean canManageAds = recipient.isDeveloper()
+                    || permissionService.hasPermission(recipient, Permission.ADMIN_ADS_MANAGE);
+            if (!canManageAds) {
+                continue;
+            }
+            boolean sendEmail = adminEmailAlertPreferenceService.wantsEmail(
+                    recipient.getId(), com.telas.enums.AdminEmailAlertCategory.ADS_MANAGEMENT);
+            notificationService.save(NotificationReference.ADMIN_CLIENT_AD_APPROVED, recipient, new HashMap<>(params), sendEmail);
         }
     }
 
@@ -374,6 +412,31 @@ public class AttachmentHelper {
 
         params.put("link", clientLink);
         notificationService.save(NotificationReference.CLIENT_AD_REJECTION_CONFIRMED, client, params, true);
+    }
+
+    public void notifyAdminsClientFirstAttachmentsUploaded(Client client) {
+        if (client == null) {
+            return;
+        }
+        String adminLink = frontBaseUrl + "/admin/clients/" + client.getId();
+        Map<String, String> params = new HashMap<>();
+        params.put("clientName", client.getBusinessName());
+        params.put("link", adminLink);
+        for (Client recipient : clientRepository.findAllAdminsAndDevelopers()) {
+            boolean canManageAds = recipient.isDeveloper()
+                    || permissionService.hasPermission(recipient, Permission.ADMIN_ADS_MANAGE);
+            if (!canManageAds) {
+                continue;
+            }
+            boolean sendEmail = adminEmailAlertPreferenceService.wantsEmail(
+                    recipient.getId(), com.telas.enums.AdminEmailAlertCategory.ADS_MANAGEMENT);
+            notificationService.save(
+                    NotificationReference.ADMIN_CLIENT_FIRST_ATTACHMENTS_UPLOADED,
+                    recipient,
+                    new HashMap<>(params),
+                    sendEmail
+            );
+        }
     }
 
     private void validateValidatorPermissions(Ad entity, Client validator) {

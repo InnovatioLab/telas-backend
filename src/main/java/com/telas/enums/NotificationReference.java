@@ -126,7 +126,7 @@ public enum NotificationReference {
 
         @Override
         public EmailDataDto getEmailData(Map<String, String> params) {
-            return null;
+            return createClientAdReceivedEmailData(params);
         }
     },
     AD_RESUBMITTED_FOR_VALIDATION {
@@ -205,6 +205,104 @@ public enum NotificationReference {
         @Override
         public EmailDataDto getEmailData(Map<String, String> params) {
             return createClientAdRejectionConfirmedEmailData(params);
+        }
+    },
+    CLIENT_AD_APPROVED_CONFIRMATION {
+        @Override
+        public String getNotificationMessage(Map<String, String> params) {
+            String adName = params.getOrDefault("adName", "your ad");
+            return String.format("""
+                    <div class="informacoes">
+                        <h4 id="notification-title" class="notification-title">Ad approved</h4>
+                        <p>Thanks! You approved <strong>%s</strong>.</p>
+                    </div>
+                    <p>You can open <a id="link-details" class='details link-text' href="%s">My Telas — Ads</a> anytime.</p>
+                    """, adName, params.getOrDefault("link", "#"));
+        }
+
+        @Override
+        public EmailDataDto getEmailData(Map<String, String> params) {
+            return createClientAdApprovedEmailData(params);
+        }
+    },
+    ADMIN_CLIENT_AD_APPROVED {
+        @Override
+        public String getNotificationMessage(Map<String, String> params) {
+            String clientName = params.getOrDefault("clientName", "Customer");
+            String adName = params.getOrDefault("adName", "Ad");
+            String link = params.getOrDefault("link", "");
+            return formatNotificationMessage(
+                    "Customer approved an ad",
+                    String.format("%s approved the ad %s.", clientName, adName),
+                    params,
+                    null,
+                    ObjectUtils.isEmpty(link) ? null : "Open details",
+                    false
+            );
+        }
+
+        @Override
+        public EmailDataDto getEmailData(Map<String, String> params) {
+            return createAdminClientAdApprovedEmailData(params);
+        }
+    },
+    ADMIN_CLIENT_FIRST_ATTACHMENTS_UPLOADED {
+        @Override
+        public String getNotificationMessage(Map<String, String> params) {
+            String clientName = params.getOrDefault("clientName", "Customer");
+            String link = params.getOrDefault("link", "");
+            return formatNotificationMessage(
+                    "Customer uploaded attachments",
+                    String.format("%s uploaded attachments for the first time.", clientName),
+                    params,
+                    null,
+                    ObjectUtils.isEmpty(link) ? null : "Open client",
+                    false
+            );
+        }
+
+        @Override
+        public EmailDataDto getEmailData(Map<String, String> params) {
+            return createAdminClientFirstAttachmentsUploadedEmailData(params);
+        }
+    },
+    CLIENT_AD_ON_AIR {
+        @Override
+        public String getNotificationMessage(Map<String, String> params) {
+            String adName = params.getOrDefault("adName", "your ad");
+            return String.format("""
+                    <div class="informacoes">
+                        <h4 id="notification-title" class="notification-title">Your ad is now live</h4>
+                        <p><strong>%s</strong> is now running.</p>
+                    </div>
+                    <p>Open <a id="link-details" class='details link-text' href="%s">My Telas — Ads</a> for details.</p>
+                    """, adName, params.getOrDefault("link", "#"));
+        }
+
+        @Override
+        public EmailDataDto getEmailData(Map<String, String> params) {
+            return createClientAdOnAirEmailData(params);
+        }
+    },
+    ADMIN_AD_ON_AIR {
+        @Override
+        public String getNotificationMessage(Map<String, String> params) {
+            String clientName = params.getOrDefault("clientName", "Customer");
+            String adName = params.getOrDefault("adName", "Ad");
+            String link = params.getOrDefault("link", "");
+            return formatNotificationMessage(
+                    "Ad is now live",
+                    String.format("%s — %s is now running.", clientName, adName),
+                    params,
+                    null,
+                    ObjectUtils.isEmpty(link) ? null : "Open details",
+                    false
+            );
+        }
+
+        @Override
+        public EmailDataDto getEmailData(Map<String, String> params) {
+            return createAdminAdOnAirEmailData(params);
         }
     },
     MONITOR_IN_WISHLIST_NOW_AVAILABLE {
@@ -632,6 +730,12 @@ public enum NotificationReference {
         String link = ObjectUtils.isEmpty(params.get("link")) ? "#" : params.get("link");
         String safeLinkText = ObjectUtils.isEmpty(linkText) ? "Open" : linkText;
 
+        String safeTitle = ObjectUtils.isEmpty(title) ? "" : title;
+        String safeMessage = ObjectUtils.isEmpty(message) ? "" : message;
+        String safeStartDateDiv = ObjectUtils.isEmpty(startDateDiv) ? "" : startDateDiv;
+        String safeEndDateDiv = ObjectUtils.isEmpty(endDateDiv) ? "" : endDateDiv;
+        String safeServicesBlock = ObjectUtils.isEmpty(servicesBlock) ? "" : servicesBlock;
+
         return String.format("""
                 <div class="informacoes">
                     <h4 id="notification-title" class="notification-title">%s</h4>
@@ -642,7 +746,7 @@ public enum NotificationReference {
                 </div>
                 <a id="link-details" class='details link-text' href="%s">%s</a>
                 <p>Need help? Contact us anytime at support@telas-ads.com</p>
-                """, title, message, startDateDiv, endDateDiv, servicesBlock, link, safeLinkText);
+                """, safeTitle, safeMessage, safeStartDateDiv, safeEndDateDiv, safeServicesBlock, link, safeLinkText);
     }
 
 
@@ -734,6 +838,70 @@ public enum NotificationReference {
         emailData.getParams().put("clientName", params.getOrDefault("clientName", ""));
         emailData.getParams().put("adName", params.getOrDefault("adName", ""));
         emailData.getParams().put("adminName", params.getOrDefault("adminName", ""));
+        emailData.getParams().put("link", params.getOrDefault("link", ""));
+        return emailData;
+    }
+
+    private static EmailDataDto createClientAdReceivedEmailData(Map<String, String> params) {
+        EmailDataDto emailData = new EmailDataDto();
+        emailData.setSubject(SharedConstants.EMAIL_SUBJECT_CLIENT_AD_RECEIVED);
+        emailData.setTemplate(SharedConstants.TEMPLATE_EMAIL_CLIENT_AD_RECEIVED);
+        emailData.setParams(new HashMap<>());
+        emailData.getParams().put("name", params.getOrDefault("name", ""));
+        emailData.getParams().put("link", params.getOrDefault("link", ""));
+        return emailData;
+    }
+
+    private static EmailDataDto createClientAdApprovedEmailData(Map<String, String> params) {
+        EmailDataDto emailData = new EmailDataDto();
+        emailData.setSubject(SharedConstants.EMAIL_SUBJECT_CLIENT_AD_APPROVED);
+        emailData.setTemplate(SharedConstants.TEMPLATE_EMAIL_CLIENT_AD_APPROVED);
+        emailData.setParams(new HashMap<>());
+        emailData.getParams().put("name", params.getOrDefault("name", ""));
+        emailData.getParams().put("adName", params.getOrDefault("adName", "Ad"));
+        emailData.getParams().put("link", params.getOrDefault("link", ""));
+        return emailData;
+    }
+
+    private static EmailDataDto createAdminClientAdApprovedEmailData(Map<String, String> params) {
+        EmailDataDto emailData = new EmailDataDto();
+        emailData.setSubject(SharedConstants.EMAIL_SUBJECT_ADMIN_CLIENT_AD_APPROVED);
+        emailData.setTemplate(SharedConstants.TEMPLATE_EMAIL_ADMIN_CLIENT_AD_APPROVED);
+        emailData.setParams(new HashMap<>());
+        emailData.getParams().put("clientName", params.getOrDefault("clientName", ""));
+        emailData.getParams().put("adName", params.getOrDefault("adName", "Ad"));
+        emailData.getParams().put("link", params.getOrDefault("link", ""));
+        return emailData;
+    }
+
+    private static EmailDataDto createAdminClientFirstAttachmentsUploadedEmailData(Map<String, String> params) {
+        EmailDataDto emailData = new EmailDataDto();
+        emailData.setSubject(SharedConstants.EMAIL_SUBJECT_ADMIN_CLIENT_FIRST_ATTACHMENTS_UPLOADED);
+        emailData.setTemplate(SharedConstants.TEMPLATE_EMAIL_ADMIN_CLIENT_FIRST_ATTACHMENTS_UPLOADED);
+        emailData.setParams(new HashMap<>());
+        emailData.getParams().put("clientName", params.getOrDefault("clientName", ""));
+        emailData.getParams().put("link", params.getOrDefault("link", ""));
+        return emailData;
+    }
+
+    private static EmailDataDto createClientAdOnAirEmailData(Map<String, String> params) {
+        EmailDataDto emailData = new EmailDataDto();
+        emailData.setSubject(SharedConstants.EMAIL_SUBJECT_CLIENT_AD_ON_AIR);
+        emailData.setTemplate(SharedConstants.TEMPLATE_EMAIL_CLIENT_AD_ON_AIR);
+        emailData.setParams(new HashMap<>());
+        emailData.getParams().put("name", params.getOrDefault("name", ""));
+        emailData.getParams().put("adName", params.getOrDefault("adName", "Ad"));
+        emailData.getParams().put("link", params.getOrDefault("link", ""));
+        return emailData;
+    }
+
+    private static EmailDataDto createAdminAdOnAirEmailData(Map<String, String> params) {
+        EmailDataDto emailData = new EmailDataDto();
+        emailData.setSubject(SharedConstants.EMAIL_SUBJECT_ADMIN_AD_ON_AIR);
+        emailData.setTemplate(SharedConstants.TEMPLATE_EMAIL_ADMIN_AD_ON_AIR);
+        emailData.setParams(new HashMap<>());
+        emailData.getParams().put("clientName", params.getOrDefault("clientName", ""));
+        emailData.getParams().put("adName", params.getOrDefault("adName", "Ad"));
         emailData.getParams().put("link", params.getOrDefault("link", ""));
         return emailData;
     }

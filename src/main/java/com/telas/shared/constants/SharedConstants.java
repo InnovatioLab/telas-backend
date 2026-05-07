@@ -52,6 +52,26 @@ public final class SharedConstants {
     public static final String TEMPLATE_EMAIL_ADMIN_AD_RESUBMITTED = "email_admin_ad_resubmitted.ftlh";
     public static final String EMAIL_SUBJECT_ADMIN_AD_RESUBMITTED = "Ad resent to customer for validation — Telas";
 
+    public static final String TEMPLATE_EMAIL_CLIENT_AD_RECEIVED = "email_client_ad_received.ftlh";
+    public static final String EMAIL_SUBJECT_CLIENT_AD_RECEIVED = "Your ad is ready for approval — Telas";
+
+    public static final String TEMPLATE_EMAIL_CLIENT_AD_APPROVED = "email_client_ad_approved.ftlh";
+    public static final String EMAIL_SUBJECT_CLIENT_AD_APPROVED = "Thanks — your ad was approved — Telas";
+
+    public static final String TEMPLATE_EMAIL_ADMIN_CLIENT_AD_APPROVED = "email_admin_client_ad_approved.ftlh";
+    public static final String EMAIL_SUBJECT_ADMIN_CLIENT_AD_APPROVED = "Customer approved an ad — Telas";
+
+    public static final String TEMPLATE_EMAIL_ADMIN_CLIENT_FIRST_ATTACHMENTS_UPLOADED =
+            "email_admin_client_first_attachments_uploaded.ftlh";
+    public static final String EMAIL_SUBJECT_ADMIN_CLIENT_FIRST_ATTACHMENTS_UPLOADED =
+            "Customer uploaded attachments — Telas";
+
+    public static final String TEMPLATE_EMAIL_CLIENT_AD_ON_AIR = "email_client_ad_on_air.ftlh";
+    public static final String EMAIL_SUBJECT_CLIENT_AD_ON_AIR = "Your ad is now live — Telas";
+
+    public static final String TEMPLATE_EMAIL_ADMIN_AD_ON_AIR = "email_admin_ad_on_air.ftlh";
+    public static final String EMAIL_SUBJECT_ADMIN_AD_ON_AIR = "Ad is now live — Telas";
+
     public static final String TEMPLATE_EMAIL_SCHEDULER_PRERUN = "email_scheduler_prerun.ftlh";
     public static final String EMAIL_SUBJECT_SCHEDULER_PRERUN = "Scheduled job starting — Telas";
 

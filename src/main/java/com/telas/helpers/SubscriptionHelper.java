@@ -177,8 +177,6 @@ public class SubscriptionHelper {
         sendPurchaseConfirmationEmail(subscription);
 
         notifyAdminsNewPurchase(subscription);
-
-        createNewSubscriptionNotification(subscription);
     }
 
     @Transactional
@@ -186,8 +184,6 @@ public class SubscriptionHelper {
         Client client = subscription.getClient();
 
         sendPurchaseConfirmationEmail(subscription);
-
-        createNewSubscriptionNotification(subscription);
     }
 
     @Transactional

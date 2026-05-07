@@ -283,6 +283,7 @@ public class ClientServiceImpl implements ClientService {
 		attachmentHelper.validate(request);
 
 		Client client = authenticatedUserService.validateActiveSubscription().client();
+		boolean isFirstUpload = client.getAttachments().isEmpty();
 		helper.validateAttachmentsCount(client, request);
 
 		if (!client.getAttachments().isEmpty()) {
@@ -292,6 +293,10 @@ public class ClientServiceImpl implements ClientService {
 
 		attachmentHelper.saveAttachments(request, client);
 		repository.save(client);
+
+		if (isFirstUpload) {
+			attachmentHelper.notifyAdminsClientFirstAttachmentsUploaded(client);
+		}
 	}
 
 
@@ -721,6 +726,7 @@ public class ClientServiceImpl implements ClientService {
 				.toList();
 
 		List<AdResponseDto> ads = client.getAds().stream()
+				.filter(ad -> !AdValidationType.REJECTED.equals(ad.getValidation()))
 				.map(ad -> new AdResponseDto(
 						ad,
 						attachmentHelper.getStringLinkFromAd(ad),

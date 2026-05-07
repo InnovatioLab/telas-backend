@@ -81,10 +81,13 @@ class AdminEmailAlertPreferenceServiceImplTest {
         when(preferenceRepository.findByClient_IdAndAlertCategory(
                         eq(id), eq(AdminEmailAlertCategory.BOX_HEARTBEAT_CONNECTIVITY.name())))
                 .thenReturn(Optional.empty());
+        when(preferenceRepository.findByClient_IdAndAlertCategory(
+                        eq(id), eq(AdminEmailAlertCategory.ADS_MANAGEMENT.name())))
+                .thenReturn(Optional.empty());
 
         service.ensureDefaultEmailPreferencesForAdmin(id);
 
-        verify(preferenceRepository).save(any(AdminEmailAlertPreference.class));
+        verify(preferenceRepository, org.mockito.Mockito.times(2)).save(any(AdminEmailAlertPreference.class));
     }
 
     @Test
@@ -99,10 +102,13 @@ class AdminEmailAlertPreferenceServiceImplTest {
         when(preferenceRepository.findByClient_IdAndAlertCategory(
                         eq(id), eq(AdminEmailAlertCategory.BOX_HEARTBEAT_CONNECTIVITY.name())))
                 .thenReturn(Optional.of(row));
+        when(preferenceRepository.findByClient_IdAndAlertCategory(
+                        eq(id), eq(AdminEmailAlertCategory.ADS_MANAGEMENT.name())))
+                .thenReturn(Optional.empty());
 
         service.ensureDefaultEmailPreferencesForAdmin(id);
 
-        verify(preferenceRepository, never()).save(any(AdminEmailAlertPreference.class));
+        verify(preferenceRepository).save(any(AdminEmailAlertPreference.class));
     }
 
     @Test

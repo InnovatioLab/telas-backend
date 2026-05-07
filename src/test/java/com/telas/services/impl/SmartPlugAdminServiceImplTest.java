@@ -13,6 +13,7 @@ import com.telas.repositories.MonitorRepository;
 import com.telas.shared.constants.valitation.BoxValidationMessages;
 import com.telas.shared.constants.valitation.MonitorValidationMessages;
 import com.telas.shared.constants.valitation.MonitoringValidationMessages;
+import com.telas.services.ApplicationLogService;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -45,6 +46,9 @@ class SmartPlugAdminServiceImplTest {
 
     @Mock
     private SmartPlugClient smartPlugClient;
+
+    @Mock
+    private ApplicationLogService applicationLogService;
 
     @InjectMocks
     private SmartPlugAdminServiceImpl service;
