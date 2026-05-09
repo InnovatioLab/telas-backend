@@ -1,7 +1,10 @@
 package com.telas.repositories;
 
+import com.telas.dtos.response.AdminAdOperationRowDto;
 import com.telas.entities.Ad;
 import com.telas.enums.AdValidationType;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import org.springframework.data.jpa.repository.Query;
@@ -90,5 +93,39 @@ public interface AdRepository extends JpaRepository<Ad, UUID>, JpaSpecificationE
 
 	@Query(value = "SELECT EXISTS (SELECT 1 FROM ads_attachments WHERE attachment_id = :attachmentId)", nativeQuery = true)
 	boolean existsAdReferencingAttachment(@Param("attachmentId") UUID attachmentId);
+
+	@Query(
+			countQuery = """
+					SELECT COUNT(ad)
+					FROM Ad ad
+					JOIN ad.client client
+					WHERE ad.validation = :validation
+					AND (
+					    COALESCE(TRIM(:genericFilter), '') = ''
+					    OR LOWER(client.businessName) LIKE LOWER(CONCAT('%', TRIM(:genericFilter), '%'))
+					    OR LOWER(ad.name) LIKE LOWER(CONCAT('%', TRIM(:genericFilter), '%'))
+					)
+					""",
+			value = """
+					SELECT new com.telas.dtos.response.AdminAdOperationRowDto(
+					    ad.id,
+					    ad.name,
+					    ad.validation,
+					    client.id,
+					    client.businessName
+					)
+					FROM Ad ad
+					JOIN ad.client client
+					WHERE ad.validation = :validation
+					AND (
+					    COALESCE(TRIM(:genericFilter), '') = ''
+					    OR LOWER(client.businessName) LIKE LOWER(CONCAT('%', TRIM(:genericFilter), '%'))
+					    OR LOWER(ad.name) LIKE LOWER(CONCAT('%', TRIM(:genericFilter), '%'))
+					)
+					""")
+	Page<AdminAdOperationRowDto> searchAdsAdminOperationsWithoutPlacement(
+			@Param("validation") AdValidationType validation,
+			@Param("genericFilter") String genericFilter,
+			Pageable pageable);
 
 }

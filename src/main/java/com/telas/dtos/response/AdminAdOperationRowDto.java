@@ -67,6 +67,27 @@ public class AdminAdOperationRowDto implements Serializable {
         applyOperationalDerivedFields();
     }
 
+    public AdminAdOperationRowDto(
+            UUID adId,
+            String adName,
+            AdValidationType validation,
+            UUID advertiserId,
+            String advertiserBusinessName) {
+        this.adId = adId;
+        this.adName = adName;
+        this.validation = validation;
+        this.advertiserId = advertiserId;
+        this.advertiserBusinessName = advertiserBusinessName;
+        this.partnerId = null;
+        this.partnerBusinessName = null;
+        this.screenAddressSummary = "Not on a screen yet";
+        this.monitorId = null;
+        this.boxIp = null;
+        this.subscriptionEndsAt = null;
+        this.subscriptionStatus = null;
+        applyOperationalDerivedFields();
+    }
+
     public void applyOperationalDerivedFields() {
         Instant now = Instant.now();
         if (subscriptionEndsAt != null) {

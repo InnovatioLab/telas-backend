@@ -9,6 +9,8 @@ import com.telas.entities.Subscription;
 import com.telas.enums.NotificationReference;
 import com.telas.enums.SubscriptionStatus;
 import com.telas.infra.security.services.AuthenticatedUserService;
+import com.telas.enums.AdValidationType;
+import com.telas.repositories.AdRepository;
 import com.telas.repositories.MonitorAdRepository;
 import com.telas.repositories.NotificationRepository;
 import com.telas.repositories.SubscriptionRepository;
@@ -57,6 +59,8 @@ public class AdminAdOperationsServiceImpl implements AdminAdOperationsService {
 
     private static final DateTimeFormatter CSV_INSTANT = DateTimeFormatter.ISO_INSTANT;
 
+    private final AdRepository adRepository;
+
     private final MonitorAdRepository monitorAdRepository;
     private final NotificationRepository notificationRepository;
     private final SubscriptionRepository subscriptionRepository;
@@ -68,11 +72,17 @@ public class AdminAdOperationsServiceImpl implements AdminAdOperationsService {
         authenticatedUserService.validateAdmin();
         String gf = request.getGenericFilter() == null ? "" : request.getGenericFilter().trim();
         Pageable pageable = PaginationFilterUtil.getPageable(request, Sort.unsorted());
-        Page<AdminAdOperationRowDto> page = monitorAdRepository.searchAdminOperations(
-                gf,
-                request.getValidation(),
-                pageable
-        );
+        AdValidationType validation = request.getValidation();
+        Page<AdminAdOperationRowDto> page;
+        if (validation == AdValidationType.PENDING || validation == AdValidationType.REJECTED) {
+            page = adRepository.searchAdsAdminOperationsWithoutPlacement(validation, gf, pageable);
+        } else {
+            page = monitorAdRepository.searchAdminOperations(
+                    gf,
+                    validation,
+                    pageable
+            );
+        }
         return PaginationResponseDto.fromResult(
                 page.getContent(),
                 (int) page.getTotalElements(),
