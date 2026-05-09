@@ -39,6 +39,10 @@ public class AdminAdOperationRowDto implements Serializable {
     private AdOperationUrgencyLevel urgencyLevel;
     private Long daysUntilExpiry;
 
+    private String adLink;
+
+    private String adMediaType;
+
     public AdminAdOperationRowDto(
             UUID adId,
             String adName,

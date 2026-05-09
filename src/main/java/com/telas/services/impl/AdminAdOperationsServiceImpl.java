@@ -4,6 +4,7 @@ import com.telas.dtos.request.filters.AdminAdOperationsFilterRequestDto;
 import com.telas.dtos.response.AdminAdOperationRowDto;
 import com.telas.dtos.response.AdminExpiryNotificationDto;
 import com.telas.dtos.response.PaginationResponseDto;
+import com.telas.entities.Ad;
 import com.telas.entities.Notification;
 import com.telas.entities.Subscription;
 import com.telas.enums.NotificationReference;
@@ -14,6 +15,7 @@ import com.telas.repositories.AdRepository;
 import com.telas.repositories.MonitorAdRepository;
 import com.telas.repositories.NotificationRepository;
 import com.telas.repositories.SubscriptionRepository;
+import com.telas.helpers.AttachmentHelper;
 import com.telas.services.AdminAdOperationsService;
 import com.telas.shared.utils.PaginationFilterUtil;
 import lombok.RequiredArgsConstructor;
@@ -30,8 +32,10 @@ import java.time.format.DateTimeFormatter;
 import java.util.EnumMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -65,6 +69,30 @@ public class AdminAdOperationsServiceImpl implements AdminAdOperationsService {
     private final NotificationRepository notificationRepository;
     private final SubscriptionRepository subscriptionRepository;
     private final AuthenticatedUserService authenticatedUserService;
+    private final AttachmentHelper attachmentHelper;
+
+    private void enrichRowsWithAdLinks(List<AdminAdOperationRowDto> rows) {
+        if (rows == null || rows.isEmpty()) {
+            return;
+        }
+        List<UUID> ids = rows.stream()
+                .map(AdminAdOperationRowDto::getAdId)
+                .filter(Objects::nonNull)
+                .distinct()
+                .toList();
+        if (ids.isEmpty()) {
+            return;
+        }
+        Map<UUID, Ad> byId = adRepository.findAllById(ids).stream()
+                .collect(Collectors.toMap(Ad::getId, a -> a));
+        for (AdminAdOperationRowDto row : rows) {
+            Ad ad = byId.get(row.getAdId());
+            if (ad != null) {
+                row.setAdLink(attachmentHelper.getStringLinkFromAd(ad));
+                row.setAdMediaType(ad.getType());
+            }
+        }
+    }
 
     @Override
     @Transactional(readOnly = true)
@@ -85,6 +113,7 @@ public class AdminAdOperationsServiceImpl implements AdminAdOperationsService {
                     pageable
             );
         }
+        enrichRowsWithAdLinks(page.getContent());
         return PaginationResponseDto.fromResult(
                 page.getContent(),
                 (int) page.getTotalElements(),

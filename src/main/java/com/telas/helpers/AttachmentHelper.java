@@ -312,7 +312,9 @@ public class AttachmentHelper {
     }
 
     private Ad updateAdDetails(AttachmentRequestDto request, Ad ad) {
-        verifyFileNameChanged(request, ad);
+        if (!AdValidationType.REJECTED.equals(ad.getValidation())) {
+            verifyFileNameChanged(request, ad);
+        }
         bucketService.deleteAttachment(AttachmentUtils.format(ad));
         ad.setName(request.getName());
         ad.setType(request.getType());
