@@ -111,6 +111,7 @@ public interface AdRepository extends JpaRepository<Ad, UUID>, JpaSpecificationE
 					    ad.id,
 					    ad.name,
 					    ad.validation,
+					    ad.createdAt,
 					    client.id,
 					    client.businessName
 					)
@@ -125,6 +126,81 @@ public interface AdRepository extends JpaRepository<Ad, UUID>, JpaSpecificationE
 					""")
 	Page<AdminAdOperationRowDto> searchAdsAdminOperationsWithoutPlacement(
 			@Param("validation") AdValidationType validation,
+			@Param("genericFilter") String genericFilter,
+			Pageable pageable);
+
+	@Query(
+			countQuery = """
+					SELECT COUNT(ad.id)
+					FROM Ad ad
+					JOIN ad.client advertiser
+					LEFT JOIN ad.monitorAds ma
+					LEFT JOIN ma.id.monitor mon
+					LEFT JOIN mon.address addr
+					LEFT JOIN addr.client partner
+					LEFT JOIN mon.box box
+					LEFT JOIN box.boxAddress ba
+					LEFT JOIN Subscription sub ON sub.client.id = advertiser.id
+					 AND sub.status = com.telas.enums.SubscriptionStatus.ACTIVE
+					 AND mon IS NOT NULL
+					 AND EXISTS (
+					   SELECT 1 FROM SubscriptionMonitor smx
+					   WHERE smx.id.subscription.id = sub.id AND smx.id.monitor.id = mon.id
+					 )
+					WHERE ad.validation = com.telas.enums.AdValidationType.APPROVED
+					AND (
+					    COALESCE(TRIM(:genericFilter), '') = ''
+					    OR LOWER(ad.name) LIKE LOWER(CONCAT('%', TRIM(:genericFilter), '%'))
+					    OR LOWER(advertiser.businessName) LIKE LOWER(CONCAT('%', TRIM(:genericFilter), '%'))
+					    OR LOWER(partner.businessName) LIKE LOWER(CONCAT('%', TRIM(:genericFilter), '%'))
+					    OR LOWER(CONCAT(addr.street, addr.city, addr.state, addr.zipCode)) LIKE LOWER(CONCAT('%', TRIM(:genericFilter), '%'))
+					)
+					""",
+			value = """
+					SELECT new com.telas.dtos.response.AdminAdOperationRowDto(
+					    ad.id,
+					    ad.name,
+					    ad.validation,
+					    ad.createdAt,
+					    advertiser.id,
+					    advertiser.businessName,
+					    partner.id,
+					    partner.businessName,
+					    COALESCE(addr.street, ''),
+					    COALESCE(addr.city, ''),
+					    COALESCE(addr.state, ''),
+					    COALESCE(addr.zipCode, ''),
+					    mon.id,
+					    ba.ip,
+					    sub.endsAt,
+					    sub.status
+					)
+					FROM Ad ad
+					JOIN ad.client advertiser
+					LEFT JOIN ad.monitorAds ma
+					LEFT JOIN ma.id.monitor mon
+					LEFT JOIN mon.address addr
+					LEFT JOIN addr.client partner
+					LEFT JOIN mon.box box
+					LEFT JOIN box.boxAddress ba
+					LEFT JOIN Subscription sub ON sub.client.id = advertiser.id
+					 AND sub.status = com.telas.enums.SubscriptionStatus.ACTIVE
+					 AND mon IS NOT NULL
+					 AND EXISTS (
+					   SELECT 1 FROM SubscriptionMonitor smx
+					   WHERE smx.id.subscription.id = sub.id AND smx.id.monitor.id = mon.id
+					 )
+					WHERE ad.validation = com.telas.enums.AdValidationType.APPROVED
+					AND (
+					    COALESCE(TRIM(:genericFilter), '') = ''
+					    OR LOWER(ad.name) LIKE LOWER(CONCAT('%', TRIM(:genericFilter), '%'))
+					    OR LOWER(advertiser.businessName) LIKE LOWER(CONCAT('%', TRIM(:genericFilter), '%'))
+					    OR LOWER(partner.businessName) LIKE LOWER(CONCAT('%', TRIM(:genericFilter), '%'))
+					    OR LOWER(CONCAT(addr.street, addr.city, addr.state, addr.zipCode)) LIKE LOWER(CONCAT('%', TRIM(:genericFilter), '%'))
+					)
+					ORDER BY ad.name ASC, mon.id ASC NULLS LAST
+					""")
+	Page<AdminAdOperationRowDto> searchApprovedAdsAdminOperations(
 			@Param("genericFilter") String genericFilter,
 			Pageable pageable);
 

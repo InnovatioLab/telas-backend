@@ -11,7 +11,9 @@ import java.io.Serial;
 import java.io.Serializable;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
+import java.util.Arrays;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 @Getter
 @Setter
@@ -23,6 +25,7 @@ public class AdminAdOperationRowDto implements Serializable {
     private UUID adId;
     private String adName;
     private AdValidationType validation;
+    private Instant submissionDate;
     private UUID advertiserId;
     private String advertiserBusinessName;
     private UUID partnerId;
@@ -40,6 +43,7 @@ public class AdminAdOperationRowDto implements Serializable {
             UUID adId,
             String adName,
             AdValidationType validation,
+            Instant submissionDate,
             UUID advertiserId,
             String advertiserBusinessName,
             UUID partnerId,
@@ -55,11 +59,12 @@ public class AdminAdOperationRowDto implements Serializable {
         this.adId = adId;
         this.adName = adName;
         this.validation = validation;
+        this.submissionDate = submissionDate;
         this.advertiserId = advertiserId;
         this.advertiserBusinessName = advertiserBusinessName;
         this.partnerId = partnerId;
         this.partnerBusinessName = partnerBusinessName;
-        this.screenAddressSummary = String.join(", ", street, city, state, zipCode);
+        this.screenAddressSummary = buildScreenSummary(street, city, state, zipCode);
         this.monitorId = monitorId;
         this.boxIp = boxIp;
         this.subscriptionEndsAt = subscriptionEndsAt;
@@ -71,11 +76,13 @@ public class AdminAdOperationRowDto implements Serializable {
             UUID adId,
             String adName,
             AdValidationType validation,
+            Instant submissionDate,
             UUID advertiserId,
             String advertiserBusinessName) {
         this.adId = adId;
         this.adName = adName;
         this.validation = validation;
+        this.submissionDate = submissionDate;
         this.advertiserId = advertiserId;
         this.advertiserBusinessName = advertiserBusinessName;
         this.partnerId = null;
@@ -86,6 +93,13 @@ public class AdminAdOperationRowDto implements Serializable {
         this.subscriptionEndsAt = null;
         this.subscriptionStatus = null;
         applyOperationalDerivedFields();
+    }
+
+    private static String buildScreenSummary(String street, String city, String state, String zipCode) {
+        String joined = Arrays.stream(new String[]{street, city, state, zipCode})
+                .filter(v -> v != null && !v.isBlank())
+                .collect(Collectors.joining(", "));
+        return joined.isEmpty() ? "Not on a screen yet" : joined;
     }
 
     public void applyOperationalDerivedFields() {

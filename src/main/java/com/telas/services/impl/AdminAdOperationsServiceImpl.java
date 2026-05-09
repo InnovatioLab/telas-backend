@@ -74,7 +74,9 @@ public class AdminAdOperationsServiceImpl implements AdminAdOperationsService {
         Pageable pageable = PaginationFilterUtil.getPageable(request, Sort.unsorted());
         AdValidationType validation = request.getValidation();
         Page<AdminAdOperationRowDto> page;
-        if (validation == AdValidationType.PENDING || validation == AdValidationType.REJECTED) {
+        if (validation == AdValidationType.APPROVED) {
+            page = adRepository.searchApprovedAdsAdminOperations(gf, pageable);
+        } else if (validation == AdValidationType.PENDING || validation == AdValidationType.REJECTED) {
             page = adRepository.searchAdsAdminOperationsWithoutPlacement(validation, gf, pageable);
         } else {
             page = monitorAdRepository.searchAdminOperations(

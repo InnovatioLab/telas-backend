@@ -1,5 +1,6 @@
 package com.telas.dtos.response;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import com.telas.entities.AdRequest;
 import lombok.Getter;
 
@@ -20,6 +21,7 @@ public final class AdRequestClientResponseDto implements Serializable {
 
     private final String brandGuidelineUrl;
 
+    @JsonProperty("active")
     private final boolean isActive;
 
     private final List<UUID> attachmentsIds;

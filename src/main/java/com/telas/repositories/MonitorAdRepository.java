@@ -59,7 +59,7 @@ public interface MonitorAdRepository extends JpaRepository<MonitorAd, MonitorAdP
                     """,
             value = """
                     SELECT new com.telas.dtos.response.AdminAdOperationRowDto(
-                     ad.id, ad.name, ad.validation,
+                     ad.id, ad.name, ad.validation, ad.createdAt,
                      advertiser.id, advertiser.businessName,
                      partner.id, partner.businessName,
                      addr.street, addr.city, addr.state, addr.zipCode,

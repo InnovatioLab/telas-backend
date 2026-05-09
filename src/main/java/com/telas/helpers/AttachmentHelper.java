@@ -32,6 +32,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.io.ByteArrayInputStream;
 import java.util.*;
+import java.util.stream.Collectors;
 
 @Component
 @RequiredArgsConstructor
@@ -524,20 +525,31 @@ public class AttachmentHelper {
         if (attachment.getClient() == null || !attachment.getClient().getId().equals(owner.getId())) {
             throw new ResourceNotFoundException(AttachmentValidationMessages.ATTACHMENT_NOT_FOUND);
         }
-        if (attachment.isReferenceConsumed()) {
+        if (adRepository.existsAdReferencingAttachment(attachmentId)) {
             throw new BusinessRuleException(AttachmentValidationMessages.ATTACHMENT_CANNOT_DELETE_REFERENCED);
         }
         AdRequest ar = owner.getAdRequest();
         if (ar != null && ar.isActive() && attachmentIdsCsvContains(ar.getAttachmentIds(), attachmentId)) {
-            throw new BusinessRuleException(AttachmentValidationMessages.ATTACHMENT_CANNOT_DELETE_REFERENCED);
-        }
-        if (adRepository.existsAdReferencingAttachment(attachmentId)) {
-            throw new BusinessRuleException(AttachmentValidationMessages.ATTACHMENT_CANNOT_DELETE_REFERENCED);
+            String updated = removeAttachmentIdFromCsv(ar.getAttachmentIds(), attachmentId);
+            ar.setAttachmentIds(updated);
+            adRequestRepository.save(ar);
         }
         bucketService.deleteAttachment(AttachmentUtils.format(attachment));
         owner.getAttachments().removeIf(a -> a.getId().equals(attachmentId));
         attachmentRepository.delete(attachment);
         clientRepository.save(owner);
+    }
+
+    private static String removeAttachmentIdFromCsv(String csv, UUID attachmentId) {
+        if (ValidateDataUtils.isNullOrEmptyString(csv)) {
+            return "";
+        }
+        String needle = attachmentId.toString();
+        return Arrays.stream(csv.split(","))
+                .map(String::trim)
+                .filter(s -> !s.isEmpty())
+                .filter(s -> !s.equals(needle))
+                .collect(Collectors.joining(","));
     }
 
     private boolean attachmentIdsCsvContains(String csv, UUID attachmentId) {
