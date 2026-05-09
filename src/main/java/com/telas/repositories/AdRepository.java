@@ -88,4 +88,7 @@ public interface AdRepository extends JpaRepository<Ad, UUID>, JpaSpecificationE
 		""")
 	long countAllApprovedNotInMonitor(@Param("monitorId") UUID monitorId);
 
+	@Query(value = "SELECT EXISTS (SELECT 1 FROM ads_attachments WHERE attachment_id = :attachmentId)", nativeQuery = true)
+	boolean existsAdReferencingAttachment(@Param("attachmentId") UUID attachmentId);
+
 }

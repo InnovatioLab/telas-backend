@@ -26,6 +26,7 @@ import com.telas.infra.security.model.AuthenticatedUser;
 import com.telas.infra.security.model.PasswordRequestDto;
 import com.telas.infra.security.model.PasswordUpdateRequestDto;
 import com.telas.infra.security.services.AuthenticatedUserService;
+import com.telas.repositories.AdRepository;
 import com.telas.repositories.AdRequestRepository;
 import com.telas.repositories.AdMessageRepository;
 import com.telas.repositories.ClientRepository;
@@ -43,7 +44,11 @@ import com.telas.shared.constants.valitation.AuthValidationMessageConstants;
 import com.telas.shared.constants.valitation.ClientValidationMessages;
 import com.telas.shared.utils.AttachmentUtils;
 import com.telas.shared.utils.PaginationFilterUtil;
-import jakarta.persistence.criteria.*;
+import jakarta.persistence.criteria.CriteriaBuilder;
+import jakarta.persistence.criteria.Join;
+import jakarta.persistence.criteria.JoinType;
+import jakarta.persistence.criteria.Predicate;
+import jakarta.persistence.criteria.Root;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -86,6 +91,8 @@ public class ClientServiceImpl implements ClientService {
 	private final AdMessageRepository adMessageRepository;
 
 	private final MonitorAdRepository monitorAdRepository;
+
+	private final AdRepository adRepository;
 
 	private final PermissionService permissionService;
 
@@ -297,6 +304,15 @@ public class ClientServiceImpl implements ClientService {
 		if (isFirstUpload) {
 			attachmentHelper.notifyAdminsClientFirstAttachmentsUploaded(client);
 		}
+	}
+
+
+	@Transactional
+	@Override
+	public void deleteClientAttachment(UUID attachmentId) {
+		Client client = repository.findActiveIdFromToken(authenticatedUserService.getLoggedUser().client().getId())
+				.orElseThrow(() -> new ResourceNotFoundException(ClientValidationMessages.USER_NOT_FOUND));
+		attachmentHelper.deleteClientAttachment(client, attachmentId);
 	}
 
 
@@ -634,6 +650,86 @@ public class ClientServiceImpl implements ClientService {
 
 
 	@Override
+	@Transactional(readOnly = true)
+	public PaginationResponseDto<List<PendingAdAdminValidationResponseDto>> findPendingAds(FilterAdRequestDto request) {
+		authenticatedUserService.validateAdmin();
+		Sort order = sortForPendingAds(request);
+		Pageable pageable = PaginationFilterUtil.getPageable(request, order);
+		Specification<Ad> base = (root, query, criteriaBuilder) -> {
+			Join<Ad, Client> clientJoin = root.join("client", JoinType.INNER);
+			Predicate activeClient = criteriaBuilder.equal(clientJoin.get("status"), DefaultStatus.ACTIVE);
+			Predicate pending = criteriaBuilder.equal(root.get("validation"), AdValidationType.PENDING);
+			return criteriaBuilder.and(activeClient, pending);
+		};
+		Specification<Ad> filter = PaginationFilterUtil.addSpecificationFilter(base,
+				request.getGenericFilter(), this::filterPendingAds);
+		Page<Ad> page = adRepository.findAll(filter, pageable);
+		List<PendingAdAdminValidationResponseDto> response = page.stream()
+				.map(ad -> new PendingAdAdminValidationResponseDto(
+						ad,
+						attachmentHelper.getStringLinkFromAd(ad),
+						attachmentHelper.buildClientReferencesForAd(ad)))
+				.toList();
+		return PaginationResponseDto.fromResult(response, (int) page.getTotalElements(), page.getTotalPages(),
+				request.getPage());
+	}
+
+
+	private Sort sortForPendingAds(FilterAdRequestDto request) {
+		String sortBy = request.getSortBy() != null ? request.getSortBy() : "";
+		boolean desc = "desc".equalsIgnoreCase(request.getSortDir());
+		return switch (sortBy) {
+			case "clientName" ->
+					Sort.by(desc ? Sort.Order.desc("client.businessName").ignoreCase()
+							: Sort.Order.asc("client.businessName").ignoreCase());
+			case "clientRole" ->
+					Sort.by(desc ? Sort.Order.desc("client.role") : Sort.Order.asc("client.role"));
+			case "name" ->
+					Sort.by(desc ? Sort.Order.desc("name").ignoreCase() : Sort.Order.asc("name").ignoreCase());
+			case "submissionDate", "waitingDays" ->
+					Sort.by(desc ? Sort.Order.desc("createdAt") : Sort.Order.asc("createdAt"));
+			default -> Sort.by(Sort.Order.desc("createdAt"));
+		};
+	}
+
+
+	Specification<Ad> filterPendingAds(Specification<Ad> specification, String genericFilter) {
+		if (genericFilter == null || genericFilter.isBlank()) {
+			return specification;
+		}
+		return specification.and((root, query, criteriaBuilder) -> {
+			List<Predicate> predicates = new ArrayList<>();
+			String filter = "%" + genericFilter.toLowerCase() + "%";
+			predicates.add(criteriaBuilder.like(criteriaBuilder.lower(root.get("client").get("businessName")), filter));
+			predicates.add(criteriaBuilder.like(root.get("client").get("contact").get("email"), filter));
+			predicates.add(criteriaBuilder.equal(root.get("client").get("contact").get("phone"), genericFilter));
+			predicates.add(criteriaBuilder.like(criteriaBuilder.lower(root.get("client").get("role")), filter));
+			addDatePredicatesForAd(genericFilter, root, criteriaBuilder, predicates);
+			return criteriaBuilder.or(predicates.toArray(new Predicate[0]));
+		});
+	}
+
+
+	private void addDatePredicatesForAd(String genericFilter, Root<Ad> root, CriteriaBuilder criteriaBuilder,
+			List<Predicate> predicates) {
+		try {
+			LocalDate submissionDate = LocalDate.parse(genericFilter);
+			predicates.add(criteriaBuilder.equal(criteriaBuilder.function("date", LocalDate.class, root.get("createdAt")),
+					submissionDate));
+		} catch (DateTimeParseException ignored) {
+		}
+
+		try {
+			DateTimeFormatter usFormatter = DateTimeFormatter.ofPattern("MM/dd/yyyy", US);
+			LocalDate date = LocalDate.parse(genericFilter, usFormatter);
+			predicates.add(
+					criteriaBuilder.equal(criteriaBuilder.function("date", LocalDate.class, root.get("createdAt")), date));
+		} catch (DateTimeParseException ignored) {
+		}
+	}
+
+
+	@Override
 	@Transactional
 	public void addMonitorToWishlist(UUID monitorId) {
 		Client client = authenticatedUserService.getLoggedUser().client();
@@ -718,6 +814,7 @@ public class ClientServiceImpl implements ClientService {
 
 	ClientResponseDto buildClientResponse(Client client) {
 		List<LinkResponseDto> attachmentLinks = client.getAttachments().stream()
+				.filter(attachment -> !attachment.isReferenceConsumed())
 				.map(attachment -> new LinkResponseDto(
 						attachment.getId(),
 						attachment.getName(),

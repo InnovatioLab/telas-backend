@@ -2,6 +2,7 @@ package com.telas.helpers;
 
 import com.telas.dtos.request.AttachmentRequestDto;
 import com.telas.dtos.request.RefusedAdRequestDto;
+import com.telas.dtos.response.ClientReferenceAttachmentAdminDto;
 import com.telas.dtos.response.LinkResponseDto;
 import com.telas.entities.*;
 import com.telas.enums.AdValidationType;
@@ -62,6 +63,25 @@ public class AttachmentHelper {
 
     List<Attachment> getAttachmentsByIds(List<UUID> attachmentsIds) {
         return attachmentRepository.findByIdIn(attachmentsIds).orElseThrow(() -> new BusinessRuleException(AttachmentValidationMessages.ATTACHMENT_NOT_FOUND));
+    }
+
+    @Transactional(readOnly = true)
+    public List<ClientReferenceAttachmentAdminDto> buildClientReferencesForAd(Ad ad) {
+        AdRequest ar = ad.getAdRequest();
+        if (ar == null || ValidateDataUtils.isNullOrEmptyString(ar.getAttachmentIds())) {
+            return Collections.emptyList();
+        }
+        List<Attachment> attachments = getAttachmentsFromAdRequest(ar);
+        String slogan = Optional.ofNullable(ar.getSlogan()).orElse("");
+        String brandUrl = Optional.ofNullable(ar.getBrandGuidelineUrl()).orElse("");
+        return attachments.stream()
+                .map(att -> new ClientReferenceAttachmentAdminDto(
+                        att.getId(),
+                        slogan,
+                        brandUrl,
+                        bucketService.getLink(AttachmentUtils.format(att)),
+                        bucketService.getDownloadLink(AttachmentUtils.format(att), att.getName())))
+                .toList();
     }
 
 
@@ -204,6 +224,7 @@ public class AttachmentHelper {
 
         adRepository.save(newAd);
         adRequestRepository.save(entity);
+        markReferenceAttachmentsConsumed(entity);
 
         notificationService.save(
                 NotificationReference.AD_RECEIVED,
@@ -229,6 +250,7 @@ public class AttachmentHelper {
 
         ad.getAdRequest().closeRequest();
         adRequestRepository.save(ad.getAdRequest());
+        markReferenceAttachmentsConsumed(ad.getAdRequest());
 
         if (!ad.canBeRefused()) {
             ad.getRefusedAds().remove(0);
@@ -276,8 +298,9 @@ public class AttachmentHelper {
             if (!canManageAds) {
                 continue;
             }
-            boolean sendEmail = adminEmailAlertPreferenceService.wantsEmail(
-                    recipient.getId(), com.telas.enums.AdminEmailAlertCategory.ADS_MANAGEMENT);
+            boolean sendEmail = !recipient.isDeveloper()
+                    && adminEmailAlertPreferenceService.wantsEmail(
+                            recipient.getId(), com.telas.enums.AdminEmailAlertCategory.ADS_MANAGEMENT);
             notificationService.save(
                     NotificationReference.ADMIN_AD_RESUBMITTED_TO_CLIENT,
                     recipient,
@@ -376,8 +399,9 @@ public class AttachmentHelper {
             if (!canManageAds) {
                 continue;
             }
-            boolean sendEmail = adminEmailAlertPreferenceService.wantsEmail(
-                    recipient.getId(), com.telas.enums.AdminEmailAlertCategory.ADS_MANAGEMENT);
+            boolean sendEmail = !recipient.isDeveloper()
+                    && adminEmailAlertPreferenceService.wantsEmail(
+                            recipient.getId(), com.telas.enums.AdminEmailAlertCategory.ADS_MANAGEMENT);
             notificationService.save(NotificationReference.ADMIN_CLIENT_AD_APPROVED, recipient, new HashMap<>(params), sendEmail);
         }
     }
@@ -404,14 +428,17 @@ public class AttachmentHelper {
             if (!canManageAds) {
                 continue;
             }
-            boolean sendEmail = adminEmailAlertPreferenceService.wantsEmail(
-                    recipient.getId(), com.telas.enums.AdminEmailAlertCategory.ADS_MANAGEMENT);
-            params.put("link", adminLink);
-            notificationService.save(NotificationReference.CLIENT_AD_REJECTED, recipient, params, sendEmail);
+            boolean sendEmail = !recipient.isDeveloper()
+                    && adminEmailAlertPreferenceService.wantsEmail(
+                            recipient.getId(), com.telas.enums.AdminEmailAlertCategory.ADS_MANAGEMENT);
+            Map<String, String> adminParams = new HashMap<>(params);
+            adminParams.put("link", adminLink);
+            notificationService.save(NotificationReference.CLIENT_AD_REJECTED, recipient, adminParams, sendEmail);
         }
 
-        params.put("link", clientLink);
-        notificationService.save(NotificationReference.CLIENT_AD_REJECTION_CONFIRMED, client, params, true);
+        Map<String, String> clientParams = new HashMap<>(params);
+        clientParams.put("link", clientLink);
+        notificationService.save(NotificationReference.CLIENT_AD_REJECTION_CONFIRMED, client, clientParams, true);
     }
 
     public void notifyAdminsClientFirstAttachmentsUploaded(Client client) {
@@ -428,8 +455,9 @@ public class AttachmentHelper {
             if (!canManageAds) {
                 continue;
             }
-            boolean sendEmail = adminEmailAlertPreferenceService.wantsEmail(
-                    recipient.getId(), com.telas.enums.AdminEmailAlertCategory.ADS_MANAGEMENT);
+            boolean sendEmail = !recipient.isDeveloper()
+                    && adminEmailAlertPreferenceService.wantsEmail(
+                            recipient.getId(), com.telas.enums.AdminEmailAlertCategory.ADS_MANAGEMENT);
             notificationService.save(
                     NotificationReference.ADMIN_CLIENT_FIRST_ATTACHMENTS_UPLOADED,
                     recipient,
@@ -469,5 +497,56 @@ public class AttachmentHelper {
 //            entity.getAdRequest().handleRefusal();
 //            adRequestRepository.save(entity.getAdRequest());
 //        }
+    }
+
+    @Transactional
+    public void markReferenceAttachmentsConsumed(AdRequest adRequest) {
+        if (adRequest == null || ValidateDataUtils.isNullOrEmptyString(adRequest.getAttachmentIds())) {
+            return;
+        }
+        List<UUID> ids = Arrays.stream(adRequest.getAttachmentIds().split(","))
+                .map(String::trim)
+                .filter(s -> !s.isEmpty())
+                .map(UUID::fromString)
+                .toList();
+        if (ids.isEmpty()) {
+            return;
+        }
+        List<Attachment> list = attachmentRepository.findAllById(ids);
+        list.forEach(a -> a.setReferenceConsumed(true));
+        attachmentRepository.saveAll(list);
+    }
+
+    @Transactional
+    public void deleteClientAttachment(Client owner, UUID attachmentId) {
+        Attachment attachment = attachmentRepository.findById(attachmentId)
+                .orElseThrow(() -> new ResourceNotFoundException(AttachmentValidationMessages.ATTACHMENT_NOT_FOUND));
+        if (attachment.getClient() == null || !attachment.getClient().getId().equals(owner.getId())) {
+            throw new ResourceNotFoundException(AttachmentValidationMessages.ATTACHMENT_NOT_FOUND);
+        }
+        if (attachment.isReferenceConsumed()) {
+            throw new BusinessRuleException(AttachmentValidationMessages.ATTACHMENT_CANNOT_DELETE_REFERENCED);
+        }
+        AdRequest ar = owner.getAdRequest();
+        if (ar != null && ar.isActive() && attachmentIdsCsvContains(ar.getAttachmentIds(), attachmentId)) {
+            throw new BusinessRuleException(AttachmentValidationMessages.ATTACHMENT_CANNOT_DELETE_REFERENCED);
+        }
+        if (adRepository.existsAdReferencingAttachment(attachmentId)) {
+            throw new BusinessRuleException(AttachmentValidationMessages.ATTACHMENT_CANNOT_DELETE_REFERENCED);
+        }
+        bucketService.deleteAttachment(AttachmentUtils.format(attachment));
+        owner.getAttachments().removeIf(a -> a.getId().equals(attachmentId));
+        attachmentRepository.delete(attachment);
+        clientRepository.save(owner);
+    }
+
+    private boolean attachmentIdsCsvContains(String csv, UUID attachmentId) {
+        if (ValidateDataUtils.isNullOrEmptyString(csv)) {
+            return false;
+        }
+        String needle = attachmentId.toString();
+        return Arrays.stream(csv.split(","))
+                .map(String::trim)
+                .anyMatch(needle::equals);
     }
 }

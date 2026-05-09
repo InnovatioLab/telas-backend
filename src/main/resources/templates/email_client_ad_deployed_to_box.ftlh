@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <title>Telas — Ad rejected by customer</title>
+    <title>Telas — Your ad was sent to the screen</title>
     <meta charset="UTF-8"/>
     <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
     <link rel="preconnect" href="https://fonts.googleapis.com"/>
@@ -23,44 +23,43 @@
     <div class="content">
         <table role="presentation" style="width: 100%; border-collapse: collapse;">
             <tr>
-                <td style="padding-bottom: 16px"><h3>Customer rejected an ad</h3></td>
+                <td style="padding-bottom: 16px"><h3>Your ad was sent to the screen</h3></td>
             </tr>
             <tr>
-                <td style="padding-bottom: 8px"><strong>Customer:</strong> ${clientName!""}</td>
+                <td style="padding-bottom: 8px">
+                    Hi <strong>${name!""}</strong>, <strong>${adName!""}</strong> was deployed to your screens.
+                </td>
+            </tr>
+            <#assign summaryPlain = monitorsSummary!"">
+            <#if summaryPlain?has_content>
+            <tr>
+                <td style="padding-bottom: 8px"><strong>Screens:</strong></td>
             </tr>
             <tr>
-                <td style="padding-bottom: 16px"><strong>Ad:</strong> ${adName!""}</td>
-            </tr>
-            <#assign justificationPlain = justification!"">
-            <#if justificationPlain?has_content>
-            <tr>
-                <td style="padding-bottom: 8px"><strong>Summary:</strong></td>
-            </tr>
-            <tr>
-                <td style="padding-bottom: 16px">${justificationPlain}</td>
+                <td style="padding-bottom: 16px">${summaryPlain}</td>
             </tr>
             </#if>
-            <#assign descPlain = description!"">
-            <#if descPlain?has_content>
+            <#assign endsPlain = subscriptionEndsAt!"">
+            <#if endsPlain?has_content>
             <tr>
-                <td style="padding-bottom: 8px"><strong>Details:</strong></td>
+                <td style="padding-bottom: 8px"><strong>Active plan ends:</strong></td>
             </tr>
             <tr>
-                <td style="padding-bottom: 16px">${descPlain?replace("\n", "<br/>")}</td>
+                <td style="padding-bottom: 16px">${endsPlain}</td>
             </tr>
             </#if>
             <tr>
                 <td style="padding-top: 8px;">
                     <#assign linkPlain = link!"">
                     <#if linkPlain?has_content>
-                    <a href="${linkPlain}" style="color: #075473; font-weight: 600;">Open client messages</a>
+                    <a href="${linkPlain}" style="color: #075473; font-weight: 600;">Open My Telas — Ads</a>
                     </#if>
                 </td>
             </tr>
         </table>
     </div>
     <div class="footer">
-        <p style="margin: 0">Telas — Ads management</p>
+        <p style="margin: 0">Telas</p>
         <p class="muted" style="margin: 12px 0 0 0;">Need help? Contact us at support@telas-ads.com</p>
     </div>
 </div>

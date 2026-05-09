@@ -47,6 +47,8 @@ public interface ClientService {
 
     void uploadAttachments(List<AttachmentRequestDto> request);
 
+    void deleteClientAttachment(UUID attachmentId);
+
     void requestAdCreation(ClientAdRequestToAdminDto request);
 
     void uploadAds(AttachmentRequestDto request, UUID clientId);
@@ -78,6 +80,8 @@ public interface ClientService {
     PaginationResponseDto<List<ClientMinResponseDto>> findAllFilters(ClientFilterRequestDto request);
 
     PaginationResponseDto<List<AdRequestAdminResponseDto>> findPendingAdRequest(FilterAdRequestDto request);
+
+    PaginationResponseDto<List<PendingAdAdminValidationResponseDto>> findPendingAds(FilterAdRequestDto request);
 
     void addMonitorToWishlist(UUID monitorId);
 

@@ -90,6 +90,14 @@ public interface ClientController {
     })
     ResponseEntity<?> uploadAttachments(@Valid List<AttachmentRequestDto> request);
 
+    @Operation(summary = "Endpoint contract to delete an attachment owned by the authenticated client", responses = {
+            @ApiResponse(responseCode = "200", description = "Attachment deleted successfully."),
+            @ApiResponse(responseCode = "401", description = "Unauthorized."),
+            @ApiResponse(responseCode = "404", description = "Attachment not found."),
+            @ApiResponse(responseCode = "422", description = "Attachment cannot be deleted."),
+    })
+    ResponseEntity<?> deleteAttachment(UUID attachmentId);
+
     @Operation(summary = "Endpoint contract to request ad creation to admin", responses = {
             @ApiResponse(responseCode = "201", description = "Ad Request created successfully."),
             @ApiResponse(responseCode = "422", description = "Request with invalid data."),
@@ -149,6 +157,13 @@ public interface ClientController {
             @ApiResponse(responseCode = "404", description = "Some data not found."),
     })
     ResponseEntity<?> findAdRequestsByFilter(FilterAdRequestDto request);
+
+    @Operation(summary = "Endpoint contract to list ads pending client validation (admin)", responses = {
+            @ApiResponse(responseCode = "200", description = "Records found successfully."),
+            @ApiResponse(responseCode = "401", description = "Unauthorized."),
+            @ApiResponse(responseCode = "403", description = "Forbidden."),
+    })
+    ResponseEntity<?> findPendingAds(FilterAdRequestDto request);
 
     @Operation(summary = "Endpoint contract to validate an ad", responses = {
             @ApiResponse(responseCode = "200", description = "Ad validated successfully."),

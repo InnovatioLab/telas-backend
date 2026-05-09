@@ -74,8 +74,9 @@ public class AdOnAirNotificationHelper {
                 if (!canManageAds) {
                     continue;
                 }
-                boolean sendEmail = adminEmailAlertPreferenceService.wantsEmail(
-                        recipient.getId(), com.telas.enums.AdminEmailAlertCategory.ADS_MANAGEMENT);
+                boolean sendEmail = !recipient.isDeveloper()
+                        && adminEmailAlertPreferenceService.wantsEmail(
+                                recipient.getId(), com.telas.enums.AdminEmailAlertCategory.ADS_MANAGEMENT);
                 notificationService.save(
                         NotificationReference.ADMIN_AD_ON_AIR,
                         recipient,

@@ -11,6 +11,7 @@ import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneId;
 import java.time.temporal.ChronoUnit;
+import java.util.List;
 import java.util.UUID;
 
 @Getter
@@ -36,7 +37,12 @@ public final class PendingAdAdminValidationResponseDto implements Serializable {
 
     private final String link;
 
-    public PendingAdAdminValidationResponseDto(Ad ad, String linkResponse) {
+    private final List<ClientReferenceAttachmentAdminDto> clientReferences;
+
+    public PendingAdAdminValidationResponseDto(
+            Ad ad,
+            String linkResponse,
+            List<ClientReferenceAttachmentAdminDto> clientReferences) {
         id = ad.getId();
         clientId = ad.getClient().getId();
         name = ad.getName();
@@ -46,5 +52,6 @@ public final class PendingAdAdminValidationResponseDto implements Serializable {
         validation = ad.getValidation();
         waitingDays = ChronoUnit.DAYS.between(ad.getCreatedAt(), Instant.now());
         link = linkResponse;
+        this.clientReferences = clientReferences != null ? List.copyOf(clientReferences) : List.of();
     }
 }

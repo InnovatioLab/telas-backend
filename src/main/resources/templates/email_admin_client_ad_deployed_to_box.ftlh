@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <title>Telas — Ad rejected by customer</title>
+    <title>Telas — Customer ad deployed to box</title>
     <meta charset="UTF-8"/>
     <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
     <link rel="preconnect" href="https://fonts.googleapis.com"/>
@@ -23,7 +23,7 @@
     <div class="content">
         <table role="presentation" style="width: 100%; border-collapse: collapse;">
             <tr>
-                <td style="padding-bottom: 16px"><h3>Customer rejected an ad</h3></td>
+                <td style="padding-bottom: 16px"><h3>Customer ad deployed to box</h3></td>
             </tr>
             <tr>
                 <td style="padding-bottom: 8px"><strong>Customer:</strong> ${clientName!""}</td>
@@ -31,22 +31,22 @@
             <tr>
                 <td style="padding-bottom: 16px"><strong>Ad:</strong> ${adName!""}</td>
             </tr>
-            <#assign justificationPlain = justification!"">
-            <#if justificationPlain?has_content>
+            <#assign summaryPlain = monitorsSummary!"">
+            <#if summaryPlain?has_content>
             <tr>
-                <td style="padding-bottom: 8px"><strong>Summary:</strong></td>
+                <td style="padding-bottom: 8px"><strong>Screens:</strong></td>
             </tr>
             <tr>
-                <td style="padding-bottom: 16px">${justificationPlain}</td>
+                <td style="padding-bottom: 16px">${summaryPlain}</td>
             </tr>
             </#if>
-            <#assign descPlain = description!"">
-            <#if descPlain?has_content>
+            <#assign endsPlain = subscriptionEndsAt!"">
+            <#if endsPlain?has_content>
             <tr>
-                <td style="padding-bottom: 8px"><strong>Details:</strong></td>
+                <td style="padding-bottom: 8px"><strong>Customer plan ends:</strong></td>
             </tr>
             <tr>
-                <td style="padding-bottom: 16px">${descPlain?replace("\n", "<br/>")}</td>
+                <td style="padding-bottom: 16px">${endsPlain}</td>
             </tr>
             </#if>
             <tr>

@@ -72,6 +72,12 @@ public final class SharedConstants {
     public static final String TEMPLATE_EMAIL_ADMIN_AD_ON_AIR = "email_admin_ad_on_air.ftlh";
     public static final String EMAIL_SUBJECT_ADMIN_AD_ON_AIR = "Ad is now live — Telas";
 
+    public static final String TEMPLATE_EMAIL_CLIENT_AD_DEPLOYED_TO_BOX = "email_client_ad_deployed_to_box.ftlh";
+    public static final String EMAIL_SUBJECT_CLIENT_AD_DEPLOYED_TO_BOX = "Your ad was sent to the screen — Telas";
+
+    public static final String TEMPLATE_EMAIL_ADMIN_CLIENT_AD_DEPLOYED_TO_BOX = "email_admin_client_ad_deployed_to_box.ftlh";
+    public static final String EMAIL_SUBJECT_ADMIN_CLIENT_AD_DEPLOYED_TO_BOX = "Customer ad deployed to box — Telas";
+
     public static final String TEMPLATE_EMAIL_SCHEDULER_PRERUN = "email_scheduler_prerun.ftlh";
     public static final String EMAIL_SUBJECT_SCHEDULER_PRERUN = "Scheduled job starting — Telas";
 

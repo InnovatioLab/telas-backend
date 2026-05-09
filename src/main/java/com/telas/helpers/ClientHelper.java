@@ -49,6 +49,7 @@ public class ClientHelper {
     private final HttpClientUtil httpClient;
     private final BucketService bucketService;
     private final NotificationService notificationService;
+    private final BoxAdPushNotificationHelper boxAdPushNotificationHelper;
 
     @Value("${front.base.url}")
     private String frontBaseUrl;
@@ -289,7 +290,10 @@ public class ClientHelper {
         }
 
         if (!requestList.isEmpty()) {
-            sendBoxesMonitorsUpdateAd(requestList);
+            Set<String> successfulBaseUrls = sendBoxesMonitorsUpdateAd(requestList);
+            if (!successfulBaseUrls.isEmpty()) {
+                boxAdPushNotificationHelper.notifyAfterSuccessfulPush(grouped, successfulBaseUrls);
+            }
         }
     }
 
@@ -358,9 +362,10 @@ public class ClientHelper {
         );
     }
 
-    private void sendBoxesMonitorsUpdateAd(List<UpdateBoxMonitorsAdRequestDto> requestList) {
+    private Set<String> sendBoxesMonitorsUpdateAd(List<UpdateBoxMonitorsAdRequestDto> requestList) {
+        Set<String> successfulBaseUrls = new HashSet<>();
         if (requestList == null || requestList.isEmpty()) {
-            return;
+            return successfulBaseUrls;
         }
 
         Map<String, List<UpdateBoxMonitorsAdRequestDto>> grouped = requestList.stream()
@@ -379,10 +384,12 @@ public class ClientHelper {
             try {
                 log.info("Sending ad update to box URL: {}", url);
                 httpClient.makePostRequest(url, group, Void.class, null, headers);
+                successfulBaseUrls.add(baseUrl);
             } catch (Exception e) {
                 log.error("Error sending ad update to box URL: {}, message: {}", url, e.getMessage());
             }
         });
+        return successfulBaseUrls;
     }
 
     @Transactional

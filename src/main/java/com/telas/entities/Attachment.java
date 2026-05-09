@@ -38,6 +38,9 @@ public class Attachment extends BaseAudit implements Serializable {
     @Column(name = "mime_type", nullable = false, length = 5)
     private String type;
 
+    @Column(name = "reference_consumed", nullable = false)
+    private boolean referenceConsumed = false;
+
     @JsonIgnore
     @ManyToOne
     @JoinColumn(name = "client_id", referencedColumnName = "id", nullable = false)

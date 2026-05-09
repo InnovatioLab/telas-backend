@@ -305,6 +305,55 @@ public enum NotificationReference {
             return createAdminAdOnAirEmailData(params);
         }
     },
+    CLIENT_AD_DEPLOYED_TO_BOX {
+        @Override
+        public String getNotificationMessage(Map<String, String> params) {
+            String adName = params.getOrDefault("adName", "your ad");
+            String summary = params.getOrDefault("monitorsSummary", "");
+            String ends = params.getOrDefault("subscriptionEndsAt", "");
+            String extra = "";
+            if (!ObjectUtils.isEmpty(summary)) {
+                extra += "<p><strong>Screens:</strong> " + summary + "</p>";
+            }
+            if (!ObjectUtils.isEmpty(ends)) {
+                extra += "<p><strong>Active plan ends:</strong> " + ends + "</p>";
+            }
+            return String.format("""
+                    <div class="informacoes">
+                        <h4 id="notification-title" class="notification-title">Ad sent to screen</h4>
+                        <p><strong>%s</strong> was deployed to your subscription screens.</p>
+                        %s
+                    </div>
+                    <p>Open <a id="link-details" class='details link-text' href="%s">My Telas — Ads</a>.</p>
+                    """, adName, extra, params.getOrDefault("link", "#"));
+        }
+
+        @Override
+        public EmailDataDto getEmailData(Map<String, String> params) {
+            return createClientAdDeployedToBoxEmailData(params);
+        }
+    },
+    ADMIN_CLIENT_AD_DEPLOYED_TO_BOX {
+        @Override
+        public String getNotificationMessage(Map<String, String> params) {
+            String clientName = params.getOrDefault("clientName", "Customer");
+            String adName = params.getOrDefault("adName", "Ad");
+            String link = params.getOrDefault("link", "");
+            return formatNotificationMessage(
+                    "Ad deployed to box",
+                    String.format("%s — %s was sent to the customer’s screens.", clientName, adName),
+                    params,
+                    null,
+                    ObjectUtils.isEmpty(link) ? null : "Open client messages",
+                    false
+            );
+        }
+
+        @Override
+        public EmailDataDto getEmailData(Map<String, String> params) {
+            return createAdminClientAdDeployedToBoxEmailData(params);
+        }
+    },
     MONITOR_IN_WISHLIST_NOW_AVAILABLE {
         @Override
         public String getNotificationMessage(Map<String, String> params) {
@@ -903,6 +952,32 @@ public enum NotificationReference {
         emailData.getParams().put("clientName", params.getOrDefault("clientName", ""));
         emailData.getParams().put("adName", params.getOrDefault("adName", "Ad"));
         emailData.getParams().put("link", params.getOrDefault("link", ""));
+        return emailData;
+    }
+
+    private static EmailDataDto createClientAdDeployedToBoxEmailData(Map<String, String> params) {
+        EmailDataDto emailData = new EmailDataDto();
+        emailData.setSubject(SharedConstants.EMAIL_SUBJECT_CLIENT_AD_DEPLOYED_TO_BOX);
+        emailData.setTemplate(SharedConstants.TEMPLATE_EMAIL_CLIENT_AD_DEPLOYED_TO_BOX);
+        emailData.setParams(new HashMap<>());
+        emailData.getParams().put("name", params.getOrDefault("name", ""));
+        emailData.getParams().put("adName", params.getOrDefault("adName", "Ad"));
+        emailData.getParams().put("link", params.getOrDefault("link", ""));
+        emailData.getParams().put("monitorsSummary", params.getOrDefault("monitorsSummary", ""));
+        emailData.getParams().put("subscriptionEndsAt", params.getOrDefault("subscriptionEndsAt", ""));
+        return emailData;
+    }
+
+    private static EmailDataDto createAdminClientAdDeployedToBoxEmailData(Map<String, String> params) {
+        EmailDataDto emailData = new EmailDataDto();
+        emailData.setSubject(SharedConstants.EMAIL_SUBJECT_ADMIN_CLIENT_AD_DEPLOYED_TO_BOX);
+        emailData.setTemplate(SharedConstants.TEMPLATE_EMAIL_ADMIN_CLIENT_AD_DEPLOYED_TO_BOX);
+        emailData.setParams(new HashMap<>());
+        emailData.getParams().put("clientName", params.getOrDefault("clientName", ""));
+        emailData.getParams().put("adName", params.getOrDefault("adName", "Ad"));
+        emailData.getParams().put("link", params.getOrDefault("link", ""));
+        emailData.getParams().put("monitorsSummary", params.getOrDefault("monitorsSummary", ""));
+        emailData.getParams().put("subscriptionEndsAt", params.getOrDefault("subscriptionEndsAt", ""));
         return emailData;
     }
 
