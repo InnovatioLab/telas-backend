@@ -328,13 +328,14 @@ public class SubscriptionHelper {
 
                 Map<String, String> params = Map.of(
                         "clientName", client.getBusinessName(),
+                        "name", client.getBusinessName(),
                         "monitorsAddress", wishlistMonitors.stream()
                                 .map(m -> m.getAddress().getCoordinatesParams())
                                 .collect(Collectors.joining(", ")),
                         "link", buildRedirectUrl("wishlist")
                 );
 
-                notificationService.save(NotificationReference.MONITOR_IN_WISHLIST_NOW_AVAILABLE, client, params, false);
+                notificationService.save(NotificationReference.MONITOR_IN_WISHLIST_NOW_AVAILABLE, client, params, true);
             }
         });
     }

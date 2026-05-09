@@ -79,7 +79,9 @@ public final class SharedConstants {
     public static final String EMAIL_SUBJECT_ADMIN_CLIENT_AD_DEPLOYED_TO_BOX = "Customer ad deployed to box — Telas";
 
     public static final String TEMPLATE_EMAIL_SCHEDULER_PRERUN = "email_scheduler_prerun.ftlh";
+    public static final String TEMPLATE_EMAIL_MONITOR_WISHLIST_AVAILABLE = "email_monitor_wishlist_available.ftlh";
     public static final String EMAIL_SUBJECT_SCHEDULER_PRERUN = "Scheduled job starting — Telas";
+    public static final String EMAIL_SUBJECT_MONITOR_WISHLIST_AVAILABLE = "A screen on your wish list is now available — Telas";
 
 
     public static final String REGEX_ONLY_NUMBERS = "^\\d+$";

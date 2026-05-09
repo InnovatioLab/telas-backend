@@ -357,17 +357,23 @@ public enum NotificationReference {
     MONITOR_IN_WISHLIST_NOW_AVAILABLE {
         @Override
         public String getNotificationMessage(Map<String, String> params) {
-            return String.format("""
-                    <div class="informacoes">
-                        <h4 id="notification-title" class="notification-title">A monitor in your wishlist is now Available!</h4>
-                    </div>
-                    <a id="link-details" class='details link-text' href="%s">View Details</a>
-                    """, params.get("link"));
+            String addresses = params.getOrDefault("monitorsAddress", "").trim();
+            String body = addresses.isEmpty()
+                    ? "A screen you saved in your wish list now has availability."
+                    : ("These locations now have availability: " + addresses);
+            return formatNotificationMessage(
+                    "Wish list — screen available",
+                    body,
+                    params,
+                    null,
+                    "Open wish list",
+                    false
+            );
         }
 
         @Override
         public EmailDataDto getEmailData(Map<String, String> params) {
-            return null;
+            return createMonitorWishlistAvailableEmailData(params);
         }
     },
     AD_NOT_SENT_TO_MONITOR {
@@ -897,6 +903,18 @@ public enum NotificationReference {
         emailData.setTemplate(SharedConstants.TEMPLATE_EMAIL_CLIENT_AD_RECEIVED);
         emailData.setParams(new HashMap<>());
         emailData.getParams().put("name", params.getOrDefault("name", ""));
+        emailData.getParams().put("link", params.getOrDefault("link", ""));
+        return emailData;
+    }
+
+    private static EmailDataDto createMonitorWishlistAvailableEmailData(Map<String, String> params) {
+        EmailDataDto emailData = new EmailDataDto();
+        emailData.setSubject(SharedConstants.EMAIL_SUBJECT_MONITOR_WISHLIST_AVAILABLE);
+        emailData.setTemplate(SharedConstants.TEMPLATE_EMAIL_MONITOR_WISHLIST_AVAILABLE);
+        emailData.setParams(new HashMap<>());
+        String name = params.getOrDefault("name", params.getOrDefault("clientName", ""));
+        emailData.getParams().put("name", name);
+        emailData.getParams().put("monitorsAddress", params.getOrDefault("monitorsAddress", ""));
         emailData.getParams().put("link", params.getOrDefault("link", ""));
         return emailData;
     }
