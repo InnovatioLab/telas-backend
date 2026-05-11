@@ -164,8 +164,8 @@ public interface AdRepository extends JpaRepository<Ad, UUID>, JpaSpecificationE
 					    OR (ba IS NOT NULL AND LOWER(ba.ip) LIKE LOWER(CONCAT('%', TRIM(:boxIpFilter), '%'))))
 					AND (COALESCE(TRIM(:screenContainsFilter), '') = ''
 					    OR LOWER(CONCAT(COALESCE(addr.street, ''), COALESCE(addr.city, ''), COALESCE(addr.state, ''), COALESCE(addr.zipCode, ''))) LIKE LOWER(CONCAT('%', TRIM(:screenContainsFilter), '%')))
-					AND (:submissionDateFrom IS NULL OR ad.createdAt >= :submissionDateFrom)
-					AND (:submissionDateTo IS NULL OR ad.createdAt <= :submissionDateTo)
+					AND ad.createdAt >= :submissionDateFrom
+					AND ad.createdAt <= :submissionDateTo
 					""",
 			value = """
 					SELECT new com.telas.dtos.response.AdminAdOperationRowDto(
@@ -217,8 +217,8 @@ public interface AdRepository extends JpaRepository<Ad, UUID>, JpaSpecificationE
 					    OR (ba IS NOT NULL AND LOWER(ba.ip) LIKE LOWER(CONCAT('%', TRIM(:boxIpFilter), '%'))))
 					AND (COALESCE(TRIM(:screenContainsFilter), '') = ''
 					    OR LOWER(CONCAT(COALESCE(addr.street, ''), COALESCE(addr.city, ''), COALESCE(addr.state, ''), COALESCE(addr.zipCode, ''))) LIKE LOWER(CONCAT('%', TRIM(:screenContainsFilter), '%')))
-					AND (:submissionDateFrom IS NULL OR ad.createdAt >= :submissionDateFrom)
-					AND (:submissionDateTo IS NULL OR ad.createdAt <= :submissionDateTo)
+					AND ad.createdAt >= :submissionDateFrom
+					AND ad.createdAt <= :submissionDateTo
 					""")
 	Page<AdminAdOperationRowDto> searchApprovedAdsAdminOperations(
 			@Param("genericFilter") String genericFilter,

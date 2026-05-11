@@ -117,8 +117,8 @@ public class AdminAdOperationsServiceImpl implements AdminAdOperationsService {
                     trimOrEmpty(request.getPartnerName()),
                     trimOrEmpty(request.getBoxIp()),
                     trimOrEmpty(request.getScreenContains()),
-                    request.getSubmissionDateFrom(),
-                    request.getSubmissionDateTo(),
+                    request.effectiveSubmissionDateFrom(),
+                    request.effectiveSubmissionDateTo(),
                     pageable
             );
         } else if (validation == AdValidationType.PENDING || validation == AdValidationType.REJECTED) {

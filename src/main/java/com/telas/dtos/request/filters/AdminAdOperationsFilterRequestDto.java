@@ -82,4 +82,12 @@ public class AdminAdOperationsFilterRequestDto extends PaginationRequestDto {
     public Sort setOrdering() {
         return resolveSort(validation);
     }
+
+    public Instant effectiveSubmissionDateFrom() {
+        return submissionDateFrom != null ? submissionDateFrom : Instant.EPOCH;
+    }
+
+    public Instant effectiveSubmissionDateTo() {
+        return submissionDateTo != null ? submissionDateTo : Instant.MAX;
+    }
 }
