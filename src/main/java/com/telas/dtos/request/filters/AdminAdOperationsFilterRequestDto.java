@@ -12,6 +12,9 @@ import java.time.Instant;
 @Setter
 @NoArgsConstructor
 public class AdminAdOperationsFilterRequestDto extends PaginationRequestDto {
+
+    private static final Instant SUBMISSION_DATE_RANGE_OPEN_END =
+            Instant.parse("9999-12-31T23:59:59.999999999Z");
     private String genericFilter;
     private AdValidationType validation;
 
@@ -88,6 +91,6 @@ public class AdminAdOperationsFilterRequestDto extends PaginationRequestDto {
     }
 
     public Instant effectiveSubmissionDateTo() {
-        return submissionDateTo != null ? submissionDateTo : Instant.MAX;
+        return submissionDateTo != null ? submissionDateTo : SUBMISSION_DATE_RANGE_OPEN_END;
     }
 }
