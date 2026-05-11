@@ -116,9 +116,22 @@ public class NotificationServiceImpl implements NotificationService {
             }
         }
 
-        emailData.setEmail(notification.getClient().getContact().getEmail());
+        Client recipientClient = notification.getClient();
+        String email = recipientClient.getContact() != null
+                ? recipientClient.getContact().getEmail()
+                : null;
+        if (ValidateDataUtils.isNullOrEmptyString(email)) {
+            LOGGER.warn(
+                    "notification.email.skip.no_recipient_email reference={} notificationId={} clientId={}",
+                    notification.getReference(),
+                    notification.getId(),
+                    recipientClient.getId()
+            );
+            return;
+        }
+        emailData.setEmail(email);
         if (emailData.getParams() != null) {
-            emailData.getParams().put("clientId", notification.getClient().getId().toString());
+            emailData.getParams().put("clientId", recipientClient.getId().toString());
         }
         try {
             emailService.send(emailData);

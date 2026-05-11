@@ -32,7 +32,7 @@ public interface NotificationRepository extends JpaRepository<Notification, UUID
           """
           SELECT n FROM Notification n
           JOIN FETCH n.client c
-          JOIN FETCH c.contact
+          LEFT JOIN FETCH c.contact
           WHERE n.id = :id
           """)
   Optional<Notification> findWithClientAndContactForEmail(@Param("id") UUID id);

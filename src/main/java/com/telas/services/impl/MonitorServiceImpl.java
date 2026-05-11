@@ -574,26 +574,16 @@ public class MonitorServiceImpl implements MonitorService {
 		if (monitor.isAbleToSendBoxRequest()) {
 			Set<String> successfulBaseUrls = helper.sendBoxesMonitorsUpdateAdsReturnSuccess(requestList);
 			boolean sendOnAirEmails = successfulBaseUrls.isEmpty();
-			adOnAirNotificationHelper.notifyOnAirForNewMonitorAds(newMonitorAds, monitor, sendOnAirEmails);
 			if (!successfulBaseUrls.isEmpty()) {
-				List<AbstractMap.SimpleEntry<MonitorAd, UpdateBoxMonitorsAdRequestDto>> allPairs =
-						buildMonitorAdPushPairs(monitor, requestList);
-				Set<UUID> newlyPlacedAdIds = newMonitorAds.stream()
-						.map(ma -> ma.getAd() != null ? ma.getAd().getId() : null)
-						.filter(Objects::nonNull)
-						.collect(Collectors.toSet());
-				List<AbstractMap.SimpleEntry<MonitorAd, UpdateBoxMonitorsAdRequestDto>> pairsToNotify = allPairs.stream()
-						.filter(p -> {
-							MonitorAd ma = p.getKey();
-							return ma != null && ma.getAd() != null && newlyPlacedAdIds.contains(ma.getAd().getId());
-						})
-						.toList();
+				List<AbstractMap.SimpleEntry<MonitorAd, UpdateBoxMonitorsAdRequestDto>> pairsToNotify =
+						buildDeployNotifyPairs(monitor, newMonitorAds, requestList, successfulBaseUrls);
 				if (!pairsToNotify.isEmpty()) {
 					Map<Monitor, List<AbstractMap.SimpleEntry<MonitorAd, UpdateBoxMonitorsAdRequestDto>>> grouped =
 							Map.of(monitor, pairsToNotify);
 					boxAdPushNotificationHelper.notifyAfterSuccessfulPush(grouped, successfulBaseUrls);
 				}
 			}
+			adOnAirNotificationHelper.notifyOnAirForNewMonitorAds(newMonitorAds, monitor, sendOnAirEmails);
 		}
 
 		Set<UUID> toSync = new HashSet<>(newAdIds);
@@ -678,6 +668,55 @@ public class MonitorServiceImpl implements MonitorService {
 				monitorAd.setBlockQuantity(quantity);
 			}
 		});
+	}
+
+
+	private static List<AbstractMap.SimpleEntry<MonitorAd, UpdateBoxMonitorsAdRequestDto>> buildDeployNotifyPairs(
+			Monitor monitor,
+			List<MonitorAd> newMonitorAds,
+			List<UpdateBoxMonitorsAdRequestDto> requestList,
+			Set<String> successfulBaseUrls) {
+		if (requestList == null || requestList.isEmpty() || successfulBaseUrls == null || successfulBaseUrls.isEmpty()) {
+			return List.of();
+		}
+		List<AbstractMap.SimpleEntry<MonitorAd, UpdateBoxMonitorsAdRequestDto>> allPairs =
+				buildMonitorAdPushPairs(monitor, requestList);
+		Set<UUID> newAdIds = newMonitorAds.stream()
+				.map(ma -> ma.getAd() != null ? ma.getAd().getId() : null)
+				.filter(Objects::nonNull)
+				.collect(Collectors.toSet());
+		List<AbstractMap.SimpleEntry<MonitorAd, UpdateBoxMonitorsAdRequestDto>> filtered = allPairs.stream()
+				.filter(p -> {
+					MonitorAd ma = p.getKey();
+					UpdateBoxMonitorsAdRequestDto dto = p.getValue();
+					if (ma == null || ma.getAd() == null || dto == null || dto.getBaseUrl() == null) {
+						return false;
+					}
+					if (!successfulBaseUrls.contains(dto.getBaseUrl())) {
+						return false;
+					}
+					return newAdIds.contains(ma.getAd().getId());
+				})
+				.toList();
+		if (!filtered.isEmpty()) {
+			return filtered;
+		}
+		List<AbstractMap.SimpleEntry<MonitorAd, UpdateBoxMonitorsAdRequestDto>> fallback = new ArrayList<>();
+		for (MonitorAd ma : newMonitorAds) {
+			if (ma.getAd() == null) {
+				continue;
+			}
+			UpdateBoxMonitorsAdRequestDto dto = requestList.stream()
+					.filter(Objects::nonNull)
+					.filter(d -> Objects.equals(ma.getAd().getName(), d.getFileName()))
+					.filter(d -> d.getBaseUrl() != null && successfulBaseUrls.contains(d.getBaseUrl()))
+					.findFirst()
+					.orElse(null);
+			if (dto != null) {
+				fallback.add(new AbstractMap.SimpleEntry<>(ma, dto));
+			}
+		}
+		return fallback;
 	}
 
 
