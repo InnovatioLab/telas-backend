@@ -126,6 +126,25 @@ public class ClientServiceImpl implements ClientService {
 			adminEmailAlertPreferenceService.ensureDefaultEmailPreferencesForAdmin(savedClient.getId());
 		}
 		sendContactConfirmationEmail(savedClient, verificationCode);
+		notifyAdminsNewClientRegistered(savedClient);
+	}
+
+	private void notifyAdminsNewClientRegistered(Client client) {
+		if (client == null || !Role.CLIENT.equals(client.getRole())) {
+			return;
+		}
+		String contactEmail = "";
+		if (client.getContact() != null && client.getContact().getEmail() != null) {
+			contactEmail = client.getContact().getEmail();
+		}
+		String adminLink = frontBaseUrl + "/admin/clients/" + client.getId();
+		Map<String, String> params = new HashMap<>();
+		params.put("businessName", client.getBusinessName() != null ? client.getBusinessName() : "");
+		params.put("contactEmail", contactEmail);
+		params.put("clientId", client.getId().toString());
+		params.put("link", adminLink);
+		repository.findAllAdmins().forEach(admin ->
+				notificationService.save(NotificationReference.ADMIN_NEW_CLIENT_REGISTERED, admin, new HashMap<>(params), true));
 	}
 
 

@@ -575,6 +575,31 @@ public enum NotificationReference {
             return emailData;
         }
     },
+    ADMIN_NEW_CLIENT_REGISTERED {
+        @Override
+        public String getNotificationMessage(Map<String, String> params) {
+            return String.format("""
+                    <div class="informacoes">
+                        <h4 id="notification-title" class="notification-title">New customer registration</h4>
+                        <p><strong>%s</strong> registered with e-mail <strong>%s</strong>.</p>
+                        <div class="field">
+                            <span class="field-label">Customer ID: </span>
+                            <span class="field-value">%s</span>
+                        </div>
+                    </div>
+                    <a id="link-details" class='details link-text' href="%s">Open customer</a>
+                    """,
+                    params.getOrDefault("businessName", "Customer"),
+                    params.getOrDefault("contactEmail", ""),
+                    params.getOrDefault("clientId", ""),
+                    params.getOrDefault("link", "#"));
+        }
+
+        @Override
+        public EmailDataDto getEmailData(Map<String, String> params) {
+            return createAdminNewClientRegisteredEmailData(params);
+        }
+    },
     ADMIN_NEW_PURCHASE {
         @Override
         public String getNotificationMessage(Map<String, String> params) {
@@ -831,6 +856,18 @@ public enum NotificationReference {
         emailData.getParams().put("link", params.get("link"));
         emailData.getParams().put("startDate", startDate);
         emailData.getParams().put("endDate", ObjectUtils.isEmpty(endDate) ? "" : endDate);
+        return emailData;
+    }
+
+    private static EmailDataDto createAdminNewClientRegisteredEmailData(Map<String, String> params) {
+        EmailDataDto emailData = new EmailDataDto();
+        emailData.setSubject(SharedConstants.EMAIL_SUBJECT_ADMIN_NEW_CLIENT_REGISTERED);
+        emailData.setTemplate(SharedConstants.TEMPLATE_EMAIL_ADMIN_NEW_CLIENT_REGISTERED);
+        emailData.setParams(new HashMap<>());
+        emailData.getParams().put("businessName", ObjectUtils.isEmpty(params.get("businessName")) ? "" : params.get("businessName"));
+        emailData.getParams().put("contactEmail", ObjectUtils.isEmpty(params.get("contactEmail")) ? "" : params.get("contactEmail"));
+        emailData.getParams().put("clientId", ObjectUtils.isEmpty(params.get("clientId")) ? "" : params.get("clientId"));
+        emailData.getParams().put("link", ObjectUtils.isEmpty(params.get("link")) ? "" : params.get("link"));
         return emailData;
     }
 
