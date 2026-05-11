@@ -118,5 +118,44 @@ class AdOnAirNotificationHelperTest {
         verify(notificationService).save(eq(NotificationReference.ADMIN_AD_ON_AIR), eq(admin), any(), eq(true));
         verify(adRepository).save(eq(ad));
     }
+
+    @Test
+    void notifyOnAirForNewMonitorAds_whenSendEmailFalse_skipsEmailFlags() {
+        ReflectionTestUtils.setField(helper, "frontBaseUrl", "https://front.test");
+
+        Client client = new Client();
+        client.setId(UUID.randomUUID());
+        client.setBusinessName("ACME");
+
+        Client admin = new Client();
+        admin.setId(UUID.randomUUID());
+
+        Ad ad = new Ad();
+        ad.setId(UUID.randomUUID());
+        ad.setClient(client);
+        ad.setName("ad.png");
+        ad.setValidation(AdValidationType.APPROVED);
+        ad.setOnAirNotifiedAt(null);
+
+        MonitorAd ma = new MonitorAd();
+        ma.setAd(ad);
+
+        Monitor monitor = new Monitor();
+        var box = new com.telas.entities.Box();
+        box.setActive(true);
+        var addr = new com.telas.entities.BoxAddress();
+        addr.setIp("10.0.0.1");
+        box.setBoxAddress(addr);
+        monitor.setBox(box);
+
+        when(clientRepository.findAllAdminsAndDevelopers()).thenReturn(List.of(admin));
+        when(permissionService.hasPermission(admin, Permission.ADMIN_ADS_MANAGE)).thenReturn(true);
+        when(adRepository.save(any(Ad.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        helper.notifyOnAirForNewMonitorAds(List.of(ma), monitor, false);
+
+        verify(notificationService).save(eq(NotificationReference.CLIENT_AD_ON_AIR), eq(client), any(), eq(false));
+        verify(notificationService).save(eq(NotificationReference.ADMIN_AD_ON_AIR), eq(admin), any(), eq(false));
+    }
 }
 

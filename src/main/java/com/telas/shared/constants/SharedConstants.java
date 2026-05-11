@@ -66,6 +66,11 @@ public final class SharedConstants {
     public static final String EMAIL_SUBJECT_ADMIN_CLIENT_FIRST_ATTACHMENTS_UPLOADED =
             "Customer uploaded attachments — Telas";
 
+    public static final String TEMPLATE_EMAIL_CLIENT_FIRST_ATTACHMENTS_UPLOADED_ACK =
+            "email_client_first_attachments_uploaded_ack.ftlh";
+    public static final String EMAIL_SUBJECT_CLIENT_FIRST_ATTACHMENTS_UPLOADED_ACK =
+            "We received your files — Telas";
+
     public static final String TEMPLATE_EMAIL_CLIENT_AD_ON_AIR = "email_client_ad_on_air.ftlh";
     public static final String EMAIL_SUBJECT_CLIENT_AD_ON_AIR = "Your ad is now live — Telas";
 

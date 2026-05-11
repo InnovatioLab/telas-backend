@@ -15,6 +15,7 @@ import com.telas.enums.AdValidationType;
 import com.telas.enums.CodeType;
 import com.telas.enums.DefaultStatus;
 import com.telas.enums.Permission;
+import com.telas.enums.NotificationReference;
 import com.telas.enums.Role;
 import com.telas.helpers.AttachmentHelper;
 import com.telas.helpers.ClientHelper;
@@ -35,6 +36,7 @@ import com.telas.services.AdminEmailAlertPreferenceService;
 import com.telas.services.ClientPermanentDeletionService;
 import com.telas.services.BucketService;
 import com.telas.services.ClientService;
+import com.telas.services.NotificationService;
 import com.telas.services.PermissionService;
 import com.telas.services.TermConditionService;
 import com.telas.services.VerificationCodeService;
@@ -54,6 +56,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.domain.Specification;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -99,6 +102,11 @@ public class ClientServiceImpl implements ClientService {
 	private final AdminEmailAlertPreferenceService adminEmailAlertPreferenceService;
 
 	private final ClientPermanentDeletionService clientPermanentDeletionService;
+
+	private final NotificationService notificationService;
+
+	@Value("${front.base.url}")
+	private String frontBaseUrl;
 
 	@Override
 	@Transactional
@@ -303,6 +311,15 @@ public class ClientServiceImpl implements ClientService {
 
 		if (isFirstUpload) {
 			attachmentHelper.notifyAdminsClientFirstAttachmentsUploaded(client);
+			Map<String, String> clientAckParams = new HashMap<>();
+			clientAckParams.put("name", client.getBusinessName());
+			clientAckParams.put("link", frontBaseUrl + "/client/my-telas");
+			notificationService.save(
+					NotificationReference.CLIENT_FIRST_ATTACHMENTS_UPLOADED_ACK,
+					client,
+					clientAckParams,
+					true
+			);
 		}
 	}
 

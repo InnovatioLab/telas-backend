@@ -71,6 +71,13 @@ public class AdminAdOperationsServiceImpl implements AdminAdOperationsService {
     private final AuthenticatedUserService authenticatedUserService;
     private final AttachmentHelper attachmentHelper;
 
+    private static String trimOrEmpty(String value) {
+        if (value == null) {
+            return "";
+        }
+        return value.trim();
+    }
+
     private void enrichRowsWithAdLinks(List<AdminAdOperationRowDto> rows) {
         if (rows == null || rows.isEmpty()) {
             return;
@@ -99,11 +106,21 @@ public class AdminAdOperationsServiceImpl implements AdminAdOperationsService {
     public PaginationResponseDto<List<AdminAdOperationRowDto>> findPage(AdminAdOperationsFilterRequestDto request) {
         authenticatedUserService.validateAdmin();
         String gf = request.getGenericFilter() == null ? "" : request.getGenericFilter().trim();
-        Pageable pageable = PaginationFilterUtil.getPageable(request, Sort.unsorted());
         AdValidationType validation = request.getValidation();
+        Sort sort = request.resolveSort(validation);
+        Pageable pageable = PaginationFilterUtil.getPageable(request, sort);
         Page<AdminAdOperationRowDto> page;
         if (validation == AdValidationType.APPROVED) {
-            page = adRepository.searchApprovedAdsAdminOperations(gf, pageable);
+            page = adRepository.searchApprovedAdsAdminOperations(
+                    gf,
+                    trimOrEmpty(request.getAdvertiserName()),
+                    trimOrEmpty(request.getPartnerName()),
+                    trimOrEmpty(request.getBoxIp()),
+                    trimOrEmpty(request.getScreenContains()),
+                    request.getSubmissionDateFrom(),
+                    request.getSubmissionDateTo(),
+                    pageable
+            );
         } else if (validation == AdValidationType.PENDING || validation == AdValidationType.REJECTED) {
             page = adRepository.searchAdsAdminOperationsWithoutPlacement(validation, gf, pageable);
         } else {

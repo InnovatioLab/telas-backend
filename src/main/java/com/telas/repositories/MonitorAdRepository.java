@@ -86,7 +86,6 @@ public interface MonitorAdRepository extends JpaRepository<MonitorAd, MonitorAdP
                      OR LOWER(CONCAT(addr.street, addr.city, addr.state, addr.zipCode)) LIKE LOWER(CONCAT('%', :genericFilter, '%'))
                     )
                     AND (:validation IS NULL OR ad.validation = :validation)
-                    ORDER BY ad.name ASC, mon.id ASC
                     """)
     Page<AdminAdOperationRowDto> searchAdminOperations(
             @Param("genericFilter") String genericFilter,

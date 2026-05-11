@@ -18,7 +18,6 @@ import com.telas.repositories.SubscriptionMonitorRepository;
 import com.telas.services.AddressService;
 import com.telas.services.BucketService;
 import com.telas.services.MapsService;
-import com.telas.shared.constants.SharedConstants;
 import com.telas.shared.constants.valitation.MonitorValidationMessages;
 import com.telas.shared.utils.AttachmentUtils;
 import com.telas.shared.utils.HttpClientUtil;
@@ -140,22 +139,30 @@ public class MonitorHelper {
 	}
 
 
-	public void sendBoxesMonitorsUpdateAds(List<UpdateBoxMonitorsAdRequestDto> requestList) {
-		if (requestList.isEmpty()) {
-			return;
+	public Set<String> sendBoxesMonitorsUpdateAdsReturnSuccess(List<UpdateBoxMonitorsAdRequestDto> requestList) {
+		Set<String> successfulBaseUrls = new HashSet<>();
+		if (requestList == null || requestList.isEmpty()) {
+			return successfulBaseUrls;
 		}
-
-		String baseUrl = requestList.stream().map(UpdateBoxMonitorsAdRequestDto::getBaseUrl).distinct().findFirst()
-			.orElse(null);
-
-		if (baseUrl == null || requestList.stream().map(UpdateBoxMonitorsAdRequestDto::getBaseUrl).distinct().count()
-			!= SharedConstants.MIN_QUANTITY_MONITOR_BLOCK) {
-			return;
-		}
-
-		String url = baseUrl.endsWith("/") ? baseUrl + "update-ads" : baseUrl + "/update-ads";
-		log.info("Sending request to update Ads, URL: {}", url);
-		executePostRequest(url, requestList);
+		Map<String, List<UpdateBoxMonitorsAdRequestDto>> grouped = requestList.stream()
+				.filter(Objects::nonNull)
+				.collect(Collectors.groupingBy(UpdateBoxMonitorsAdRequestDto::getBaseUrl));
+		Map<String, String> headers = Map.of("X-API-KEY", API_KEY);
+		grouped.forEach((baseUrl, group) -> {
+			if (baseUrl == null || baseUrl.isBlank()) {
+				log.warn("Skipping box update group with blank baseUrl, size={}", group.size());
+				return;
+			}
+			String url = baseUrl.endsWith("/") ? baseUrl + "update-ads" : baseUrl + "/update-ads";
+			try {
+				log.info("Sending request to update Ads, URL: {}", url);
+				httpClient.makePostRequest(url, group, Void.class, null, headers);
+				successfulBaseUrls.add(baseUrl);
+			} catch (Exception e) {
+				log.error("Error while sending request, URL: {}, message: {}", url, e.getMessage());
+			}
+		});
+		return successfulBaseUrls;
 	}
 
 

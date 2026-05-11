@@ -35,6 +35,10 @@ public class AdOnAirNotificationHelper {
     private String frontBaseUrl;
 
     public void notifyOnAirForNewMonitorAds(List<MonitorAd> newMonitorAds, Monitor monitor) {
+        notifyOnAirForNewMonitorAds(newMonitorAds, monitor, true);
+    }
+
+    public void notifyOnAirForNewMonitorAds(List<MonitorAd> newMonitorAds, Monitor monitor, boolean sendEmailNotifications) {
         if (newMonitorAds == null || newMonitorAds.isEmpty()) {
             return;
         }
@@ -61,7 +65,7 @@ public class AdOnAirNotificationHelper {
             clientParams.put("name", client.getBusinessName());
             clientParams.put("adName", ad.getName());
             clientParams.put("link", frontBaseUrl + "/client/my-telas?tab=ads");
-            notificationService.save(NotificationReference.CLIENT_AD_ON_AIR, client, clientParams, true);
+            notificationService.save(NotificationReference.CLIENT_AD_ON_AIR, client, clientParams, sendEmailNotifications);
 
             String adminLink = frontBaseUrl + "/admin/clients/" + client.getId() + "/messages";
             Map<String, String> adminParams = new HashMap<>();
@@ -74,14 +78,15 @@ public class AdOnAirNotificationHelper {
                 if (!canManageAds) {
                     continue;
                 }
-                boolean sendEmail = !recipient.isDeveloper()
+                boolean sendAdminEmail = sendEmailNotifications
+                        && !recipient.isDeveloper()
                         && adminEmailAlertPreferenceService.wantsEmail(
                                 recipient.getId(), com.telas.enums.AdminEmailAlertCategory.ADS_MANAGEMENT);
                 notificationService.save(
                         NotificationReference.ADMIN_AD_ON_AIR,
                         recipient,
                         new HashMap<>(adminParams),
-                        sendEmail
+                        sendAdminEmail
                 );
             }
         }

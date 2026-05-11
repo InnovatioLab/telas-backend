@@ -266,6 +266,23 @@ public enum NotificationReference {
             return createAdminClientFirstAttachmentsUploadedEmailData(params);
         }
     },
+    CLIENT_FIRST_ATTACHMENTS_UPLOADED_ACK {
+        @Override
+        public String getNotificationMessage(Map<String, String> params) {
+            return String.format("""
+                    <div class="informacoes">
+                        <h4 id="notification-title" class="notification-title">We received your files</h4>
+                        <p>Your attachments were uploaded successfully. We will use them to prepare your ad.</p>
+                    </div>
+                    <p>Open <a id="link-details" class='details link-text' href="%s">My Telas</a> anytime.</p>
+                    """, params.getOrDefault("link", "#"));
+        }
+
+        @Override
+        public EmailDataDto getEmailData(Map<String, String> params) {
+            return createClientFirstAttachmentsUploadedAckEmailData(params);
+        }
+    },
     CLIENT_AD_ON_AIR {
         @Override
         public String getNotificationMessage(Map<String, String> params) {
@@ -947,6 +964,16 @@ public enum NotificationReference {
         emailData.setTemplate(SharedConstants.TEMPLATE_EMAIL_ADMIN_CLIENT_FIRST_ATTACHMENTS_UPLOADED);
         emailData.setParams(new HashMap<>());
         emailData.getParams().put("clientName", params.getOrDefault("clientName", ""));
+        emailData.getParams().put("link", params.getOrDefault("link", ""));
+        return emailData;
+    }
+
+    private static EmailDataDto createClientFirstAttachmentsUploadedAckEmailData(Map<String, String> params) {
+        EmailDataDto emailData = new EmailDataDto();
+        emailData.setSubject(SharedConstants.EMAIL_SUBJECT_CLIENT_FIRST_ATTACHMENTS_UPLOADED_ACK);
+        emailData.setTemplate(SharedConstants.TEMPLATE_EMAIL_CLIENT_FIRST_ATTACHMENTS_UPLOADED_ACK);
+        emailData.setParams(new HashMap<>());
+        emailData.getParams().put("name", params.getOrDefault("name", ""));
         emailData.getParams().put("link", params.getOrDefault("link", ""));
         return emailData;
     }

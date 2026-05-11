@@ -11,6 +11,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
+import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
 
@@ -155,6 +156,16 @@ public interface AdRepository extends JpaRepository<Ad, UUID>, JpaSpecificationE
 					    OR LOWER(partner.businessName) LIKE LOWER(CONCAT('%', TRIM(:genericFilter), '%'))
 					    OR LOWER(CONCAT(addr.street, addr.city, addr.state, addr.zipCode)) LIKE LOWER(CONCAT('%', TRIM(:genericFilter), '%'))
 					)
+					AND (COALESCE(TRIM(:advertiserNameFilter), '') = ''
+					    OR LOWER(advertiser.businessName) LIKE LOWER(CONCAT('%', TRIM(:advertiserNameFilter), '%')))
+					AND (COALESCE(TRIM(:partnerNameFilter), '') = ''
+					    OR (partner IS NOT NULL AND LOWER(partner.businessName) LIKE LOWER(CONCAT('%', TRIM(:partnerNameFilter), '%'))))
+					AND (COALESCE(TRIM(:boxIpFilter), '') = ''
+					    OR (ba IS NOT NULL AND LOWER(ba.ip) LIKE LOWER(CONCAT('%', TRIM(:boxIpFilter), '%'))))
+					AND (COALESCE(TRIM(:screenContainsFilter), '') = ''
+					    OR LOWER(CONCAT(COALESCE(addr.street, ''), COALESCE(addr.city, ''), COALESCE(addr.state, ''), COALESCE(addr.zipCode, ''))) LIKE LOWER(CONCAT('%', TRIM(:screenContainsFilter), '%')))
+					AND (:submissionDateFrom IS NULL OR ad.createdAt >= :submissionDateFrom)
+					AND (:submissionDateTo IS NULL OR ad.createdAt <= :submissionDateTo)
 					""",
 			value = """
 					SELECT new com.telas.dtos.response.AdminAdOperationRowDto(
@@ -198,10 +209,25 @@ public interface AdRepository extends JpaRepository<Ad, UUID>, JpaSpecificationE
 					    OR LOWER(partner.businessName) LIKE LOWER(CONCAT('%', TRIM(:genericFilter), '%'))
 					    OR LOWER(CONCAT(addr.street, addr.city, addr.state, addr.zipCode)) LIKE LOWER(CONCAT('%', TRIM(:genericFilter), '%'))
 					)
-					ORDER BY ad.name ASC, mon.id ASC NULLS LAST
+					AND (COALESCE(TRIM(:advertiserNameFilter), '') = ''
+					    OR LOWER(advertiser.businessName) LIKE LOWER(CONCAT('%', TRIM(:advertiserNameFilter), '%')))
+					AND (COALESCE(TRIM(:partnerNameFilter), '') = ''
+					    OR (partner IS NOT NULL AND LOWER(partner.businessName) LIKE LOWER(CONCAT('%', TRIM(:partnerNameFilter), '%'))))
+					AND (COALESCE(TRIM(:boxIpFilter), '') = ''
+					    OR (ba IS NOT NULL AND LOWER(ba.ip) LIKE LOWER(CONCAT('%', TRIM(:boxIpFilter), '%'))))
+					AND (COALESCE(TRIM(:screenContainsFilter), '') = ''
+					    OR LOWER(CONCAT(COALESCE(addr.street, ''), COALESCE(addr.city, ''), COALESCE(addr.state, ''), COALESCE(addr.zipCode, ''))) LIKE LOWER(CONCAT('%', TRIM(:screenContainsFilter), '%')))
+					AND (:submissionDateFrom IS NULL OR ad.createdAt >= :submissionDateFrom)
+					AND (:submissionDateTo IS NULL OR ad.createdAt <= :submissionDateTo)
 					""")
 	Page<AdminAdOperationRowDto> searchApprovedAdsAdminOperations(
 			@Param("genericFilter") String genericFilter,
+			@Param("advertiserNameFilter") String advertiserNameFilter,
+			@Param("partnerNameFilter") String partnerNameFilter,
+			@Param("boxIpFilter") String boxIpFilter,
+			@Param("screenContainsFilter") String screenContainsFilter,
+			@Param("submissionDateFrom") Instant submissionDateFrom,
+			@Param("submissionDateTo") Instant submissionDateTo,
 			Pageable pageable);
 
 }

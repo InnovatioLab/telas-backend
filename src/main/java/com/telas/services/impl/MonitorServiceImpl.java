@@ -10,6 +10,7 @@ import com.telas.dtos.response.*;
 import com.telas.entities.*;
 import com.telas.enums.SubscriptionStatus;
 import com.telas.helpers.AdOnAirNotificationHelper;
+import com.telas.helpers.BoxAdPushNotificationHelper;
 import com.telas.helpers.MonitorHelper;
 import com.telas.infra.exceptions.BusinessRuleException;
 import com.telas.infra.exceptions.ForbiddenException;
@@ -76,6 +77,8 @@ public class MonitorServiceImpl implements MonitorService {
 	private final MonitorHelper helper;
 
 	private final AdOnAirNotificationHelper adOnAirNotificationHelper;
+
+	private final BoxAdPushNotificationHelper boxAdPushNotificationHelper;
 
 	private final AdUnusedTrackingService adUnusedTrackingService;
 
@@ -569,8 +572,18 @@ public class MonitorServiceImpl implements MonitorService {
 		addNewMonitorAdsToMonitor(monitor, newMonitorAds);
 
 		if (monitor.isAbleToSendBoxRequest()) {
-			helper.sendBoxesMonitorsUpdateAds(requestList);
-			adOnAirNotificationHelper.notifyOnAirForNewMonitorAds(newMonitorAds, monitor);
+			Set<String> successfulBaseUrls = helper.sendBoxesMonitorsUpdateAdsReturnSuccess(requestList);
+			boolean sendOnAirEmails = successfulBaseUrls.isEmpty();
+			adOnAirNotificationHelper.notifyOnAirForNewMonitorAds(newMonitorAds, monitor, sendOnAirEmails);
+			if (!successfulBaseUrls.isEmpty()) {
+				List<AbstractMap.SimpleEntry<MonitorAd, UpdateBoxMonitorsAdRequestDto>> pairs =
+						buildMonitorAdPushPairs(monitor, requestList);
+				if (!pairs.isEmpty()) {
+					Map<Monitor, List<AbstractMap.SimpleEntry<MonitorAd, UpdateBoxMonitorsAdRequestDto>>> grouped =
+							Map.of(monitor, pairs);
+					boxAdPushNotificationHelper.notifyAfterSuccessfulPush(grouped, successfulBaseUrls);
+				}
+			}
 		}
 
 		Set<UUID> toSync = new HashSet<>(newAdIds);
@@ -655,6 +668,29 @@ public class MonitorServiceImpl implements MonitorService {
 				monitorAd.setBlockQuantity(quantity);
 			}
 		});
+	}
+
+
+	private static List<AbstractMap.SimpleEntry<MonitorAd, UpdateBoxMonitorsAdRequestDto>> buildMonitorAdPushPairs(
+			Monitor monitor,
+			List<UpdateBoxMonitorsAdRequestDto> requestList) {
+		if (requestList == null || requestList.isEmpty()) {
+			return List.of();
+		}
+		List<AbstractMap.SimpleEntry<MonitorAd, UpdateBoxMonitorsAdRequestDto>> pairs = new ArrayList<>();
+		for (UpdateBoxMonitorsAdRequestDto dto : requestList) {
+			if (dto == null || dto.getFileName() == null) {
+				continue;
+			}
+			MonitorAd ma = monitor.getMonitorAds().stream()
+					.filter(x -> x.getAd() != null && dto.getFileName().equals(x.getAd().getName()))
+					.findFirst()
+					.orElse(null);
+			if (ma != null) {
+				pairs.add(new AbstractMap.SimpleEntry<>(ma, dto));
+			}
+		}
+		return pairs;
 	}
 
 
