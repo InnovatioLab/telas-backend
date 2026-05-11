@@ -201,7 +201,7 @@ public class ClientHelper {
             int newAttachments = (int) request.stream().filter(r -> r.getId() == null).count();
             int totalAttachments = client.getAttachments().size() + newAttachments;
 
-            if (totalAttachments >= SharedConstants.MAX_ATTACHMENT_PER_CLIENT) {
+            if (totalAttachments > SharedConstants.MAX_ATTACHMENT_PER_CLIENT) {
                 throw new BusinessRuleException(AttachmentValidationMessages.MAX_ATTACHMENTS_REACHED);
             }
         }
