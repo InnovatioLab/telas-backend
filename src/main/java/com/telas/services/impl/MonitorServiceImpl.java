@@ -576,11 +576,21 @@ public class MonitorServiceImpl implements MonitorService {
 			boolean sendOnAirEmails = successfulBaseUrls.isEmpty();
 			adOnAirNotificationHelper.notifyOnAirForNewMonitorAds(newMonitorAds, monitor, sendOnAirEmails);
 			if (!successfulBaseUrls.isEmpty()) {
-				List<AbstractMap.SimpleEntry<MonitorAd, UpdateBoxMonitorsAdRequestDto>> pairs =
+				List<AbstractMap.SimpleEntry<MonitorAd, UpdateBoxMonitorsAdRequestDto>> allPairs =
 						buildMonitorAdPushPairs(monitor, requestList);
-				if (!pairs.isEmpty()) {
+				Set<UUID> newlyPlacedAdIds = newMonitorAds.stream()
+						.map(ma -> ma.getAd() != null ? ma.getAd().getId() : null)
+						.filter(Objects::nonNull)
+						.collect(Collectors.toSet());
+				List<AbstractMap.SimpleEntry<MonitorAd, UpdateBoxMonitorsAdRequestDto>> pairsToNotify = allPairs.stream()
+						.filter(p -> {
+							MonitorAd ma = p.getKey();
+							return ma != null && ma.getAd() != null && newlyPlacedAdIds.contains(ma.getAd().getId());
+						})
+						.toList();
+				if (!pairsToNotify.isEmpty()) {
 					Map<Monitor, List<AbstractMap.SimpleEntry<MonitorAd, UpdateBoxMonitorsAdRequestDto>>> grouped =
-							Map.of(monitor, pairs);
+							Map.of(monitor, pairsToNotify);
 					boxAdPushNotificationHelper.notifyAfterSuccessfulPush(grouped, successfulBaseUrls);
 				}
 			}
