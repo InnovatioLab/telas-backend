@@ -13,6 +13,8 @@ public interface AuthenticatedUserService {
 
   AuthenticatedUser validateAdmin();
 
+  AuthenticatedUser validateAdminOrAdsManageAccess();
+
   AuthenticatedUser validateDeveloper();
 
   void validatePermission(Permission permission);

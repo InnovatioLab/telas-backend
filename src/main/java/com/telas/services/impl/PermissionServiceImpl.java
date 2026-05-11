@@ -38,11 +38,15 @@ public class PermissionServiceImpl implements PermissionService {
         if (Role.DEVELOPER.equals(client.getRole())) {
             return true;
         }
-        if (!Role.ADMIN.equals(client.getRole())) {
-            return false;
-        }
-        return clientGrantedPermissionRepository.existsByClient_IdAndPermissionCode(
+        boolean explicit = clientGrantedPermissionRepository.existsByClient_IdAndPermissionCode(
                 client.getId(), permission.name());
+        if (explicit) {
+            return true;
+        }
+        if (Role.ADMIN.equals(client.getRole())) {
+            return clientGrantedPermissionRepository.countByClient_Id(client.getId()) == 0;
+        }
+        return false;
     }
 
     @Override
@@ -96,6 +100,9 @@ public class PermissionServiceImpl implements PermissionService {
                     .toList();
         }
         if (Role.ADMIN.equals(client.getRole())) {
+            return listPermissionCodesForClient(client.getId());
+        }
+        if (Role.PARTNER.equals(client.getRole())) {
             return listPermissionCodesForClient(client.getId());
         }
         return List.of();

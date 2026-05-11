@@ -72,6 +72,11 @@ class TestSecuritySupportConfig {
       }
 
       @Override
+      public AuthenticatedUser validateAdminOrAdsManageAccess() {
+        throw new UnsupportedOperationException("Not used in security endpoint tests");
+      }
+
+      @Override
       public AuthenticatedUser validateDeveloper() {
         throw new UnsupportedOperationException("Not used in security endpoint tests");
       }

@@ -645,7 +645,7 @@ public class ClientServiceImpl implements ClientService {
 	@Override
 	@Transactional(readOnly = true)
 	public PaginationResponseDto<List<AdRequestAdminResponseDto>> findPendingAdRequest(FilterAdRequestDto request) {
-		authenticatedUserService.validateAdmin();
+		authenticatedUserService.validateAdminOrAdsManageAccess();
 		Sort order = request.setOrdering();
 
 		Pageable pageable = PaginationFilterUtil.getPageable(request, order);
@@ -688,7 +688,7 @@ public class ClientServiceImpl implements ClientService {
 	@Override
 	@Transactional(readOnly = true)
 	public PaginationResponseDto<List<PendingAdAdminValidationResponseDto>> findPendingAds(FilterAdRequestDto request) {
-		authenticatedUserService.validateAdmin();
+		authenticatedUserService.validateAdminOrAdsManageAccess();
 		Sort order = sortForPendingAds(request);
 		Pageable pageable = PaginationFilterUtil.getPageable(request, order);
 		Specification<Ad> base = (root, query, criteriaBuilder) -> {

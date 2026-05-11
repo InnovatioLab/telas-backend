@@ -89,6 +89,20 @@ public class AuthenticatedUserServiceImpl implements AuthenticatedUserService {
 
     @Transactional(readOnly = true)
     @Override
+    public AuthenticatedUser validateAdminOrAdsManageAccess() {
+        Client loggedClient = getLoggedUser().client();
+        AuthenticatedUser authenticatedUser = new AuthenticatedUser(loggedClient);
+        if (loggedClient.isPrivilegedPanelUser()) {
+            return authenticatedUser;
+        }
+        if (permissionService.hasPermission(loggedClient, Permission.ADMIN_ADS_MANAGE)) {
+            return authenticatedUser;
+        }
+        throw new ForbiddenException(AuthValidationMessageConstants.ERROR_NO_PERMISSION);
+    }
+
+    @Transactional(readOnly = true)
+    @Override
     public AuthenticatedUser validateDeveloper() {
         Client loggedClient = getLoggedUser().client();
         if (loggedClient.isDeveloper()) {

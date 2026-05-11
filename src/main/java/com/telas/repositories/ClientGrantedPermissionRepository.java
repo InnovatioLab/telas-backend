@@ -20,4 +20,6 @@ public interface ClientGrantedPermissionRepository extends JpaRepository<ClientG
     void deleteByClient_Id(@Param("clientId") UUID clientId);
 
     boolean existsByClient_IdAndPermissionCode(UUID clientId, String permissionCode);
+
+    long countByClient_Id(UUID clientId);
 }

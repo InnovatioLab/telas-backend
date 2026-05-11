@@ -104,7 +104,7 @@ public class AdminAdOperationsServiceImpl implements AdminAdOperationsService {
     @Override
     @Transactional(readOnly = true)
     public PaginationResponseDto<List<AdminAdOperationRowDto>> findPage(AdminAdOperationsFilterRequestDto request) {
-        authenticatedUserService.validateAdmin();
+        authenticatedUserService.validateAdminOrAdsManageAccess();
         String gf = request.getGenericFilter() == null ? "" : request.getGenericFilter().trim();
         AdValidationType validation = request.getValidation();
         Sort sort = request.resolveSort(validation);
@@ -142,7 +142,7 @@ public class AdminAdOperationsServiceImpl implements AdminAdOperationsService {
     @Override
     @Transactional(readOnly = true)
     public List<AdminExpiryNotificationDto> listExpiryNotifications(UUID advertiserClientId) {
-        authenticatedUserService.validateAdmin();
+        authenticatedUserService.validateAdminOrAdsManageAccess();
         List<Notification> list = notificationRepository.findByClientIdAndReferenceInOrderByCreatedAtDesc(
                 advertiserClientId,
                 EXPIRY_NOTIFICATION_REFERENCES
