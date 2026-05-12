@@ -20,6 +20,7 @@ import com.telas.repositories.AdRequestRepository;
 import com.telas.repositories.BusinessQuestionnaireRepository;
 import com.telas.repositories.BusinessQuestionnaireRevisionRepository;
 import com.telas.repositories.ClientRepository;
+import com.telas.shared.constants.BusinessQuestionnaireConstants;
 import com.telas.shared.constants.valitation.AdValidationMessages;
 import com.telas.shared.constants.valitation.ClientValidationMessages;
 import lombok.RequiredArgsConstructor;
@@ -42,7 +43,7 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class BusinessQuestionnaireService {
 
-    private static final int MAX_ANSWER_CHARS = 2000;
+    private static final int MAX_ANSWER_CHARS = BusinessQuestionnaireConstants.MAX_ANSWER_LENGTH;
 
     private final BusinessQuestionnaireRepository questionnaireRepository;
     private final BusinessQuestionnaireRevisionRepository revisionRepository;
