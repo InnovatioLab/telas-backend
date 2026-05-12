@@ -92,6 +92,11 @@ public final class SharedConstants {
     public static final String EMAIL_SUBJECT_MONITOR_WISHLIST_AVAILABLE = "A screen on your wish list is now available — Telas";
 
 
+    public static final String TEMPLATE_EMAIL_ADMIN_AD_REQUEST_QUESTIONNAIRE_UPDATED =
+            "email_admin_ad_request_questionnaire_updated.ftlh";
+    public static final String EMAIL_SUBJECT_ADMIN_AD_REQUEST_QUESTIONNAIRE_UPDATED =
+            "Customer updated business questionnaire — Telas";
+
     public static final String REGEX_ONLY_NUMBERS = "^\\d+$";
     public static final String REGEX_ALPHANUMERIC = "^[A-Za-zÀ-ÿ0-9\\s.'-]*$";
     public static final String REGEX_PASSWORD = "^[a-zA-Z0-9!@#$%^&*()_+\\-=\\[\\]{};':\"\\\\|,.<>\\/?]+$";

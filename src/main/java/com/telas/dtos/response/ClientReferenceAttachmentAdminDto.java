@@ -4,6 +4,7 @@ import lombok.Getter;
 
 import java.io.Serial;
 import java.io.Serializable;
+import java.time.Instant;
 import java.util.UUID;
 
 @Getter
@@ -13,9 +14,9 @@ public final class ClientReferenceAttachmentAdminDto implements Serializable {
 
     private final UUID attachmentId;
 
-    private final String slogan;
+    private final Integer businessQuestionnaireVersion;
 
-    private final String brandGuidelineUrl;
+    private final Instant businessQuestionnaireUpdatedAt;
 
     private final String previewLink;
 
@@ -23,13 +24,13 @@ public final class ClientReferenceAttachmentAdminDto implements Serializable {
 
     public ClientReferenceAttachmentAdminDto(
             UUID attachmentId,
-            String slogan,
-            String brandGuidelineUrl,
+            Integer businessQuestionnaireVersion,
+            Instant businessQuestionnaireUpdatedAt,
             String previewLink,
             String downloadLink) {
         this.attachmentId = attachmentId;
-        this.slogan = slogan;
-        this.brandGuidelineUrl = brandGuidelineUrl;
+        this.businessQuestionnaireVersion = businessQuestionnaireVersion;
+        this.businessQuestionnaireUpdatedAt = businessQuestionnaireUpdatedAt;
         this.previewLink = previewLink;
         this.downloadLink = downloadLink;
     }

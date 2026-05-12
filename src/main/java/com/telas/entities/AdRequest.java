@@ -3,7 +3,14 @@ package com.telas.entities;
 import com.telas.dtos.request.ClientAdRequestToAdminDto;
 import com.telas.shared.audit.BaseAudit;
 import com.telas.shared.utils.ValidateDataUtils;
-import jakarta.persistence.*;
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.FetchType;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.OneToOne;
+import jakarta.persistence.Table;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
@@ -42,14 +49,17 @@ public class AdRequest extends BaseAudit implements Serializable {
     @OneToOne(mappedBy = "adRequest")
     private Ad ad;
 
+    @OneToOne(mappedBy = "adRequest", fetch = FetchType.LAZY)
+    private BusinessQuestionnaire businessQuestionnaire;
+
     @OneToOne
     @JoinColumn(name = "client_id", referencedColumnName = "id", nullable = false)
     private Client client;
 
     public AdRequest(ClientAdRequestToAdminDto request, Client client, List<Attachment> attachmentList) {
         this.client = client;
-        this.slogan = request.getSlogan();
-        this.brandGuidelineUrl = request.getBrandGuidelineUrl();
+        this.slogan = null;
+        this.brandGuidelineUrl = null;
 
         if (!ValidateDataUtils.isNullOrEmpty(attachmentList)) {
             attachmentIds = attachmentList.stream()

@@ -1,6 +1,7 @@
 package com.telas.services;
 
 import com.telas.dtos.request.AttachmentRequestDto;
+import com.telas.dtos.request.BusinessQuestionnaireAnswersRequestDto;
 import com.telas.dtos.request.ClientAdRequestToAdminDto;
 import com.telas.dtos.request.ClientRequestDto;
 import com.telas.dtos.request.AdMessageRequestDto;
@@ -16,6 +17,7 @@ import com.telas.infra.security.model.PasswordRequestDto;
 import com.telas.infra.security.model.PasswordUpdateRequestDto;
 
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 public interface ClientService {
@@ -50,6 +52,14 @@ public interface ClientService {
     void deleteClientAttachment(UUID attachmentId);
 
     void requestAdCreation(ClientAdRequestToAdminDto request);
+
+    Optional<BusinessQuestionnaireAnswersRequestDto> getBusinessQuestionnaireDraft();
+
+    void saveBusinessQuestionnaireDraft(BusinessQuestionnaireAnswersRequestDto answers);
+
+    void updateAdRequestBusinessQuestionnaire(UUID adRequestId, BusinessQuestionnaireAnswersRequestDto answers);
+
+    byte[] exportAdRequestBusinessQuestionnaireTxtAdmin(UUID adRequestId);
 
     void uploadAds(AttachmentRequestDto request, UUID clientId);
 

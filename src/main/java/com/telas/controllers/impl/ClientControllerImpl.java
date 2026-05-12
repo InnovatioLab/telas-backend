@@ -3,6 +3,7 @@ package com.telas.controllers.impl;
 import com.telas.controllers.ClientController;
 import com.telas.dtos.request.AttachmentRequestDto;
 import com.telas.dtos.request.AdMessageRequestDto;
+import com.telas.dtos.request.BusinessQuestionnaireAnswersRequestDto;
 import com.telas.dtos.request.ClientAdRequestToAdminDto;
 import com.telas.dtos.request.ClientRequestDto;
 import com.telas.dtos.request.RefusedAdRequestDto;
@@ -22,7 +23,9 @@ import com.telas.shared.constants.MessageCommonsConstants;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -124,6 +127,50 @@ public class ClientControllerImpl implements ClientController {
         service.requestAdCreation(request);
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(ResponseDto.fromData(null, HttpStatus.CREATED, MessageCommonsConstants.REQUEST_AD_SUCCESS_MESSAGE));
+    }
+
+    @Override
+    @GetMapping("/me/business-questionnaire-draft")
+    @SecurityRequirement(name = "jwt")
+    public ResponseEntity<?> getBusinessQuestionnaireDraft() {
+        return ResponseEntity.status(HttpStatus.OK)
+                .body(ResponseDto.fromData(
+                        service.getBusinessQuestionnaireDraft().orElse(null),
+                        HttpStatus.OK,
+                        MessageCommonsConstants.FIND_ALL_SUCCESS_MESSAGE));
+    }
+
+    @Override
+    @PutMapping("/me/business-questionnaire-draft")
+    @SecurityRequirement(name = "jwt")
+    public ResponseEntity<?> saveBusinessQuestionnaireDraft(@Valid @RequestBody BusinessQuestionnaireAnswersRequestDto request) {
+        service.saveBusinessQuestionnaireDraft(request);
+        return ResponseEntity.status(HttpStatus.OK)
+                .body(ResponseDto.fromData(null, HttpStatus.OK, MessageCommonsConstants.UPDATE_SUCCESS_MESSAGE));
+    }
+
+    @Override
+    @PatchMapping("/ad-requests/{adRequestId}/business-questionnaire")
+    @SecurityRequirement(name = "jwt")
+    public ResponseEntity<?> updateAdRequestBusinessQuestionnaire(
+            @PathVariable(name = "adRequestId") UUID adRequestId,
+            @Valid @RequestBody BusinessQuestionnaireAnswersRequestDto request) {
+        service.updateAdRequestBusinessQuestionnaire(adRequestId, request);
+        return ResponseEntity.status(HttpStatus.OK)
+                .body(ResponseDto.fromData(null, HttpStatus.OK, MessageCommonsConstants.UPDATE_SUCCESS_MESSAGE));
+    }
+
+    @Override
+    @GetMapping("/ads-requests/{adRequestId}/business-questionnaire.txt")
+    @SecurityRequirement(name = "jwt")
+    public ResponseEntity<?> downloadAdRequestBusinessQuestionnaireTxt(
+            @PathVariable(name = "adRequestId") UUID adRequestId) {
+        byte[] bytes = service.exportAdRequestBusinessQuestionnaireTxtAdmin(adRequestId);
+        return ResponseEntity.ok()
+                .header(HttpHeaders.CONTENT_DISPOSITION,
+                        "attachment; filename=\"business-questionnaire-" + adRequestId + ".txt\"")
+                .contentType(MediaType.TEXT_PLAIN)
+                .body(bytes);
     }
 
     @Override

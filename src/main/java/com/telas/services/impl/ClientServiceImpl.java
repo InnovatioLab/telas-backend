@@ -3,6 +3,7 @@ package com.telas.services.impl;
 import com.telas.dtos.EmailDataDto;
 import com.telas.dtos.request.AttachmentRequestDto;
 import com.telas.dtos.request.AdMessageRequestDto;
+import com.telas.dtos.request.BusinessQuestionnaireAnswersRequestDto;
 import com.telas.dtos.request.ClientAdRequestToAdminDto;
 import com.telas.dtos.request.ClientRequestDto;
 import com.telas.dtos.request.RefusedAdRequestDto;
@@ -34,6 +35,7 @@ import com.telas.repositories.ClientRepository;
 import com.telas.repositories.MonitorAdRepository;
 import com.telas.services.AdminEmailAlertPreferenceService;
 import com.telas.services.ClientPermanentDeletionService;
+import com.telas.services.BusinessQuestionnaireService;
 import com.telas.services.BucketService;
 import com.telas.services.ClientService;
 import com.telas.services.NotificationService;
@@ -104,6 +106,8 @@ public class ClientServiceImpl implements ClientService {
 	private final ClientPermanentDeletionService clientPermanentDeletionService;
 
 	private final NotificationService notificationService;
+
+	private final BusinessQuestionnaireService businessQuestionnaireService;
 
 	@Value("${front.base.url}")
 	private String frontBaseUrl;
@@ -366,7 +370,8 @@ public class ClientServiceImpl implements ClientService {
 		}
 
 		validateMaxAds(client);
-		helper.createAdRequest(request, client);
+		AdRequest created = helper.createAdRequest(request, client);
+		businessQuestionnaireService.createQuestionnaireForNewAdRequest(client.getId(), created, request.getBusinessAnswers());
 	}
 
 
@@ -678,7 +683,11 @@ public class ClientServiceImpl implements ClientService {
 
 		Page<AdRequest> page = adRequestRepository.findAll(filter, pageable);
 		List<AdRequestAdminResponseDto> response = page.stream()
-			.map(adRequest -> new AdRequestAdminResponseDto(adRequest, attachmentHelper.getAdRequestData(adRequest)))
+			.map(adRequest -> new AdRequestAdminResponseDto(
+					adRequest,
+					attachmentHelper.getAdRequestData(adRequest),
+					businessQuestionnaireService.findLatestVersionByAdRequestId(adRequest.getId()).orElse(null),
+					businessQuestionnaireService.findLatestRevisionCreatedAt(adRequest.getId()).orElse(null)))
 			.toList();
 		return PaginationResponseDto.fromResult(response, (int) page.getTotalElements(), page.getTotalPages(),
 			request.getPage());
@@ -866,8 +875,17 @@ public class ClientServiceImpl implements ClientService {
 						attachmentHelper.getDownloadLinkFromAd(ad)))
 				.toList();
 
+		AdRequestClientResponseDto adRequestDto = null;
+		if (client.getAdRequest() != null) {
+			AdRequest ar = client.getAdRequest();
+			var qa = businessQuestionnaireService.getLatestAnswersForClientAdRequest(client.getId(), ar.getId()).orElse(null);
+			var ver = businessQuestionnaireService.findLatestVersionByAdRequestId(ar.getId()).orElse(null);
+			var updatedAt = businessQuestionnaireService.findLatestRevisionCreatedAt(ar.getId()).orElse(null);
+			adRequestDto = new AdRequestClientResponseDto(ar, qa, ver, updatedAt);
+		}
+
 		return new ClientResponseDto(
-			client, attachmentLinks, ads, permissionService.listEffectivePermissionCodesForDisplay(client));
+			client, attachmentLinks, ads, permissionService.listEffectivePermissionCodesForDisplay(client), adRequestDto);
 	}
 
 
@@ -898,6 +916,34 @@ public class ClientServiceImpl implements ClientService {
 			return;
 		}
 		throw new ForbiddenException(AuthValidationMessageConstants.ERROR_NO_PERMISSION);
+	}
+
+	@Override
+	@Transactional(readOnly = true)
+	public Optional<BusinessQuestionnaireAnswersRequestDto> getBusinessQuestionnaireDraft() {
+		UUID clientId = authenticatedUserService.validateActiveSubscription().client().getId();
+		return businessQuestionnaireService.getDraftAnswers(clientId);
+	}
+
+	@Override
+	@Transactional
+	public void saveBusinessQuestionnaireDraft(BusinessQuestionnaireAnswersRequestDto answers) {
+		UUID clientId = authenticatedUserService.validateActiveSubscription().client().getId();
+		businessQuestionnaireService.saveDraft(clientId, answers);
+	}
+
+	@Override
+	@Transactional
+	public void updateAdRequestBusinessQuestionnaire(UUID adRequestId, BusinessQuestionnaireAnswersRequestDto answers) {
+		Client client = authenticatedUserService.validateActiveSubscription().client();
+		businessQuestionnaireService.updateQuestionnaireForAdRequest(client.getId(), adRequestId, answers);
+	}
+
+	@Override
+	@Transactional(readOnly = true)
+	public byte[] exportAdRequestBusinessQuestionnaireTxtAdmin(UUID adRequestId) {
+		authenticatedUserService.validateAdminOrAdsManageAccess();
+		return businessQuestionnaireService.exportTxtForAdRequest(adRequestId, null, true);
 	}
 
 }

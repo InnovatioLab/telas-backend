@@ -17,7 +17,7 @@ public class FilterAdRequestDto extends PaginationRequestDto {
 
     public Sort setOrdering() {
         return switch (getSortBy()) {
-            case "slogan" -> Sort.by(Sort.Order.by("slogan").ignoreCase());
+            case "questionnaireUpdatedAt" -> Sort.by(Sort.Order.desc("businessQuestionnaire.updatedAt"));
             case "clientName" -> Sort.by(Sort.Order.by("client.businessName").ignoreCase());
             case "role" -> Sort.by(Sort.Order.by("client.role").ignoreCase());
             default -> Sort.by(Sort.Order.desc("createdAt"));

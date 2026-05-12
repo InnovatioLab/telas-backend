@@ -110,6 +110,7 @@ public class MonitorServiceImpl implements MonitorService {
 			updateExistingMonitor(request, monitorId, authenticatedUser, address, ads);
 			return null;
 		}
+
 		validateAddressAvailability(address);
 		Monitor created = createNewMonitor(authenticatedUser, address);
 		return created.getId();

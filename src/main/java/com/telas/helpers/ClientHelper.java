@@ -89,7 +89,7 @@ public class ClientHelper {
     }
 
     @Transactional
-    public void createAdRequest(ClientAdRequestToAdminDto request, Client client) {
+    public AdRequest createAdRequest(ClientAdRequestToAdminDto request, Client client) {
         List<Attachment> attachments = !request.getAttachmentIds().isEmpty() ? getAttachmentsByIds(request.getAttachmentIds()) : null;
 
         if (Objects.nonNull(attachments) && attachments.stream().anyMatch(attachment -> attachment.getClient() != null && !attachment.getClient().getId().equals(client.getId()))) {
@@ -109,7 +109,7 @@ public class ClientHelper {
             adRepository.save(rejectedAd);
         }
 
-        adRequestRepository.save(adRequest);
+        return adRequestRepository.save(adRequest);
     }
 
     @Transactional(readOnly = true)

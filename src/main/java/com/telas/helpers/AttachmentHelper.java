@@ -17,6 +17,7 @@ import com.telas.repositories.AttachmentRepository;
 import com.telas.repositories.ClientRepository;
 import com.telas.services.AdUnusedTrackingService;
 import com.telas.services.BucketService;
+import com.telas.services.BusinessQuestionnaireService;
 import com.telas.services.AdminEmailAlertPreferenceService;
 import com.telas.services.NotificationService;
 import com.telas.services.PermissionService;
@@ -31,6 +32,7 @@ import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.io.ByteArrayInputStream;
+import java.time.Instant;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -49,6 +51,8 @@ public class AttachmentHelper {
     private final AdminEmailAlertPreferenceService adminEmailAlertPreferenceService;
 
     private final AdUnusedTrackingService adUnusedTrackingService;
+
+    private final BusinessQuestionnaireService businessQuestionnaireService;
 
     @Value("${front.base.url}")
     private String frontBaseUrl;
@@ -73,13 +77,14 @@ public class AttachmentHelper {
             return Collections.emptyList();
         }
         List<Attachment> attachments = getAttachmentsFromAdRequest(ar);
-        String slogan = Optional.ofNullable(ar.getSlogan()).orElse("");
-        String brandUrl = Optional.ofNullable(ar.getBrandGuidelineUrl()).orElse("");
+        Integer questionnaireVersion = businessQuestionnaireService.findLatestVersionByAdRequestId(ar.getId()).orElse(null);
+        Instant questionnaireUpdatedAt =
+                businessQuestionnaireService.findLatestRevisionCreatedAt(ar.getId()).orElse(null);
         return attachments.stream()
                 .map(att -> new ClientReferenceAttachmentAdminDto(
                         att.getId(),
-                        slogan,
-                        brandUrl,
+                        questionnaireVersion,
+                        questionnaireUpdatedAt,
                         bucketService.getLink(AttachmentUtils.format(att)),
                         bucketService.getDownloadLink(AttachmentUtils.format(att), att.getName())))
                 .toList();

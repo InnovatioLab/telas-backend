@@ -2,6 +2,7 @@ package com.telas.controllers;
 
 import com.telas.dtos.request.AttachmentRequestDto;
 import com.telas.dtos.request.AdMessageRequestDto;
+import com.telas.dtos.request.BusinessQuestionnaireAnswersRequestDto;
 import com.telas.dtos.request.ClientAdRequestToAdminDto;
 import com.telas.dtos.request.ClientRequestDto;
 import com.telas.dtos.request.PermanentDeleteClientRequestDto;
@@ -105,6 +106,37 @@ public interface ClientController {
             @ApiResponse(responseCode = "404", description = "Some attachment not found."),
     })
     ResponseEntity<?> requestAdCreation(@Valid ClientAdRequestToAdminDto request);
+
+    @Operation(summary = "Get business questionnaire draft for the authenticated client", responses = {
+            @ApiResponse(responseCode = "200", description = "Success."),
+            @ApiResponse(responseCode = "401", description = "Unauthorized."),
+    })
+    ResponseEntity<?> getBusinessQuestionnaireDraft();
+
+    @Operation(summary = "Save business questionnaire draft", responses = {
+            @ApiResponse(responseCode = "200", description = "Saved."),
+            @ApiResponse(responseCode = "401", description = "Unauthorized."),
+            @ApiResponse(responseCode = "422", description = "Invalid data."),
+    })
+    ResponseEntity<?> saveBusinessQuestionnaireDraft(@Valid @RequestBody BusinessQuestionnaireAnswersRequestDto request);
+
+    @Operation(summary = "Update business questionnaire for an active ad request", responses = {
+            @ApiResponse(responseCode = "200", description = "Updated."),
+            @ApiResponse(responseCode = "401", description = "Unauthorized."),
+            @ApiResponse(responseCode = "403", description = "Forbidden."),
+            @ApiResponse(responseCode = "422", description = "Invalid data."),
+    })
+    ResponseEntity<?> updateAdRequestBusinessQuestionnaire(
+            @PathVariable(name = "adRequestId") UUID adRequestId,
+            @Valid @RequestBody BusinessQuestionnaireAnswersRequestDto request);
+
+    @Operation(summary = "Download business questionnaire as UTF-8 text (admin)", responses = {
+            @ApiResponse(responseCode = "200", description = "File bytes."),
+            @ApiResponse(responseCode = "401", description = "Unauthorized."),
+            @ApiResponse(responseCode = "403", description = "Forbidden."),
+            @ApiResponse(responseCode = "404", description = "Not found."),
+    })
+    ResponseEntity<?> downloadAdRequestBusinessQuestionnaireTxt(@PathVariable(name = "adRequestId") UUID adRequestId);
 
     @Operation(summary = "Endpoint contract to save or update an ad of a client", responses = {
             @ApiResponse(responseCode = "201", description = "Ad created/updated successfully."),

@@ -61,7 +61,8 @@ public final class ClientResponseDto implements Serializable {
             Client entity,
             List<LinkResponseDto> attachmentUrls,
             List<AdResponseDto> adsUrls,
-            List<String> permissions) {
+            List<String> permissions,
+            AdRequestClientResponseDto adRequestDto) {
         id = entity.getId();
         businessName = entity.getBusinessName();
         role = entity.getRole();
@@ -70,7 +71,7 @@ public final class ClientResponseDto implements Serializable {
         status = entity.getStatus();
         contact = entity.getContact();
         socialMedia = entity.getSocialMedia();
-        adRequest = entity.getAdRequest() != null ? new AdRequestClientResponseDto(entity.getAdRequest()) : null;
+        adRequest = adRequestDto;
         addresses = entity.getAddresses();
         attachments = attachmentUrls;
         ads = adsUrls;

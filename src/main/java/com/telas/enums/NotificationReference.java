@@ -787,6 +787,27 @@ public enum NotificationReference {
         public EmailDataDto getEmailData(Map<String, String> params) {
             return createPenultimateExpiryEmailData(params);
         }
+    },
+    AD_REQUEST_QUESTIONNAIRE_UPDATED {
+        @Override
+        public String getNotificationMessage(Map<String, String> params) {
+            String clientName = params.getOrDefault("clientName", "Customer");
+            String revision = params.getOrDefault("revisionVersion", "");
+            String link = params.getOrDefault("link", "");
+            return formatNotificationMessage(
+                    "Business questionnaire updated",
+                    String.format("%s updated the business questionnaire (revision %s).", clientName, revision),
+                    params,
+                    null,
+                    ObjectUtils.isEmpty(link) ? null : "Open Ads management",
+                    false
+            );
+        }
+
+        @Override
+        public EmailDataDto getEmailData(Map<String, String> params) {
+            return createAdminAdRequestQuestionnaireUpdatedEmailData(params);
+        }
     };
 
     private static String createEndDateDiv(String endDate) {
@@ -1012,6 +1033,18 @@ public enum NotificationReference {
         emailData.setParams(new HashMap<>());
         emailData.getParams().put("name", params.getOrDefault("name", ""));
         emailData.getParams().put("link", params.getOrDefault("link", ""));
+        return emailData;
+    }
+
+    private static EmailDataDto createAdminAdRequestQuestionnaireUpdatedEmailData(Map<String, String> params) {
+        EmailDataDto emailData = new EmailDataDto();
+        emailData.setSubject(SharedConstants.EMAIL_SUBJECT_ADMIN_AD_REQUEST_QUESTIONNAIRE_UPDATED);
+        emailData.setTemplate(SharedConstants.TEMPLATE_EMAIL_ADMIN_AD_REQUEST_QUESTIONNAIRE_UPDATED);
+        emailData.setParams(new HashMap<>());
+        emailData.getParams().put("clientName", params.getOrDefault("clientName", ""));
+        emailData.getParams().put("revisionVersion", params.getOrDefault("revisionVersion", ""));
+        emailData.getParams().put("link", params.getOrDefault("link", ""));
+        emailData.getParams().put("adRequestId", params.getOrDefault("adRequestId", ""));
         return emailData;
     }
 

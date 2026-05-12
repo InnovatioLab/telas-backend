@@ -23,10 +23,6 @@ public final class AdRequestAdminResponseDto implements Serializable {
 
     private final UUID clientId;
 
-    private final String slogan;
-
-    private final String brandGuidelineUrl;
-
     private final String clientName;
 
     private final Role clientRole;
@@ -43,11 +39,17 @@ public final class AdRequestAdminResponseDto implements Serializable {
 
     private final LinkResponseDto ad;
 
-    public AdRequestAdminResponseDto(AdRequest adRequest, Map<String, Object> linkResponseData) {
+    private final Integer businessQuestionnaireVersion;
+
+    private final Instant businessQuestionnaireUpdatedAt;
+
+    public AdRequestAdminResponseDto(
+            AdRequest adRequest,
+            Map<String, Object> linkResponseData,
+            Integer businessQuestionnaireVersion,
+            Instant businessQuestionnaireUpdatedAt) {
         id = adRequest.getId();
         clientId = adRequest.getClient().getId();
-        brandGuidelineUrl = adRequest.getBrandGuidelineUrl();
-        slogan = adRequest.getSlogan();
         clientName = adRequest.getClient().getBusinessName();
         clientRole = adRequest.getClient().getRole();
         isActive = adRequest.isActive();
@@ -55,6 +57,8 @@ public final class AdRequestAdminResponseDto implements Serializable {
         waitingDays = ChronoUnit.DAYS.between(adRequest.getCreatedAt(), Instant.now());
         attachments = (List<LinkResponseDto>) linkResponseData.get("attachments");
         ad = (LinkResponseDto) linkResponseData.get("ad");
+        this.businessQuestionnaireVersion = businessQuestionnaireVersion;
+        this.businessQuestionnaireUpdatedAt = businessQuestionnaireUpdatedAt;
 
         refusedAds = adRequest.getAd() != null && !adRequest.getAd().getRefusedAds().isEmpty() ?
                 adRequest.getAd().getRefusedAds().stream()
