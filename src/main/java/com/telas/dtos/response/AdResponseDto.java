@@ -23,6 +23,8 @@ public final class AdResponseDto implements Serializable {
 
     private final LocalDate submissionDate;
 
+    private final LocalDate onAirSince;
+
     private final String link;
 
     private final String downloadLink;
@@ -37,6 +39,9 @@ public final class AdResponseDto implements Serializable {
         id = ad.getId();
         name = ad.getName();
         submissionDate = ad.getCreatedAt().atZone(ZoneId.systemDefault()).toLocalDate();
+        onAirSince = ad.getOnAirNotifiedAt() == null
+                ? null
+                : ad.getOnAirNotifiedAt().atZone(ZoneId.systemDefault()).toLocalDate();
         this.link = link;
         this.downloadLink = downloadLink;
         validation = ad.getValidation();
