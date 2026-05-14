@@ -152,12 +152,12 @@ public class BusinessQuestionnaireService {
 
     @Transactional(readOnly = true)
     public byte[] exportTxtForAdRequest(UUID adRequestId, UUID actorClientId, boolean actorIsPrivileged) {
-        BusinessQuestionnaire q = questionnaireRepository.findByAdRequestIdWithRevisionsAndAnswers(adRequestId)
+        BusinessQuestionnaire q = questionnaireRepository.findByAdRequestIdWithClient(adRequestId)
                 .orElseThrow(() -> new ResourceNotFoundException(AdValidationMessages.AD_REQUEST_NOT_FOUND));
         if (!actorIsPrivileged && !q.getClient().getId().equals(actorClientId)) {
             throw new ForbiddenException(ClientValidationMessages.AD_REQUEST_NOT_FOUND);
         }
-        BusinessQuestionnaireRevision rev = revisionRepository.findTopByQuestionnaire_IdOrderByVersionDesc(q.getId())
+        BusinessQuestionnaireRevision rev = revisionRepository.findLatestWithAnswersByQuestionnaireId(q.getId())
                 .orElseThrow(() -> new ResourceNotFoundException(AdValidationMessages.AD_REQUEST_NOT_FOUND));
         String text = buildPlainText(q.getClient().getBusinessName(), rev);
         return text.getBytes(StandardCharsets.UTF_8);

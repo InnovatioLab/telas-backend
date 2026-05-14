@@ -20,17 +20,8 @@ public interface BusinessQuestionnaireRepository extends JpaRepository<BusinessQ
 
     @Query("""
             SELECT q FROM BusinessQuestionnaire q
-            LEFT JOIN FETCH q.revisions r
-            LEFT JOIN FETCH r.answers
+            JOIN FETCH q.client
             WHERE q.adRequest.id = :adRequestId
             """)
-    Optional<BusinessQuestionnaire> findByAdRequestIdWithRevisionsAndAnswers(@Param("adRequestId") UUID adRequestId);
-
-    @Query("""
-            SELECT q FROM BusinessQuestionnaire q
-            LEFT JOIN FETCH q.revisions r
-            LEFT JOIN FETCH r.answers
-            WHERE q.id = :id
-            """)
-    Optional<BusinessQuestionnaire> findByIdWithRevisionsAndAnswers(@Param("id") UUID id);
+    Optional<BusinessQuestionnaire> findByAdRequestIdWithClient(@Param("adRequestId") UUID adRequestId);
 }
