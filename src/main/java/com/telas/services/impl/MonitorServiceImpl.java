@@ -299,6 +299,11 @@ public class MonitorServiceImpl implements MonitorService {
 		repository.save(monitor);
 		adUnusedTrackingService.syncUnusedStateForAdIds(List.of(saved.getId()));
 
+		if (monitor.isAbleToSendBoxRequest()) {
+			List<UpdateBoxMonitorsAdRequestDto> playlist = helper.buildOrderedBoxUpdateDtos(monitor);
+			helper.syncBoxAdsPlaylist(monitor, playlist);
+		}
+
 		return saved.getId();
 	}
 
@@ -573,7 +578,7 @@ public class MonitorServiceImpl implements MonitorService {
 		addNewMonitorAdsToMonitor(monitor, newMonitorAds);
 
 		if (monitor.isAbleToSendBoxRequest()) {
-			Set<String> successfulBaseUrls = helper.sendBoxesMonitorsUpdateAdsReturnSuccess(requestList);
+			Set<String> successfulBaseUrls = helper.syncBoxAdsPlaylist(monitor, requestList);
 			boolean sendOnAirEmails = successfulBaseUrls.isEmpty();
 			if (!successfulBaseUrls.isEmpty()) {
 				List<AbstractMap.SimpleEntry<MonitorAd, UpdateBoxMonitorsAdRequestDto>> pairsToNotify =

@@ -139,6 +139,49 @@ public class MonitorHelper {
 	}
 
 
+	@Transactional(readOnly = true)
+	public List<UpdateBoxMonitorsAdRequestDto> buildOrderedBoxUpdateDtos(Monitor monitor) {
+		if (monitor.getMonitorAds() == null || monitor.getMonitorAds().isEmpty()) {
+			return List.of();
+		}
+		return monitor.getMonitorAds().stream()
+				.filter(ma -> ma.getAd() != null
+						&& ma.getMonitor() != null
+						&& ma.getMonitor().getBox() != null
+						&& ma.getMonitor().getBox().getBoxAddress() != null)
+				.sorted(Comparator.comparingInt(ma -> Optional.ofNullable(ma.getOrderIndex()).orElse(0)))
+				.map(ma -> new UpdateBoxMonitorsAdRequestDto(ma.getAd(), ma,
+						bucketService.getLink(AttachmentUtils.format(ma.getAd()))))
+				.toList();
+	}
+
+
+	public Set<String> syncBoxAdsPlaylist(Monitor monitor, List<UpdateBoxMonitorsAdRequestDto> requestList) {
+		Set<String> successfulBaseUrls = new HashSet<>();
+		if (monitor == null || monitor.getBox() == null || monitor.getBox().getBoxAddress() == null) {
+			return successfulBaseUrls;
+		}
+		String ip = monitor.getBox().getBoxAddress().getIp();
+		if (ip == null || ip.isBlank()) {
+			return successfulBaseUrls;
+		}
+		String baseUrl = String.format("http://%s:8081/", ip);
+		List<UpdateBoxMonitorsAdRequestDto> items = requestList != null ? requestList : List.of();
+		if (items.isEmpty()) {
+			String url = baseUrl.endsWith("/") ? baseUrl + "update-ads" : baseUrl + "/update-ads";
+			try {
+				log.info("Sending empty playlist to box, URL: {}", url);
+				httpClient.makePostRequest(url, List.of(), Void.class, null, Map.of("X-API-KEY", API_KEY));
+				successfulBaseUrls.add(baseUrl);
+			} catch (Exception e) {
+				log.error("Error while sending empty playlist, URL: {}, message: {}", url, e.getMessage());
+			}
+			return successfulBaseUrls;
+		}
+		return sendBoxesMonitorsUpdateAdsReturnSuccess(items);
+	}
+
+
 	public Set<String> sendBoxesMonitorsUpdateAdsReturnSuccess(List<UpdateBoxMonitorsAdRequestDto> requestList) {
 		Set<String> successfulBaseUrls = new HashSet<>();
 		if (requestList == null || requestList.isEmpty()) {
