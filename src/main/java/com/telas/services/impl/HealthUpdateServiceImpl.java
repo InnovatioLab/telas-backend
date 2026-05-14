@@ -10,7 +10,6 @@ import com.telas.infra.exceptions.ResourceNotFoundException;
 import com.telas.monitoring.entities.IncidentEntity;
 import com.telas.monitoring.repositories.IncidentEntityRepository;
 import com.telas.repositories.BoxRepository;
-import com.telas.repositories.MonitorRepository;
 import com.telas.services.AdminMonitoringNotificationService;
 import com.telas.services.HealthUpdateService;
 import com.telas.shared.constants.MonitoringIncidentTypes;
@@ -37,7 +36,6 @@ import java.util.stream.Collectors;
 public class HealthUpdateServiceImpl implements HealthUpdateService {
 
     private final BoxRepository boxRepository;
-    private final MonitorRepository monitorRepository;
     private final AdminMonitoringNotificationService adminMonitoringNotificationService;
     private final IncidentEntityRepository incidentEntityRepository;
 
@@ -70,7 +68,6 @@ public class HealthUpdateServiceImpl implements HealthUpdateService {
             return;
         }
 
-        syncMonitorsActiveState(box.getMonitors(), ctx.isActive());
         Map<String, String> params =
                 buildBoxStatusNotificationParams(box, ip, ctx, formatLinkedMonitorAddresses(box), request);
         adminMonitoringNotificationService.notifyAdmins(
@@ -80,13 +77,6 @@ public class HealthUpdateServiceImpl implements HealthUpdateService {
 
     private void updateHealthByMonitorId(UUID monitorId, HealthUpdateContext ctx, StatusBoxMonitorsRequestDto request) {
         Monitor monitor = findMonitorById(monitorId);
-        monitor.setActive(ctx.isActive());
-        monitorRepository.save(monitor);
-        Map<String, String> monitorParams = buildMonitorStatusNotificationParams(monitor, ctx, request);
-        adminMonitoringNotificationService.notifyAdmins(
-                NotificationReference.MONITOR_STATUS_UPDATED,
-                monitorParams,
-                AdminEmailAlertCategory.BOX_HEARTBEAT_CONNECTIVITY);
         recordIncidentIfNeeded(request, ctx, null, monitor);
     }
 
@@ -113,11 +103,6 @@ public class HealthUpdateServiceImpl implements HealthUpdateService {
             return request.getIncidentSeverity();
         }
         return ctx.isActive() ? "INFO" : "CRITICAL";
-    }
-
-    private void syncMonitorsActiveState(List<Monitor> monitors, boolean isActive) {
-        monitors.forEach(m -> m.setActive(isActive));
-        monitorRepository.saveAll(monitors);
     }
 
     private String formatLinkedMonitorAddresses(Box box) {
@@ -157,21 +142,6 @@ public class HealthUpdateServiceImpl implements HealthUpdateService {
             return "";
         }
         return DateUtils.formatDurationHuman(Duration.between(outageStart, Instant.now()));
-    }
-
-    private Map<String, String> buildMonitorStatusNotificationParams(
-            Monitor monitor, HealthUpdateContext ctx, StatusBoxMonitorsRequestDto request) {
-        Map<String, String> params = new HashMap<>();
-        params.put("monitorAddress", resolveMonitorCoordinates(monitor));
-        params.put("statusLabel", ctx.statusLabel());
-        params.put("notifiedAt", ctx.notifiedAt());
-        params.put("incidentType", request.getIncidentType() != null ? request.getIncidentType() : "");
-        params.put("severity", request.getIncidentSeverity() != null ? request.getIncidentSeverity() : "");
-        return params;
-    }
-
-    private String resolveMonitorCoordinates(Monitor monitor) {
-        return monitor.getAddress() != null ? monitor.getAddress().getCoordinatesParams() : "Unknown";
     }
 
     private Monitor findMonitorById(UUID monitorId) {

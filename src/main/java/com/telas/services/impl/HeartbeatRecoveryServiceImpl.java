@@ -2,12 +2,10 @@ package com.telas.services.impl;
 
 import com.telas.dtos.request.StatusBoxMonitorsRequestDto;
 import com.telas.entities.Box;
-import com.telas.entities.Monitor;
 import com.telas.enums.DefaultStatus;
 import com.telas.monitoring.entities.IncidentEntity;
 import com.telas.monitoring.repositories.IncidentEntityRepository;
 import com.telas.repositories.BoxRepository;
-import com.telas.repositories.MonitorRepository;
 import com.telas.services.HealthUpdateService;
 import com.telas.services.HeartbeatRecoveryService;
 import com.telas.shared.constants.MonitoringIncidentTypes;
@@ -25,7 +23,6 @@ public class HeartbeatRecoveryServiceImpl implements HeartbeatRecoveryService {
 
     private final IncidentEntityRepository incidentEntityRepository;
     private final BoxRepository boxRepository;
-    private final MonitorRepository monitorRepository;
     private final HealthUpdateService healthUpdateService;
 
     @Override
@@ -41,13 +38,6 @@ public class HeartbeatRecoveryServiceImpl implements HeartbeatRecoveryService {
                 healthUpdateService.applyHealthUpdate(dto);
             } else {
                 managed.setActive(true);
-                List<Monitor> monitors = managed.getMonitors();
-                if (monitors != null && !monitors.isEmpty()) {
-                    for (Monitor m : monitors) {
-                        m.setActive(true);
-                    }
-                    monitorRepository.saveAll(monitors);
-                }
                 boxRepository.save(managed);
             }
         }

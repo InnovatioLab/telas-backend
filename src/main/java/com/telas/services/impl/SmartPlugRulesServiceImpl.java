@@ -1,8 +1,6 @@
 package com.telas.services.impl;
 
-import com.telas.dtos.request.StatusBoxMonitorsRequestDto;
 import com.telas.enums.AdminEmailAlertCategory;
-import com.telas.enums.DefaultStatus;
 import com.telas.enums.NotificationReference;
 import com.telas.monitoring.entities.IncidentEntity;
 import com.telas.monitoring.entities.SmartPlugEntity;
@@ -10,7 +8,6 @@ import com.telas.monitoring.plug.PlugReading;
 import com.telas.monitoring.repositories.IncidentEntityRepository;
 import com.telas.monitoring.state.SmartPlugThresholdState;
 import com.telas.services.AdminMonitoringNotificationService;
-import com.telas.services.HealthUpdateService;
 import com.telas.services.SmartPlugRulesService;
 import com.telas.shared.utils.DateUtils;
 import lombok.RequiredArgsConstructor;
@@ -20,13 +17,9 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
 import java.time.Instant;
-import java.util.Arrays;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.Map;
-import java.util.Set;
 import java.util.UUID;
-import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -35,26 +28,12 @@ public class SmartPlugRulesServiceImpl implements SmartPlugRulesService {
     private final IncidentEntityRepository incidentEntityRepository;
     private final SmartPlugThresholdState thresholdState;
     private final AdminMonitoringNotificationService adminMonitoringNotificationService;
-    private final HealthUpdateService healthUpdateService;
 
     @Value("${monitoring.kasa.power-below-watts:5.0}")
     private double powerBelowWatts;
 
     @Value("${monitoring.kasa.min-readings-below:3}")
     private int minReadingsBelow;
-
-    @Value("${monitoring.kasa.deactivate-monitor-on-incident-types:POWER_LOSS}")
-    private String deactivateMonitorOnIncidentTypesRaw;
-
-    private Set<String> deactivateMonitorOnIncidentTypes() {
-        if (!StringUtils.hasText(deactivateMonitorOnIncidentTypesRaw)) {
-            return Set.of();
-        }
-        return Arrays.stream(deactivateMonitorOnIncidentTypesRaw.split(","))
-                .map(String::trim)
-                .filter(StringUtils::hasText)
-                .collect(Collectors.toCollection(HashSet::new));
-    }
 
     @Override
     @Transactional
@@ -142,22 +121,7 @@ public class SmartPlugRulesServiceImpl implements SmartPlugRulesService {
         incident.setOpenedAt(Instant.now());
         incident.setDetailsJson(details);
         incidentEntityRepository.save(incident);
-        maybeDeactivateMonitorAfterPlugIncident(plug, incidentType);
         notifySmartPlugAdmins(plug, incidentType, severity, reading, details);
-    }
-
-    private void maybeDeactivateMonitorAfterPlugIncident(SmartPlugEntity plug, String incidentType) {
-        if (plug.getMonitor() == null) {
-            return;
-        }
-        Set<String> types = deactivateMonitorOnIncidentTypes();
-        if (types.isEmpty() || !types.contains(incidentType)) {
-            return;
-        }
-        StatusBoxMonitorsRequestDto dto = new StatusBoxMonitorsRequestDto();
-        dto.setMonitorId(plug.getMonitor().getId());
-        dto.setStatus(DefaultStatus.INACTIVE);
-        healthUpdateService.applyHealthUpdate(dto);
     }
 
     private void notifySmartPlugAdmins(
