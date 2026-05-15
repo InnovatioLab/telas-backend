@@ -14,7 +14,6 @@ import lombok.Setter;
 
 import java.io.Serial;
 import java.io.Serializable;
-import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 import java.util.UUID;
@@ -35,7 +34,7 @@ public class MonitorRequestDto implements Serializable {
 
     private Boolean active;
 
-    private @Valid List<MonitorAdRequestDto> ads = new ArrayList<>();
+    private @Valid List<MonitorAdRequestDto> ads;
 
     public void validate() {
         validateAddress();

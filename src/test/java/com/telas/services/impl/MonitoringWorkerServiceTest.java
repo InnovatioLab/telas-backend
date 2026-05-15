@@ -1,21 +1,16 @@
 package com.telas.services.impl;
 
-import com.telas.dtos.request.StatusBoxMonitorsRequestDto;
 import com.telas.entities.Box;
 import com.telas.entities.BoxAddress;
-import com.telas.enums.DefaultStatus;
 import com.telas.monitoring.KasMonitoringCheckRunner;
 import com.telas.monitoring.entities.BoxHeartbeatEntity;
 import com.telas.monitoring.repositories.BoxHeartbeatEntityRepository;
 import com.telas.repositories.BoxRepository;
 import com.telas.scheduler.SchedulerJobRunContext;
-import com.telas.services.HealthUpdateService;
 import com.telas.services.SmartPlugIpDiscoveryService;
-import com.telas.shared.constants.MonitoringIncidentTypes;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
@@ -23,8 +18,9 @@ import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
 
-import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.atLeastOnce;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -34,7 +30,6 @@ class MonitoringWorkerServiceTest {
 
     @Mock private BoxHeartbeatEntityRepository boxHeartbeatEntityRepository;
     @Mock private BoxRepository boxRepository;
-    @Mock private HealthUpdateService healthUpdateService;
     @Mock private KasMonitoringCheckRunner kasMonitoringCheckRunner;
     @Mock private SmartPlugIpDiscoveryService smartPlugIpDiscoveryService;
     @Mock private SchedulerJobRunContext schedulerJobRunContext;
@@ -46,7 +41,6 @@ class MonitoringWorkerServiceTest {
         service = new MonitoringWorkerService(
                 boxHeartbeatEntityRepository,
                 boxRepository,
-                healthUpdateService,
                 kasMonitoringCheckRunner,
                 smartPlugIpDiscoveryService,
                 schedulerJobRunContext);
@@ -57,7 +51,7 @@ class MonitoringWorkerServiceTest {
     }
 
     @Test
-    void runChecks_appliesNeverSeenForActiveBoxWithoutHeartbeatRow() {
+    void runChecks_neverSeen_recordsSummaryWithoutDeactivation() {
         Box box = new Box();
         box.setId(UUID.randomUUID());
         box.setActive(true);
@@ -70,14 +64,12 @@ class MonitoringWorkerServiceTest {
 
         service.runChecks();
 
-        ArgumentCaptor<StatusBoxMonitorsRequestDto> captor = ArgumentCaptor.forClass(StatusBoxMonitorsRequestDto.class);
-        verify(healthUpdateService).applyHealthUpdate(captor.capture());
-        assertThat(captor.getValue().getIncidentType()).isEqualTo(MonitoringIncidentTypes.HEARTBEAT_NEVER_SEEN);
-        assertThat(captor.getValue().getStatus()).isEqualTo(DefaultStatus.INACTIVE);
+        verify(schedulerJobRunContext).put(eq("neverSeenHeartbeatsProcessed"), eq(0));
+        verify(schedulerJobRunContext, atLeastOnce()).put(eq("neverSeenHeartbeats"), any());
     }
 
     @Test
-    void runChecks_staleHeartbeatUsesMonitoringIncidentTypeConstant() {
+    void runChecks_staleHeartbeat_recordsSummaryWithoutDeactivation() {
         BoxHeartbeatEntity hb = new BoxHeartbeatEntity();
         Box box = new Box();
         box.setId(UUID.randomUUID());
@@ -94,9 +86,8 @@ class MonitoringWorkerServiceTest {
 
         service.runChecks();
 
-        ArgumentCaptor<StatusBoxMonitorsRequestDto> captor = ArgumentCaptor.forClass(StatusBoxMonitorsRequestDto.class);
-        verify(healthUpdateService).applyHealthUpdate(captor.capture());
-        assertThat(captor.getValue().getIncidentType()).isEqualTo(MonitoringIncidentTypes.HEARTBEAT_STALE);
+        verify(schedulerJobRunContext).put(eq("staleHeartbeatsProcessed"), eq(0));
+        verify(schedulerJobRunContext, atLeastOnce()).put(eq("staleHeartbeats"), any());
     }
 
     @Test
@@ -111,17 +102,16 @@ class MonitoringWorkerServiceTest {
 
         service.runChecks();
 
-        verify(healthUpdateService, never()).applyHealthUpdate(any());
+        verify(schedulerJobRunContext).put(eq("staleHeartbeatsProcessed"), eq(0));
     }
 
     @Test
-    void runChecks_skipsHeartbeatDeactivationWhenProbeDrivesBoxState() {
+    void runChecks_skipsHeartbeatQueriesWhenProbeDrivesBoxState() {
         org.springframework.test.util.ReflectionTestUtils.setField(service, "probeDrivesBoxActiveState", true);
 
         service.runChecks();
 
         verify(boxHeartbeatEntityRepository, never()).findStaleHeartbeats(any());
         verify(boxRepository, never()).findActiveBoxesWithoutHeartbeatAfterGrace(any());
-        verify(healthUpdateService, never()).applyHealthUpdate(any());
     }
 }

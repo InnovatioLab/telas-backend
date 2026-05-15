@@ -17,7 +17,6 @@ import com.telas.services.DeveloperNotificationService;
 import com.telas.services.HealthUpdateService;
 import com.telas.services.HeartbeatRecoveryService;
 import com.telas.services.SideApiHealthCheckService;
-import com.telas.shared.constants.MonitoringIncidentTypes;
 import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -312,28 +311,18 @@ public class BoxConnectivityProbeServiceImpl implements BoxConnectivityProbeServ
         if (!drivesBoxActiveState || !outcome.attempted()) {
             return;
         }
-        boolean desiredActive = reachable;
-        if (desiredActive != box.isActive()) {
+        if (reachable && !box.isActive()) {
             StatusBoxMonitorsRequestDto dto = new StatusBoxMonitorsRequestDto();
             dto.setIp(ip);
-            dto.setStatus(desiredActive ? DefaultStatus.ACTIVE : DefaultStatus.INACTIVE);
-            if (!desiredActive) {
-                dto.setIncidentType(MonitoringIncidentTypes.CONNECTIVITY_PROBE_FAILED);
-                dto.setIncidentSeverity("CRITICAL");
-                Map<String, Object> logMeta = new HashMap<>();
-                logMeta.put("boxId", box.getId().toString());
-                logMeta.put("boxIp", ip != null ? ip : "");
-                logMeta.put("incidentType", MonitoringIncidentTypes.CONNECTIVITY_PROBE_FAILED);
-                String label = ip != null && !ip.isBlank() ? ip : box.getId().toString();
-                applicationLogService.persistSystemLog(
-                        "WARN",
-                        String.format("CONNECTIVITY_PROBE: box %s inacessível pela sonda; estado inativo.", label),
-                        "MONITORING",
-                        logMeta);
-            }
+            dto.setStatus(DefaultStatus.ACTIVE);
             healthUpdateService.applyHealthUpdate(dto);
+        } else if (!reachable && box.isActive()) {
+            log.warn(
+                    "box.connectivity.probe: box inacessível; não alterando active (apenas fluxo web/API inativa). boxId={} ip={}",
+                    box.getId(),
+                    ip);
         }
-        if (desiredActive) {
+        if (reachable) {
             heartbeatRecoveryService.recoverAfterSuccessfulHeartbeat(box);
         }
     }

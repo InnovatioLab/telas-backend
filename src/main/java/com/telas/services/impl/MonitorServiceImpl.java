@@ -100,12 +100,14 @@ public class MonitorServiceImpl implements MonitorService {
 
 		if (monitorId != null) {
 			validateAddressAvailability(address, monitorId);
-			List<Ad> ads;
-			if (request.getAds() != null) {
-				ads = request.getAds().isEmpty() ? List.of() : helper.getAds(request, monitorId);
-			} else {
+			final List<Ad> ads;
+			if (request.getAds() == null) {
 				Monitor current = findEntityById(monitorId);
 				ads = new ArrayList<>(current.getAds());
+			} else if (request.getAds().isEmpty()) {
+				ads = List.of();
+			} else {
+				ads = helper.getAds(request, monitorId);
 			}
 			updateExistingMonitor(request, monitorId, authenticatedUser, address, ads);
 			return null;
@@ -809,6 +811,9 @@ public class MonitorServiceImpl implements MonitorService {
 
 
 	private void addPartnerAdsToRequest(Client partner, MonitorRequestDto request, List<Ad> allAds) {
+		if (request.getAds() == null) {
+			request.setAds(new ArrayList<>());
+		}
 		List<Ad> partnerAds = partner.getApprovedAds().stream()
 			.filter(ad -> allAds.stream().anyMatch(a -> Objects.equals(a.getId(), ad.getId()))).toList();
 
