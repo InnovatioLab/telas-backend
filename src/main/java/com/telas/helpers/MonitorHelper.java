@@ -170,7 +170,10 @@ public class MonitorHelper {
 		if (items.isEmpty()) {
 			String url = baseUrl.endsWith("/") ? baseUrl + "update-ads" : baseUrl + "/update-ads";
 			try {
-				log.info("Sending empty playlist to box, URL: {}", url);
+				log.warn(
+						"SYNC_BOX: Sending empty playlist to box (monitor may have zero monitorAds or DTO filters dropped all ads). Monitor id: {}, URL: {}",
+						monitor.getId(),
+						url);
 				httpClient.makePostRequest(url, List.of(), Void.class, null, Map.of("X-API-KEY", API_KEY));
 				successfulBaseUrls.add(baseUrl);
 			} catch (Exception e) {
