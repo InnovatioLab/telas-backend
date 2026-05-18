@@ -911,6 +911,9 @@ public class ClientServiceImpl implements ClientService {
 
 	private void validatePermanentDeleteAccess() {
 		Client actor = authenticatedUserService.getLoggedUser().client();
+		if (actor.isDeveloper()) {
+			return;
+		}
 		if (permissionService.hasPermission(actor, Permission.ADMIN_CLIENTS_PERMANENT_DELETE)
 				|| permissionService.hasPermission(actor, Permission.ADMIN_CLIENTS_SOFT_DELETE)) {
 			return;
