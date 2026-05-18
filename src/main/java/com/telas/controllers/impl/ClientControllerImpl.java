@@ -166,9 +166,10 @@ public class ClientControllerImpl implements ClientController {
     public ResponseEntity<?> downloadAdRequestBusinessQuestionnaireTxt(
             @PathVariable(name = "adRequestId") UUID adRequestId) {
         byte[] bytes = service.exportAdRequestBusinessQuestionnaireTxtAdmin(adRequestId);
+        String fileName = service.resolveAdRequestBusinessQuestionnaireExportFileName(adRequestId);
         return ResponseEntity.ok()
                 .header(HttpHeaders.CONTENT_DISPOSITION,
-                        "attachment; filename=\"business-questionnaire-" + adRequestId + ".txt\"")
+                        "attachment; filename=\"" + fileName + "\"")
                 .contentType(MediaType.TEXT_PLAIN)
                 .body(bytes);
     }

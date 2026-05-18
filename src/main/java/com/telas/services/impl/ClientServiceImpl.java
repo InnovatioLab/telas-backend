@@ -946,4 +946,11 @@ public class ClientServiceImpl implements ClientService {
 		return businessQuestionnaireService.exportTxtForAdRequest(adRequestId, null, true);
 	}
 
+	@Override
+	@Transactional(readOnly = true)
+	public String resolveAdRequestBusinessQuestionnaireExportFileName(UUID adRequestId) {
+		authenticatedUserService.validateAdminOrAdsManageAccess();
+		return businessQuestionnaireService.resolveExportFileNameForAdRequest(adRequestId, null, true);
+	}
+
 }

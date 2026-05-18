@@ -5,18 +5,25 @@ import com.telas.dtos.response.AdminAdOperationRowDto;
 import com.telas.dtos.response.AdminExpiryNotificationDto;
 import com.telas.dtos.response.PaginationResponseDto;
 import com.telas.entities.Ad;
+import com.telas.entities.Monitor;
+import com.telas.entities.MonitorAd;
 import com.telas.entities.Notification;
 import com.telas.entities.Subscription;
 import com.telas.enums.NotificationReference;
 import com.telas.enums.SubscriptionStatus;
+import com.telas.helpers.MonitorHelper;
+import com.telas.infra.exceptions.BusinessRuleException;
+import com.telas.infra.exceptions.ResourceNotFoundException;
 import com.telas.infra.security.services.AuthenticatedUserService;
 import com.telas.enums.AdValidationType;
 import com.telas.repositories.AdRepository;
 import com.telas.repositories.MonitorAdRepository;
+import com.telas.repositories.MonitorRepository;
 import com.telas.repositories.NotificationRepository;
 import com.telas.repositories.SubscriptionRepository;
 import com.telas.helpers.AttachmentHelper;
 import com.telas.services.AdminAdOperationsService;
+import com.telas.shared.constants.valitation.AdValidationMessages;
 import com.telas.shared.utils.PaginationFilterUtil;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -30,6 +37,7 @@ import java.nio.charset.StandardCharsets;
 import java.time.ZoneOffset;
 import java.time.format.DateTimeFormatter;
 import java.util.EnumMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -66,10 +74,13 @@ public class AdminAdOperationsServiceImpl implements AdminAdOperationsService {
     private final AdRepository adRepository;
 
     private final MonitorAdRepository monitorAdRepository;
+    private final MonitorRepository monitorRepository;
     private final NotificationRepository notificationRepository;
     private final SubscriptionRepository subscriptionRepository;
     private final AuthenticatedUserService authenticatedUserService;
     private final AttachmentHelper attachmentHelper;
+    private final MonitorHelper monitorHelper;
+    private final UnusedSingleAdDeletionService unusedSingleAdDeletionService;
 
     private static String trimOrEmpty(String value) {
         if (value == null) {
@@ -154,6 +165,35 @@ public class AdminAdOperationsServiceImpl implements AdminAdOperationsService {
                         EXPIRY_LABELS.getOrDefault(n.getReference(), n.getReference().name())
                 ))
                 .toList();
+    }
+
+    @Override
+    @Transactional
+    public void deleteApprovedAd(UUID adId) {
+        authenticatedUserService.validateAdminOrAdsManageAccess();
+        Ad ad = adRepository.findById(adId)
+                .orElseThrow(() -> new ResourceNotFoundException(AdValidationMessages.AD_NOT_FOUND));
+        if (!AdValidationType.APPROVED.equals(ad.getValidation())) {
+            throw new BusinessRuleException(AdValidationMessages.AD_MUST_BE_APPROVED_TO_DELETE);
+        }
+        String adName = ad.getName();
+        List<MonitorAd> placements = monitorAdRepository.findByAdIdWithMonitor(adId);
+        Map<UUID, Monitor> monitorsById = new LinkedHashMap<>();
+        for (MonitorAd placement : placements) {
+            Monitor monitor = placement.getMonitor();
+            if (monitor != null) {
+                monitorsById.putIfAbsent(monitor.getId(), monitor);
+            }
+        }
+        for (Monitor monitor : monitorsById.values()) {
+            monitor.getMonitorAds().removeIf(ma ->
+                    ma.getAd() != null && adId.equals(ma.getAd().getId()));
+            monitorRepository.save(monitor);
+            if (monitor.isAbleToSendBoxRequest()) {
+                monitorHelper.sendBoxesMonitorsRemoveAds(monitor, List.of(adName));
+            }
+        }
+        unusedSingleAdDeletionService.deleteAdInNewTransaction(adId);
     }
 
     @Override

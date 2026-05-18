@@ -61,6 +61,8 @@ public interface ClientService {
 
     byte[] exportAdRequestBusinessQuestionnaireTxtAdmin(UUID adRequestId);
 
+    String resolveAdRequestBusinessQuestionnaireExportFileName(UUID adRequestId);
+
     void uploadAds(AttachmentRequestDto request, UUID clientId);
 
     void acceptTermsAndConditions();

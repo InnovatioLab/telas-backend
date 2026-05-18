@@ -20,9 +20,11 @@ import com.telas.repositories.AdRequestRepository;
 import com.telas.repositories.BusinessQuestionnaireRepository;
 import com.telas.repositories.BusinessQuestionnaireRevisionRepository;
 import com.telas.repositories.ClientRepository;
+import com.telas.entities.Ad;
 import com.telas.shared.constants.BusinessQuestionnaireConstants;
 import com.telas.shared.constants.valitation.AdValidationMessages;
 import com.telas.shared.constants.valitation.ClientValidationMessages;
+import com.telas.shared.utils.FileNameUtils;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
@@ -152,15 +154,40 @@ public class BusinessQuestionnaireService {
 
     @Transactional(readOnly = true)
     public byte[] exportTxtForAdRequest(UUID adRequestId, UUID actorClientId, boolean actorIsPrivileged) {
-        BusinessQuestionnaire q = questionnaireRepository.findByAdRequestIdWithClient(adRequestId)
-                .orElseThrow(() -> new ResourceNotFoundException(AdValidationMessages.AD_REQUEST_NOT_FOUND));
-        if (!actorIsPrivileged && !q.getClient().getId().equals(actorClientId)) {
-            throw new ForbiddenException(ClientValidationMessages.AD_REQUEST_NOT_FOUND);
-        }
+        BusinessQuestionnaire q = loadQuestionnaireForExport(adRequestId, actorClientId, actorIsPrivileged);
         BusinessQuestionnaireRevision rev = revisionRepository.findLatestWithAnswersByQuestionnaireId(q.getId())
                 .orElseThrow(() -> new ResourceNotFoundException(AdValidationMessages.AD_REQUEST_NOT_FOUND));
         String text = buildPlainText(q.getClient().getBusinessName(), rev);
         return text.getBytes(StandardCharsets.UTF_8);
+    }
+
+    @Transactional(readOnly = true)
+    public String resolveExportFileNameForAdRequest(UUID adRequestId, UUID actorClientId, boolean actorIsPrivileged) {
+        BusinessQuestionnaire q = loadQuestionnaireForExport(adRequestId, actorClientId, actorIsPrivileged);
+        String clientName = q.getClient().getBusinessName();
+        String adName = resolveAdNameForExport(q);
+        return FileNameUtils.buildQuestionnaireExportFileName(clientName, adName);
+    }
+
+    private BusinessQuestionnaire loadQuestionnaireForExport(
+            UUID adRequestId, UUID actorClientId, boolean actorIsPrivileged) {
+        BusinessQuestionnaire q = questionnaireRepository.findByAdRequestIdWithClientAndAd(adRequestId)
+                .orElseThrow(() -> new ResourceNotFoundException(AdValidationMessages.AD_REQUEST_NOT_FOUND));
+        if (!actorIsPrivileged && !q.getClient().getId().equals(actorClientId)) {
+            throw new ForbiddenException(ClientValidationMessages.AD_REQUEST_NOT_FOUND);
+        }
+        return q;
+    }
+
+    private static String resolveAdNameForExport(BusinessQuestionnaire q) {
+        if (q.getAdRequest() == null) {
+            return "ad-request";
+        }
+        Ad ad = q.getAdRequest().getAd();
+        if (ad == null || ad.getName() == null || ad.getName().isBlank()) {
+            return "ad-request";
+        }
+        return ad.getName();
     }
 
     @Transactional(readOnly = true)

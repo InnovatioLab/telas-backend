@@ -12,4 +12,5 @@ public final class AdValidationMessages {
   public static final String ADMIN_ROLE_REQUIRED = "Admin role is required for this operation";
   public static final String VALIDATION_NOT_ALLOWED = "You are not allowed to validate this ad";
   public static final String AD_ALREADY_VALIDATED = "Ad already validated";
+  public static final String AD_MUST_BE_APPROVED_TO_DELETE = "Only client-approved ads can be deleted from this screen";
 }

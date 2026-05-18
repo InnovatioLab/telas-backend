@@ -24,4 +24,13 @@ public interface BusinessQuestionnaireRepository extends JpaRepository<BusinessQ
             WHERE q.adRequest.id = :adRequestId
             """)
     Optional<BusinessQuestionnaire> findByAdRequestIdWithClient(@Param("adRequestId") UUID adRequestId);
+
+    @Query("""
+            SELECT q FROM BusinessQuestionnaire q
+            JOIN FETCH q.client
+            JOIN FETCH q.adRequest ar
+            LEFT JOIN FETCH ar.ad
+            WHERE q.adRequest.id = :adRequestId
+            """)
+    Optional<BusinessQuestionnaire> findByAdRequestIdWithClientAndAd(@Param("adRequestId") UUID adRequestId);
 }

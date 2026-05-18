@@ -13,6 +13,7 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.ModelAttribute;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -45,6 +46,14 @@ public class AdminAdOperationsControllerImpl {
         List<AdminExpiryNotificationDto> data = adminAdOperationsService.listExpiryNotifications(advertiserId);
         return ResponseEntity.status(HttpStatus.OK)
                 .body(ResponseDto.fromData(data, HttpStatus.OK, MessageCommonsConstants.FIND_ALL_SUCCESS_MESSAGE));
+    }
+
+    @DeleteMapping("/ads/{adId}")
+    @SecurityRequirement(name = "jwt")
+    public ResponseEntity<ResponseDto<Void>> deleteApprovedAd(@PathVariable UUID adId) {
+        adminAdOperationsService.deleteApprovedAd(adId);
+        return ResponseEntity.status(HttpStatus.OK)
+                .body(ResponseDto.fromData(null, HttpStatus.OK, MessageCommonsConstants.DELETE_SUCCESS_MESSAGE));
     }
 
     @GetMapping(value = "/export/subscriptions.csv", produces = "text/csv")

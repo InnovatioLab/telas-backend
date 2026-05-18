@@ -23,6 +23,15 @@ public interface MonitorAdRepository extends JpaRepository<MonitorAd, MonitorAdP
     long countByAdId(@Param("adId") java.util.UUID adId);
 
     @Query("""
+            SELECT ma FROM MonitorAd ma
+            JOIN FETCH ma.id.monitor mon
+            LEFT JOIN FETCH mon.box box
+            LEFT JOIN FETCH box.boxAddress
+            WHERE ma.id.ad.id = :adId
+            """)
+    java.util.List<MonitorAd> findByAdIdWithMonitor(@Param("adId") java.util.UUID adId);
+
+    @Query("""
             SELECT addr.client.id as partnerId, COUNT(ma) as adsCount
             FROM MonitorAd ma
             JOIN ma.id.monitor mon

@@ -15,4 +15,6 @@ public interface AdminAdOperationsService {
     List<AdminExpiryNotificationDto> listExpiryNotifications(UUID advertiserClientId);
 
     byte[] exportSubscriptionsCsv();
+
+    void deleteApprovedAd(UUID adId);
 }
