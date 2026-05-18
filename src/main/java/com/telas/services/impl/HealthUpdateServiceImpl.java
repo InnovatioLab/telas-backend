@@ -10,6 +10,7 @@ import com.telas.infra.exceptions.ResourceNotFoundException;
 import com.telas.monitoring.entities.IncidentEntity;
 import com.telas.monitoring.repositories.IncidentEntityRepository;
 import com.telas.repositories.BoxRepository;
+import com.telas.repositories.MonitorRepository;
 import com.telas.services.AdminMonitoringNotificationService;
 import com.telas.services.HealthUpdateService;
 import com.telas.shared.constants.MonitoringIncidentTypes;
@@ -36,6 +37,7 @@ import java.util.stream.Collectors;
 public class HealthUpdateServiceImpl implements HealthUpdateService {
 
     private final BoxRepository boxRepository;
+    private final MonitorRepository monitorRepository;
     private final AdminMonitoringNotificationService adminMonitoringNotificationService;
     private final IncidentEntityRepository incidentEntityRepository;
 
