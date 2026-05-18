@@ -26,6 +26,8 @@ import com.telas.services.AdminAdOperationsService;
 import com.telas.shared.constants.valitation.AdValidationMessages;
 import com.telas.shared.utils.PaginationFilterUtil;
 import lombok.RequiredArgsConstructor;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
@@ -48,6 +50,8 @@ import java.util.stream.Collectors;
 @Service
 @RequiredArgsConstructor
 public class AdminAdOperationsServiceImpl implements AdminAdOperationsService {
+
+    private static final Logger log = LoggerFactory.getLogger(AdminAdOperationsServiceImpl.class);
 
     private static final Set<NotificationReference> EXPIRY_NOTIFICATION_REFERENCES = Set.of(
             NotificationReference.SUBSCRIPTION_ABOUT_TO_EXPIRY_REMINDER,
@@ -170,6 +174,7 @@ public class AdminAdOperationsServiceImpl implements AdminAdOperationsService {
     @Override
     @Transactional
     public void deleteApprovedAd(UUID adId) {
+        log.info("deleteApprovedAd start adId={}", adId);
         authenticatedUserService.validateAdminOrAdsManageAccess();
         Ad ad = adRepository.findById(adId)
                 .orElseThrow(() -> new ResourceNotFoundException(AdValidationMessages.AD_NOT_FOUND));
@@ -194,6 +199,7 @@ public class AdminAdOperationsServiceImpl implements AdminAdOperationsService {
             }
         }
         unusedSingleAdDeletionService.deleteAdInNewTransaction(adId);
+        log.info("deleteApprovedAd completed adId={}", adId);
     }
 
     @Override
