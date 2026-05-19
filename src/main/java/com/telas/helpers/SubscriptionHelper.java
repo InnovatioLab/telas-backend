@@ -56,6 +56,7 @@ public class SubscriptionHelper {
     private final ClientHelper clientHelper;
     private final ClientRepository clientRepository;
     private final EmailService emailService;
+    private final PartnerSlotAccessService partnerSlotAccessService;
 
     @Value("${front.base.url}")
     private String frontBaseUrl;
@@ -74,7 +75,8 @@ public class SubscriptionHelper {
             PaymentService paymentService,
             ClientHelper clientHelper,
             ClientRepository clientRepository,
-            EmailService emailService
+            EmailService emailService,
+            PartnerSlotAccessService partnerSlotAccessService
     ) {
         this.repository = repository;
         this.subscriptionFlowRepository = subscriptionFlowRepository;
@@ -87,6 +89,7 @@ public class SubscriptionHelper {
         this.clientHelper = clientHelper;
         this.clientRepository = clientRepository;
         this.emailService = emailService;
+        this.partnerSlotAccessService = partnerSlotAccessService;
     }
 
     @Transactional
@@ -373,7 +376,7 @@ public class SubscriptionHelper {
         for (CartItem item : items) {
             Monitor monitor = monitors.get(item.getMonitor().getId());
 
-            if (!monitor.hasAvailableBlocks(item)) {
+            if (!partnerSlotAccessService.canAddBlocks(client, monitor, item.getBlockQuantity())) {
                 throw new BusinessRuleException(MonitorValidationMessages.MONITOR_BLOCKS_UNAVAILABLE);
             }
 

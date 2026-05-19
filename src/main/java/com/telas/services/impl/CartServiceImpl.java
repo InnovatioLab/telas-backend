@@ -14,6 +14,7 @@ import com.telas.repositories.MonitorRepository;
 import com.telas.repositories.SubscriptionRepository;
 import com.telas.repositories.SubscriptionFlowRepository;
 import com.telas.services.CartService;
+import com.telas.services.PartnerSlotAccessService;
 import com.telas.shared.constants.SharedConstants;
 import com.telas.shared.constants.valitation.CartValidationMessages;
 import com.telas.shared.constants.valitation.MonitorValidationMessages;
@@ -34,6 +35,7 @@ public class CartServiceImpl implements CartService {
     private final SubscriptionRepository subscriptionRepository;
     private final AuthenticatedUserService authenticatedUserService;
     private final MonitorRepository monitorRepository;
+    private final PartnerSlotAccessService partnerSlotAccessService;
 
     @Override
     @Transactional
@@ -168,10 +170,15 @@ public class CartServiceImpl implements CartService {
                 
                 if (cartItem == null) {
                     cartItem = new CartItem(cart, monitor, item);
-                } else {
-                    if (!cartItem.isBonus()) {
-                        cartItem.setBlockQuantity(item.getBlockQuantity());
-                    }
+                } else if (!cartItem.isBonus()) {
+                    cartItem.setBlockQuantity(item.getBlockQuantity());
+                }
+
+                if (!cartItem.isBonus()) {
+                    int resolved =
+                            partnerSlotAccessService.resolveCartBlockQuantity(
+                                    cart.getClient(), monitor, cartItem.getBlockQuantity());
+                    cartItem.setBlockQuantity(resolved);
                 }
                 
                 cartItem = cartItemRepository.save(cartItem);

@@ -15,5 +15,9 @@ public interface PermissionService {
 
     void replacePermissionsForAdmin(UUID targetClientId, Set<Permission> permissions, UUID grantedByClientId);
 
+    void replacePermissionsForClient(UUID targetClientId, Set<Permission> permissions, UUID grantedByClientId);
+
+    List<String> listPermissionCatalogForRole(com.telas.enums.Role role);
+
     List<String> listEffectivePermissionCodesForDisplay(Client client);
 }

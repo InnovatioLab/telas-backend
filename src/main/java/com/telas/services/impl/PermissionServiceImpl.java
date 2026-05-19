@@ -7,6 +7,7 @@ import com.telas.enums.Role;
 import com.telas.infra.exceptions.ResourceNotFoundException;
 import com.telas.repositories.ClientGrantedPermissionRepository;
 import com.telas.repositories.ClientRepository;
+import com.telas.services.PartnerPermissionCodes;
 import com.telas.services.PermissionService;
 import com.telas.shared.constants.valitation.ClientValidationMessages;
 import lombok.RequiredArgsConstructor;
@@ -61,21 +62,29 @@ public class PermissionServiceImpl implements PermissionService {
     @Override
     @Transactional
     public void replacePermissionsForAdmin(UUID targetClientId, Set<Permission> permissions, UUID grantedByClientId) {
+        replacePermissionsForClient(targetClientId, permissions, grantedByClientId);
+    }
+
+    @Override
+    @Transactional
+    public void replacePermissionsForClient(UUID targetClientId, Set<Permission> permissions, UUID grantedByClientId) {
         Client target =
                 clientRepository
                         .findById(targetClientId)
                         .orElseThrow(() -> new ResourceNotFoundException(ClientValidationMessages.USER_NOT_FOUND));
-        if (!Role.ADMIN.equals(target.getRole())) {
-            throw new IllegalArgumentException("Permissions apply only to ADMIN users.");
+        if (!Role.ADMIN.equals(target.getRole()) && !Role.PARTNER.equals(target.getRole())) {
+            throw new IllegalArgumentException("Permissions apply only to ADMIN or PARTNER users.");
         }
         Client grantedBy =
                 clientRepository
                         .findById(grantedByClientId)
                         .orElseThrow(() -> new ResourceNotFoundException(ClientValidationMessages.USER_NOT_FOUND));
 
+        Set<Permission> toSave = permissions != null ? new HashSet<>(permissions) : Set.of();
+        PartnerPermissionCodes.validateGrantableForRole(target.getRole(), toSave);
+
         clientGrantedPermissionRepository.deleteByClient_Id(targetClientId);
 
-        Set<Permission> toSave = permissions != null ? new HashSet<>(permissions) : Set.of();
         Instant now = Instant.now();
         for (Permission p : toSave) {
             ClientGrantedPermission row = new ClientGrantedPermission();
@@ -85,6 +94,12 @@ public class PermissionServiceImpl implements PermissionService {
             row.setGrantedBy(grantedBy);
             clientGrantedPermissionRepository.save(row);
         }
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<String> listPermissionCatalogForRole(Role role) {
+        return PartnerPermissionCodes.catalogForRole(role);
     }
 
     @Override

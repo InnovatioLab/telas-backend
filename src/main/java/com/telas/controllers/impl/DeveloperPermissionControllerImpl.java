@@ -7,6 +7,7 @@ import com.telas.dtos.response.EmailAlertPreferencesResponseDto;
 import com.telas.dtos.response.ResponseDto;
 import com.telas.entities.Client;
 import com.telas.enums.Permission;
+import com.telas.enums.Role;
 import com.telas.infra.security.model.AuthenticatedUser;
 import com.telas.infra.security.services.AuthenticatedUserService;
 import com.telas.repositories.ClientRepository;
@@ -25,6 +26,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.HashSet;
@@ -70,8 +72,32 @@ public class DeveloperPermissionControllerImpl {
                                 MessageCommonsConstants.FIND_ALL_SUCCESS_MESSAGE));
     }
 
+    @GetMapping("/partners")
+    @Operation(summary = "Lista partners com permissões concedidas")
+    @SecurityRequirement(name = "jwt")
+    public ResponseEntity<?> listPartnersWithPermissions() {
+        authenticatedUserService.validateDeveloper();
+        List<Client> partners = clientRepository.findAllPartners();
+        List<AdminPermissionRowResponseDto> rows =
+                partners.stream()
+                        .map(
+                                p ->
+                                        new AdminPermissionRowResponseDto(
+                                                p.getId(),
+                                                p.getBusinessName(),
+                                                p.getContact() != null ? p.getContact().getEmail() : "",
+                                                permissionService.listPermissionCodesForClient(p.getId())))
+                        .collect(Collectors.toList());
+        return ResponseEntity.status(HttpStatus.OK)
+                .body(
+                        ResponseDto.fromData(
+                                rows,
+                                HttpStatus.OK,
+                                MessageCommonsConstants.FIND_ALL_SUCCESS_MESSAGE));
+    }
+
     @PutMapping("/clients/{clientId}/permissions")
-    @Operation(summary = "Substitui o conjunto de permissões de um admin")
+    @Operation(summary = "Substitui o conjunto de permissões de um admin ou partner")
     @SecurityRequirement(name = "jwt")
     public ResponseEntity<?> replacePermissions(
             @PathVariable UUID clientId, @Valid @RequestBody UpdatePermissionsRequestDto body) {
@@ -83,20 +109,23 @@ public class DeveloperPermissionControllerImpl {
                 parsed.add(Permission.valueOf(code.trim()));
             }
         }
-        permissionService.replacePermissionsForAdmin(clientId, parsed, dev.client().getId());
+        permissionService.replacePermissionsForClient(clientId, parsed, dev.client().getId());
         return ResponseEntity.noContent().build();
     }
 
     @GetMapping("/permissions/catalog")
-    @Operation(summary = "Lista códigos de permissão disponíveis")
+    @Operation(summary = "Lista códigos de permissão disponíveis por role")
     @SecurityRequirement(name = "jwt")
-    public ResponseEntity<?> permissionCatalog() {
+    public ResponseEntity<?> permissionCatalog(@RequestParam(required = false) String role) {
         authenticatedUserService.validateDeveloper();
+        Role parsedRole = null;
+        if (role != null && !role.isBlank()) {
+            parsedRole = Role.valueOf(role.trim().toUpperCase());
+        }
         List<String> codes =
-                java.util.Arrays.stream(Permission.values())
-                        .map(Enum::name)
-                        .sorted()
-                        .collect(Collectors.toList());
+                parsedRole != null
+                        ? permissionService.listPermissionCatalogForRole(parsedRole)
+                        : permissionService.listPermissionCatalogForRole(Role.ADMIN);
         return ResponseEntity.status(HttpStatus.OK)
                 .body(
                         ResponseDto.fromData(

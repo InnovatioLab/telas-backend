@@ -14,6 +14,7 @@ import com.telas.infra.exceptions.BusinessRuleException;
 import com.telas.infra.exceptions.ResourceNotFoundException;
 import com.telas.repositories.*;
 import com.telas.services.AddressService;
+import com.telas.services.PartnerSlotAccessService;
 import com.telas.services.BucketService;
 import com.telas.services.MapsService;
 import com.telas.services.NotificationService;
@@ -50,6 +51,7 @@ public class ClientHelper {
     private final BucketService bucketService;
     private final NotificationService notificationService;
     private final BoxAdPushNotificationHelper boxAdPushNotificationHelper;
+    private final PartnerSlotAccessService partnerSlotAccessService;
 
     @Value("${front.base.url}")
     private String frontBaseUrl;
@@ -332,8 +334,19 @@ public class ClientHelper {
     }
 
     private boolean isMonitorEligibleForAd(Client client, Monitor monitor) {
-        if (monitor.clientAlreadyHasAd(client) && !monitor.isPartner(client)) {
+        if (monitor.clientAlreadyHasAd(client)
+                && !partnerSlotAccessService.usesPartnerQuotaOnMonitor(client, monitor)) {
             log.error("Client {} already has an ad in monitor {}", client.getId(), monitor.getId());
+            return false;
+        }
+
+        if (partnerSlotAccessService.usesPartnerQuotaOnMonitor(client, monitor)
+                && partnerSlotAccessService.usedBlocksByClientOnMonitor(client, monitor)
+                        >= SharedConstants.PARTNER_RESERVED_SLOTS) {
+            log.error(
+                    "Partner {} reached block limit on monitor {}",
+                    client.getId(),
+                    monitor.getId());
             return false;
         }
 

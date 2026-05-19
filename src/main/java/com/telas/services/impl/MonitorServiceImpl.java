@@ -23,6 +23,7 @@ import com.telas.services.AdUnusedTrackingService;
 import com.telas.services.BucketService;
 import com.telas.services.MonitorService;
 import com.telas.services.MonitorSubscriptionService;
+import com.telas.services.PartnerSlotAccessService;
 import com.telas.services.RemoveMonitorAdsOutcome;
 import com.telas.services.SubscriptionService;
 import com.telas.services.impl.UnusedSingleAdDeletionService;
@@ -85,6 +86,8 @@ public class MonitorServiceImpl implements MonitorService {
 	private final MonitorSubscriptionService monitorSubscriptionService;
 
 	private final UnusedSingleAdDeletionService unusedSingleAdDeletionService;
+
+	private final PartnerSlotAccessService partnerSlotAccessService;
 
 	@Value("${stripe.product.id}")
 	private String productId;
@@ -572,8 +575,10 @@ public class MonitorServiceImpl implements MonitorService {
 		Map<UUID, MonitorAd> newMonitorAdsByAdId = newMonitorAds.stream()
 			.collect(Collectors.toMap(ma -> ma.getAd().getId(), ma -> ma));
 
-		Map<UUID, Integer> blockQuantities = resolveBlockQuantities(ads, adRequestMap, subscriptionByClientId);
+		Map<UUID, Integer> blockQuantities =
+				resolveBlockQuantities(ads, adRequestMap, subscriptionByClientId, monitor);
 		applyBlockQuantities(existingAfterRemoval, newMonitorAdsByAdId, blockQuantities);
+		validatePartnerBlockTotalsOnMonitor(monitor);
 
 		List<UpdateBoxMonitorsAdRequestDto> requestList = buildRequestList(ads, existingAfterRemoval, newMonitorAdsByAdId);
 
@@ -646,8 +651,11 @@ public class MonitorServiceImpl implements MonitorService {
 	}
 
 
-	private Map<UUID, Integer> resolveBlockQuantities(List<Ad> ads, Map<UUID, MonitorAdRequestDto> adRequestMap,
-		Map<UUID, SubscriptionMonitor> subscriptionByClientId) {
+	private Map<UUID, Integer> resolveBlockQuantities(
+			List<Ad> ads,
+			Map<UUID, MonitorAdRequestDto> adRequestMap,
+			Map<UUID, SubscriptionMonitor> subscriptionByClientId,
+			Monitor monitor) {
 		Map<UUID, Integer> blockQuantities = new HashMap<>(ads.size());
 
 		ads.forEach(ad -> {
@@ -664,7 +672,44 @@ public class MonitorServiceImpl implements MonitorService {
 			blockQuantities.put(adId, blockQuantity);
 		});
 
+		Map<UUID, List<Ad>> partnerQuotaAdsByClient =
+				ads.stream()
+						.filter(
+								ad ->
+										ad.getClient() != null
+												&& partnerSlotAccessService.usesPartnerQuotaOnMonitor(
+														ad.getClient(), monitor))
+						.collect(Collectors.groupingBy(ad -> ad.getClient().getId()));
+
+		partnerQuotaAdsByClient
+				.values()
+				.forEach(clientAds -> blockQuantities.putAll(distributePartnerBlockQuantities(clientAds)));
+
 		return blockQuantities;
+	}
+
+	private void validatePartnerBlockTotalsOnMonitor(Monitor monitor) {
+		Map<UUID, Integer> totalsByClient = new HashMap<>();
+		for (MonitorAd monitorAd : monitor.getMonitorAds()) {
+			if (monitorAd.getAd() == null || monitorAd.getAd().getClient() == null) {
+				continue;
+			}
+			Client client = monitorAd.getAd().getClient();
+			if (!partnerSlotAccessService.usesPartnerQuotaOnMonitor(client, monitor)) {
+				continue;
+			}
+			int blocks =
+					monitorAd.getBlockQuantity() != null
+							? monitorAd.getBlockQuantity()
+							: SharedConstants.MIN_QUANTITY_MONITOR_BLOCK;
+			totalsByClient.merge(client.getId(), blocks, Integer::sum);
+		}
+		totalsByClient.forEach(
+				(clientId, total) -> {
+					if (total > SharedConstants.PARTNER_RESERVED_SLOTS) {
+						throw new BusinessRuleException(MonitorValidationMessages.MONITOR_BLOCKS_BEYOND_LIMIT);
+					}
+				});
 	}
 
 
