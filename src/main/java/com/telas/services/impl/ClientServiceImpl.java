@@ -39,6 +39,7 @@ import com.telas.services.BusinessQuestionnaireService;
 import com.telas.services.BucketService;
 import com.telas.services.ClientService;
 import com.telas.services.NotificationService;
+import com.telas.services.PartnerPlatformSettingsService;
 import com.telas.services.PermissionService;
 import com.telas.services.TermConditionService;
 import com.telas.services.VerificationCodeService;
@@ -100,6 +101,8 @@ public class ClientServiceImpl implements ClientService {
 	private final AdRepository adRepository;
 
 	private final PermissionService permissionService;
+
+	private final PartnerPlatformSettingsService partnerPlatformSettingsService;
 
 	private final AdminEmailAlertPreferenceService adminEmailAlertPreferenceService;
 
@@ -884,8 +887,16 @@ public class ClientServiceImpl implements ClientService {
 			adRequestDto = new AdRequestClientResponseDto(ar, qa, ver, updatedAt);
 		}
 
+		boolean partnerSlotsAnyLocationEnabled =
+				Role.PARTNER.equals(client.getRole()) && partnerPlatformSettingsService.isSlotsAnyLocationEnabled();
+
 		return new ClientResponseDto(
-			client, attachmentLinks, ads, permissionService.listEffectivePermissionCodesForDisplay(client), adRequestDto);
+				client,
+				attachmentLinks,
+				ads,
+				permissionService.listEffectivePermissionCodesForDisplay(client),
+				partnerSlotsAnyLocationEnabled,
+				adRequestDto);
 	}
 
 

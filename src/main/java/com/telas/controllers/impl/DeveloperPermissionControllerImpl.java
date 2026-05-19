@@ -1,17 +1,19 @@
 package com.telas.controllers.impl;
 
 import com.telas.dtos.request.UpdateEmailAlertPreferencesRequestDto;
+import com.telas.dtos.request.UpdatePartnerPlatformSettingsRequestDto;
 import com.telas.dtos.request.UpdatePermissionsRequestDto;
 import com.telas.dtos.response.AdminPermissionRowResponseDto;
 import com.telas.dtos.response.EmailAlertPreferencesResponseDto;
+import com.telas.dtos.response.PartnerPlatformSettingsResponseDto;
 import com.telas.dtos.response.ResponseDto;
 import com.telas.entities.Client;
 import com.telas.enums.Permission;
-import com.telas.enums.Role;
 import com.telas.infra.security.model.AuthenticatedUser;
 import com.telas.infra.security.services.AuthenticatedUserService;
 import com.telas.repositories.ClientRepository;
 import com.telas.services.AdminEmailAlertPreferenceService;
+import com.telas.services.PartnerPlatformSettingsService;
 import com.telas.services.PermissionService;
 import com.telas.shared.constants.MessageCommonsConstants;
 import io.swagger.v3.oas.annotations.Operation;
@@ -26,7 +28,6 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.HashSet;
@@ -44,6 +45,7 @@ public class DeveloperPermissionControllerImpl {
     private final AuthenticatedUserService authenticatedUserService;
     private final ClientRepository clientRepository;
     private final PermissionService permissionService;
+    private final PartnerPlatformSettingsService partnerPlatformSettingsService;
     private final AdminEmailAlertPreferenceService adminEmailAlertPreferenceService;
 
     @GetMapping("/admins")
@@ -72,32 +74,42 @@ public class DeveloperPermissionControllerImpl {
                                 MessageCommonsConstants.FIND_ALL_SUCCESS_MESSAGE));
     }
 
-    @GetMapping("/partners")
-    @Operation(summary = "Lista partners com permissões concedidas")
+    @GetMapping("/partner-platform-settings")
+    @Operation(summary = "Configuração global de quota de partners em qualquer tela")
     @SecurityRequirement(name = "jwt")
-    public ResponseEntity<?> listPartnersWithPermissions() {
+    public ResponseEntity<?> getPartnerPlatformSettings() {
         authenticatedUserService.validateDeveloper();
-        List<Client> partners = clientRepository.findAllPartners();
-        List<AdminPermissionRowResponseDto> rows =
-                partners.stream()
-                        .map(
-                                p ->
-                                        new AdminPermissionRowResponseDto(
-                                                p.getId(),
-                                                p.getBusinessName(),
-                                                p.getContact() != null ? p.getContact().getEmail() : "",
-                                                permissionService.listPermissionCodesForClient(p.getId())))
-                        .collect(Collectors.toList());
+        PartnerPlatformSettingsResponseDto data =
+                new PartnerPlatformSettingsResponseDto(
+                        partnerPlatformSettingsService.isSlotsAnyLocationEnabled());
         return ResponseEntity.status(HttpStatus.OK)
                 .body(
                         ResponseDto.fromData(
-                                rows,
+                                data,
+                                HttpStatus.OK,
+                                MessageCommonsConstants.FIND_ALL_SUCCESS_MESSAGE));
+    }
+
+    @PutMapping("/partner-platform-settings")
+    @Operation(summary = "Atualiza configuração global de quota de partners em qualquer tela")
+    @SecurityRequirement(name = "jwt")
+    public ResponseEntity<?> updatePartnerPlatformSettings(
+            @Valid @RequestBody UpdatePartnerPlatformSettingsRequestDto body) {
+        authenticatedUserService.validateDeveloper();
+        boolean enabled =
+                partnerPlatformSettingsService.setSlotsAnyLocationEnabled(
+                        Boolean.TRUE.equals(body.getPartnerSlotsAnyLocationEnabled()));
+        PartnerPlatformSettingsResponseDto data = new PartnerPlatformSettingsResponseDto(enabled);
+        return ResponseEntity.status(HttpStatus.OK)
+                .body(
+                        ResponseDto.fromData(
+                                data,
                                 HttpStatus.OK,
                                 MessageCommonsConstants.FIND_ALL_SUCCESS_MESSAGE));
     }
 
     @PutMapping("/clients/{clientId}/permissions")
-    @Operation(summary = "Substitui o conjunto de permissões de um admin ou partner")
+    @Operation(summary = "Substitui o conjunto de permissões de um admin")
     @SecurityRequirement(name = "jwt")
     public ResponseEntity<?> replacePermissions(
             @PathVariable UUID clientId, @Valid @RequestBody UpdatePermissionsRequestDto body) {
@@ -109,23 +121,20 @@ public class DeveloperPermissionControllerImpl {
                 parsed.add(Permission.valueOf(code.trim()));
             }
         }
-        permissionService.replacePermissionsForClient(clientId, parsed, dev.client().getId());
+        permissionService.replacePermissionsForAdmin(clientId, parsed, dev.client().getId());
         return ResponseEntity.noContent().build();
     }
 
     @GetMapping("/permissions/catalog")
-    @Operation(summary = "Lista códigos de permissão disponíveis por role")
+    @Operation(summary = "Lista códigos de permissão disponíveis")
     @SecurityRequirement(name = "jwt")
-    public ResponseEntity<?> permissionCatalog(@RequestParam(required = false) String role) {
+    public ResponseEntity<?> permissionCatalog() {
         authenticatedUserService.validateDeveloper();
-        Role parsedRole = null;
-        if (role != null && !role.isBlank()) {
-            parsedRole = Role.valueOf(role.trim().toUpperCase());
-        }
         List<String> codes =
-                parsedRole != null
-                        ? permissionService.listPermissionCatalogForRole(parsedRole)
-                        : permissionService.listPermissionCatalogForRole(Role.ADMIN);
+                java.util.Arrays.stream(Permission.values())
+                        .map(Enum::name)
+                        .sorted()
+                        .collect(Collectors.toList());
         return ResponseEntity.status(HttpStatus.OK)
                 .body(
                         ResponseDto.fromData(

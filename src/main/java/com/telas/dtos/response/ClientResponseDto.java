@@ -57,11 +57,14 @@ public final class ClientResponseDto implements Serializable {
 
     private final List<String> permissions;
 
+    private final boolean partnerSlotsAnyLocationEnabled;
+
     public ClientResponseDto(
             Client entity,
             List<LinkResponseDto> attachmentUrls,
             List<AdResponseDto> adsUrls,
             List<String> permissions,
+            boolean partnerSlotsAnyLocationEnabled,
             AdRequestClientResponseDto adRequestDto) {
         id = entity.getId();
         businessName = entity.getBusinessName();
@@ -82,5 +85,6 @@ public final class ClientResponseDto implements Serializable {
                 && entity.getSubscriptions().stream().anyMatch(subscription -> SubscriptionStatus.ACTIVE.equals(subscription.getStatus()));
         hasAdRequest = Objects.nonNull(entity.getAdRequest());
         this.permissions = permissions != null ? List.copyOf(permissions) : Collections.emptyList();
+        this.partnerSlotsAnyLocationEnabled = partnerSlotsAnyLocationEnabled;
     }
 }

@@ -5,9 +5,8 @@ import com.telas.entities.Client;
 import com.telas.entities.Monitor;
 import com.telas.entities.MonitorAd;
 import com.telas.entities.SubscriptionMonitor;
-import com.telas.enums.Permission;
+import com.telas.services.PartnerPlatformSettingsService;
 import com.telas.services.PartnerSlotAccessService;
-import com.telas.services.PermissionService;
 import com.telas.shared.constants.SharedConstants;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -16,13 +15,13 @@ import org.springframework.stereotype.Service;
 @RequiredArgsConstructor
 public class PartnerSlotAccessServiceImpl implements PartnerSlotAccessService {
 
-    private final PermissionService permissionService;
+    private final PartnerPlatformSettingsService partnerPlatformSettingsService;
 
     @Override
     public boolean hasGlobalSlotsPermission(Client client) {
         return client != null
                 && client.isPartner()
-                && permissionService.hasPermission(client, Permission.PARTNER_SLOTS_ANY_LOCATION);
+                && partnerPlatformSettingsService.isSlotsAnyLocationEnabled();
     }
 
     @Override

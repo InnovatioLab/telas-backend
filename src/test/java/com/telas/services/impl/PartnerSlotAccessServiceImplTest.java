@@ -6,9 +6,8 @@ import com.telas.entities.Client;
 import com.telas.entities.Monitor;
 import com.telas.entities.MonitorAd;
 import com.telas.entities.MonitorAdPK;
-import com.telas.enums.Permission;
 import com.telas.enums.Role;
-import com.telas.services.PermissionService;
+import com.telas.services.PartnerPlatformSettingsService;
 import com.telas.shared.constants.SharedConstants;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -18,21 +17,18 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.util.HashSet;
-import java.util.Set;
 import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
 class PartnerSlotAccessServiceImplTest {
 
     @Mock
-    private PermissionService permissionService;
+    private PartnerPlatformSettingsService partnerPlatformSettingsService;
 
     @InjectMocks
     private PartnerSlotAccessServiceImpl service;
@@ -63,19 +59,17 @@ class PartnerSlotAccessServiceImplTest {
     }
 
     @Test
-    void usesPartnerQuotaOnOwnMonitorWithoutGlobalPermission() {
+    void usesPartnerQuotaOnOwnMonitorWithoutGlobalSetting() {
         addressOwner.setId(partner.getId());
-        when(permissionService.hasPermission(partner, Permission.PARTNER_SLOTS_ANY_LOCATION))
-                .thenReturn(false);
+        when(partnerPlatformSettingsService.isSlotsAnyLocationEnabled()).thenReturn(false);
 
         assertTrue(service.usesPartnerQuotaOnMonitor(partner, monitor));
         assertFalse(service.hasGlobalSlotsPermission(partner));
     }
 
     @Test
-    void usesPartnerQuotaOnForeignMonitorWithGlobalPermission() {
-        when(permissionService.hasPermission(partner, Permission.PARTNER_SLOTS_ANY_LOCATION))
-                .thenReturn(true);
+    void usesPartnerQuotaOnForeignMonitorWithGlobalSetting() {
+        when(partnerPlatformSettingsService.isSlotsAnyLocationEnabled()).thenReturn(true);
 
         assertTrue(service.hasGlobalSlotsPermission(partner));
         assertTrue(service.usesPartnerQuotaOnMonitor(partner, monitor));
@@ -83,35 +77,31 @@ class PartnerSlotAccessServiceImplTest {
     }
 
     @Test
-    void foreignMonitorWithoutPermissionUsesClientCap() {
-        when(permissionService.hasPermission(partner, Permission.PARTNER_SLOTS_ANY_LOCATION))
-                .thenReturn(false);
+    void foreignMonitorWithoutGlobalSettingUsesClientCap() {
+        when(partnerPlatformSettingsService.isSlotsAnyLocationEnabled()).thenReturn(false);
 
         assertFalse(service.usesPartnerQuotaOnMonitor(partner, monitor));
         assertEquals(1, service.maxBlocksForClientOnMonitor(partner, monitor));
     }
 
     @Test
-    void canAddFiveBlocksOnForeignMonitorWithPermission() {
-        when(permissionService.hasPermission(partner, Permission.PARTNER_SLOTS_ANY_LOCATION))
-                .thenReturn(true);
+    void canAddFiveBlocksOnForeignMonitorWithGlobalSetting() {
+        when(partnerPlatformSettingsService.isSlotsAnyLocationEnabled()).thenReturn(true);
 
         assertTrue(service.canAddBlocks(partner, monitor, 5));
         assertFalse(service.canAddBlocks(partner, monitor, 6));
     }
 
     @Test
-    void resolveCartBlockQuantityReturnsFiveForPermittedPartner() {
-        when(permissionService.hasPermission(partner, Permission.PARTNER_SLOTS_ANY_LOCATION))
-                .thenReturn(true);
+    void resolveCartBlockQuantityReturnsFiveForAllPartnersWhenGlobalEnabled() {
+        when(partnerPlatformSettingsService.isSlotsAnyLocationEnabled()).thenReturn(true);
 
         assertEquals(5, service.resolveCartBlockQuantity(partner, monitor, null));
     }
 
     @Test
     void usedBlocksCountsPartnerAdsOnMonitor() {
-        when(permissionService.hasPermission(partner, Permission.PARTNER_SLOTS_ANY_LOCATION))
-                .thenReturn(true);
+        when(partnerPlatformSettingsService.isSlotsAnyLocationEnabled()).thenReturn(true);
 
         Ad ad = new Ad();
         ad.setClient(partner);
