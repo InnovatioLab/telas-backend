@@ -21,4 +21,7 @@ public class PlatformSettings {
 
     @Column(name = "partner_slots_any_location_enabled", nullable = false)
     private boolean partnerSlotsAnyLocationEnabled = false;
+
+    @Column(name = "admin_can_create_partner_enabled", nullable = false)
+    private boolean adminCanCreatePartnerEnabled = false;
 }

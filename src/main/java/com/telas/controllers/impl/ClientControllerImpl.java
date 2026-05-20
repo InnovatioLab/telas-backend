@@ -250,6 +250,15 @@ public class ClientControllerImpl implements ClientController {
     }
 
     @Override
+    @PatchMapping("/{id}/restore-deleted")
+    @SecurityRequirement(name = "jwt")
+    public ResponseEntity<?> restoreSoftDeletedClientByDeveloper(@PathVariable(name = "id") UUID clientId) {
+        service.restoreSoftDeletedClientByDeveloper(clientId);
+        return ResponseEntity.status(HttpStatus.OK)
+                .body(ResponseDto.fromData(null, HttpStatus.OK, MessageCommonsConstants.UPDATE_SUCCESS_MESSAGE));
+    }
+
+    @Override
     @GetMapping("/{id}/permanent-deletion-requirements")
     @SecurityRequirement(name = "jwt")
     public ResponseEntity<?> getPermanentDeletionRequirements(@PathVariable(name = "id") UUID clientId) {

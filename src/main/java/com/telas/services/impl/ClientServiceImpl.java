@@ -434,7 +434,8 @@ public class ClientServiceImpl implements ClientService {
 	@Override
 	@Transactional
 	public ClientMinResponseDto createPartnerByAdmin(CreatePartnerRequestDto request) {
-		Client admin = authenticatedUserService.validateAdmin().client();
+		Client actor = authenticatedUserService.validateAdmin().client();
+		validateCreatePartnerByAdminAccess(actor);
 		helper.validateClientRequest(request, null);
 
 		PasswordRequestDto passwordRequest = new PasswordRequestDto(request.getPassword(), request.getConfirmPassword());
@@ -450,8 +451,8 @@ public class ClientServiceImpl implements ClientService {
 		VerificationCode verificationCode = verificationCodeService.savePreValidated(CodeType.PASSWORD, client);
 		client.setVerificationCode(verificationCode);
 
-		CustomRevisionListener.setUsername(admin.getBusinessName());
-		client.setUsernameCreate(admin.getBusinessName());
+		CustomRevisionListener.setUsername(actor.getBusinessName());
+		client.setUsernameCreate(actor.getBusinessName());
 
 		Client savedPartner = repository.save(client);
 		notifyAdminsNewPartnerCreated(savedPartner);
@@ -527,6 +528,28 @@ public class ClientServiceImpl implements ClientService {
 		}
 		CustomRevisionListener.setUsername(actor.getBusinessName());
 		target.setStatus(DefaultStatus.DELETED);
+		target.setUsernameUpdate(actor.getBusinessName());
+		repository.save(target);
+	}
+
+	@Override
+	@Transactional
+	public void restoreSoftDeletedClientByDeveloper(UUID clientId) {
+		authenticatedUserService.validatePermission(Permission.ADMIN_CLIENTS_RESTORE_DELETED);
+		Client actor = authenticatedUserService.getLoggedUser().client();
+		Client target = repository.findById(clientId)
+				.orElseThrow(() -> new ResourceNotFoundException(ClientValidationMessages.USER_NOT_FOUND));
+		if (target.getId().equals(actor.getId())) {
+			throw new ForbiddenException(ClientValidationMessages.CANNOT_DEACTIVATE_USER);
+		}
+		if (target.isAdmin() || target.isDeveloper()) {
+			throw new ForbiddenException(ClientValidationMessages.CANNOT_DEACTIVATE_USER);
+		}
+		if (!DefaultStatus.DELETED.equals(target.getStatus())) {
+			throw new ForbiddenException(ClientValidationMessages.CLIENT_NOT_DELETED);
+		}
+		CustomRevisionListener.setUsername(actor.getBusinessName());
+		target.setStatus(DefaultStatus.ACTIVE);
 		target.setUsernameUpdate(actor.getBusinessName());
 		repository.save(target);
 	}
@@ -650,6 +673,8 @@ public class ClientServiceImpl implements ClientService {
 		Page<Client> page = repository.findAll(filter, pageable);
 		boolean canDeactivate = permissionService.hasPermission(actor, Permission.ADMIN_CLIENTS_DEACTIVATE);
 		boolean canReactivate = permissionService.hasPermission(actor, Permission.ADMIN_CLIENTS_REACTIVATE);
+		boolean canRestoreDeleted =
+				permissionService.hasPermission(actor, Permission.ADMIN_CLIENTS_RESTORE_DELETED);
 		UUID viewerId = actor.getId();
 
 		List<Client> clients = page.getContent();
@@ -671,6 +696,7 @@ public class ClientServiceImpl implements ClientService {
 						viewerId,
 						canDeactivate,
 						canReactivate,
+						canRestoreDeleted,
 						adsCountByPartnerId.get(c.getId())
 				))
 				.toList();
@@ -937,13 +963,36 @@ public class ClientServiceImpl implements ClientService {
 		boolean partnerSlotsAnyLocationEnabled =
 				Role.PARTNER.equals(client.getRole()) && partnerPlatformSettingsService.isSlotsAnyLocationEnabled();
 
+		boolean adminCanCreatePartnerEnabled = resolveAdminCanCreatePartnerEnabled(client);
+
 		return new ClientResponseDto(
 				client,
 				attachmentLinks,
 				ads,
 				permissionService.listEffectivePermissionCodesForDisplay(client),
 				partnerSlotsAnyLocationEnabled,
+				adminCanCreatePartnerEnabled,
 				adRequestDto);
+	}
+
+	private void validateCreatePartnerByAdminAccess(Client actor) {
+		if (actor.isDeveloper()) {
+			return;
+		}
+		if (actor.isAdmin() && partnerPlatformSettingsService.isAdminCanCreatePartnerEnabled()) {
+			return;
+		}
+		throw new ForbiddenException(ClientValidationMessages.ADMIN_CREATE_PARTNER_DISABLED);
+	}
+
+	private boolean resolveAdminCanCreatePartnerEnabled(Client client) {
+		if (!client.isPrivilegedPanelUser()) {
+			return false;
+		}
+		if (client.isDeveloper()) {
+			return true;
+		}
+		return partnerPlatformSettingsService.isAdminCanCreatePartnerEnabled();
 	}
 
 

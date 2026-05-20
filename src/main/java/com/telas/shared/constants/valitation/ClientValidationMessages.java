@@ -27,10 +27,13 @@ public final class ClientValidationMessages {
     public static final String AD_REQUEST_NOT_FOUND = "Client does not have an AdRequest.";
     public static final String CANNOT_DEACTIVATE_USER = "This user cannot be deactivated.";
     public static final String CLIENT_NOT_INACTIVE = "This account is not inactive.";
+    public static final String CLIENT_NOT_DELETED = "This account is not marked as deleted.";
     public static final String ONLY_INACTIVATOR_CAN_REACTIVATE =
             "Only the user who deactivated this account can reactivate it.";
     public static final String PERMANENT_DELETE_REQUIRES_MONITOR_SUCCESSOR =
             "This account has screens (monitors) linked. Choose which client will inherit those screens before permanent deletion.";
     public static final String PERMANENT_DELETE_MONITOR_SUCCESSOR_INVALID =
             "Invalid successor client: must be active, not this account, and cannot be an admin or developer.";
+    public static final String ADMIN_CREATE_PARTNER_DISABLED =
+            "Partner creation by administrators is disabled. Contact a developer.";
 }

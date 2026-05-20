@@ -11,8 +11,11 @@ import com.telas.enums.DefaultStatus;
 import com.telas.enums.NotificationReference;
 import com.telas.enums.Role;
 import com.telas.helpers.ClientHelper;
+import com.telas.infra.exceptions.ForbiddenException;
 import com.telas.infra.security.model.AuthenticatedUser;
 import com.telas.infra.security.services.AuthenticatedUserService;
+import com.telas.services.PartnerPlatformSettingsService;
+import com.telas.shared.constants.valitation.ClientValidationMessages;
 import com.telas.repositories.AdMessageRepository;
 import com.telas.repositories.AdRepository;
 import com.telas.repositories.AdRequestRepository;
@@ -38,6 +41,7 @@ import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
@@ -78,18 +82,21 @@ class ClientServiceImplCreatePartnerTest {
     private NotificationService notificationService;
     @Mock
     private AdRepository adRepository;
+    @Mock
+    private PartnerPlatformSettingsService partnerPlatformSettingsService;
 
     @InjectMocks
     private ClientServiceImpl service;
 
     @Test
-    void createPartnerByAdmin_mustCreateActivePartnerWithAdminPassword() {
+    void createPartnerByAdmin_whenAdminAndSettingEnabled_mustCreatePartner() {
         ReflectionTestUtils.setField(service, "frontBaseUrl", "https://front.test");
 
         Client admin = new Client();
         admin.setBusinessName("Admin Corp");
         admin.setRole(Role.ADMIN);
         when(authenticatedUserService.validateAdmin()).thenReturn(new AuthenticatedUser(admin));
+        when(partnerPlatformSettingsService.isAdminCanCreatePartnerEnabled()).thenReturn(true);
 
         VerificationCode verificationCode = new VerificationCode("123456", java.time.Instant.now().plusSeconds(900), CodeType.PASSWORD);
         verificationCode.setValidated(true);
@@ -132,6 +139,50 @@ class ClientServiceImplCreatePartnerTest {
                 eq(admin),
                 any(),
                 eq(true));
+    }
+
+    @Test
+    void createPartnerByAdmin_whenAdminAndSettingDisabled_mustReject() {
+        Client admin = new Client();
+        admin.setRole(Role.ADMIN);
+        when(authenticatedUserService.validateAdmin()).thenReturn(new AuthenticatedUser(admin));
+        when(partnerPlatformSettingsService.isAdminCanCreatePartnerEnabled()).thenReturn(false);
+
+        ForbiddenException ex =
+                assertThrows(
+                        ForbiddenException.class,
+                        () -> service.createPartnerByAdmin(buildRequest()));
+
+        assertEquals(ClientValidationMessages.ADMIN_CREATE_PARTNER_DISABLED, ex.getMessage());
+    }
+
+    @Test
+    void createPartnerByAdmin_whenDeveloper_mustIgnoreSetting() {
+        ReflectionTestUtils.setField(service, "frontBaseUrl", "https://front.test");
+
+        Client developer = new Client();
+        developer.setBusinessName("Dev");
+        developer.setRole(Role.DEVELOPER);
+        when(authenticatedUserService.validateAdmin()).thenReturn(new AuthenticatedUser(developer));
+
+        VerificationCode verificationCode = new VerificationCode("123456", java.time.Instant.now().plusSeconds(900), CodeType.PASSWORD);
+        verificationCode.setValidated(true);
+        when(verificationCodeService.savePreValidated(eq(CodeType.PASSWORD), any(Client.class))).thenReturn(verificationCode);
+        when(passwordEncoder.encode("PartnerPass1!")).thenReturn("hashed-password");
+        when(repository.save(any(Client.class))).thenAnswer(invocation -> {
+            Client saved = invocation.getArgument(0);
+            saved.setId(java.util.UUID.randomUUID());
+            Contact contact = new Contact();
+            contact.setEmail("partner@example.com");
+            saved.setContact(contact);
+            return saved;
+        });
+        when(repository.findAllAdmins()).thenReturn(List.of());
+
+        var response = service.createPartnerByAdmin(buildRequest());
+
+        assertEquals(Role.PARTNER, response.getRole());
+        verify(partnerPlatformSettingsService, never()).isAdminCanCreatePartnerEnabled();
     }
 
     private static CreatePartnerRequestDto buildRequest() {

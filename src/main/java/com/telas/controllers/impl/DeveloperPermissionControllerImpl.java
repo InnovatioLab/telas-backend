@@ -81,7 +81,8 @@ public class DeveloperPermissionControllerImpl {
         authenticatedUserService.validateDeveloper();
         PartnerPlatformSettingsResponseDto data =
                 new PartnerPlatformSettingsResponseDto(
-                        partnerPlatformSettingsService.isSlotsAnyLocationEnabled());
+                        partnerPlatformSettingsService.isSlotsAnyLocationEnabled(),
+                        partnerPlatformSettingsService.isAdminCanCreatePartnerEnabled());
         return ResponseEntity.status(HttpStatus.OK)
                 .body(
                         ResponseDto.fromData(
@@ -96,10 +97,14 @@ public class DeveloperPermissionControllerImpl {
     public ResponseEntity<?> updatePartnerPlatformSettings(
             @Valid @RequestBody UpdatePartnerPlatformSettingsRequestDto body) {
         authenticatedUserService.validateDeveloper();
-        boolean enabled =
+        boolean slotsEnabled =
                 partnerPlatformSettingsService.setSlotsAnyLocationEnabled(
                         Boolean.TRUE.equals(body.getPartnerSlotsAnyLocationEnabled()));
-        PartnerPlatformSettingsResponseDto data = new PartnerPlatformSettingsResponseDto(enabled);
+        boolean adminCreateEnabled =
+                partnerPlatformSettingsService.setAdminCanCreatePartnerEnabled(
+                        Boolean.TRUE.equals(body.getAdminCanCreatePartnerEnabled()));
+        PartnerPlatformSettingsResponseDto data =
+                new PartnerPlatformSettingsResponseDto(slotsEnabled, adminCreateEnabled);
         return ResponseEntity.status(HttpStatus.OK)
                 .body(
                         ResponseDto.fromData(

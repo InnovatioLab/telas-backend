@@ -45,4 +45,23 @@ class PartnerPlatformSettingsServiceImplTest {
         verify(platformSettingsRepository).save(captor.capture());
         assertTrue(captor.getValue().isPartnerSlotsAnyLocationEnabled());
     }
+
+    @Test
+    void returnsFalseForAdminCreatePartnerWhenRowMissing() {
+        when(platformSettingsRepository.findById((short) 1)).thenReturn(Optional.empty());
+        assertFalse(service.isAdminCanCreatePartnerEnabled());
+    }
+
+    @Test
+    void persistsAdminCreatePartnerFlag() {
+        PlatformSettings row = new PlatformSettings();
+        row.setId((short) 1);
+        when(platformSettingsRepository.findById((short) 1)).thenReturn(Optional.of(row));
+
+        assertTrue(service.setAdminCanCreatePartnerEnabled(true));
+
+        ArgumentCaptor<PlatformSettings> captor = ArgumentCaptor.forClass(PlatformSettings.class);
+        verify(platformSettingsRepository).save(captor.capture());
+        assertTrue(captor.getValue().isAdminCanCreatePartnerEnabled());
+    }
 }

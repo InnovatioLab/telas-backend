@@ -184,6 +184,8 @@ public interface ClientController {
 
     ResponseEntity<?> softDeleteClientByDeveloper(UUID clientId);
 
+    ResponseEntity<?> restoreSoftDeletedClientByDeveloper(UUID clientId);
+
     ResponseEntity<?> getPermanentDeletionRequirements(UUID clientId);
 
     ResponseEntity<?> permanentlyDeleteClientByDeveloper(

@@ -78,6 +78,8 @@ public interface ClientService {
 
     void softDeleteClientByDeveloper(UUID clientId);
 
+    void restoreSoftDeletedClientByDeveloper(UUID clientId);
+
     PermanentDeletionRequirementsDto getPermanentDeletionRequirements(UUID clientId);
 
     void permanentlyDeleteClientByDeveloper(UUID clientId, PermanentDeleteClientRequestDto request);

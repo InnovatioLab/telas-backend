@@ -44,6 +44,8 @@ public final class ClientMinResponseDto implements Serializable {
 
     private final boolean reactivatableByCurrentUser;
 
+    private final boolean restorableFromDeletedByCurrentUser;
+
     public ClientMinResponseDto(Client entity) {
         this(entity, null, false);
     }
@@ -61,11 +63,12 @@ public final class ClientMinResponseDto implements Serializable {
         createdAt = entity.getCreatedAt();
         updatedAt = entity.getUpdatedAt();
         reactivatableByCurrentUser = computeReactivatable(entity, false);
+        restorableFromDeletedByCurrentUser = computeRestorableFromDeleted(entity, false);
     }
 
     public ClientMinResponseDto(
             Client entity, UUID viewerClientId, boolean hasDeactivatePermission, Integer approvedAdsCount) {
-        this(entity, viewerClientId, hasDeactivatePermission, false, approvedAdsCount);
+        this(entity, viewerClientId, hasDeactivatePermission, false, false, approvedAdsCount);
     }
 
     public ClientMinResponseDto(
@@ -73,6 +76,7 @@ public final class ClientMinResponseDto implements Serializable {
             UUID viewerClientId,
             boolean hasDeactivatePermission,
             boolean hasReactivatePermission,
+            boolean hasRestoreDeletedPermission,
             Integer approvedAdsCount) {
         id = entity.getId();
         businessName = entity.getBusinessName();
@@ -86,6 +90,8 @@ public final class ClientMinResponseDto implements Serializable {
         createdAt = entity.getCreatedAt();
         updatedAt = entity.getUpdatedAt();
         reactivatableByCurrentUser = computeReactivatable(entity, hasReactivatePermission);
+        restorableFromDeletedByCurrentUser =
+                computeRestorableFromDeleted(entity, hasRestoreDeletedPermission);
     }
 
     private static boolean computeReactivatable(Client entity, boolean hasReactivatePermission) {
@@ -93,6 +99,19 @@ public final class ClientMinResponseDto implements Serializable {
             return false;
         }
         if (!DefaultStatus.INACTIVE.equals(entity.getStatus())) {
+            return false;
+        }
+        if (entity.isAdmin() || entity.isDeveloper()) {
+            return false;
+        }
+        return true;
+    }
+
+    private static boolean computeRestorableFromDeleted(Client entity, boolean hasRestoreDeletedPermission) {
+        if (!hasRestoreDeletedPermission) {
+            return false;
+        }
+        if (!DefaultStatus.DELETED.equals(entity.getStatus())) {
             return false;
         }
         if (entity.isAdmin() || entity.isDeveloper()) {

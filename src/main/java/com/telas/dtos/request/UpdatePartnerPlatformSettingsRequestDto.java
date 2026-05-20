@@ -17,4 +17,7 @@ public class UpdatePartnerPlatformSettingsRequestDto implements Serializable {
 
     @NotNull
     private Boolean partnerSlotsAnyLocationEnabled;
+
+    @NotNull
+    private Boolean adminCanCreatePartnerEnabled;
 }
