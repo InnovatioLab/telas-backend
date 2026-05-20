@@ -6,6 +6,7 @@ import com.telas.dtos.request.AdMessageRequestDto;
 import com.telas.dtos.request.BusinessQuestionnaireAnswersRequestDto;
 import com.telas.dtos.request.ClientAdRequestToAdminDto;
 import com.telas.dtos.request.ClientRequestDto;
+import com.telas.dtos.request.CreatePartnerRequestDto;
 import com.telas.dtos.request.RefusedAdRequestDto;
 import com.telas.dtos.request.PermanentDeleteClientRequestDto;
 import com.telas.dtos.request.filters.ClientFilterRequestDto;
@@ -432,6 +433,34 @@ public class ClientServiceImpl implements ClientService {
 
 	@Override
 	@Transactional
+	public ClientMinResponseDto createPartnerByAdmin(CreatePartnerRequestDto request) {
+		Client admin = authenticatedUserService.validateAdmin().client();
+		helper.validateClientRequest(request, null);
+
+		PasswordRequestDto passwordRequest = new PasswordRequestDto(request.getPassword(), request.getConfirmPassword());
+		passwordRequest.validate();
+
+		Client client = new Client(request);
+		helper.verifyAddressesUnique(request.getAddresses(), client);
+
+		client.setRole(Role.PARTNER);
+		client.setStatus(DefaultStatus.ACTIVE);
+		client.setPassword(passwordEncoder.encode(passwordRequest.getPassword()));
+
+		VerificationCode verificationCode = verificationCodeService.savePreValidated(CodeType.PASSWORD, client);
+		client.setVerificationCode(verificationCode);
+
+		CustomRevisionListener.setUsername(admin.getBusinessName());
+		client.setUsernameCreate(admin.getBusinessName());
+
+		Client savedPartner = repository.save(client);
+		notifyAdminsNewPartnerCreated(savedPartner);
+
+		return new ClientMinResponseDto(savedPartner);
+	}
+
+	@Override
+	@Transactional
 	public void deactivateClientByDeveloper(UUID clientId) {
 		authenticatedUserService.validatePermission(Permission.ADMIN_CLIENTS_DEACTIVATE);
 		Client actor = authenticatedUserService.getLoggedUser().client();
@@ -798,6 +827,24 @@ public class ClientServiceImpl implements ClientService {
 	}
 
 
+
+	private void notifyAdminsNewPartnerCreated(Client partner) {
+		if (partner == null || !Role.PARTNER.equals(partner.getRole())) {
+			return;
+		}
+		String contactEmail = "";
+		if (partner.getContact() != null && partner.getContact().getEmail() != null) {
+			contactEmail = partner.getContact().getEmail();
+		}
+		String adminLink = frontBaseUrl + "/admin/clients/" + partner.getId();
+		Map<String, String> params = new HashMap<>();
+		params.put("businessName", partner.getBusinessName() != null ? partner.getBusinessName() : "");
+		params.put("contactEmail", contactEmail);
+		params.put("clientId", partner.getId().toString());
+		params.put("link", adminLink);
+		repository.findAllAdmins().forEach(admin ->
+			notificationService.save(NotificationReference.ADMIN_NEW_CLIENT_REGISTERED, admin, new HashMap<>(params), true));
+	}
 
 	private void sendContactConfirmationEmail(Client client, VerificationCode verificationCode) {
 		Map<String, String> params = new HashMap<>();

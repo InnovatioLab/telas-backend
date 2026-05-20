@@ -35,6 +35,15 @@ public class VerificationCodeServiceImpl implements VerificationCodeService {
 
     @Override
     @Transactional
+    public VerificationCode savePreValidated(CodeType type, Client client) {
+        VerificationCode verificationCode = save(type, client);
+        verificationCode.setValidated(true);
+        repository.save(verificationCode);
+        return verificationCode;
+    }
+
+    @Override
+    @Transactional
     public void validate(Client client, String code) {
         Instant now = Instant.now();
         Instant expiresAt = client.getVerificationCode().getExpiresAt();

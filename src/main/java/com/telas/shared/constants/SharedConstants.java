@@ -15,6 +15,8 @@ public final class SharedConstants {
     public static final String TEMPLATE_EMAIL_CONTACT_VERIFICATION = "email_contact_confirmation.ftlh";
     public static final String TEMPLATE_EMAIL_RESET_PASSWORD = "email_reset_password.ftlh";
     public static final String EMAIL_SUBJECT_RESET_PASSWORD = "Password Reset - Telas";
+    public static final String TEMPLATE_EMAIL_PARTNER_INVITE = "email_partner_invite.ftlh";
+    public static final String EMAIL_SUBJECT_PARTNER_INVITE = "Partner Account Setup - Telas";
     public static final String TEMPLATE_EMAIL_FIRST_SUBSCRIPTION = "email_first_subscription.ftlh";
     public static final String EMAIL_SUBJECT_FIRST_SUBSCRIPTION = "Your Ad service Purchase is Confirmed";
     public static final String TEMPLATE_EMAIL_SUBSCRIPTION_EXPIRING_REMINDER = "email_subscription_about_expire_reminder.ftlh";

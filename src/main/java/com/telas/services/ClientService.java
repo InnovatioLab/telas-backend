@@ -4,6 +4,7 @@ import com.telas.dtos.request.AttachmentRequestDto;
 import com.telas.dtos.request.BusinessQuestionnaireAnswersRequestDto;
 import com.telas.dtos.request.ClientAdRequestToAdminDto;
 import com.telas.dtos.request.ClientRequestDto;
+import com.telas.dtos.request.CreatePartnerRequestDto;
 import com.telas.dtos.request.AdMessageRequestDto;
 import com.telas.dtos.request.RefusedAdRequestDto;
 import com.telas.dtos.request.PermanentDeleteClientRequestDto;
@@ -68,6 +69,8 @@ public interface ClientService {
     void acceptTermsAndConditions();
 
     void changeRoleToPartner(UUID clientId);
+
+    ClientMinResponseDto createPartnerByAdmin(CreatePartnerRequestDto request);
 
     void deactivateClientByDeveloper(UUID clientId);
 

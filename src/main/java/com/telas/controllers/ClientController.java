@@ -5,6 +5,7 @@ import com.telas.dtos.request.AdMessageRequestDto;
 import com.telas.dtos.request.BusinessQuestionnaireAnswersRequestDto;
 import com.telas.dtos.request.ClientAdRequestToAdminDto;
 import com.telas.dtos.request.ClientRequestDto;
+import com.telas.dtos.request.CreatePartnerRequestDto;
 import com.telas.dtos.request.PermanentDeleteClientRequestDto;
 import com.telas.dtos.request.RefusedAdRequestDto;
 import com.telas.dtos.request.filters.ClientFilterRequestDto;
@@ -168,6 +169,14 @@ public interface ClientController {
             @ApiResponse(responseCode = "404", description = "Client not found."),
     })
     ResponseEntity<?> changeRoleToPartner(UUID clientId);
+
+    @Operation(summary = "Endpoint contract for admin to create a partner account", responses = {
+            @ApiResponse(responseCode = "201", description = "Partner created successfully."),
+            @ApiResponse(responseCode = "401", description = "Unauthorized."),
+            @ApiResponse(responseCode = "403", description = "Forbidden."),
+            @ApiResponse(responseCode = "422", description = "Request with invalid data."),
+    })
+    ResponseEntity<?> createPartnerByAdmin(@Valid @RequestBody CreatePartnerRequestDto request);
 
     ResponseEntity<?> deactivateClientByDeveloper(UUID clientId);
 

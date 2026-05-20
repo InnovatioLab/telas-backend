@@ -125,6 +125,17 @@ public class EmailServiceImpl implements EmailService {
                             recipient,
                             subject);
         }
+        if (SharedConstants.TEMPLATE_EMAIL_PARTNER_INVITE.equals(template)) {
+            return success
+                    ? String.format(
+                            "Partner invite: setup email sent to %s (subject: %s)",
+                            recipient,
+                            subject)
+                    : String.format(
+                            "Partner invite: failed to send setup email to %s (subject: %s)",
+                            recipient,
+                            subject);
+        }
         if (SharedConstants.TEMPLATE_EMAIL_CONTACT_VERIFICATION.equals(template)) {
             return success
                     ? String.format(
@@ -188,6 +199,9 @@ public class EmailServiceImpl implements EmailService {
     private static String resolveEmailPurpose(String template) {
         if (SharedConstants.TEMPLATE_EMAIL_RESET_PASSWORD.equals(template)) {
             return "PASSWORD_RECOVERY";
+        }
+        if (SharedConstants.TEMPLATE_EMAIL_PARTNER_INVITE.equals(template)) {
+            return "PARTNER_INVITE";
         }
         if (SharedConstants.TEMPLATE_EMAIL_CONTACT_VERIFICATION.equals(template)) {
             return "CONTACT_VERIFICATION";

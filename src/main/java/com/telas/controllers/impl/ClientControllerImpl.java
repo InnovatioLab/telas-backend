@@ -6,6 +6,7 @@ import com.telas.dtos.request.AdMessageRequestDto;
 import com.telas.dtos.request.BusinessQuestionnaireAnswersRequestDto;
 import com.telas.dtos.request.ClientAdRequestToAdminDto;
 import com.telas.dtos.request.ClientRequestDto;
+import com.telas.dtos.request.CreatePartnerRequestDto;
 import com.telas.dtos.request.RefusedAdRequestDto;
 import com.telas.dtos.request.PermanentDeleteClientRequestDto;
 import com.telas.dtos.request.filters.ClientFilterRequestDto;
@@ -210,6 +211,15 @@ public class ClientControllerImpl implements ClientController {
         service.changeRoleToPartner(clientId);
         return ResponseEntity.status(HttpStatus.OK)
                 .body(ResponseDto.fromData(null, HttpStatus.OK, MessageCommonsConstants.UPDATE_SUCCESS_MESSAGE));
+    }
+
+    @Override
+    @PostMapping("/partner")
+    @SecurityRequirement(name = "jwt")
+    public ResponseEntity<?> createPartnerByAdmin(@Valid @RequestBody CreatePartnerRequestDto request) {
+        ClientMinResponseDto created = service.createPartnerByAdmin(request);
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(ResponseDto.fromData(created, HttpStatus.CREATED, MessageCommonsConstants.SAVE_SUCCESS_MESSAGE));
     }
 
     @Override

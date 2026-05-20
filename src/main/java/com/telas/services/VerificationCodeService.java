@@ -8,6 +8,8 @@ import com.telas.enums.CodeType;
 public interface VerificationCodeService {
   VerificationCode save(CodeType type, Client client);
 
+  VerificationCode savePreValidated(CodeType type, Client client);
+
   void validate(Client client, String code);
 
   void send(EmailDataDto emailData);
