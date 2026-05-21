@@ -236,7 +236,9 @@ public class AdminAdOperationsServiceImpl implements AdminAdOperationsService {
                 continue;
             }
             List<UpdateBoxMonitorsAdRequestDto> playlist = monitorHelper.buildOrderedBoxUpdateDtos(monitor);
-            monitorHelper.syncBoxAdsPlaylist(monitor, playlist);
+            if (monitorHelper.syncBoxAdsPlaylist(monitor, playlist).isEmpty()) {
+                continue;
+            }
             synced = true;
         }
         if (!synced) {

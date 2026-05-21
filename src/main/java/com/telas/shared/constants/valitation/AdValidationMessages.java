@@ -18,5 +18,5 @@ public final class AdValidationMessages {
   public static final String AD_NOT_PLACED_ON_MONITOR =
           "Ad must be placed on a monitor before sending to the box";
   public static final String BOX_DISPATCH_NOT_AVAILABLE =
-          "No monitor linked to this ad is ready to receive a box sync";
+          "Could not sync to the box: monitor has no active box with IP, or the box did not accept the playlist";
 }
