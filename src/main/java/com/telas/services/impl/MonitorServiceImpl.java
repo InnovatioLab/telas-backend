@@ -315,19 +315,22 @@ public class MonitorServiceImpl implements MonitorService {
 			throw new ForbiddenException(AuthValidationMessageConstants.ERROR_NO_PERMISSION);
 		}
 		LinkedHashSet<UUID> monitorIds = new LinkedHashSet<>();
-		repository.findAllByAddressClientId(partner.getId()).forEach(m -> monitorIds.add(m.getId()));
-		monitorAdRepository.findDistinctMonitorIdsByAdvertiserClientId(partner.getId()).forEach(monitorIds::add);
+		monitorAdRepository.findDistinctMonitorIdsByAdvertiserClientIdOnAir(partner.getId()).forEach(monitorIds::add);
 
 		return monitorIds.stream()
 				.map(this::findEntityById)
 				.map(monitor -> {
 					List<MonitorAdResponseDto> myAds = helper.getPartnerAdvertiserAdsOnMonitor(monitor, partner.getId());
+					if (myAds.isEmpty()) {
+						return null;
+					}
 					return new MonitorResponseDto(
 							monitor,
 							myAds,
 							adRepository.countAllApprovedNotInMonitor(monitor.getId()),
 							myAds.size());
 				})
+				.filter(Objects::nonNull)
 				.toList();
 	}
 

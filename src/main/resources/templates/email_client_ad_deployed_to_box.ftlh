@@ -52,7 +52,11 @@
                 <td style="padding-top: 8px;">
                     <#assign linkPlain = link!"">
                     <#if linkPlain?has_content>
+                    <#if partner?? && partner == "true">
+                    <a href="${linkPlain}" style="color: #075473; font-weight: 600;">Open My screens</a>
+                    <#else>
                     <a href="${linkPlain}" style="color: #075473; font-weight: 600;">Open My Telas — Ads</a>
+                    </#if>
                     </#if>
                 </td>
             </tr>

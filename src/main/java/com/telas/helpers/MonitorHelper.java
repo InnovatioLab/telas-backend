@@ -116,7 +116,9 @@ public class MonitorHelper {
 		return entity.getMonitorAds().stream()
 				.filter(ma -> ma.getAd() != null
 						&& ma.getAd().getClient() != null
-						&& partnerId.equals(ma.getAd().getClient().getId()))
+						&& partnerId.equals(ma.getAd().getClient().getId())
+						&& ma.getAd().getOnAirNotifiedAt() != null
+						&& com.telas.enums.AdValidationType.APPROVED.equals(ma.getAd().getValidation()))
 				.map(monitorAd -> {
 					MonitorAdResponseDto dto = new MonitorAdResponseDto(
 							monitorAd,
@@ -124,6 +126,9 @@ public class MonitorHelper {
 					);
 					if (monitorAd.getAd().getValidation() != null) {
 						dto.setValidation(monitorAd.getAd().getValidation().name());
+					}
+					if (monitorAd.getAd().getOnAirNotifiedAt() != null) {
+						dto.setOnAirSince(monitorAd.getAd().getOnAirNotifiedAt());
 					}
 					UUID clientId = monitorAd.getAd().getClient().getId();
 					SubscriptionMonitor sm = activeSubscriptionByClientId.get(clientId);

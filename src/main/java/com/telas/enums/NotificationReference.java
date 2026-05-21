@@ -211,13 +211,32 @@ public enum NotificationReference {
         @Override
         public String getNotificationMessage(Map<String, String> params) {
             String adName = params.getOrDefault("adName", "your ad");
+            String link = params.getOrDefault("link", "#");
+            if ("true".equals(params.get("partner"))) {
+                if ("true".equals(params.get("liveOnScreen"))) {
+                    return String.format("""
+                            <div class="informacoes">
+                                <h4 id="notification-title" class="notification-title">Ad approved</h4>
+                                <p>Thanks! You approved <strong>%s</strong>. It is on your screen playlist.</p>
+                            </div>
+                            <p>Open <a id="link-details" class='details link-text' href="%s">My screens</a> to view live ads.</p>
+                            """, adName, link);
+                }
+                return String.format("""
+                        <div class="informacoes">
+                            <h4 id="notification-title" class="notification-title">Ad approved</h4>
+                            <p>Thanks! You approved <strong>%s</strong>. Our team will publish it to the screen next.</p>
+                        </div>
+                        <p>You can track status under <a id="link-details" class='details link-text' href="%s">Review ads</a>.</p>
+                        """, adName, link);
+            }
             return String.format("""
                     <div class="informacoes">
                         <h4 id="notification-title" class="notification-title">Ad approved</h4>
                         <p>Thanks! You approved <strong>%s</strong>.</p>
                     </div>
                     <p>You can open <a id="link-details" class='details link-text' href="%s">My Telas — Ads</a> anytime.</p>
-                    """, adName, params.getOrDefault("link", "#"));
+                    """, adName, link);
         }
 
         @Override
@@ -287,13 +306,23 @@ public enum NotificationReference {
         @Override
         public String getNotificationMessage(Map<String, String> params) {
             String adName = params.getOrDefault("adName", "your ad");
+            String link = params.getOrDefault("link", "#");
+            if ("true".equals(params.get("partner"))) {
+                return String.format("""
+                        <div class="informacoes">
+                            <h4 id="notification-title" class="notification-title">Your ad is now live</h4>
+                            <p><strong>%s</strong> is now on your screen playlist.</p>
+                        </div>
+                        <p>Open <a id="link-details" class='details link-text' href="%s">My screens</a> to view live ads.</p>
+                        """, adName, link);
+            }
             return String.format("""
                     <div class="informacoes">
                         <h4 id="notification-title" class="notification-title">Your ad is now live</h4>
                         <p><strong>%s</strong> is now running.</p>
                     </div>
                     <p>Open <a id="link-details" class='details link-text' href="%s">My Telas — Ads</a> for details.</p>
-                    """, adName, params.getOrDefault("link", "#"));
+                    """, adName, link);
         }
 
         @Override
@@ -335,6 +364,17 @@ public enum NotificationReference {
             if (!ObjectUtils.isEmpty(ends)) {
                 extra += "<p><strong>Active plan ends:</strong> " + ends + "</p>";
             }
+            String link = params.getOrDefault("link", "#");
+            if ("true".equals(params.get("partner"))) {
+                return String.format("""
+                        <div class="informacoes">
+                            <h4 id="notification-title" class="notification-title">Ad sent to screen</h4>
+                            <p><strong>%s</strong> was published on the screen playlist.</p>
+                            %s
+                        </div>
+                        <p>Open <a id="link-details" class='details link-text' href="%s">My screens</a> to view live ads.</p>
+                        """, adName, extra, link);
+            }
             return String.format("""
                     <div class="informacoes">
                         <h4 id="notification-title" class="notification-title">Ad sent to screen</h4>
@@ -342,7 +382,7 @@ public enum NotificationReference {
                         %s
                     </div>
                     <p>Open <a id="link-details" class='details link-text' href="%s">My Telas — Ads</a>.</p>
-                    """, adName, extra, params.getOrDefault("link", "#"));
+                    """, adName, extra, link);
         }
 
         @Override
@@ -1052,6 +1092,9 @@ public enum NotificationReference {
         emailData.getParams().put("name", params.getOrDefault("name", ""));
         emailData.getParams().put("adName", params.getOrDefault("adName", "Ad"));
         emailData.getParams().put("link", params.getOrDefault("link", ""));
+        emailData.getParams().put("partner", params.getOrDefault("partner", "false"));
+        emailData.getParams().put("liveOnScreen", params.getOrDefault("liveOnScreen", "false"));
+        emailData.getParams().put("linkLabel", params.getOrDefault("linkLabel", "My Telas — Ads"));
         return emailData;
     }
 
@@ -1106,6 +1149,7 @@ public enum NotificationReference {
         emailData.getParams().put("name", params.getOrDefault("name", ""));
         emailData.getParams().put("adName", params.getOrDefault("adName", "Ad"));
         emailData.getParams().put("link", params.getOrDefault("link", ""));
+        emailData.getParams().put("partner", params.getOrDefault("partner", "false"));
         return emailData;
     }
 
@@ -1128,6 +1172,7 @@ public enum NotificationReference {
         emailData.getParams().put("name", params.getOrDefault("name", ""));
         emailData.getParams().put("adName", params.getOrDefault("adName", "Ad"));
         emailData.getParams().put("link", params.getOrDefault("link", ""));
+        emailData.getParams().put("partner", params.getOrDefault("partner", "false"));
         emailData.getParams().put("monitorsSummary", params.getOrDefault("monitorsSummary", ""));
         emailData.getParams().put("subscriptionEndsAt", params.getOrDefault("subscriptionEndsAt", ""));
         return emailData;

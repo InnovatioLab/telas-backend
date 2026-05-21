@@ -346,7 +346,7 @@ public class ClientServiceImpl implements ClientService {
 			attachmentHelper.notifyAdminsClientFirstAttachmentsUploaded(client);
 			Map<String, String> clientAckParams = new HashMap<>();
 			clientAckParams.put("name", client.getBusinessName());
-			String materialsPath = client.isPartner() ? "/client/materials" : "/client/my-telas";
+			String materialsPath = client.isPartner() ? "/client/screens" : "/client/my-telas";
 			clientAckParams.put("link", frontBaseUrl + materialsPath);
 			notificationService.save(
 					NotificationReference.CLIENT_FIRST_ATTACHMENTS_UPLOADED_ACK,

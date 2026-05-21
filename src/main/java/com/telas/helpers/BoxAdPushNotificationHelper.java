@@ -75,13 +75,16 @@ public class BoxAdPushNotificationHelper {
             }
             String monitorsSummary = buildMonitorsSummaryForAd(grouped, successfulBaseUrls, ad.getId());
             String subscriptionEndsAt = formatSubscriptionEnds(client.getId());
-            String clientLink = frontBaseUrl + "/client/my-telas?tab=ads";
+            String clientLink = client.isPartner()
+                    ? frontBaseUrl + "/client/screens"
+                    : frontBaseUrl + "/client/my-telas?tab=ads";
             String adminLink = frontBaseUrl + "/admin/clients/" + client.getId() + "/messages";
 
             Map<String, String> clientParams = new HashMap<>();
             clientParams.put("name", client.getBusinessName());
             clientParams.put("adName", ad.getName());
             clientParams.put("link", clientLink);
+            clientParams.put("partner", client.isPartner() ? "true" : "false");
             clientParams.put("monitorsSummary", monitorsSummary);
             clientParams.put("subscriptionEndsAt", subscriptionEndsAt);
             notificationService.save(NotificationReference.CLIENT_AD_DEPLOYED_TO_BOX, client, clientParams, true);

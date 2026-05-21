@@ -1,6 +1,8 @@
 package com.telas.controllers.impl;
 
+import com.telas.dtos.request.AttachmentRequestDto;
 import com.telas.dtos.request.filters.AdminAdOperationsFilterRequestDto;
+import jakarta.validation.Valid;
 import com.telas.dtos.response.AdminAdOperationRowDto;
 import com.telas.dtos.response.AdminExpiryNotificationDto;
 import com.telas.dtos.response.PaginationResponseDto;
@@ -20,6 +22,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.ModelAttribute;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -70,6 +73,16 @@ public class AdminAdOperationsControllerImpl {
         adminAdOperationsService.deleteApprovedAd(adId);
         return ResponseEntity.status(HttpStatus.OK)
                 .body(ResponseDto.fromData(null, HttpStatus.OK, MessageCommonsConstants.DELETE_SUCCESS_MESSAGE));
+    }
+
+    @PostMapping("/ads/{adId}/deliver-creative-for-partner-review")
+    @SecurityRequirement(name = "jwt")
+    public ResponseEntity<ResponseDto<Void>> deliverPartnerCreativeForReview(
+            @PathVariable UUID adId,
+            @Valid @RequestBody AttachmentRequestDto request) {
+        adminAdOperationsService.deliverPartnerCreativeForReview(adId, request);
+        return ResponseEntity.status(HttpStatus.OK)
+                .body(ResponseDto.fromData(null, HttpStatus.OK, MessageCommonsConstants.UPDATE_SUCCESS_MESSAGE));
     }
 
     @PostMapping("/ads/{adId}/dispatch-to-box")

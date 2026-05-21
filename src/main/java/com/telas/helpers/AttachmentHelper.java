@@ -64,6 +64,8 @@ public class AttachmentHelper {
 
     private final MonitorRepository monitorRepository;
 
+    private final AdOnAirNotificationHelper adOnAirNotificationHelper;
+
     @Value("${front.base.url}")
     private String frontBaseUrl;
 
@@ -406,6 +408,42 @@ public class AttachmentHelper {
     }
 
     @Transactional
+    public void adminDeliverPartnerCreativeForReview(Ad ad, AttachmentRequestDto request, Client admin) {
+        request.validate();
+        if (ad.getClient() == null || !ad.getClient().isPartner()) {
+            throw new BusinessRuleException(AdValidationMessages.AD_NOT_PARTNER_ADVERTISER);
+        }
+        if (!AdValidationType.APPROVED.equals(ad.getValidation())) {
+            throw new BusinessRuleException(AdValidationMessages.AD_MUST_BE_APPROVED_FOR_PARTNER_REVIEW_DELIVERY);
+        }
+
+        CustomRevisionListener.setUsername(admin.getBusinessName());
+        bucketService.deleteAttachment(AttachmentUtils.format(ad));
+        ad.setName(request.getName());
+        ad.setType(request.getType());
+        ad.setValidation(AdValidationType.PENDING);
+        ad.setOnAirNotifiedAt(null);
+        uploadAttachment(request, ad);
+        adRepository.save(ad);
+
+        if (ad.getAdRequest() != null) {
+            ad.getAdRequest().openRequest();
+            adRequestRepository.save(ad.getAdRequest());
+        }
+
+        Client partner = ad.getClient();
+        notificationService.save(
+                NotificationReference.AD_RECEIVED,
+                partner,
+                Map.of(
+                        "name", partner.getBusinessName(),
+                        "link", clientAdsReviewLink(partner)
+                ),
+                true
+        );
+    }
+
+    @Transactional
     public void validateAd(Ad entity, Client actor, AdValidationType validation, RefusedAdRequestDto request) {
         if (AdValidationType.PENDING.equals(validation)) {
             throw new BusinessRuleException(AdValidationMessages.PENDING_VALIDATION_NOT_ACCEPTED);
@@ -435,12 +473,41 @@ public class AttachmentHelper {
         if (AdValidationType.REJECTED.equals(validation)) {
             notifyAdminsClientRejectedAd(entity, request);
         } else if (AdValidationType.APPROVED.equals(validation)) {
-            notifyClientApprovedAd(entity);
-            notifyAdminsClientApprovedAd(entity);
             if (entity.getAdRequest() != null) {
                 attachAdToTargetMonitorIfNeeded(entity, entity.getAdRequest());
             }
             syncMonitorsPlaylistAfterAdApproved(entity);
+            notifyPartnerOnAirAfterApprovalIfEligible(entity);
+            Ad refreshed = adRepository.findByIdWithClientAndAdRequest(entity.getId()).orElse(entity);
+            notifyClientApprovedAd(refreshed);
+            notifyAdminsClientApprovedAd(refreshed);
+        }
+    }
+
+    private void notifyPartnerOnAirAfterApprovalIfEligible(Ad ad) {
+        Client partner = ad.getClient();
+        if (partner == null || !partner.isPartner()) {
+            return;
+        }
+        List<MonitorAd> placements = monitorAdRepository.findByAdIdWithMonitor(ad.getId());
+        if (placements == null || placements.isEmpty()) {
+            return;
+        }
+        Map<UUID, Monitor> monitorsById = new LinkedHashMap<>();
+        for (MonitorAd placement : placements) {
+            Monitor monitor = placement.getMonitor();
+            if (monitor != null && !isForeignPlacementForPartner(partner, monitor)) {
+                monitorsById.putIfAbsent(monitor.getId(), monitor);
+            }
+        }
+        for (Monitor monitor : monitorsById.values()) {
+            if (!monitor.isAbleToSendBoxRequest()) {
+                continue;
+            }
+            List<MonitorAd> adsOnMonitor = placements.stream()
+                    .filter(ma -> ma.getMonitor() != null && monitor.getId().equals(ma.getMonitor().getId()))
+                    .toList();
+            adOnAirNotificationHelper.notifyOnAirForNewMonitorAds(adsOnMonitor, monitor, true, false);
         }
     }
 
@@ -480,12 +547,45 @@ public class AttachmentHelper {
 
     private void notifyClientApprovedAd(Ad entity) {
         Client client = entity.getClient();
-        String clientLink = clientAdsReviewLink(client);
+        boolean partner = client != null && client.isPartner();
+        boolean liveOnScreen = partner && isPartnerAdLiveOnScreen(entity, client);
         Map<String, String> params = new HashMap<>();
         params.put("name", client.getBusinessName());
         params.put("adName", entity.getName());
-        params.put("link", clientLink);
+        params.put("link", resolveClientApprovedConfirmationLink(entity, client, liveOnScreen));
+        params.put("partner", partner ? "true" : "false");
+        params.put("liveOnScreen", liveOnScreen ? "true" : "false");
+        params.put("linkLabel", liveOnScreen ? "My screens" : (partner ? "Review ads" : "My Telas — Ads"));
         notificationService.save(NotificationReference.CLIENT_AD_APPROVED_CONFIRMATION, client, params, true);
+    }
+
+    private boolean isPartnerAdLiveOnScreen(Ad ad, Client partner) {
+        if (ad.getOnAirNotifiedAt() != null) {
+            return true;
+        }
+        List<MonitorAd> placements = monitorAdRepository.findByAdIdWithMonitor(ad.getId());
+        if (placements == null || placements.isEmpty()) {
+            return false;
+        }
+        for (MonitorAd placement : placements) {
+            Monitor monitor = placement.getMonitor();
+            if (monitor == null) {
+                continue;
+            }
+            if (monitor.isAbleToSendBoxRequest()) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private String resolveClientApprovedConfirmationLink(Ad ad, Client client, boolean liveOnScreen) {
+        if (client != null && client.isPartner()) {
+            return liveOnScreen
+                    ? frontBaseUrl + "/client/screens"
+                    : frontBaseUrl + "/client/partner-ads";
+        }
+        return frontBaseUrl + "/client/my-telas?tab=ads";
     }
 
     private void notifyAdminsClientApprovedAd(Ad entity) {

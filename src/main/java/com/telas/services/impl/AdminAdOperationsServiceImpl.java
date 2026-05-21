@@ -1,5 +1,6 @@
 package com.telas.services.impl;
 
+import com.telas.dtos.request.AttachmentRequestDto;
 import com.telas.dtos.request.filters.AdminAdOperationsFilterRequestDto;
 import com.telas.dtos.response.AdminAdOperationRowDto;
 import com.telas.dtos.response.AdminExpiryNotificationDto;
@@ -12,6 +13,7 @@ import com.telas.entities.Notification;
 import com.telas.entities.Subscription;
 import com.telas.enums.NotificationReference;
 import com.telas.enums.SubscriptionStatus;
+import com.telas.helpers.AdOnAirNotificationHelper;
 import com.telas.helpers.MonitorHelper;
 import com.telas.infra.exceptions.BusinessRuleException;
 import com.telas.infra.exceptions.ResourceNotFoundException;
@@ -85,6 +87,7 @@ public class AdminAdOperationsServiceImpl implements AdminAdOperationsService {
     private final AuthenticatedUserService authenticatedUserService;
     private final AttachmentHelper attachmentHelper;
     private final MonitorHelper monitorHelper;
+    private final AdOnAirNotificationHelper adOnAirNotificationHelper;
     private final UnusedSingleAdDeletionService unusedSingleAdDeletionService;
 
     private static String trimOrEmpty(String value) {
@@ -212,6 +215,16 @@ public class AdminAdOperationsServiceImpl implements AdminAdOperationsService {
 
     @Override
     @Transactional
+    public void deliverPartnerCreativeForReview(UUID adId, AttachmentRequestDto request) {
+        authenticatedUserService.validateAdminOrAdsManageAccess();
+        Ad ad = adRepository.findByIdWithClientAndAdRequest(adId)
+                .orElseThrow(() -> new ResourceNotFoundException(AdValidationMessages.AD_NOT_FOUND));
+        Client admin = authenticatedUserService.getLoggedUser().client();
+        attachmentHelper.adminDeliverPartnerCreativeForReview(ad, request, admin);
+    }
+
+    @Override
+    @Transactional
     public void dispatchAdToBox(UUID adId) {
         authenticatedUserService.validateAdminOrAdsManageAccess();
         Ad ad = adRepository.findById(adId)
@@ -239,6 +252,10 @@ public class AdminAdOperationsServiceImpl implements AdminAdOperationsService {
             if (monitorHelper.syncBoxAdsPlaylist(monitor, playlist).isEmpty()) {
                 continue;
             }
+            List<MonitorAd> adsOnMonitor = placements.stream()
+                    .filter(ma -> ma.getMonitor() != null && monitor.getId().equals(ma.getMonitor().getId()))
+                    .toList();
+            adOnAirNotificationHelper.notifyOnAirForNewMonitorAds(adsOnMonitor, monitor, true);
             synced = true;
         }
         if (!synced) {

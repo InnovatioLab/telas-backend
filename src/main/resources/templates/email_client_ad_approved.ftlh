@@ -33,7 +33,16 @@
             <tr>
                 <td style="padding-top: 8px;">
                     <#if link?has_content>
+                    <#if partner?? && partner == "true">
+                        <#if liveOnScreen?? && liveOnScreen == "true">
+                    <a href="${link}" style="color: #075473; font-weight: 600;">Open My screens</a>
+                        <#else>
+                    <p style="margin: 0 0 8px 0;">Our team will publish your ad to the screen soon.</p>
+                    <a href="${link}" style="color: #075473; font-weight: 600;">Review ads</a>
+                        </#if>
+                    <#else>
                     <a href="${link}" style="color: #075473; font-weight: 600;">Open My Telas — Ads</a>
+                    </#if>
                     </#if>
                 </td>
             </tr>

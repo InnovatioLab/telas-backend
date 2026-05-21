@@ -35,10 +35,19 @@ public class AdOnAirNotificationHelper {
     private String frontBaseUrl;
 
     public void notifyOnAirForNewMonitorAds(List<MonitorAd> newMonitorAds, Monitor monitor) {
-        notifyOnAirForNewMonitorAds(newMonitorAds, monitor, true);
+        notifyOnAirForNewMonitorAds(newMonitorAds, monitor, true, true);
     }
 
     public void notifyOnAirForNewMonitorAds(List<MonitorAd> newMonitorAds, Monitor monitor, boolean sendEmailNotifications) {
+        notifyOnAirForNewMonitorAds(newMonitorAds, monitor, sendEmailNotifications, true);
+    }
+
+    public void notifyOnAirForNewMonitorAds(
+            List<MonitorAd> newMonitorAds,
+            Monitor monitor,
+            boolean sendEmailNotifications,
+            boolean notifyClient
+    ) {
         if (newMonitorAds == null || newMonitorAds.isEmpty()) {
             return;
         }
@@ -61,11 +70,17 @@ public class AdOnAirNotificationHelper {
             ad.setOnAirNotifiedAt(Instant.now());
             adRepository.save(ad);
 
-            Map<String, String> clientParams = new HashMap<>();
-            clientParams.put("name", client.getBusinessName());
-            clientParams.put("adName", ad.getName());
-            clientParams.put("link", frontBaseUrl + "/client/my-telas?tab=ads");
-            notificationService.save(NotificationReference.CLIENT_AD_ON_AIR, client, clientParams, sendEmailNotifications);
+            if (notifyClient) {
+                Map<String, String> clientParams = new HashMap<>();
+                clientParams.put("name", client.getBusinessName());
+                clientParams.put("adName", ad.getName());
+                String clientLink = client.isPartner()
+                        ? frontBaseUrl + "/client/screens"
+                        : frontBaseUrl + "/client/my-telas?tab=ads";
+                clientParams.put("link", clientLink);
+                clientParams.put("partner", client.isPartner() ? "true" : "false");
+                notificationService.save(NotificationReference.CLIENT_AD_ON_AIR, client, clientParams, sendEmailNotifications);
+            }
 
             String adminLink = frontBaseUrl + "/admin/clients/" + client.getId() + "/messages";
             Map<String, String> adminParams = new HashMap<>();

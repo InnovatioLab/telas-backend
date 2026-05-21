@@ -1,5 +1,6 @@
 package com.telas.services;
 
+import com.telas.dtos.request.AttachmentRequestDto;
 import com.telas.dtos.request.filters.AdminAdOperationsFilterRequestDto;
 import com.telas.dtos.response.AdminAdOperationRowDto;
 import com.telas.dtos.response.AdminExpiryNotificationDto;
@@ -19,4 +20,6 @@ public interface AdminAdOperationsService {
     void deleteApprovedAd(UUID adId);
 
     void dispatchAdToBox(UUID adId);
+
+    void deliverPartnerCreativeForReview(UUID adId, AttachmentRequestDto request);
 }

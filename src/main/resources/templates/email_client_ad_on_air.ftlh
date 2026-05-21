@@ -33,7 +33,11 @@
             <tr>
                 <td style="padding-top: 8px;">
                     <#if link?has_content>
+                    <#if partner?? && partner == "true">
+                    <a href="${link}" style="color: #075473; font-weight: 600;">Open My screens</a>
+                    <#else>
                     <a href="${link}" style="color: #075473; font-weight: 600;">Open My Telas — Ads</a>
+                    </#if>
                     </#if>
                 </td>
             </tr>
