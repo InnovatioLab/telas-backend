@@ -266,9 +266,7 @@ public class AttachmentHelper {
             attachAdToTargetMonitorIfNeeded(newAd, entity);
         }
 
-        String recipientLink = client.isPartner()
-                ? frontBaseUrl + "/client/partner-ads"
-                : frontBaseUrl + "/client/my-telas?tab=ads";
+        String recipientLink = clientAdsReviewLink(client);
         notificationService.save(
                 NotificationReference.AD_RECEIVED,
                 client,
@@ -316,7 +314,7 @@ public class AttachmentHelper {
 
         if (resubmitAfterClientRejection) {
             Map<String, String> clientParams = new HashMap<>();
-            clientParams.put("link", frontBaseUrl + "/client/my-telas?tab=ads");
+            clientParams.put("link", clientAdsReviewLink(ad.getClient()));
             clientParams.put("adName", ad.getName());
             clientParams.put("name", ad.getClient().getBusinessName());
             notificationService.save(
@@ -332,7 +330,7 @@ public class AttachmentHelper {
                     ad.getClient(),
                     Map.of(
                             "name", ad.getClient().getBusinessName(),
-                            "link", frontBaseUrl + "/client/my-telas?tab=ads"
+                            "link", clientAdsReviewLink(ad.getClient())
                     ),
                     true
             );
@@ -458,8 +456,14 @@ public class AttachmentHelper {
                 monitorsById.putIfAbsent(monitor.getId(), monitor);
             }
         }
+        Client advertiser = ad.getClient();
         for (Monitor monitor : monitorsById.values()) {
             if (!monitor.isAbleToSendBoxRequest()) {
+                continue;
+            }
+            if (advertiser != null
+                    && advertiser.isPartner()
+                    && isForeignPlacementForPartner(advertiser, monitor)) {
                 continue;
             }
             List<UpdateBoxMonitorsAdRequestDto> playlist = monitorHelper.buildOrderedBoxUpdateDtos(monitor);
@@ -467,9 +471,16 @@ public class AttachmentHelper {
         }
     }
 
+    private boolean isForeignPlacementForPartner(Client partner, Monitor monitor) {
+        if (monitor.getAddress() == null || monitor.getAddress().getClient() == null) {
+            return false;
+        }
+        return !monitor.getAddress().getClient().getId().equals(partner.getId());
+    }
+
     private void notifyClientApprovedAd(Ad entity) {
         Client client = entity.getClient();
-        String clientLink = frontBaseUrl + "/client/my-telas?tab=ads";
+        String clientLink = clientAdsReviewLink(client);
         Map<String, String> params = new HashMap<>();
         params.put("name", client.getBusinessName());
         params.put("adName", entity.getName());
@@ -500,7 +511,7 @@ public class AttachmentHelper {
     private void notifyAdminsClientRejectedAd(Ad entity, RefusedAdRequestDto request) {
         Client client = entity.getClient();
         String adminLink = frontBaseUrl + "/admin/clients/" + client.getId() + "/messages";
-        String clientLink = frontBaseUrl + "/client/my-telas?tab=ads";
+        String clientLink = clientAdsReviewLink(client);
         Map<String, String> params = new HashMap<>();
         params.put("name", client.getBusinessName());
         params.put("adName", entity.getName());
@@ -566,9 +577,30 @@ public class AttachmentHelper {
         boolean isOwner = validator.getId().equals(entity.getClient().getId());
         boolean isPanel = validator.isAdmin() || validator.isDeveloper();
 
+        if (requiresPartnerOwnerValidation(entity) && !isOwner) {
+            throw new ForbiddenException(AdValidationMessages.VALIDATION_NOT_ALLOWED);
+        }
+
         if (!isOwner && !isPanel) {
             throw new ForbiddenException(AdValidationMessages.VALIDATION_NOT_ALLOWED);
         }
+    }
+
+    private boolean requiresPartnerOwnerValidation(Ad entity) {
+        if (entity.getAdRequest() == null) {
+            return false;
+        }
+        Client owner = entity.getClient();
+        return owner != null
+                && owner.isPartner()
+                && AdRequestOrigin.PARTNER.equals(entity.getAdRequest().getRequestOrigin());
+    }
+
+    private String clientAdsReviewLink(Client client) {
+        if (client != null && client.isPartner()) {
+            return frontBaseUrl + "/client/partner-ads";
+        }
+        return frontBaseUrl + "/client/my-telas?tab=ads";
     }
 
     private void validateRejectionRequest(RefusedAdRequestDto request) {

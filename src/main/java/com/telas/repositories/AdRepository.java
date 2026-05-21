@@ -245,7 +245,6 @@ public interface AdRepository extends JpaRepository<Ad, UUID>, JpaSpecificationE
 					INNER JOIN box.boxAddress ba
 					WHERE ad.validation = com.telas.enums.AdValidationType.APPROVED
 					AND advertiser.role = com.telas.enums.Role.PARTNER
-					AND ad.adRequest IS NULL
 					AND screenOwner IS NOT NULL
 					AND screenOwner.id <> advertiser.id
 					AND box.active = true
@@ -291,7 +290,6 @@ public interface AdRepository extends JpaRepository<Ad, UUID>, JpaSpecificationE
 					INNER JOIN box.boxAddress ba
 					WHERE ad.validation = com.telas.enums.AdValidationType.APPROVED
 					AND advertiser.role = com.telas.enums.Role.PARTNER
-					AND ad.adRequest IS NULL
 					AND screenOwner IS NOT NULL
 					AND screenOwner.id <> advertiser.id
 					AND box.active = true
