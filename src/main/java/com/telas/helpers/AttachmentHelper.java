@@ -423,6 +423,7 @@ public class AttachmentHelper {
         ad.setType(request.getType());
         ad.setValidation(AdValidationType.PENDING);
         ad.setOnAirNotifiedAt(null);
+        ad.setPartnerBoxStagedAt(null);
         uploadAttachment(request, ad);
         adRepository.save(ad);
 

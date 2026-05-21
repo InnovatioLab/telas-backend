@@ -48,6 +48,9 @@ public class Ad extends BaseAudit implements Serializable {
     @Column(name = "on_air_notified_at", columnDefinition = "TIMESTAMP WITHOUT TIME ZONE")
     private Instant onAirNotifiedAt;
 
+    @Column(name = "partner_box_staged_at", columnDefinition = "TIMESTAMP WITH TIME ZONE")
+    private Instant partnerBoxStagedAt;
+
     @JsonIgnore
     @ManyToOne
     @JoinColumn(name = "client_id", referencedColumnName = "id", nullable = false)

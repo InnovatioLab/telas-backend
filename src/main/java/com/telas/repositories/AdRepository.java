@@ -257,6 +257,8 @@ public interface AdRepository extends JpaRepository<Ad, UUID>, JpaSpecificationE
 					AND screenOwner.id <> advertiser.id
 					AND box.active = true
 					AND COALESCE(TRIM(ba.ip), '') <> ''
+					AND ad.partnerBoxStagedAt IS NULL
+					AND ad.onAirNotifiedAt IS NULL
 					AND (
 					    COALESCE(TRIM(:genericFilter), '') = ''
 					    OR LOWER(ad.name) LIKE LOWER(CONCAT('%', TRIM(:genericFilter), '%'))
@@ -302,6 +304,8 @@ public interface AdRepository extends JpaRepository<Ad, UUID>, JpaSpecificationE
 					AND screenOwner.id <> advertiser.id
 					AND box.active = true
 					AND COALESCE(TRIM(ba.ip), '') <> ''
+					AND ad.partnerBoxStagedAt IS NULL
+					AND ad.onAirNotifiedAt IS NULL
 					AND (
 					    COALESCE(TRIM(:genericFilter), '') = ''
 					    OR LOWER(ad.name) LIKE LOWER(CONCAT('%', TRIM(:genericFilter), '%'))

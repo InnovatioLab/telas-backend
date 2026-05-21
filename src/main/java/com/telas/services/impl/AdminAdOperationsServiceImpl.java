@@ -37,6 +37,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.nio.charset.StandardCharsets;
+import java.time.Instant;
 import java.time.ZoneOffset;
 import java.time.format.DateTimeFormatter;
 import java.util.EnumMap;
@@ -241,6 +242,9 @@ public class AdminAdOperationsServiceImpl implements AdminAdOperationsService {
             monitorHelper.detachAdFromMonitor(monitor, adId);
             monitorHelper.stageAdFileOnBox(monitor, ad);
         }
+
+        ad.setPartnerBoxStagedAt(Instant.now());
+        adRepository.save(ad);
 
         log.info("dispatchAdToBox completed adId={} (available ads on manage screen)", adId);
     }
