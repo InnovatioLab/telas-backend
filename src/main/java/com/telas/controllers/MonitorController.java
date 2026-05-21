@@ -106,6 +106,8 @@ public interface MonitorController {
     })
     ResponseEntity<?> findMonitorsForLoggedPartner();
 
+    ResponseEntity<?> findMonitorForPartnerPlacement(UUID monitorId);
+
     ResponseEntity<?> uploadDirectAdToMonitor(UUID monitorId, AttachmentRequestDto request);
 
     @Operation(summary = "Admin: remove an available ad (delete file and record)", responses = {

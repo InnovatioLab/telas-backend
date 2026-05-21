@@ -22,9 +22,11 @@ import com.telas.repositories.ClientRepository;
 import com.telas.repositories.MonitorRepository;
 import com.telas.shared.constants.valitation.ClientValidationMessages;
 import com.telas.enums.AdValidationType;
+import com.telas.enums.NotificationReference;
 import com.telas.services.AdUnusedTrackingService;
 import com.telas.services.BucketService;
 import com.telas.services.MonitorService;
+import com.telas.services.NotificationService;
 import com.telas.services.MonitorSubscriptionService;
 import com.telas.services.PartnerSlotAccessService;
 import com.telas.services.RemoveMonitorAdsOutcome;
@@ -94,8 +96,13 @@ public class MonitorServiceImpl implements MonitorService {
 
 	private final PartnerSlotAccessService partnerSlotAccessService;
 
+	private final NotificationService notificationService;
+
 	@Value("${stripe.product.id}")
 	private String productId;
+
+	@Value("${front.base.url}")
+	private String frontBaseUrl;
 
 
 	@Override
@@ -181,8 +188,10 @@ public class MonitorServiceImpl implements MonitorService {
 	@Override
 	@Transactional(readOnly = true)
 	public List<MonitorMapsResponseDto> findNearestActiveMonitors(String zipCode) {
-		UUID clientId = authenticatedUserService.getLoggedUser().client().getId();
-		return repository.findAvailableMonitorsByZipCode(zipCode, clientId).stream().map(this::toMonitorMapsResponseDto).toList();
+		Client client = authenticatedUserService.getLoggedUser().client();
+		return repository.findAvailableMonitorsByZipCode(zipCode, client.getId()).stream()
+				.map(monitor -> toMonitorMapsResponseDto(monitor, client))
+				.toList();
 	}
 
 	@Override
@@ -190,13 +199,13 @@ public class MonitorServiceImpl implements MonitorService {
 	public List<MonitorMapsResponseDto> findAvailableMonitorsInViewport(
 			double minLat, double maxLat, double minLng, double maxLng) {
 		validateViewportBounds(minLat, maxLat, minLng, maxLng);
-		UUID clientId = authenticatedUserService.getLoggedUser().client().getId();
+		Client client = authenticatedUserService.getLoggedUser().client();
 		Pageable pageable = PageRequest.of(0, VIEWPORT_MAX_RESULTS);
 		return repository
-				.findAvailableMonitorsInBounds(minLat, maxLat, minLng, maxLng, clientId, pageable)
+				.findAvailableMonitorsInBounds(minLat, maxLat, minLng, maxLng, client.getId(), pageable)
 				.getContent()
 				.stream()
-				.map(this::toMonitorMapsResponseDto)
+				.map(monitor -> toMonitorMapsResponseDto(monitor, client))
 				.toList();
 	}
 
@@ -223,6 +232,10 @@ public class MonitorServiceImpl implements MonitorService {
 	}
 
 	private MonitorMapsResponseDto toMonitorMapsResponseDto(Monitor monitor) {
+		return toMonitorMapsResponseDto(monitor, null);
+	}
+
+	private MonitorMapsResponseDto toMonitorMapsResponseDto(Monitor monitor, Client viewingClient) {
 		List<SubscriptionMonitor> subscriptionMonitors = helper.getSubscriptionsMonitorsFromMonitor(monitor.getId());
 
 		int totalSubscriptionBlocks = MonitorBlocksUtils.sumSubscriptionBlocks(subscriptionMonitors);
@@ -240,7 +253,8 @@ public class MonitorServiceImpl implements MonitorService {
 		int adsDailyMinutes = MonitorBlocksUtils.calculateAdsDailyDisplayTimeInMinutes(monitor.getMaxBlocks(),
 			totalSubscriptionBlocks, unmatchedAdsCount);
 
-		return new MonitorMapsResponseDto(monitor, adsDailyMinutes);
+		Client viewingPartner = viewingClient != null && viewingClient.isPartner() ? viewingClient : null;
+		return new MonitorMapsResponseDto(monitor, adsDailyMinutes, viewingPartner);
 	}
 
 
@@ -298,6 +312,21 @@ public class MonitorServiceImpl implements MonitorService {
 	}
 
 	@Override
+	@Transactional(readOnly = true)
+	public MonitorResponseDto findMonitorForPartnerPlacement(UUID monitorId) {
+		Client partner = authenticatedUserService.getLoggedUser().client();
+		if (!partner.isPartner()) {
+			throw new ForbiddenException(AuthValidationMessageConstants.ERROR_NO_PERMISSION);
+		}
+		Monitor monitor = findEntityById(monitorId);
+		validatePartnerPlacementAccess(partner, monitor);
+		return new MonitorResponseDto(
+				monitor,
+				helper.getMonitorAdsResponse(monitor),
+				adRepository.countAllApprovedNotInMonitor(monitor.getId()));
+	}
+
+	@Override
 	@Transactional
 	public UUID uploadDirectAdToMonitor(UUID monitorId, AttachmentRequestDto request) {
 		request.validate();
@@ -305,10 +334,16 @@ public class MonitorServiceImpl implements MonitorService {
 		Monitor monitor = findEntityById(monitorId);
 
 		final Client adOwner;
+		final boolean partnerOwnScreen;
+		final boolean partnerForeignPlacement;
+
 		if (actor.isPartner()) {
-			if (!partnerOwnsMonitorAddress(actor, monitor)) {
+			partnerOwnScreen = partnerOwnsMonitorAddress(actor, monitor);
+			partnerForeignPlacement = !partnerOwnScreen;
+			if (partnerForeignPlacement && !partnerSlotAccessService.hasGlobalSlotsPermission(actor)) {
 				throw new ForbiddenException(AuthValidationMessageConstants.ERROR_NO_PERMISSION);
 			}
+			validatePartnerPlacementAccess(actor, monitor);
 			adOwner = clientRepository.findById(actor.getId())
 					.orElseThrow(() -> new ResourceNotFoundException(ClientValidationMessages.USER_NOT_FOUND));
 			if (adOwner.getAds().size() >= SharedConstants.MAX_ADS_PER_CLIENT) {
@@ -317,10 +352,16 @@ public class MonitorServiceImpl implements MonitorService {
 		} else {
 			authenticatedUserService.validateAdmin();
 			adOwner = actor;
+			partnerOwnScreen = false;
+			partnerForeignPlacement = false;
 		}
 
 		Ad ad = new Ad(request, adOwner);
-		ad.setValidation(AdValidationType.APPROVED);
+		if (partnerForeignPlacement) {
+			ad.setValidation(AdValidationType.PENDING);
+		} else {
+			ad.setValidation(AdValidationType.APPROVED);
+		}
 		ad.setUsernameCreate(actor.getBusinessName());
 		Ad saved = adRepository.save(ad);
 		adOwner.getAds().add(saved);
@@ -341,12 +382,36 @@ public class MonitorServiceImpl implements MonitorService {
 		repository.save(monitor);
 		adUnusedTrackingService.syncUnusedStateForAdIds(List.of(saved.getId()));
 
-		if (monitor.isAbleToSendBoxRequest()) {
+		if (partnerForeignPlacement) {
+			notifyAdminsPartnerForeignAdSubmitted(actor, monitor, saved);
+		} else if (monitor.isAbleToSendBoxRequest()) {
 			List<UpdateBoxMonitorsAdRequestDto> playlist = helper.buildOrderedBoxUpdateDtos(monitor);
 			helper.syncBoxAdsPlaylist(monitor, playlist);
 		}
 
 		return saved.getId();
+	}
+
+	private void validatePartnerPlacementAccess(Client partner, Monitor monitor) {
+		if (!partnerSlotAccessService.canAddBlocks(
+				partner, monitor, SharedConstants.MIN_QUANTITY_MONITOR_BLOCK)) {
+			throw new BusinessRuleException(MonitorValidationMessages.MONITOR_BLOCKS_UNAVAILABLE);
+		}
+	}
+
+	private void notifyAdminsPartnerForeignAdSubmitted(Client partner, Monitor monitor, Ad ad) {
+		String monitorLabel = monitor.getAddress() != null
+				? monitor.getAddress().resolveMapLocationName()
+				: monitor.getId().toString();
+		Map<String, String> params = Map.of(
+				"partnerName", partner.getBusinessName() != null ? partner.getBusinessName() : "",
+				"monitorLabel", monitorLabel != null ? monitorLabel : "",
+				"adId", ad.getId().toString(),
+				"clientId", partner.getId().toString(),
+				"link", frontBaseUrl + "/admin/clients/" + partner.getId()
+		);
+		clientRepository.findAllAdmins().forEach(admin ->
+				notificationService.save(NotificationReference.ADMIN_PARTNER_FOREIGN_AD_SUBMITTED, admin, params, true));
 	}
 
 	@Override

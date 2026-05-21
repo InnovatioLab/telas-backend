@@ -34,6 +34,8 @@ public interface MonitorService {
 
     List<MonitorResponseDto> findMonitorsForLoggedPartner();
 
+    MonitorResponseDto findMonitorForPartnerPlacement(UUID monitorId);
+
     UUID uploadDirectAdToMonitor(UUID monitorId, AttachmentRequestDto request);
 
     void deleteAvailableAd(UUID monitorId, UUID adId);

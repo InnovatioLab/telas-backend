@@ -2,6 +2,7 @@ package com.telas.dtos.response;
 
 import com.telas.entities.Address;
 import com.telas.entities.CartItem;
+import com.telas.entities.Client;
 import com.telas.entities.Monitor;
 import com.telas.shared.constants.SharedConstants;
 import lombok.Getter;
@@ -27,12 +28,17 @@ public final class MonitorMapsResponseDto implements Serializable {
     private final String addressLocationDescription;
     private final String photoUrl;
     private final Boolean boxActive;
+    private final Boolean ownedByPartner;
 
     public MonitorMapsResponseDto(Monitor entity) {
-        this(entity, entity.getAdsDailyDisplayTimeInMinutes());
+        this(entity, entity.getAdsDailyDisplayTimeInMinutes(), null);
     }
 
     public MonitorMapsResponseDto(Monitor entity, Integer adsDailyDisplayTimeInMinutes) {
+        this(entity, adsDailyDisplayTimeInMinutes, null);
+    }
+
+    public MonitorMapsResponseDto(Monitor entity, Integer adsDailyDisplayTimeInMinutes, Client viewingPartner) {
         id = entity.getId();
         active = entity.isActive();
         CartItem cartItem = new CartItem();
@@ -53,5 +59,6 @@ public final class MonitorMapsResponseDto implements Serializable {
             photoUrl = null;
         }
         boxActive = entity.getBox() != null ? entity.getBox().isActive() : null;
+        ownedByPartner = viewingPartner != null && entity.isPartner(viewingPartner);
     }
 }

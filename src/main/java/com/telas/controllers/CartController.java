@@ -41,4 +41,6 @@ public interface CartController {
           @ApiResponse(responseCode = "403", description = "No permission to perform this operation.")
   })
   ResponseEntity<?> getLoggedUserCart();
+
+  ResponseEntity<?> submitPartnerPlacements();
 }

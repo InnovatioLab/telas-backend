@@ -4,6 +4,7 @@ import com.telas.controllers.CartController;
 import com.telas.dtos.request.CartRequestDto;
 import com.telas.dtos.response.ResponseDto;
 import com.telas.services.CartService;
+import com.telas.services.PartnerPlacementService;
 import com.telas.shared.constants.MessageCommonsConstants;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import jakarta.validation.Valid;
@@ -19,6 +20,7 @@ import java.util.UUID;
 @RequiredArgsConstructor
 public class CartControllerImpl implements CartController {
     private final CartService service;
+    private final PartnerPlacementService partnerPlacementService;
 
     @Override
     @PostMapping
@@ -53,5 +55,14 @@ public class CartControllerImpl implements CartController {
 
         return ResponseEntity.status(HttpStatus.OK)
                 .body(ResponseDto.fromData(response, HttpStatus.OK, message));
+    }
+
+    @Override
+    @PostMapping("/partner/submit-placements")
+    @SecurityRequirement(name = "jwt")
+    public ResponseEntity<?> submitPartnerPlacements() {
+        partnerPlacementService.submitPlacementsFromActiveCart();
+        return ResponseEntity.status(HttpStatus.OK)
+                .body(ResponseDto.fromData(null, HttpStatus.OK, MessageCommonsConstants.SAVE_SUCCESS_MESSAGE));
     }
 }

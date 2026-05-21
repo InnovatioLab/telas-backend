@@ -600,6 +600,51 @@ public enum NotificationReference {
             return createAdminNewClientRegisteredEmailData(params);
         }
     },
+    ADMIN_PARTNER_FOREIGN_AD_SUBMITTED {
+        @Override
+        public String getNotificationMessage(Map<String, String> params) {
+            return String.format("""
+                    <div class="informacoes">
+                        <h4 id="notification-title" class="notification-title">Partner ad submitted</h4>
+                        <p>Partner <strong>%s</strong> submitted an ad for screen <strong>%s</strong>.</p>
+                        <p>Review and configure the ad before it goes on air.</p>
+                    </div>
+                    <p><a id="link-details" class='details link-text' href="%s">Open partner</a></p>
+                    """,
+                    params.getOrDefault("partnerName", ""),
+                    params.getOrDefault("monitorLabel", ""),
+                    params.getOrDefault("link", "#"));
+        }
+
+        @Override
+        public EmailDataDto getEmailData(Map<String, String> params) {
+            return null;
+        }
+    },
+    ADMIN_PARTNER_PLACEMENT_REQUEST {
+        @Override
+        public String getNotificationMessage(Map<String, String> params) {
+            return String.format("""
+                    <div class="informacoes">
+                        <h4 id="notification-title" class="notification-title">Partner placement request</h4>
+                        <p>Partner <strong>%s</strong> requested ad placement on external screen(s).</p>
+                        <div class="field">
+                            <span class="field-label">Screens: </span>
+                            <span class="field-value">%s</span>
+                        </div>
+                    </div>
+                    <p><a id="link-details" class='details link-text' href="%s">Open partner</a></p>
+                    """,
+                    params.getOrDefault("partnerName", ""),
+                    params.getOrDefault("monitorsSummary", ""),
+                    params.getOrDefault("link", "#"));
+        }
+
+        @Override
+        public EmailDataDto getEmailData(Map<String, String> params) {
+            return null;
+        }
+    },
     ADMIN_NEW_PURCHASE {
         @Override
         public String getNotificationMessage(Map<String, String> params) {

@@ -129,6 +129,15 @@ public class MonitorControllerImpl implements MonitorController {
     }
 
     @Override
+    @GetMapping("/partner/placement-target/{id}")
+    @SecurityRequirement(name = "jwt")
+    public ResponseEntity<?> findMonitorForPartnerPlacement(@PathVariable(name = "id") UUID monitorId) {
+        MonitorResponseDto monitor = service.findMonitorForPartnerPlacement(monitorId);
+        return ResponseEntity.status(HttpStatus.OK)
+                .body(ResponseDto.fromData(monitor, HttpStatus.OK, MessageCommonsConstants.FIND_ID_SUCCESS_MESSAGE));
+    }
+
+    @Override
     @GetMapping("/partner/my-screens")
     @SecurityRequirement(name = "jwt")
     public ResponseEntity<?> findMonitorsForLoggedPartner() {
