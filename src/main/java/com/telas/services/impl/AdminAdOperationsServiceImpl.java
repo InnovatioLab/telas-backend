@@ -5,18 +5,13 @@ import com.telas.dtos.request.filters.AdminAdOperationsFilterRequestDto;
 import com.telas.dtos.response.AdminAdOperationRowDto;
 import com.telas.dtos.response.AdminExpiryNotificationDto;
 import com.telas.dtos.response.PaginationResponseDto;
-import com.telas.dtos.request.UpdateBoxMonitorsAdRequestDto;
 import com.telas.entities.Ad;
 import com.telas.entities.Monitor;
 import com.telas.entities.MonitorAd;
 import com.telas.entities.Notification;
 import com.telas.entities.Subscription;
-import com.telas.entities.Client;
 import com.telas.enums.NotificationReference;
-import com.telas.enums.Permission;
 import com.telas.enums.SubscriptionStatus;
-import com.telas.services.PermissionService;
-import com.telas.helpers.AdOnAirNotificationHelper;
 import com.telas.helpers.MonitorHelper;
 import com.telas.infra.exceptions.BusinessRuleException;
 import com.telas.infra.exceptions.ResourceNotFoundException;
@@ -90,8 +85,6 @@ public class AdminAdOperationsServiceImpl implements AdminAdOperationsService {
     private final AuthenticatedUserService authenticatedUserService;
     private final AttachmentHelper attachmentHelper;
     private final MonitorHelper monitorHelper;
-    private final AdOnAirNotificationHelper adOnAirNotificationHelper;
-    private final PermissionService permissionService;
     private final UnusedSingleAdDeletionService unusedSingleAdDeletionService;
 
     private static String trimOrEmpty(String value) {
@@ -231,8 +224,6 @@ public class AdminAdOperationsServiceImpl implements AdminAdOperationsService {
     @Transactional
     public void dispatchAdToBox(UUID adId) {
         authenticatedUserService.validateAdminOrAdsManageAccess();
-        Client actor = authenticatedUserService.getLoggedUser().client();
-        boolean publishToScreenAds = permissionService.hasPermission(actor, Permission.ADMIN_ADS_BOX_DISPATCH_TO_SCREEN);
 
         Ad ad = adRepository.findByIdWithClientAndAdRequest(adId)
                 .orElseThrow(() -> new ResourceNotFoundException(AdValidationMessages.AD_NOT_FOUND));
@@ -246,42 +237,12 @@ public class AdminAdOperationsServiceImpl implements AdminAdOperationsService {
             throw new BusinessRuleException(AdValidationMessages.AD_MONITOR_TARGET_NOT_FOUND);
         }
 
-        boolean succeeded = false;
-        if (publishToScreenAds) {
-            for (Monitor monitor : monitorsById.values()) {
-                monitorHelper.attachAdToMonitor(monitor, ad);
-                if (!monitor.isAbleToSendBoxRequest()) {
-                    continue;
-                }
-                List<UpdateBoxMonitorsAdRequestDto> playlist = monitorHelper.buildOrderedBoxUpdateDtos(monitor);
-                if (monitorHelper.syncBoxAdsPlaylist(monitor, playlist).isEmpty()) {
-                    continue;
-                }
-                MonitorAd placement = monitor.getMonitorAds().stream()
-                        .filter(ma -> ma.getAd() != null && adId.equals(ma.getAd().getId()))
-                        .findFirst()
-                        .orElse(null);
-                if (placement != null) {
-                    adOnAirNotificationHelper.notifyOnAirForNewMonitorAds(List.of(placement), monitor, true);
-                }
-                succeeded = true;
-            }
-            if (!succeeded) {
-                throw new BusinessRuleException(AdValidationMessages.BOX_DISPATCH_NOT_AVAILABLE);
-            }
-        } else {
-            for (Monitor monitor : monitorsById.values()) {
-                monitorHelper.detachAdFromMonitor(monitor, adId);
-                if (monitorHelper.stageAdFileOnBox(monitor, ad)) {
-                    succeeded = true;
-                }
-            }
-            if (!succeeded) {
-                throw new BusinessRuleException(AdValidationMessages.BOX_DISPATCH_STAGE_NOT_AVAILABLE);
-            }
+        for (Monitor monitor : monitorsById.values()) {
+            monitorHelper.detachAdFromMonitor(monitor, adId);
+            monitorHelper.stageAdFileOnBox(monitor, ad);
         }
 
-        log.info("dispatchAdToBox completed adId={}, publishToScreenAds={}", adId, publishToScreenAds);
+        log.info("dispatchAdToBox completed adId={} (available ads on manage screen)", adId);
     }
 
     private Map<UUID, Monitor> resolveDispatchMonitors(Ad ad, List<MonitorAd> placements) {
