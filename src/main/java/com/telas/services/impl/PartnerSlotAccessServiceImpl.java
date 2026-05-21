@@ -94,7 +94,10 @@ public class PartnerSlotAccessServiceImpl implements PartnerSlotAccessService {
         }
         if (hasGlobalSlotsPermission(client)) {
             int requested = requestedQuantity != null ? requestedQuantity : max;
-            return Math.min(Math.max(requested, SharedConstants.MIN_QUANTITY_MONITOR_BLOCK), max);
+            if (requested <= SharedConstants.MIN_QUANTITY_MONITOR_BLOCK) {
+                return max;
+            }
+            return Math.min(requested, max);
         }
         return SharedConstants.MIN_QUANTITY_MONITOR_BLOCK;
     }

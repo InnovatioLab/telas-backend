@@ -123,6 +123,7 @@ public final class SharedConstants {
     public static final int MIN_QUANTITY_MONITOR_BLOCK = 1;
     public static final int MAX_QUANTITY_MONITOR_BLOCK = 1;
     public static final int PARTNER_RESERVED_SLOTS = 5;
+    public static final int MAX_CART_ITEM_BLOCK_QUANTITY = PARTNER_RESERVED_SLOTS;
 
     public static final int MAX_ADS_PER_CLIENT = 5;
 

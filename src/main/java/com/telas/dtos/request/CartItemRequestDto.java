@@ -27,6 +27,6 @@ public class CartItemRequestDto implements Serializable {
     private UUID monitorId;
 
     @Min(value = SharedConstants.MIN_QUANTITY_MONITOR_BLOCK, message = CartValidationMessages.MIN_QUANTITY_MONITOR_BLOCK)
-    @Max(value = SharedConstants.MAX_QUANTITY_MONITOR_BLOCK, message = CartValidationMessages.MAX_QUANTITY_MONITOR_BLOCK)
+    @Max(value = SharedConstants.MAX_CART_ITEM_BLOCK_QUANTITY, message = CartValidationMessages.MAX_QUANTITY_MONITOR_BLOCK)
     private Integer blockQuantity = 1;
 }

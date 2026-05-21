@@ -6,6 +6,7 @@ import com.telas.dtos.request.CartRequestDto;
 import com.telas.dtos.response.CartItemResponseDto;
 import com.telas.dtos.response.CartResponseDto;
 import com.telas.entities.*;
+import com.telas.infra.exceptions.BusinessRuleException;
 import com.telas.infra.exceptions.ResourceNotFoundException;
 import com.telas.infra.security.services.AuthenticatedUserService;
 import com.telas.repositories.CartItemRepository;
@@ -71,6 +72,12 @@ public class CartServiceImpl implements CartService {
 
 
         List<CartItemResponseDto> itemsResponse = saveCartItems(request, cart);
+        if (itemsResponse.isEmpty() && !ValidateDataUtils.isNullOrEmpty(request.getItems())) {
+            if (client.isPartner()) {
+                throw new BusinessRuleException(CartValidationMessages.PARTNER_OWN_SCREEN_NOT_IN_CART);
+            }
+            throw new BusinessRuleException(CartValidationMessages.CART_NO_ELIGIBLE_ITEMS);
+        }
         return getCartResponse(cart, itemsResponse);
     }
 
@@ -164,6 +171,12 @@ public class CartServiceImpl implements CartService {
 
         requestItemsByMonitorId.forEach((monitorId, item) -> {
             Monitor monitor = monitorsById.get(monitorId);
+
+            if (!cart.getClient().isPartner()
+                    && item.getBlockQuantity() != null
+                    && item.getBlockQuantity() > SharedConstants.MAX_QUANTITY_MONITOR_BLOCK) {
+                throw new BusinessRuleException(CartValidationMessages.MAX_QUANTITY_MONITOR_BLOCK);
+            }
 
             if (!monitor.isPartner(cart.getClient())) {
                 CartItem cartItem = actualItems.get(monitorId);

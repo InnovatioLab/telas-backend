@@ -97,6 +97,7 @@ class PartnerSlotAccessServiceImplTest {
         when(partnerPlatformSettingsService.isSlotsAnyLocationEnabled()).thenReturn(true);
 
         assertEquals(5, service.resolveCartBlockQuantity(partner, monitor, null));
+        assertEquals(5, service.resolveCartBlockQuantity(partner, monitor, 1));
     }
 
     @Test
