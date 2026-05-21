@@ -575,25 +575,19 @@ public class AttachmentHelper {
         }
 
         boolean isOwner = validator.getId().equals(entity.getClient().getId());
-        boolean isPanel = validator.isAdmin() || validator.isDeveloper();
+        Client owner = entity.getClient();
 
-        if (requiresPartnerOwnerValidation(entity) && !isOwner) {
-            throw new ForbiddenException(AdValidationMessages.VALIDATION_NOT_ALLOWED);
+        if (owner != null && owner.isPartner()) {
+            if (!isOwner) {
+                throw new ForbiddenException(AdValidationMessages.VALIDATION_NOT_ALLOWED);
+            }
+            return;
         }
 
+        boolean isPanel = validator.isAdmin() || validator.isDeveloper();
         if (!isOwner && !isPanel) {
             throw new ForbiddenException(AdValidationMessages.VALIDATION_NOT_ALLOWED);
         }
-    }
-
-    private boolean requiresPartnerOwnerValidation(Ad entity) {
-        if (entity.getAdRequest() == null) {
-            return false;
-        }
-        Client owner = entity.getClient();
-        return owner != null
-                && owner.isPartner()
-                && AdRequestOrigin.PARTNER.equals(entity.getAdRequest().getRequestOrigin());
     }
 
     private String clientAdsReviewLink(Client client) {
@@ -604,7 +598,7 @@ public class AttachmentHelper {
     }
 
     private void validateRejectionRequest(RefusedAdRequestDto request) {
-        if (request == null) {
+        if (request == null || ValidateDataUtils.isNullOrEmptyString(request.getJustification())) {
             throw new BusinessRuleException(AttachmentValidationMessages.JUSTIFICATION_REQUIRED);
         }
     }
@@ -613,8 +607,10 @@ public class AttachmentHelper {
         RefusedAd refusedAd = new RefusedAd(request, entity);
         entity.setUsernameUpdate(entity.getClient().getBusinessName());
         entity.getRefusedAds().add(refusedAd);
-        entity.getAdRequest().handleRefusal();
-        adRequestRepository.save(entity.getAdRequest());
+        if (entity.getAdRequest() != null) {
+            entity.getAdRequest().handleRefusal();
+            adRequestRepository.save(entity.getAdRequest());
+        }
 
 //        if (Objects.nonNull(entity.getAdRequest())) {
 //            entity.getAdRequest().handleRefusal();

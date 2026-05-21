@@ -20,6 +20,14 @@ public interface AdRepository extends JpaRepository<Ad, UUID>, JpaSpecificationE
 
 	List<Ad> findByClientIdAndValidation(UUID clientId, AdValidationType validation);
 
+	@Query("""
+			SELECT a FROM Ad a
+			JOIN FETCH a.client
+			LEFT JOIN FETCH a.adRequest
+			WHERE a.id = :adId
+			""")
+	java.util.Optional<Ad> findByIdWithClientAndAdRequest(@Param("adId") UUID adId);
+
 	interface ApprovedCountByClientRow {
 		UUID getClientId();
 		long getApprovedCount();

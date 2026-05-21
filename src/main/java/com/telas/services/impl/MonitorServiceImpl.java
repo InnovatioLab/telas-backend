@@ -25,6 +25,7 @@ import com.telas.infra.security.model.AuthenticatedUser;
 import com.telas.infra.security.services.AuthenticatedUserService;
 import com.telas.repositories.AdRepository;
 import com.telas.repositories.ClientRepository;
+import com.telas.repositories.MonitorAdRepository;
 import com.telas.repositories.MonitorRepository;
 import com.telas.shared.constants.valitation.ClientValidationMessages;
 import com.telas.enums.AdValidationType;
@@ -81,6 +82,8 @@ public class MonitorServiceImpl implements MonitorService {
 	private final MonitorRepository repository;
 
 	private final AdRepository adRepository;
+
+	private final MonitorAdRepository monitorAdRepository;
 
 	private final ClientRepository clientRepository;
 
@@ -311,11 +314,20 @@ public class MonitorServiceImpl implements MonitorService {
 		if (!partner.isPartner()) {
 			throw new ForbiddenException(AuthValidationMessageConstants.ERROR_NO_PERMISSION);
 		}
-		return repository.findAllByAddressClientId(partner.getId()).stream()
-				.map(monitor -> new MonitorResponseDto(
-						monitor,
-						helper.getMonitorAdsResponse(monitor),
-						adRepository.countAllApprovedNotInMonitor(monitor.getId())))
+		LinkedHashSet<UUID> monitorIds = new LinkedHashSet<>();
+		repository.findAllByAddressClientId(partner.getId()).forEach(m -> monitorIds.add(m.getId()));
+		monitorAdRepository.findDistinctMonitorIdsByAdvertiserClientId(partner.getId()).forEach(monitorIds::add);
+
+		return monitorIds.stream()
+				.map(this::findEntityById)
+				.map(monitor -> {
+					List<MonitorAdResponseDto> myAds = helper.getPartnerAdvertiserAdsOnMonitor(monitor, partner.getId());
+					return new MonitorResponseDto(
+							monitor,
+							myAds,
+							adRepository.countAllApprovedNotInMonitor(monitor.getId()),
+							myAds.size());
+				})
 				.toList();
 	}
 

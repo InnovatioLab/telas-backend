@@ -34,6 +34,8 @@ public final class MonitorAdResponseDto implements Serializable {
 
   private Long subscriptionDaysLeft;
 
+  private String validation;
+
   public MonitorAdResponseDto(MonitorAd entity, String adLink) {
     id = entity.getAd().getId();
     orderIndex = entity.getOrderIndex();

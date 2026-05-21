@@ -100,6 +100,42 @@ public class MonitorHelper {
 
 
 	@Transactional(readOnly = true)
+	public List<MonitorAdResponseDto> getPartnerAdvertiserAdsOnMonitor(Monitor entity, UUID partnerId) {
+		if (entity.getMonitorAds() == null || partnerId == null) {
+			return List.of();
+		}
+		Map<UUID, SubscriptionMonitor> activeSubscriptionByClientId = subscriptionMonitorRepository
+				.findByMonitorId(entity.getId())
+				.stream()
+				.collect(Collectors.toMap(
+						sm -> sm.getId().getSubscription().getClient().getId(),
+						sm -> sm,
+						(a, b) -> a
+				));
+
+		return entity.getMonitorAds().stream()
+				.filter(ma -> ma.getAd() != null
+						&& ma.getAd().getClient() != null
+						&& partnerId.equals(ma.getAd().getClient().getId()))
+				.map(monitorAd -> {
+					MonitorAdResponseDto dto = new MonitorAdResponseDto(
+							monitorAd,
+							bucketService.getLink(AttachmentUtils.format(monitorAd.getAd()))
+					);
+					if (monitorAd.getAd().getValidation() != null) {
+						dto.setValidation(monitorAd.getAd().getValidation().name());
+					}
+					UUID clientId = monitorAd.getAd().getClient().getId();
+					SubscriptionMonitor sm = activeSubscriptionByClientId.get(clientId);
+					if (sm != null) {
+						dto.setSubscriptionEndsAt(sm.getId().getSubscription().getEndsAt());
+					}
+					return dto;
+				})
+				.toList();
+	}
+
+	@Transactional(readOnly = true)
 	public List<MonitorAdResponseDto> getMonitorAdsResponse(Monitor entity) {
 		Map<UUID, SubscriptionMonitor> activeSubscriptionByClientId = subscriptionMonitorRepository
 				.findByMonitorId(entity.getId())

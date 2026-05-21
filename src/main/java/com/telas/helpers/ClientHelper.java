@@ -161,7 +161,8 @@ public class ClientHelper {
 
     @Transactional(readOnly = true)
     public Ad getAdById(UUID adId) {
-        return adRepository.findById(adId).orElseThrow(() -> new ResourceNotFoundException(AdValidationMessages.AD_NOT_FOUND));
+        return adRepository.findByIdWithClientAndAdRequest(adId)
+                .orElseThrow(() -> new ResourceNotFoundException(AdValidationMessages.AD_NOT_FOUND));
     }
 
     @Transactional

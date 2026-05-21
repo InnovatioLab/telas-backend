@@ -29,13 +29,24 @@ public final class MonitorResponseDto implements Serializable {
     private final int remainingClientSlots;
     private final long availableAdsCount;
 
+    private final int myAdsOnScreenCount;
+
     public MonitorResponseDto(Monitor entity, List<MonitorAdResponseDto> adLinks, long availableAdsCount) {
+        this(entity, adLinks, availableAdsCount, adLinks != null ? adLinks.size() : 0);
+    }
+
+    public MonitorResponseDto(
+            Monitor entity,
+            List<MonitorAdResponseDto> adLinks,
+            long availableAdsCount,
+            int myAdsOnScreenCount) {
         id = entity.getId();
         active = entity.isActive();
         address = new AddressFromZipCodeResponseDto(entity.getAddress());
         fullAddress = entity.getAddress().getCoordinatesParams();
         canBeDeleted = entity.getActiveSubscriptions().isEmpty();
-        this.adLinks = adLinks;
+        this.adLinks = adLinks != null ? adLinks : List.of();
+        this.myAdsOnScreenCount = myAdsOnScreenCount;
 
         int cap = entity.getMaxBlocks() != null ? entity.getMaxBlocks() : com.telas.shared.constants.SharedConstants.MAX_MONITOR_ADS;
         maxAds = Math.min(cap, com.telas.shared.constants.SharedConstants.MAX_MONITOR_ADS);
