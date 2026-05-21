@@ -195,7 +195,7 @@ public class AttachmentHelper {
 
     @Transactional
     public void saveAds(AttachmentRequestDto request, Client client) {
-        Ad ad = client.isPrivilegedPanelUser() || (client.isPartner() && !client.getApprovedAds().isEmpty())
+        Ad ad = client.isPrivilegedPanelUser() || client.isPartner()
                 ? (request.getId() == null ? createNewAd(request, client) : updateExistingAd(request))
                 : (client.getAdRequest().getAd() == null ? createNewAdFromRequest(client.getAdRequest(), request) : updateExistingAdFromRequest(client.getAdRequest().getAd(), request, client));
         uploadAttachment(request, ad);
@@ -330,7 +330,7 @@ public class AttachmentHelper {
     private void setAdValidationDuringUpdate(Ad entity) {
         Client client = entity.getClient();
 
-        if (client.isPrivilegedPanelUser()) {
+        if (client.isPrivilegedPanelUser() || client.isPartner()) {
             entity.setValidation(AdValidationType.APPROVED);
             return;
         }

@@ -32,6 +32,8 @@ public interface MonitorService {
 
     PaginationResponseDto<List<MonitorResponseDto>> findAllByFilters(FilterMonitorRequestDto request);
 
+    List<MonitorResponseDto> findMonitorsForLoggedPartner();
+
     UUID uploadDirectAdToMonitor(UUID monitorId, AttachmentRequestDto request);
 
     void deleteAvailableAd(UUID monitorId, UUID adId);

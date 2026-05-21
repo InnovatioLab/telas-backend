@@ -18,7 +18,10 @@ import com.telas.infra.exceptions.ResourceNotFoundException;
 import com.telas.infra.security.model.AuthenticatedUser;
 import com.telas.infra.security.services.AuthenticatedUserService;
 import com.telas.repositories.AdRepository;
+import com.telas.repositories.ClientRepository;
 import com.telas.repositories.MonitorRepository;
+import com.telas.shared.constants.valitation.ClientValidationMessages;
+import com.telas.enums.AdValidationType;
 import com.telas.services.AdUnusedTrackingService;
 import com.telas.services.BucketService;
 import com.telas.services.MonitorService;
@@ -70,6 +73,8 @@ public class MonitorServiceImpl implements MonitorService {
 	private final MonitorRepository repository;
 
 	private final AdRepository adRepository;
+
+	private final ClientRepository clientRepository;
 
 	private final BucketService bucketService;
 
@@ -278,16 +283,48 @@ public class MonitorServiceImpl implements MonitorService {
 	}
 
 	@Override
+	@Transactional(readOnly = true)
+	public List<MonitorResponseDto> findMonitorsForLoggedPartner() {
+		Client partner = authenticatedUserService.getLoggedUser().client();
+		if (!partner.isPartner()) {
+			throw new ForbiddenException(AuthValidationMessageConstants.ERROR_NO_PERMISSION);
+		}
+		return repository.findAllByAddressClientId(partner.getId()).stream()
+				.map(monitor -> new MonitorResponseDto(
+						monitor,
+						helper.getMonitorAdsResponse(monitor),
+						adRepository.countAllApprovedNotInMonitor(monitor.getId())))
+				.toList();
+	}
+
+	@Override
 	@Transactional
 	public UUID uploadDirectAdToMonitor(UUID monitorId, AttachmentRequestDto request) {
-		authenticatedUserService.validateAdmin();
+		request.validate();
 		Client actor = authenticatedUserService.getLoggedUser().client();
 		Monitor monitor = findEntityById(monitorId);
 
-		Ad ad = new Ad(request, actor);
-		ad.setValidation(com.telas.enums.AdValidationType.APPROVED);
+		final Client adOwner;
+		if (actor.isPartner()) {
+			if (!partnerOwnsMonitorAddress(actor, monitor)) {
+				throw new ForbiddenException(AuthValidationMessageConstants.ERROR_NO_PERMISSION);
+			}
+			adOwner = clientRepository.findById(actor.getId())
+					.orElseThrow(() -> new ResourceNotFoundException(ClientValidationMessages.USER_NOT_FOUND));
+			if (adOwner.getAds().size() >= SharedConstants.MAX_ADS_PER_CLIENT) {
+				throw new BusinessRuleException(ClientValidationMessages.MAX_ADS_REACHED);
+			}
+		} else {
+			authenticatedUserService.validateAdmin();
+			adOwner = actor;
+		}
+
+		Ad ad = new Ad(request, adOwner);
+		ad.setValidation(AdValidationType.APPROVED);
 		ad.setUsernameCreate(actor.getBusinessName());
 		Ad saved = adRepository.save(ad);
+		adOwner.getAds().add(saved);
+		clientRepository.save(adOwner);
 
 		bucketService.upload(
 			request.getBytes(),

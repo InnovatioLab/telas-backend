@@ -384,8 +384,16 @@ public class ClientServiceImpl implements ClientService {
 	public void uploadAds(AttachmentRequestDto request, UUID clientId) {
 		request.validate();
 
-		Client admin = authenticatedUserService.validateAdmin().client();
+		Client actor = authenticatedUserService.getLoggedUser().client();
 		Client client = findActiveEntityById(clientId);
+
+		if (actor.isPartner() && actor.getId().equals(clientId)) {
+			validateMaxAds(client);
+			attachmentHelper.saveAds(request, client);
+			return;
+		}
+
+		Client admin = authenticatedUserService.validateAdmin().client();
 
 		if (admin.getId().equals(clientId) || Role.ADMIN.equals(client.getRole())) {
 			attachmentHelper.saveAds(request, admin);

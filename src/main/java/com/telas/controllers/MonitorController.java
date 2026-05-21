@@ -104,6 +104,8 @@ public interface MonitorController {
             @ApiResponse(responseCode = "403", description = "Forbidden."),
             @ApiResponse(responseCode = "404", description = "Monitor not found."),
     })
+    ResponseEntity<?> findMonitorsForLoggedPartner();
+
     ResponseEntity<?> uploadDirectAdToMonitor(UUID monitorId, AttachmentRequestDto request);
 
     @Operation(summary = "Admin: remove an available ad (delete file and record)", responses = {

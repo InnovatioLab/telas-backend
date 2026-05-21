@@ -129,6 +129,18 @@ public class MonitorControllerImpl implements MonitorController {
     }
 
     @Override
+    @GetMapping("/partner/my-screens")
+    @SecurityRequirement(name = "jwt")
+    public ResponseEntity<?> findMonitorsForLoggedPartner() {
+        List<MonitorResponseDto> monitors = service.findMonitorsForLoggedPartner();
+        String message = monitors.isEmpty()
+                ? MessageCommonsConstants.FIND_FILTER_EMPTY_MESSAGE
+                : MessageCommonsConstants.FIND_ALL_SUCCESS_MESSAGE;
+        return ResponseEntity.status(HttpStatus.OK)
+                .body(ResponseDto.fromData(monitors, HttpStatus.OK, message));
+    }
+
+    @Override
     @PostMapping("/{id}/direct-ad")
     @SecurityRequirement(name = "jwt")
     public ResponseEntity<?> uploadDirectAdToMonitor(
