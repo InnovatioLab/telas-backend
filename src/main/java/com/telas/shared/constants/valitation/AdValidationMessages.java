@@ -19,6 +19,10 @@ public final class AdValidationMessages {
           "Ad must be placed on a monitor before sending to the box";
   public static final String BOX_DISPATCH_NOT_AVAILABLE =
           "Could not sync to the box: monitor has no active box with IP, or the box did not accept the playlist";
+  public static final String BOX_DISPATCH_STAGE_NOT_AVAILABLE =
+          "Could not stage the ad on the box: monitor has no active box with IP, or the box did not accept the file";
+  public static final String AD_MONITOR_TARGET_NOT_FOUND =
+          "No target screen found for this ad";
   public static final String AD_MUST_BE_APPROVED_FOR_PARTNER_REVIEW_DELIVERY =
           "Only approved ads awaiting publish can be replaced for partner review";
   public static final String AD_NOT_PARTNER_ADVERTISER =

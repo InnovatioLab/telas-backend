@@ -11,8 +11,11 @@ import com.telas.entities.Monitor;
 import com.telas.entities.MonitorAd;
 import com.telas.entities.Notification;
 import com.telas.entities.Subscription;
+import com.telas.entities.Client;
 import com.telas.enums.NotificationReference;
+import com.telas.enums.Permission;
 import com.telas.enums.SubscriptionStatus;
+import com.telas.services.PermissionService;
 import com.telas.helpers.AdOnAirNotificationHelper;
 import com.telas.helpers.MonitorHelper;
 import com.telas.infra.exceptions.BusinessRuleException;
@@ -88,6 +91,7 @@ public class AdminAdOperationsServiceImpl implements AdminAdOperationsService {
     private final AttachmentHelper attachmentHelper;
     private final MonitorHelper monitorHelper;
     private final AdOnAirNotificationHelper adOnAirNotificationHelper;
+    private final PermissionService permissionService;
     private final UnusedSingleAdDeletionService unusedSingleAdDeletionService;
 
     private static String trimOrEmpty(String value) {
@@ -227,41 +231,79 @@ public class AdminAdOperationsServiceImpl implements AdminAdOperationsService {
     @Transactional
     public void dispatchAdToBox(UUID adId) {
         authenticatedUserService.validateAdminOrAdsManageAccess();
-        Ad ad = adRepository.findById(adId)
+        Client actor = authenticatedUserService.getLoggedUser().client();
+        boolean publishToScreenAds = permissionService.hasPermission(actor, Permission.ADMIN_ADS_BOX_DISPATCH_TO_SCREEN);
+
+        Ad ad = adRepository.findByIdWithClientAndAdRequest(adId)
                 .orElseThrow(() -> new ResourceNotFoundException(AdValidationMessages.AD_NOT_FOUND));
         if (!AdValidationType.APPROVED.equals(ad.getValidation())) {
             throw new BusinessRuleException(AdValidationMessages.AD_MUST_BE_APPROVED_FOR_BOX_DISPATCH);
         }
+
         List<MonitorAd> placements = monitorAdRepository.findByAdIdWithMonitor(adId);
-        if (placements == null || placements.isEmpty()) {
-            throw new BusinessRuleException(AdValidationMessages.AD_NOT_PLACED_ON_MONITOR);
+        Map<UUID, Monitor> monitorsById = resolveDispatchMonitors(ad, placements);
+        if (monitorsById.isEmpty()) {
+            throw new BusinessRuleException(AdValidationMessages.AD_MONITOR_TARGET_NOT_FOUND);
         }
+
+        boolean succeeded = false;
+        if (publishToScreenAds) {
+            for (Monitor monitor : monitorsById.values()) {
+                monitorHelper.attachAdToMonitor(monitor, ad);
+                if (!monitor.isAbleToSendBoxRequest()) {
+                    continue;
+                }
+                List<UpdateBoxMonitorsAdRequestDto> playlist = monitorHelper.buildOrderedBoxUpdateDtos(monitor);
+                if (monitorHelper.syncBoxAdsPlaylist(monitor, playlist).isEmpty()) {
+                    continue;
+                }
+                MonitorAd placement = monitor.getMonitorAds().stream()
+                        .filter(ma -> ma.getAd() != null && adId.equals(ma.getAd().getId()))
+                        .findFirst()
+                        .orElse(null);
+                if (placement != null) {
+                    adOnAirNotificationHelper.notifyOnAirForNewMonitorAds(List.of(placement), monitor, true);
+                }
+                succeeded = true;
+            }
+            if (!succeeded) {
+                throw new BusinessRuleException(AdValidationMessages.BOX_DISPATCH_NOT_AVAILABLE);
+            }
+        } else {
+            for (Monitor monitor : monitorsById.values()) {
+                monitorHelper.detachAdFromMonitor(monitor, adId);
+                if (monitorHelper.stageAdFileOnBox(monitor, ad)) {
+                    succeeded = true;
+                }
+            }
+            if (!succeeded) {
+                throw new BusinessRuleException(AdValidationMessages.BOX_DISPATCH_STAGE_NOT_AVAILABLE);
+            }
+        }
+
+        log.info("dispatchAdToBox completed adId={}, publishToScreenAds={}", adId, publishToScreenAds);
+    }
+
+    private Map<UUID, Monitor> resolveDispatchMonitors(Ad ad, List<MonitorAd> placements) {
         Map<UUID, Monitor> monitorsById = new LinkedHashMap<>();
-        for (MonitorAd placement : placements) {
-            Monitor monitor = placement.getMonitor();
+        if (placements != null) {
+            for (MonitorAd placement : placements) {
+                Monitor monitor = placement.getMonitor();
+                if (monitor != null) {
+                    monitorsById.putIfAbsent(monitor.getId(), monitor);
+                }
+            }
+        }
+        if (monitorsById.isEmpty()
+                && ad.getAdRequest() != null
+                && ad.getAdRequest().getTargetMonitor() != null) {
+            Monitor monitor = monitorRepository.findById(ad.getAdRequest().getTargetMonitor().getId())
+                    .orElse(null);
             if (monitor != null) {
-                monitorsById.putIfAbsent(monitor.getId(), monitor);
+                monitorsById.put(monitor.getId(), monitor);
             }
         }
-        boolean synced = false;
-        for (Monitor monitor : monitorsById.values()) {
-            if (!monitor.isAbleToSendBoxRequest()) {
-                continue;
-            }
-            List<UpdateBoxMonitorsAdRequestDto> playlist = monitorHelper.buildOrderedBoxUpdateDtos(monitor);
-            if (monitorHelper.syncBoxAdsPlaylist(monitor, playlist).isEmpty()) {
-                continue;
-            }
-            List<MonitorAd> adsOnMonitor = placements.stream()
-                    .filter(ma -> ma.getMonitor() != null && monitor.getId().equals(ma.getMonitor().getId()))
-                    .toList();
-            adOnAirNotificationHelper.notifyOnAirForNewMonitorAds(adsOnMonitor, monitor, true);
-            synced = true;
-        }
-        if (!synced) {
-            throw new BusinessRuleException(AdValidationMessages.BOX_DISPATCH_NOT_AVAILABLE);
-        }
-        log.info("dispatchAdToBox completed adId={}", adId);
+        return monitorsById;
     }
 
     @Override

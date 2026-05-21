@@ -9,6 +9,7 @@ import com.telas.dtos.response.MonitorValidAdResponseDto;
 import com.telas.entities.Ad;
 import com.telas.entities.Address;
 import com.telas.entities.Monitor;
+import com.telas.entities.MonitorAd;
 import com.telas.entities.SubscriptionMonitor;
 import com.telas.enums.AdValidationType;
 import com.telas.infra.exceptions.BusinessRuleException;
@@ -196,6 +197,56 @@ public class MonitorHelper {
 				.toList();
 	}
 
+
+	@Transactional
+	public void detachAdFromMonitor(Monitor monitor, UUID adId) {
+		if (monitor == null || monitor.getMonitorAds() == null || adId == null) {
+			return;
+		}
+		monitor.getMonitorAds().removeIf(ma -> ma.getAd() != null && adId.equals(ma.getAd().getId()));
+		repository.save(monitor);
+	}
+
+	@Transactional
+	public void attachAdToMonitor(Monitor monitor, Ad ad) {
+		if (monitor == null || ad == null || monitor.getMonitorAds() == null) {
+			return;
+		}
+		boolean alreadyLinked = monitor.getMonitorAds().stream()
+				.anyMatch(ma -> ma.getAd() != null && ad.getId().equals(ma.getAd().getId()));
+		if (!alreadyLinked) {
+			monitor.getMonitorAds().add(new MonitorAd(monitor, ad));
+			repository.save(monitor);
+		}
+	}
+
+	public boolean stageAdFileOnBox(Monitor monitor, Ad ad) {
+		if (monitor == null || ad == null || !monitor.isAbleToSendBoxRequest()) {
+			return false;
+		}
+		String ip = monitor.getBox().getBoxAddress().getIp();
+		if (ip == null || ip.isBlank()) {
+			return false;
+		}
+		String link = bucketService.getLink(AttachmentUtils.format(ad));
+		UpdateBoxMonitorsAdRequestDto dto = new UpdateBoxMonitorsAdRequestDto();
+		dto.setFileName(ad.getName());
+		dto.setLink(link);
+		dto.setBlockQuantity(1);
+		dto.setOrderIndex(0);
+		dto.setBaseUrl(String.format("http://%s:8081/", ip));
+		String baseUrl = dto.getBaseUrl();
+		String url = baseUrl.endsWith("/") ? baseUrl + "ad" : baseUrl + "/ad";
+		try {
+			Map<String, String> headers = Map.of("X-API-KEY", API_KEY);
+			httpClient.makePostRequest(url, List.of(dto), Void.class, null, headers);
+			return true;
+		} catch (Exception e) {
+			log.error("Error staging ad file on box monitorId={}, adId={}, message={}",
+					monitor.getId(), ad.getId(), e.getMessage());
+			return false;
+		}
+	}
 
 	public Set<String> syncBoxAdsPlaylist(Monitor monitor, List<UpdateBoxMonitorsAdRequestDto> requestList) {
 		Set<String> successfulBaseUrls = new HashSet<>();
