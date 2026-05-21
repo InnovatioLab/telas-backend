@@ -114,6 +114,26 @@ public class ClientHelper {
         return adRequestRepository.save(adRequest);
     }
 
+    @Transactional
+    public AdRequest createPartnerAdRequest(PartnerAdRequestToAdminDto request, Client partner, Monitor targetMonitor) {
+        if (adRequestRepository.existsByClientIdAndRequestOriginAndTargetMonitorIdAndIsActiveTrueAndSubmissionMode(
+                partner.getId(),
+                com.telas.enums.AdRequestOrigin.PARTNER,
+                targetMonitor.getId(),
+                com.telas.enums.PartnerSubmissionMode.ADMIN_MATERIALS)) {
+            throw new BusinessRuleException(ClientValidationMessages.AD_REQUEST_EXISTS);
+        }
+
+        List<Attachment> attachments = getAttachmentsByIds(request.getAttachmentIds());
+        if (attachments.stream().anyMatch(attachment ->
+                attachment.getClient() != null && !attachment.getClient().getId().equals(partner.getId()))) {
+            throw new BusinessRuleException(AttachmentValidationMessages.ATTACHMENTS_NOT_BELONG_TO_CLIENT);
+        }
+
+        AdRequest adRequest = new AdRequest(request, partner, targetMonitor, attachments);
+        return adRequestRepository.save(adRequest);
+    }
+
     @Transactional(readOnly = true)
     public AdRequest getAdRequestById(UUID adRequestId) {
         return adRequestRepository.findById(adRequestId)

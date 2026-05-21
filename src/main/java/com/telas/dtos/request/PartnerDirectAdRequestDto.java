@@ -37,8 +37,5 @@ public class PartnerDirectAdRequestDto implements Serializable {
 
     public void validateForeignPlacement() {
         validate();
-        if (adLabel == null || adLabel.isBlank()) {
-            throw new BusinessRuleException("Ad label is required for external screen submissions.");
-        }
     }
 }

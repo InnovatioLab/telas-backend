@@ -185,6 +185,17 @@ public class ClientControllerImpl implements ClientController {
     }
 
     @Override
+    @PostMapping("/ad-requests/{adRequestId}/ad")
+    @SecurityRequirement(name = "jwt")
+    public ResponseEntity<?> uploadAdForAdRequest(
+            @Valid @RequestBody AttachmentRequestDto request,
+            @PathVariable(name = "adRequestId") UUID adRequestId) {
+        service.uploadAdsForAdRequest(request, adRequestId);
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(ResponseDto.fromData(null, HttpStatus.CREATED, MessageCommonsConstants.UPLOAD_SUCCESS_MESSAGE));
+    }
+
+    @Override
     @GetMapping("/filters")
     @SecurityRequirement(name = "jwt")
     public ResponseEntity<?> findAllFilters(ClientFilterRequestDto request) {
@@ -298,6 +309,17 @@ public class ClientControllerImpl implements ClientController {
         String msg = response.getList().isEmpty() ? MessageCommonsConstants.FIND_FILTER_EMPTY_MESSAGE : MessageCommonsConstants.FIND_ALL_SUCCESS_MESSAGE;
 
         return ResponseEntity.status(HttpStatus.OK).body(ResponseDto.fromData(response, HttpStatus.OK, msg));
+    }
+
+    @Override
+    @GetMapping("/me/partner-pending-ads")
+    @SecurityRequirement(name = "jwt")
+    public ResponseEntity<?> findMyPendingValidationAds() {
+        List<PendingAdAdminValidationResponseDto> list = service.findMyPendingValidationAds();
+        String msg = list.isEmpty()
+                ? MessageCommonsConstants.FIND_FILTER_EMPTY_MESSAGE
+                : MessageCommonsConstants.FIND_ALL_SUCCESS_MESSAGE;
+        return ResponseEntity.status(HttpStatus.OK).body(ResponseDto.fromData(list, HttpStatus.OK, msg));
     }
 
     @Override

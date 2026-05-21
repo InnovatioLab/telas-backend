@@ -15,6 +15,10 @@ import com.telas.repositories.AdRepository;
 import com.telas.repositories.AdRequestRepository;
 import com.telas.repositories.AttachmentRepository;
 import com.telas.repositories.ClientRepository;
+import com.telas.repositories.MonitorAdRepository;
+import com.telas.repositories.MonitorRepository;
+import com.telas.enums.AdRequestOrigin;
+import com.telas.dtos.request.UpdateBoxMonitorsAdRequestDto;
 import com.telas.services.AdUnusedTrackingService;
 import com.telas.services.BucketService;
 import com.telas.services.BusinessQuestionnaireService;
@@ -24,6 +28,8 @@ import com.telas.services.PermissionService;
 import com.telas.shared.audit.CustomRevisionListener;
 import com.telas.shared.constants.valitation.AdValidationMessages;
 import com.telas.shared.constants.valitation.AttachmentValidationMessages;
+import com.telas.shared.constants.valitation.ClientValidationMessages;
+import com.telas.shared.constants.valitation.MonitorValidationMessages;
 import com.telas.shared.utils.AttachmentUtils;
 import com.telas.shared.utils.ValidateDataUtils;
 import lombok.RequiredArgsConstructor;
@@ -53,6 +59,10 @@ public class AttachmentHelper {
     private final AdUnusedTrackingService adUnusedTrackingService;
 
     private final BusinessQuestionnaireService businessQuestionnaireService;
+
+    private final MonitorAdRepository monitorAdRepository;
+
+    private final MonitorRepository monitorRepository;
 
     @Value("${front.base.url}")
     private String frontBaseUrl;
@@ -195,9 +205,27 @@ public class AttachmentHelper {
 
     @Transactional
     public void saveAds(AttachmentRequestDto request, Client client) {
-        Ad ad = client.isPrivilegedPanelUser() || client.isPartner()
+        if (client.isPartner()) {
+            throw new BusinessRuleException(ClientValidationMessages.PARTNER_USE_AD_REQUEST_UPLOAD);
+        }
+        if (client.getAdRequest() == null) {
+            throw new ResourceNotFoundException(AdValidationMessages.AD_REQUEST_NOT_FOUND);
+        }
+        Ad ad = client.isPrivilegedPanelUser()
                 ? (request.getId() == null ? createNewAd(request, client) : updateExistingAd(request))
-                : (client.getAdRequest().getAd() == null ? createNewAdFromRequest(client.getAdRequest(), request) : updateExistingAdFromRequest(client.getAdRequest().getAd(), request, client));
+                : (client.getAdRequest().getAd() == null
+                ? createNewAdFromRequest(client.getAdRequest(), request)
+                : updateExistingAdFromRequest(client.getAdRequest().getAd(), request, client));
+        uploadAttachment(request, ad);
+        clientRepository.save(client);
+    }
+
+    @Transactional
+    public void saveAdsForAdRequest(AttachmentRequestDto request, AdRequest adRequest) {
+        Client client = adRequest.getClient();
+        Ad ad = adRequest.getAd() == null
+                ? createNewAdFromRequest(adRequest, request)
+                : updateExistingAdFromRequest(adRequest.getAd(), request, client);
         uploadAttachment(request, ad);
         clientRepository.save(client);
     }
@@ -232,17 +260,39 @@ public class AttachmentHelper {
         adRequestRepository.save(entity);
         markReferenceAttachmentsConsumed(entity);
 
+        if (AdRequestOrigin.PARTNER.equals(entity.getRequestOrigin())) {
+            newAd.setValidation(AdValidationType.PENDING);
+            adRepository.save(newAd);
+            attachAdToTargetMonitorIfNeeded(newAd, entity);
+        }
+
+        String recipientLink = client.isPartner()
+                ? frontBaseUrl + "/client/partner-ads"
+                : frontBaseUrl + "/client/my-telas?tab=ads";
         notificationService.save(
                 NotificationReference.AD_RECEIVED,
                 client,
                 Map.of(
                         "name", client.getBusinessName(),
-                        "link", frontBaseUrl + "/client/my-telas?tab=ads"
+                        "link", recipientLink
                 ),
                 true
         );
 
         return newAd;
+    }
+
+    private void attachAdToTargetMonitorIfNeeded(Ad ad, AdRequest adRequest) {
+        if (adRequest.getTargetMonitor() == null) {
+            return;
+        }
+        if (monitorAdRepository.countByAdId(ad.getId()) > 0) {
+            return;
+        }
+        Monitor monitor = monitorRepository.findById(adRequest.getTargetMonitor().getId())
+                .orElseThrow(() -> new ResourceNotFoundException(MonitorValidationMessages.MONITOR_NOT_FOUND));
+        monitor.getMonitorAds().add(new MonitorAd(monitor, ad));
+        monitorRepository.save(monitor);
     }
 
     private Ad updateExistingAdFromRequest(Ad ad, AttachmentRequestDto adRequest, Client actor) {
@@ -330,8 +380,16 @@ public class AttachmentHelper {
     private void setAdValidationDuringUpdate(Ad entity) {
         Client client = entity.getClient();
 
-        if (client.isPrivilegedPanelUser() || client.isPartner()) {
+        if (client.isPrivilegedPanelUser()) {
             entity.setValidation(AdValidationType.APPROVED);
+            return;
+        }
+        if (client.isPartner() && entity.getAdRequest() == null) {
+            entity.setValidation(AdValidationType.APPROVED);
+            return;
+        }
+        if (client.isPartner() && entity.getAdRequest() != null) {
+            entity.setValidation(AdValidationType.PENDING);
             return;
         }
         entity.setValidation(AdValidationType.PENDING);
@@ -381,6 +439,31 @@ public class AttachmentHelper {
         } else if (AdValidationType.APPROVED.equals(validation)) {
             notifyClientApprovedAd(entity);
             notifyAdminsClientApprovedAd(entity);
+            if (entity.getAdRequest() != null) {
+                attachAdToTargetMonitorIfNeeded(entity, entity.getAdRequest());
+            }
+            syncMonitorsPlaylistAfterAdApproved(entity);
+        }
+    }
+
+    private void syncMonitorsPlaylistAfterAdApproved(Ad ad) {
+        List<MonitorAd> placements = monitorAdRepository.findByAdIdWithMonitor(ad.getId());
+        if (placements == null || placements.isEmpty()) {
+            return;
+        }
+        Map<UUID, Monitor> monitorsById = new LinkedHashMap<>();
+        for (MonitorAd placement : placements) {
+            Monitor monitor = placement.getMonitor();
+            if (monitor != null) {
+                monitorsById.putIfAbsent(monitor.getId(), monitor);
+            }
+        }
+        for (Monitor monitor : monitorsById.values()) {
+            if (!monitor.isAbleToSendBoxRequest()) {
+                continue;
+            }
+            List<UpdateBoxMonitorsAdRequestDto> playlist = monitorHelper.buildOrderedBoxUpdateDtos(monitor);
+            monitorHelper.syncBoxAdsPlaylist(monitor, playlist);
         }
     }
 

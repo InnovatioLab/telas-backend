@@ -17,4 +17,6 @@ public interface AdminAdOperationsService {
     byte[] exportSubscriptionsCsv();
 
     void deleteApprovedAd(UUID adId);
+
+    void dispatchAdToBox(UUID adId);
 }

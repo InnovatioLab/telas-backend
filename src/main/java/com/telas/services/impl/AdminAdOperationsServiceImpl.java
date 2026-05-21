@@ -4,6 +4,7 @@ import com.telas.dtos.request.filters.AdminAdOperationsFilterRequestDto;
 import com.telas.dtos.response.AdminAdOperationRowDto;
 import com.telas.dtos.response.AdminExpiryNotificationDto;
 import com.telas.dtos.response.PaginationResponseDto;
+import com.telas.dtos.request.UpdateBoxMonitorsAdRequestDto;
 import com.telas.entities.Ad;
 import com.telas.entities.Monitor;
 import com.telas.entities.MonitorAd;
@@ -125,7 +126,14 @@ public class AdminAdOperationsServiceImpl implements AdminAdOperationsService {
         Sort sort = request.resolveSort(validation);
         Pageable pageable = PaginationFilterUtil.getPageable(request, sort);
         Page<AdminAdOperationRowDto> page;
-        if (validation == AdValidationType.APPROVED) {
+        if (Boolean.TRUE.equals(request.getAwaitingBoxDispatch())) {
+            page = adRepository.searchAdsAwaitingBoxDispatch(
+                    gf,
+                    trimOrEmpty(request.getPartnerName()),
+                    trimOrEmpty(request.getScreenContains()),
+                    pageable
+            );
+        } else if (validation == AdValidationType.APPROVED) {
             page = adRepository.searchApprovedAdsAdminOperations(
                     gf,
                     trimOrEmpty(request.getAdvertiserName()),
@@ -200,6 +208,41 @@ public class AdminAdOperationsServiceImpl implements AdminAdOperationsService {
         }
         unusedSingleAdDeletionService.deleteAdInNewTransaction(adId);
         log.info("deleteApprovedAd completed adId={}", adId);
+    }
+
+    @Override
+    @Transactional
+    public void dispatchAdToBox(UUID adId) {
+        authenticatedUserService.validateAdminOrAdsManageAccess();
+        Ad ad = adRepository.findById(adId)
+                .orElseThrow(() -> new ResourceNotFoundException(AdValidationMessages.AD_NOT_FOUND));
+        if (!AdValidationType.APPROVED.equals(ad.getValidation())) {
+            throw new BusinessRuleException(AdValidationMessages.AD_MUST_BE_APPROVED_FOR_BOX_DISPATCH);
+        }
+        List<MonitorAd> placements = monitorAdRepository.findByAdIdWithMonitor(adId);
+        if (placements == null || placements.isEmpty()) {
+            throw new BusinessRuleException(AdValidationMessages.AD_NOT_PLACED_ON_MONITOR);
+        }
+        Map<UUID, Monitor> monitorsById = new LinkedHashMap<>();
+        for (MonitorAd placement : placements) {
+            Monitor monitor = placement.getMonitor();
+            if (monitor != null) {
+                monitorsById.putIfAbsent(monitor.getId(), monitor);
+            }
+        }
+        boolean synced = false;
+        for (Monitor monitor : monitorsById.values()) {
+            if (!monitor.isAbleToSendBoxRequest()) {
+                continue;
+            }
+            List<UpdateBoxMonitorsAdRequestDto> playlist = monitorHelper.buildOrderedBoxUpdateDtos(monitor);
+            monitorHelper.syncBoxAdsPlaylist(monitor, playlist);
+            synced = true;
+        }
+        if (!synced) {
+            throw new BusinessRuleException(AdValidationMessages.BOX_DISPATCH_NOT_AVAILABLE);
+        }
+        log.info("dispatchAdToBox completed adId={}", adId);
     }
 
     @Override

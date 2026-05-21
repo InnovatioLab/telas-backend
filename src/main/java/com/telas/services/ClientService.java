@@ -66,6 +66,8 @@ public interface ClientService {
 
     void uploadAds(AttachmentRequestDto request, UUID clientId);
 
+    void uploadAdsForAdRequest(AttachmentRequestDto request, UUID adRequestId);
+
     void acceptTermsAndConditions();
 
     void changeRoleToPartner(UUID clientId);
@@ -99,6 +101,8 @@ public interface ClientService {
     PaginationResponseDto<List<AdRequestAdminResponseDto>> findPendingAdRequest(FilterAdRequestDto request);
 
     PaginationResponseDto<List<PendingAdAdminValidationResponseDto>> findPendingAds(FilterAdRequestDto request);
+
+    List<PendingAdAdminValidationResponseDto> findMyPendingValidationAds();
 
     void addMonitorToWishlist(UUID monitorId);
 

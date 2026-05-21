@@ -1,5 +1,8 @@
 package com.telas.dtos.request.filters;
 
+import com.telas.enums.AdRequestOrigin;
+import com.telas.enums.PartnerSubmissionMode;
+import com.telas.enums.Role;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -14,6 +17,12 @@ public class FilterAdRequestDto extends PaginationRequestDto {
     private String genericFilter;
 
     private Boolean includeInactiveRequests;
+
+    private Role clientRole;
+
+    private AdRequestOrigin requestOrigin;
+
+    private PartnerSubmissionMode submissionMode;
 
     public Sort setOrdering() {
         return switch (getSortBy()) {

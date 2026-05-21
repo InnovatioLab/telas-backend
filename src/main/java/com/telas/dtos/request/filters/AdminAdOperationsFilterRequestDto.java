@@ -25,6 +25,8 @@ public class AdminAdOperationsFilterRequestDto extends PaginationRequestDto {
     private Instant submissionDateFrom;
     private Instant submissionDateTo;
 
+    private Boolean awaitingBoxDispatch;
+
     public Sort resolveSort(AdValidationType validation) {
         String key = effectiveSortBy(validation);
         AdValidationType branch = validation != null ? validation : AdValidationType.APPROVED;

@@ -36,4 +36,9 @@ public final class ClientValidationMessages {
             "Invalid successor client: must be active, not this account, and cannot be an admin or developer.";
     public static final String ADMIN_CREATE_PARTNER_DISABLED =
             "Partner creation by administrators is disabled. Contact a developer.";
+    public static final String PARTNER_USE_AD_REQUEST_UPLOAD =
+            "Use the ad-request upload endpoint for partner material requests.";
+    public static final String AD_REQUEST_NOT_PARTNER = "Ad request is not a partner request.";
+    public static final String AD_REQUEST_NOT_MATERIALS =
+            "Ad request is not a partner materials submission.";
 }

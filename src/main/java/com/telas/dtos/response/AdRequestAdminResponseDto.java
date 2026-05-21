@@ -1,6 +1,8 @@
 package com.telas.dtos.response;
 
 import com.telas.entities.AdRequest;
+import com.telas.enums.AdRequestOrigin;
+import com.telas.enums.PartnerSubmissionMode;
 import com.telas.enums.Role;
 import lombok.Getter;
 
@@ -43,6 +45,14 @@ public final class AdRequestAdminResponseDto implements Serializable {
 
     private final Instant businessQuestionnaireUpdatedAt;
 
+    private final AdRequestOrigin requestOrigin;
+
+    private final PartnerSubmissionMode submissionMode;
+
+    private final UUID targetMonitorId;
+
+    private final String targetMonitorSummary;
+
     public AdRequestAdminResponseDto(
             AdRequest adRequest,
             Map<String, Object> linkResponseData,
@@ -59,11 +69,24 @@ public final class AdRequestAdminResponseDto implements Serializable {
         ad = (LinkResponseDto) linkResponseData.get("ad");
         this.businessQuestionnaireVersion = businessQuestionnaireVersion;
         this.businessQuestionnaireUpdatedAt = businessQuestionnaireUpdatedAt;
+        this.requestOrigin = adRequest.getRequestOrigin();
+        this.submissionMode = adRequest.getSubmissionMode();
+        this.targetMonitorId = adRequest.getTargetMonitor() != null
+                ? adRequest.getTargetMonitor().getId()
+                : null;
+        this.targetMonitorSummary = buildMonitorSummary(adRequest);
 
         refusedAds = adRequest.getAd() != null && !adRequest.getAd().getRefusedAds().isEmpty() ?
                 adRequest.getAd().getRefusedAds().stream()
                         .sorted((a, b) -> b.getCreatedAt().compareTo(a.getCreatedAt()))
                         .map(RefusedAdResponseDto::new)
                         .toList() : List.of();
+    }
+
+    private static String buildMonitorSummary(AdRequest adRequest) {
+        if (adRequest.getTargetMonitor() == null || adRequest.getTargetMonitor().getAddress() == null) {
+            return null;
+        }
+        return adRequest.getTargetMonitor().getAddress().resolveMapLocationName();
     }
 }

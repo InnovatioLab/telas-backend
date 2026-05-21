@@ -13,8 +13,10 @@ import com.telas.dtos.request.filters.ClientFilterRequestDto;
 import com.telas.dtos.request.filters.FilterAdRequestDto;
 import com.telas.dtos.response.*;
 import com.telas.entities.*;
+import com.telas.enums.AdRequestOrigin;
 import com.telas.enums.AdValidationType;
 import com.telas.enums.CodeType;
+import com.telas.enums.PartnerSubmissionMode;
 import com.telas.enums.DefaultStatus;
 import com.telas.enums.Permission;
 import com.telas.enums.NotificationReference;
@@ -324,7 +326,11 @@ public class ClientServiceImpl implements ClientService {
 	public void uploadAttachments(List<AttachmentRequestDto> request) {
 		attachmentHelper.validate(request);
 
-		Client client = authenticatedUserService.validateActiveSubscription().client();
+		Client logged = authenticatedUserService.getLoggedUser().client();
+		Client client = logged.isPartner()
+				? repository.findActiveIdFromToken(logged.getId())
+						.orElseThrow(() -> new ResourceNotFoundException(ClientValidationMessages.USER_NOT_FOUND))
+				: authenticatedUserService.validateActiveSubscription().client();
 		boolean isFirstUpload = client.getAttachments().isEmpty();
 		helper.validateAttachmentsCount(client, request);
 
@@ -340,7 +346,8 @@ public class ClientServiceImpl implements ClientService {
 			attachmentHelper.notifyAdminsClientFirstAttachmentsUploaded(client);
 			Map<String, String> clientAckParams = new HashMap<>();
 			clientAckParams.put("name", client.getBusinessName());
-			clientAckParams.put("link", frontBaseUrl + "/client/my-telas");
+			String materialsPath = client.isPartner() ? "/client/materials" : "/client/my-telas";
+			clientAckParams.put("link", frontBaseUrl + materialsPath);
 			notificationService.save(
 					NotificationReference.CLIENT_FIRST_ATTACHMENTS_UPLOADED_ACK,
 					client,
@@ -400,6 +407,10 @@ public class ClientServiceImpl implements ClientService {
 			return;
 		}
 
+		if (client.isPartner()) {
+			throw new BusinessRuleException(ClientValidationMessages.PARTNER_USE_AD_REQUEST_UPLOAD);
+		}
+
 		if (Objects.isNull(client.getAdRequest())) {
 			throw new ResourceNotFoundException(ClientValidationMessages.AD_REQUEST_NOT_FOUND);
 		}
@@ -409,6 +420,26 @@ public class ClientServiceImpl implements ClientService {
 			validateMaxAds(client);
 		}
 		attachmentHelper.saveAds(request, client);
+	}
+
+	@Override
+	@Transactional
+	public void uploadAdsForAdRequest(AttachmentRequestDto request, UUID adRequestId) {
+		request.validate();
+		authenticatedUserService.validateAdminOrAdsManageAccess();
+		AdRequest adRequest = helper.getAdRequestById(adRequestId);
+		if (!AdRequestOrigin.PARTNER.equals(adRequest.getRequestOrigin())) {
+			throw new BusinessRuleException(ClientValidationMessages.AD_REQUEST_NOT_PARTNER);
+		}
+		if (!PartnerSubmissionMode.ADMIN_MATERIALS.equals(adRequest.getSubmissionMode())) {
+			throw new BusinessRuleException(ClientValidationMessages.AD_REQUEST_NOT_MATERIALS);
+		}
+		Client partner = adRequest.getClient();
+		boolean isReplacingExistingAd = adRequest.getAd() != null;
+		if (!isReplacingExistingAd) {
+			validateMaxAds(partner);
+		}
+		attachmentHelper.saveAdsForAdRequest(request, adRequest);
 	}
 
 
@@ -744,7 +775,23 @@ public class ClientServiceImpl implements ClientService {
 				)
 			);
 
-			return criteriaBuilder.and(activeClient, needsAdminAction, refusalHistoryOk);
+			List<Predicate> predicates = new ArrayList<>();
+			predicates.add(activeClient);
+			predicates.add(needsAdminAction);
+			predicates.add(refusalHistoryOk);
+			predicates.add(criteriaBuilder.equal(root.get("isActive"), true));
+
+			if (request.getRequestOrigin() != null) {
+				predicates.add(criteriaBuilder.equal(root.get("requestOrigin"), request.getRequestOrigin()));
+			}
+			if (request.getSubmissionMode() != null) {
+				predicates.add(criteriaBuilder.equal(root.get("submissionMode"), request.getSubmissionMode()));
+			}
+			if (request.getClientRole() != null) {
+				predicates.add(criteriaBuilder.equal(clientJoin.get("role"), request.getClientRole()));
+			}
+
+			return criteriaBuilder.and(predicates.toArray(new Predicate[0]));
 		}, request.getGenericFilter(), this::filterAdRequests);
 
 		Page<AdRequest> page = adRequestRepository.findAll(filter, pageable);
@@ -770,7 +817,13 @@ public class ClientServiceImpl implements ClientService {
 			Join<Ad, Client> clientJoin = root.join("client", JoinType.INNER);
 			Predicate activeClient = criteriaBuilder.equal(clientJoin.get("status"), DefaultStatus.ACTIVE);
 			Predicate pending = criteriaBuilder.equal(root.get("validation"), AdValidationType.PENDING);
-			return criteriaBuilder.and(activeClient, pending);
+			List<Predicate> predicates = new ArrayList<>();
+			predicates.add(activeClient);
+			predicates.add(pending);
+			if (request.getClientRole() != null) {
+				predicates.add(criteriaBuilder.equal(clientJoin.get("role"), request.getClientRole()));
+			}
+			return criteriaBuilder.and(predicates.toArray(new Predicate[0]));
 		};
 		Specification<Ad> filter = PaginationFilterUtil.addSpecificationFilter(base,
 				request.getGenericFilter(), this::filterPendingAds);
@@ -783,6 +836,21 @@ public class ClientServiceImpl implements ClientService {
 				.toList();
 		return PaginationResponseDto.fromResult(response, (int) page.getTotalElements(), page.getTotalPages(),
 				request.getPage());
+	}
+
+	@Override
+	@Transactional(readOnly = true)
+	public List<PendingAdAdminValidationResponseDto> findMyPendingValidationAds() {
+		Client partner = authenticatedUserService.getLoggedUser().client();
+		if (!partner.isPartner()) {
+			throw new ForbiddenException(AuthValidationMessageConstants.ERROR_NO_PERMISSION);
+		}
+		return adRepository.findByClientIdAndValidation(partner.getId(), AdValidationType.PENDING).stream()
+				.map(ad -> new PendingAdAdminValidationResponseDto(
+						ad,
+						attachmentHelper.getStringLinkFromAd(ad),
+						List.of()))
+				.toList();
 	}
 
 

@@ -3,7 +3,12 @@ package com.telas.services.impl;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.telas.dtos.request.AttachmentRequestDto;
 import com.telas.dtos.request.MonitorAdRequestDto;
+import com.telas.dtos.request.PartnerAdRequestToAdminDto;
+import com.telas.dtos.request.PartnerAdSubmissionRequestDto;
 import com.telas.dtos.request.PartnerDirectAdRequestDto;
+import com.telas.enums.AdRequestOrigin;
+import com.telas.enums.PartnerSubmissionMode;
+import com.telas.helpers.ClientHelper;
 import com.telas.dtos.request.MonitorRequestDto;
 import com.telas.dtos.request.UpdateBoxMonitorsAdRequestDto;
 import com.telas.dtos.request.filters.FilterMonitorRequestDto;
@@ -98,6 +103,8 @@ public class MonitorServiceImpl implements MonitorService {
 	private final PartnerSlotAccessService partnerSlotAccessService;
 
 	private final NotificationService notificationService;
+
+	private final ClientHelper clientHelper;
 
 	@Value("${stripe.product.id}")
 	private String productId;
@@ -336,7 +343,7 @@ public class MonitorServiceImpl implements MonitorService {
 			throw new ForbiddenException(AuthValidationMessageConstants.ERROR_NO_PERMISSION);
 		}
 		authenticatedUserService.validateAdmin();
-		return executeDirectAdUpload(monitorId, request, null, actor, false);
+		return executeDirectAdUpload(monitorId, request, null, actor, false, false);
 	}
 
 	@Override
@@ -356,12 +363,73 @@ public class MonitorServiceImpl implements MonitorService {
 		} else {
 			request.validate();
 		}
-		return executeDirectAdUpload(
-				monitorId,
-				request.getAttachment(),
-				request.getAdLabel(),
-				actor,
-				partnerForeignPlacement);
+		PartnerAdSubmissionRequestDto submission = new PartnerAdSubmissionRequestDto();
+		submission.setSubmissionMode(PartnerSubmissionMode.READY_CREATIVE);
+		submission.setAttachment(request.getAttachment());
+		submission.setOptionalLabel(request.getAdLabel());
+		return submitPartnerAdSubmission(monitorId, submission);
+	}
+
+	@Override
+	@Transactional
+	public UUID submitPartnerAdSubmission(UUID monitorId, PartnerAdSubmissionRequestDto request) {
+		request.validate();
+		Client actor = authenticatedUserService.getLoggedUser().client();
+		if (!actor.isPartner()) {
+			throw new ForbiddenException(AuthValidationMessageConstants.ERROR_NO_PERMISSION);
+		}
+		Monitor monitor = findEntityById(monitorId);
+		boolean partnerForeignPlacement = !partnerOwnsMonitorAddress(actor, monitor);
+		if (partnerForeignPlacement) {
+			if (!partnerSlotAccessService.hasGlobalSlotsPermission(actor)) {
+				throw new ForbiddenException(AuthValidationMessageConstants.ERROR_NO_PERMISSION);
+			}
+		} else {
+			if (request.getSubmissionMode() == PartnerSubmissionMode.ADMIN_MATERIALS) {
+				throw new BusinessRuleException(MonitorValidationMessages.PARTNER_MATERIALS_FOREIGN_ONLY);
+			}
+		}
+
+		return switch (request.getSubmissionMode()) {
+			case READY_CREATIVE -> executeDirectAdUpload(
+					monitorId,
+					request.getAttachment(),
+					resolveOptionalLabel(request),
+					actor,
+					partnerForeignPlacement,
+					partnerForeignPlacement);
+			case ADMIN_MATERIALS -> submitPartnerMaterialsRequest(monitorId, request, actor, monitor);
+		};
+	}
+
+	private String resolveOptionalLabel(PartnerAdSubmissionRequestDto request) {
+		if (request.getOptionalLabel() != null && !request.getOptionalLabel().isBlank()) {
+			return request.getOptionalLabel().trim();
+		}
+		if (request.getAttachment() != null && request.getAttachment().getName() != null) {
+			return request.getAttachment().getName().replaceAll("\\.[^.]+$", "");
+		}
+		return null;
+	}
+
+	private UUID submitPartnerMaterialsRequest(
+			UUID monitorId,
+			PartnerAdSubmissionRequestDto request,
+			Client partner,
+			Monitor monitor) {
+		PartnerAdRequestToAdminDto materialsRequest = new PartnerAdRequestToAdminDto();
+		materialsRequest.setTargetMonitorId(monitorId);
+		materialsRequest.setAttachmentIds(request.getAttachmentIds());
+		materialsRequest.setOptionalLabel(request.getOptionalLabel());
+
+		if (partner.getAds().size() >= SharedConstants.MAX_ADS_PER_CLIENT) {
+			throw new BusinessRuleException(ClientValidationMessages.MAX_ADS_REACHED);
+		}
+		validatePartnerPlacementAccess(partner, monitor);
+
+		AdRequest created = clientHelper.createPartnerAdRequest(materialsRequest, partner, monitor);
+		notifyAdminsPartnerMaterialsSubmitted(partner, monitor, created);
+		return created.getId();
 	}
 
 	private UUID executeDirectAdUpload(
@@ -369,7 +437,8 @@ public class MonitorServiceImpl implements MonitorService {
 			AttachmentRequestDto request,
 			String adLabel,
 			Client actor,
-			boolean partnerForeignPlacement) {
+			boolean partnerForeignPlacement,
+			boolean deferBoxSyncForForeign) {
 		Monitor monitor = findEntityById(monitorId);
 
 		final Client adOwner;
@@ -388,11 +457,7 @@ public class MonitorServiceImpl implements MonitorService {
 		if (adLabel != null && !adLabel.isBlank()) {
 			ad.setName(adLabel.trim());
 		}
-		if (partnerForeignPlacement) {
-			ad.setValidation(AdValidationType.PENDING);
-		} else {
-			ad.setValidation(AdValidationType.APPROVED);
-		}
+		ad.setValidation(AdValidationType.APPROVED);
 		ad.setUsernameCreate(actor.getBusinessName());
 		Ad saved = adRepository.save(ad);
 		adOwner.getAds().add(saved);
@@ -413,9 +478,9 @@ public class MonitorServiceImpl implements MonitorService {
 		repository.save(monitor);
 		adUnusedTrackingService.syncUnusedStateForAdIds(List.of(saved.getId()));
 
-		if (partnerForeignPlacement) {
-			notifyAdminsPartnerForeignAdSubmitted(actor, monitor, saved);
-		} else if (monitor.isAbleToSendBoxRequest()) {
+		if (partnerForeignPlacement && deferBoxSyncForForeign) {
+			notifyAdminsPartnerForeignAdReadyForDispatch(actor, monitor, saved);
+		} else if (!partnerForeignPlacement && monitor.isAbleToSendBoxRequest()) {
 			List<UpdateBoxMonitorsAdRequestDto> playlist = helper.buildOrderedBoxUpdateDtos(monitor);
 			helper.syncBoxAdsPlaylist(monitor, playlist);
 		}
@@ -430,7 +495,7 @@ public class MonitorServiceImpl implements MonitorService {
 		}
 	}
 
-	private void notifyAdminsPartnerForeignAdSubmitted(Client partner, Monitor monitor, Ad ad) {
+	private void notifyAdminsPartnerForeignAdReadyForDispatch(Client partner, Monitor monitor, Ad ad) {
 		String monitorLabel = monitor.getAddress() != null
 				? monitor.getAddress().resolveMapLocationName()
 				: monitor.getId().toString();
@@ -440,9 +505,24 @@ public class MonitorServiceImpl implements MonitorService {
 		params.put("adLabel", ad.getName() != null ? ad.getName() : "");
 		params.put("adId", ad.getId().toString());
 		params.put("clientId", partner.getId().toString());
-		params.put("link", frontBaseUrl + "/admin/clients/" + partner.getId());
+		params.put("link", frontBaseUrl + "/admin/ads");
 		clientRepository.findAllAdmins().forEach(admin ->
 				notificationService.save(NotificationReference.ADMIN_PARTNER_FOREIGN_AD_SUBMITTED, admin, params, true));
+	}
+
+	private void notifyAdminsPartnerMaterialsSubmitted(Client partner, Monitor monitor, AdRequest adRequest) {
+		String monitorLabel = monitor.getAddress() != null
+				? monitor.getAddress().resolveMapLocationName()
+				: monitor.getId().toString();
+		Map<String, String> params = new HashMap<>();
+		params.put("partnerName", partner.getBusinessName() != null ? partner.getBusinessName() : "");
+		params.put("monitorLabel", monitorLabel != null ? monitorLabel : "");
+		params.put("adLabel", adRequest.getSlogan() != null ? adRequest.getSlogan() : "");
+		params.put("adId", adRequest.getId().toString());
+		params.put("clientId", partner.getId().toString());
+		params.put("link", frontBaseUrl + "/admin/ads");
+		clientRepository.findAllAdmins().forEach(admin ->
+				notificationService.save(NotificationReference.ADMIN_PARTNER_PLACEMENT_REQUEST, admin, params, true));
 	}
 
 	@Override

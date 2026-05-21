@@ -1,14 +1,20 @@
 package com.telas.entities;
 
 import com.telas.dtos.request.ClientAdRequestToAdminDto;
+import com.telas.dtos.request.PartnerAdRequestToAdminDto;
+import com.telas.enums.AdRequestOrigin;
+import com.telas.enums.PartnerSubmissionMode;
 import com.telas.shared.audit.BaseAudit;
 import com.telas.shared.utils.ValidateDataUtils;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
 import jakarta.persistence.OneToOne;
 import jakarta.persistence.Table;
 import lombok.Getter;
@@ -46,6 +52,18 @@ public class AdRequest extends BaseAudit implements Serializable {
     @Column(name = "active")
     private boolean isActive = true;
 
+    @Enumerated(EnumType.STRING)
+    @Column(name = "request_origin", nullable = false)
+    private AdRequestOrigin requestOrigin = AdRequestOrigin.CLIENT;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "submission_mode")
+    private PartnerSubmissionMode submissionMode;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "target_monitor_id")
+    private Monitor targetMonitor;
+
     @OneToOne(mappedBy = "adRequest")
     private Ad ad;
 
@@ -58,7 +76,29 @@ public class AdRequest extends BaseAudit implements Serializable {
 
     public AdRequest(ClientAdRequestToAdminDto request, Client client, List<Attachment> attachmentList) {
         this.client = client;
+        this.requestOrigin = AdRequestOrigin.CLIENT;
         this.slogan = null;
+        this.brandGuidelineUrl = null;
+
+        if (!ValidateDataUtils.isNullOrEmpty(attachmentList)) {
+            attachmentIds = attachmentList.stream()
+                    .map(Attachment::getId)
+                    .map(UUID::toString)
+                    .reduce((a, b) -> a + "," + b)
+                    .orElse("");
+        }
+    }
+
+    public AdRequest(
+            PartnerAdRequestToAdminDto request,
+            Client partner,
+            Monitor targetMonitor,
+            List<Attachment> attachmentList) {
+        this.client = partner;
+        this.requestOrigin = AdRequestOrigin.PARTNER;
+        this.submissionMode = PartnerSubmissionMode.ADMIN_MATERIALS;
+        this.targetMonitor = targetMonitor;
+        this.slogan = request.getOptionalLabel();
         this.brandGuidelineUrl = null;
 
         if (!ValidateDataUtils.isNullOrEmpty(attachmentList)) {

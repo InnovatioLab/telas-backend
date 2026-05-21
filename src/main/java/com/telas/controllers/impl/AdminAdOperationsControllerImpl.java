@@ -72,6 +72,15 @@ public class AdminAdOperationsControllerImpl {
                 .body(ResponseDto.fromData(null, HttpStatus.OK, MessageCommonsConstants.DELETE_SUCCESS_MESSAGE));
     }
 
+    @PostMapping("/ads/{adId}/dispatch-to-box")
+    @SecurityRequirement(name = "jwt")
+    public ResponseEntity<ResponseDto<Void>> dispatchAdToBox(@PathVariable UUID adId) {
+        log.info("Admin dispatch ad to box requested adId={}", adId);
+        adminAdOperationsService.dispatchAdToBox(adId);
+        return ResponseEntity.status(HttpStatus.OK)
+                .body(ResponseDto.fromData(null, HttpStatus.OK, MessageCommonsConstants.UPDATE_SUCCESS_MESSAGE));
+    }
+
     @GetMapping(value = "/export/subscriptions.csv", produces = "text/csv")
     @SecurityRequirement(name = "jwt")
     public ResponseEntity<byte[]> exportSubscriptionsCsv() {

@@ -148,6 +148,15 @@ public interface ClientController {
     })
     ResponseEntity<?> uploadAd(@Valid AttachmentRequestDto request, UUID clientId);
 
+    @Operation(summary = "Upload finished ad for a partner materials ad request", responses = {
+            @ApiResponse(responseCode = "201", description = "Ad created/updated successfully."),
+            @ApiResponse(responseCode = "422", description = "Request with invalid data."),
+            @ApiResponse(responseCode = "401", description = "Unauthorized."),
+            @ApiResponse(responseCode = "403", description = "Forbidden."),
+            @ApiResponse(responseCode = "404", description = "Ad request not found."),
+    })
+    ResponseEntity<?> uploadAdForAdRequest(@Valid AttachmentRequestDto request, UUID adRequestId);
+
     @Operation(summary = "Endpoint contract to get paginated clients from filters", responses = {
             @ApiResponse(responseCode = "200", description = "Records found successfully."),
             @ApiResponse(responseCode = "422", description = "Request with invalid data."),
@@ -207,6 +216,13 @@ public interface ClientController {
             @ApiResponse(responseCode = "403", description = "Forbidden."),
     })
     ResponseEntity<?> findPendingAds(FilterAdRequestDto request);
+
+    @Operation(summary = "List ads pending partner validation (logged partner)", responses = {
+            @ApiResponse(responseCode = "200", description = "Records found successfully."),
+            @ApiResponse(responseCode = "401", description = "Unauthorized."),
+            @ApiResponse(responseCode = "403", description = "Forbidden."),
+    })
+    ResponseEntity<?> findMyPendingValidationAds();
 
     @Operation(summary = "Endpoint contract to validate an ad", responses = {
             @ApiResponse(responseCode = "200", description = "Ad validated successfully."),

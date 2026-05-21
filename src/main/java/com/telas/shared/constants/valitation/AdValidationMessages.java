@@ -13,4 +13,10 @@ public final class AdValidationMessages {
   public static final String VALIDATION_NOT_ALLOWED = "You are not allowed to validate this ad";
   public static final String AD_ALREADY_VALIDATED = "Ad already validated";
   public static final String AD_MUST_BE_APPROVED_TO_DELETE = "Only client-approved ads can be deleted from this screen";
+  public static final String AD_MUST_BE_APPROVED_FOR_BOX_DISPATCH =
+          "Only approved ads can be sent to the box";
+  public static final String AD_NOT_PLACED_ON_MONITOR =
+          "Ad must be placed on a monitor before sending to the box";
+  public static final String BOX_DISPATCH_NOT_AVAILABLE =
+          "No monitor linked to this ad is ready to receive a box sync";
 }

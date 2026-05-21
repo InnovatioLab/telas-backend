@@ -18,6 +18,8 @@ import java.util.UUID;
 @Repository
 public interface AdRepository extends JpaRepository<Ad, UUID>, JpaSpecificationExecutor<Ad> {
 
+	List<Ad> findByClientIdAndValidation(UUID clientId, AdValidationType validation);
+
 	interface ApprovedCountByClientRow {
 		UUID getClientId();
 		long getApprovedCount();
@@ -228,6 +230,80 @@ public interface AdRepository extends JpaRepository<Ad, UUID>, JpaSpecificationE
 			@Param("screenContainsFilter") String screenContainsFilter,
 			@Param("submissionDateFrom") Instant submissionDateFrom,
 			@Param("submissionDateTo") Instant submissionDateTo,
+			Pageable pageable);
+
+	@Query(
+			countQuery = """
+					SELECT COUNT(DISTINCT ad.id)
+					FROM Ad ad
+					JOIN ad.client advertiser
+					INNER JOIN ad.monitorAds ma
+					INNER JOIN ma.id.monitor mon
+					LEFT JOIN mon.address addr
+					LEFT JOIN addr.client partner
+					LEFT JOIN mon.box box
+					LEFT JOIN box.boxAddress ba
+					WHERE ad.validation = com.telas.enums.AdValidationType.APPROVED
+					AND advertiser.role = com.telas.enums.Role.PARTNER
+					AND (ba IS NULL OR COALESCE(TRIM(ba.ip), '') = '')
+					AND (
+					    COALESCE(TRIM(:genericFilter), '') = ''
+					    OR LOWER(ad.name) LIKE LOWER(CONCAT('%', TRIM(:genericFilter), '%'))
+					    OR LOWER(advertiser.businessName) LIKE LOWER(CONCAT('%', TRIM(:genericFilter), '%'))
+					    OR LOWER(partner.businessName) LIKE LOWER(CONCAT('%', TRIM(:genericFilter), '%'))
+					    OR LOWER(CONCAT(COALESCE(addr.street, ''), COALESCE(addr.city, ''), COALESCE(addr.state, ''), COALESCE(addr.zipCode, ''))) LIKE LOWER(CONCAT('%', TRIM(:genericFilter), '%'))
+					)
+					AND (COALESCE(TRIM(:partnerNameFilter), '') = ''
+					    OR (partner IS NOT NULL AND LOWER(partner.businessName) LIKE LOWER(CONCAT('%', TRIM(:partnerNameFilter), '%'))))
+					AND (COALESCE(TRIM(:screenContainsFilter), '') = ''
+					    OR LOWER(CONCAT(COALESCE(addr.street, ''), COALESCE(addr.city, ''), COALESCE(addr.state, ''), COALESCE(addr.zipCode, ''))) LIKE LOWER(CONCAT('%', TRIM(:screenContainsFilter), '%')))
+					""",
+			value = """
+					SELECT new com.telas.dtos.response.AdminAdOperationRowDto(
+					    ad.id,
+					    ad.name,
+					    ad.validation,
+					    ad.createdAt,
+					    advertiser.id,
+					    advertiser.businessName,
+					    partner.id,
+					    partner.businessName,
+					    COALESCE(addr.street, ''),
+					    COALESCE(addr.city, ''),
+					    COALESCE(addr.state, ''),
+					    COALESCE(addr.zipCode, ''),
+					    mon.id,
+					    ba.ip,
+					    null,
+					    null
+					)
+					FROM Ad ad
+					JOIN ad.client advertiser
+					INNER JOIN ad.monitorAds ma
+					INNER JOIN ma.id.monitor mon
+					LEFT JOIN mon.address addr
+					LEFT JOIN addr.client partner
+					LEFT JOIN mon.box box
+					LEFT JOIN box.boxAddress ba
+					WHERE ad.validation = com.telas.enums.AdValidationType.APPROVED
+					AND advertiser.role = com.telas.enums.Role.PARTNER
+					AND (ba IS NULL OR COALESCE(TRIM(ba.ip), '') = '')
+					AND (
+					    COALESCE(TRIM(:genericFilter), '') = ''
+					    OR LOWER(ad.name) LIKE LOWER(CONCAT('%', TRIM(:genericFilter), '%'))
+					    OR LOWER(advertiser.businessName) LIKE LOWER(CONCAT('%', TRIM(:genericFilter), '%'))
+					    OR LOWER(partner.businessName) LIKE LOWER(CONCAT('%', TRIM(:genericFilter), '%'))
+					    OR LOWER(CONCAT(COALESCE(addr.street, ''), COALESCE(addr.city, ''), COALESCE(addr.state, ''), COALESCE(addr.zipCode, ''))) LIKE LOWER(CONCAT('%', TRIM(:genericFilter), '%'))
+					)
+					AND (COALESCE(TRIM(:partnerNameFilter), '') = ''
+					    OR (partner IS NOT NULL AND LOWER(partner.businessName) LIKE LOWER(CONCAT('%', TRIM(:partnerNameFilter), '%'))))
+					AND (COALESCE(TRIM(:screenContainsFilter), '') = ''
+					    OR LOWER(CONCAT(COALESCE(addr.street, ''), COALESCE(addr.city, ''), COALESCE(addr.state, ''), COALESCE(addr.zipCode, ''))) LIKE LOWER(CONCAT('%', TRIM(:screenContainsFilter), '%')))
+					""")
+	Page<AdminAdOperationRowDto> searchAdsAwaitingBoxDispatch(
+			@Param("genericFilter") String genericFilter,
+			@Param("partnerNameFilter") String partnerNameFilter,
+			@Param("screenContainsFilter") String screenContainsFilter,
 			Pageable pageable);
 
 }

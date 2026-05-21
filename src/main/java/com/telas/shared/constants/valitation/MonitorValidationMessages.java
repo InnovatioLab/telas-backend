@@ -33,4 +33,6 @@ public final class MonitorValidationMessages {
             "Partner/admin ads exceed the maximum allowed for this monitor.";
     public static final String CLIENT_ADS_LIMIT_EXCEEDED =
             "Client ads exceed the maximum allowed for this monitor.";
+    public static final String PARTNER_MATERIALS_FOREIGN_ONLY =
+            "Materials submission is only available for third-party screens.";
 }
