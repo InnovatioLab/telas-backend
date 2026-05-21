@@ -13,4 +13,4 @@ WHERE request_origin IS NULL OR TRIM(request_origin) = '';
 
 CREATE INDEX IF NOT EXISTS idx_ad_requests_partner_active
     ON ad_requests (client_id, request_origin, submission_mode)
-    WHERE is_active = true AND request_origin = 'PARTNER';
+    WHERE active = true AND request_origin = 'PARTNER';
