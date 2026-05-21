@@ -3,6 +3,7 @@ package com.telas.services.impl;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.telas.dtos.request.AttachmentRequestDto;
 import com.telas.dtos.request.MonitorAdRequestDto;
+import com.telas.dtos.request.PartnerDirectAdRequestDto;
 import com.telas.dtos.request.MonitorRequestDto;
 import com.telas.dtos.request.UpdateBoxMonitorsAdRequestDto;
 import com.telas.dtos.request.filters.FilterMonitorRequestDto;
@@ -331,18 +332,48 @@ public class MonitorServiceImpl implements MonitorService {
 	public UUID uploadDirectAdToMonitor(UUID monitorId, AttachmentRequestDto request) {
 		request.validate();
 		Client actor = authenticatedUserService.getLoggedUser().client();
+		if (actor.isPartner()) {
+			throw new ForbiddenException(AuthValidationMessageConstants.ERROR_NO_PERMISSION);
+		}
+		authenticatedUserService.validateAdmin();
+		return executeDirectAdUpload(monitorId, request, null, actor, false);
+	}
+
+	@Override
+	@Transactional
+	public UUID uploadPartnerDirectAdToMonitor(UUID monitorId, PartnerDirectAdRequestDto request) {
+		Client actor = authenticatedUserService.getLoggedUser().client();
+		if (!actor.isPartner()) {
+			throw new ForbiddenException(AuthValidationMessageConstants.ERROR_NO_PERMISSION);
+		}
+		Monitor monitor = findEntityById(monitorId);
+		boolean partnerForeignPlacement = !partnerOwnsMonitorAddress(actor, monitor);
+		if (partnerForeignPlacement) {
+			request.validateForeignPlacement();
+			if (!partnerSlotAccessService.hasGlobalSlotsPermission(actor)) {
+				throw new ForbiddenException(AuthValidationMessageConstants.ERROR_NO_PERMISSION);
+			}
+		} else {
+			request.validate();
+		}
+		return executeDirectAdUpload(
+				monitorId,
+				request.getAttachment(),
+				request.getAdLabel(),
+				actor,
+				partnerForeignPlacement);
+	}
+
+	private UUID executeDirectAdUpload(
+			UUID monitorId,
+			AttachmentRequestDto request,
+			String adLabel,
+			Client actor,
+			boolean partnerForeignPlacement) {
 		Monitor monitor = findEntityById(monitorId);
 
 		final Client adOwner;
-		final boolean partnerOwnScreen;
-		final boolean partnerForeignPlacement;
-
 		if (actor.isPartner()) {
-			partnerOwnScreen = partnerOwnsMonitorAddress(actor, monitor);
-			partnerForeignPlacement = !partnerOwnScreen;
-			if (partnerForeignPlacement && !partnerSlotAccessService.hasGlobalSlotsPermission(actor)) {
-				throw new ForbiddenException(AuthValidationMessageConstants.ERROR_NO_PERMISSION);
-			}
 			validatePartnerPlacementAccess(actor, monitor);
 			adOwner = clientRepository.findById(actor.getId())
 					.orElseThrow(() -> new ResourceNotFoundException(ClientValidationMessages.USER_NOT_FOUND));
@@ -350,13 +381,13 @@ public class MonitorServiceImpl implements MonitorService {
 				throw new BusinessRuleException(ClientValidationMessages.MAX_ADS_REACHED);
 			}
 		} else {
-			authenticatedUserService.validateAdmin();
 			adOwner = actor;
-			partnerOwnScreen = false;
-			partnerForeignPlacement = false;
 		}
 
 		Ad ad = new Ad(request, adOwner);
+		if (adLabel != null && !adLabel.isBlank()) {
+			ad.setName(adLabel.trim());
+		}
 		if (partnerForeignPlacement) {
 			ad.setValidation(AdValidationType.PENDING);
 		} else {
@@ -403,13 +434,13 @@ public class MonitorServiceImpl implements MonitorService {
 		String monitorLabel = monitor.getAddress() != null
 				? monitor.getAddress().resolveMapLocationName()
 				: monitor.getId().toString();
-		Map<String, String> params = Map.of(
-				"partnerName", partner.getBusinessName() != null ? partner.getBusinessName() : "",
-				"monitorLabel", monitorLabel != null ? monitorLabel : "",
-				"adId", ad.getId().toString(),
-				"clientId", partner.getId().toString(),
-				"link", frontBaseUrl + "/admin/clients/" + partner.getId()
-		);
+		Map<String, String> params = new HashMap<>();
+		params.put("partnerName", partner.getBusinessName() != null ? partner.getBusinessName() : "");
+		params.put("monitorLabel", monitorLabel != null ? monitorLabel : "");
+		params.put("adLabel", ad.getName() != null ? ad.getName() : "");
+		params.put("adId", ad.getId().toString());
+		params.put("clientId", partner.getId().toString());
+		params.put("link", frontBaseUrl + "/admin/clients/" + partner.getId());
 		clientRepository.findAllAdmins().forEach(admin ->
 				notificationService.save(NotificationReference.ADMIN_PARTNER_FOREIGN_AD_SUBMITTED, admin, params, true));
 	}

@@ -2,6 +2,7 @@ package com.telas.controllers;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.telas.dtos.request.AttachmentRequestDto;
+import com.telas.dtos.request.PartnerDirectAdRequestDto;
 import com.telas.dtos.request.MonitorRequestDto;
 import com.telas.dtos.request.filters.FilterMonitorRequestDto;
 import io.swagger.v3.oas.annotations.Operation;
@@ -109,6 +110,8 @@ public interface MonitorController {
     ResponseEntity<?> findMonitorForPartnerPlacement(UUID monitorId);
 
     ResponseEntity<?> uploadDirectAdToMonitor(UUID monitorId, AttachmentRequestDto request);
+
+    ResponseEntity<?> uploadPartnerDirectAdToMonitor(UUID monitorId, PartnerDirectAdRequestDto request);
 
     @Operation(summary = "Admin: remove an available ad (delete file and record)", responses = {
             @ApiResponse(responseCode = "204", description = "Deleted."),

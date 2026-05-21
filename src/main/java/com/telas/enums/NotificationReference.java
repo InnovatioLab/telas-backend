@@ -607,12 +607,17 @@ public enum NotificationReference {
                     <div class="informacoes">
                         <h4 id="notification-title" class="notification-title">Partner ad submitted</h4>
                         <p>Partner <strong>%s</strong> submitted an ad for screen <strong>%s</strong>.</p>
-                        <p>Review and configure the ad before it goes on air.</p>
+                        <div class="field">
+                            <span class="field-label">Ad label: </span>
+                            <span class="field-value">%s</span>
+                        </div>
+                        <p>Review the attachment and configure the ad before it goes on air.</p>
                     </div>
                     <p><a id="link-details" class='details link-text' href="%s">Open partner</a></p>
                     """,
                     params.getOrDefault("partnerName", ""),
                     params.getOrDefault("monitorLabel", ""),
+                    params.getOrDefault("adLabel", ""),
                     params.getOrDefault("link", "#"));
         }
 

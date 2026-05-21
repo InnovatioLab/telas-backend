@@ -3,6 +3,7 @@ package com.telas.services;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.telas.dtos.request.MonitorRequestDto;
 import com.telas.dtos.request.AttachmentRequestDto;
+import com.telas.dtos.request.PartnerDirectAdRequestDto;
 import com.telas.dtos.request.filters.FilterMonitorRequestDto;
 import com.telas.dtos.response.*;
 import com.telas.entities.Monitor;
@@ -37,6 +38,8 @@ public interface MonitorService {
     MonitorResponseDto findMonitorForPartnerPlacement(UUID monitorId);
 
     UUID uploadDirectAdToMonitor(UUID monitorId, AttachmentRequestDto request);
+
+    UUID uploadPartnerDirectAdToMonitor(UUID monitorId, PartnerDirectAdRequestDto request);
 
     void deleteAvailableAd(UUID monitorId, UUID adId);
 

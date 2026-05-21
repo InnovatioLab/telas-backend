@@ -3,6 +3,7 @@ package com.telas.controllers.impl;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.telas.controllers.MonitorController;
 import com.telas.dtos.request.AttachmentRequestDto;
+import com.telas.dtos.request.PartnerDirectAdRequestDto;
 import com.telas.dtos.request.MonitorRequestDto;
 import com.telas.dtos.request.filters.FilterMonitorRequestDto;
 import com.telas.dtos.response.MonitorMapsResponseDto;
@@ -156,6 +157,17 @@ public class MonitorControllerImpl implements MonitorController {
             @PathVariable(name = "id") UUID monitorId,
             @Valid @RequestBody AttachmentRequestDto request) {
         UUID adId = service.uploadDirectAdToMonitor(monitorId, request);
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(ResponseDto.fromData(adId, HttpStatus.CREATED, MessageCommonsConstants.SAVE_SUCCESS_MESSAGE));
+    }
+
+    @Override
+    @PostMapping("/{id}/partner-direct-ad")
+    @SecurityRequirement(name = "jwt")
+    public ResponseEntity<?> uploadPartnerDirectAdToMonitor(
+            @PathVariable(name = "id") UUID monitorId,
+            @Valid @RequestBody PartnerDirectAdRequestDto request) {
+        UUID adId = service.uploadPartnerDirectAdToMonitor(monitorId, request);
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(ResponseDto.fromData(adId, HttpStatus.CREATED, MessageCommonsConstants.SAVE_SUCCESS_MESSAGE));
     }
