@@ -13,6 +13,9 @@ public final class AdValidationMessages {
   public static final String VALIDATION_NOT_ALLOWED = "You are not allowed to validate this ad";
   public static final String AD_ALREADY_VALIDATED = "Ad already validated";
   public static final String AD_MUST_BE_APPROVED_TO_DELETE = "Only client-approved ads can be deleted from this screen";
+  public static final String AD_NOT_ELIGIBLE_FOR_DELETE = "This ad cannot be deleted in its current state";
+  public static final String AD_MUST_BE_PARTNER_ADVERTISER_TO_DELETE =
+          "Only partner advertiser ads can be deleted from this section";
   public static final String AD_MUST_BE_APPROVED_FOR_BOX_DISPATCH =
           "Only approved ads can be sent to the box";
   public static final String AD_NOT_PLACED_ON_MONITOR =
@@ -24,7 +27,7 @@ public final class AdValidationMessages {
   public static final String AD_MONITOR_TARGET_NOT_FOUND =
           "No target screen found for this ad";
   public static final String AD_MUST_BE_APPROVED_FOR_PARTNER_REVIEW_DELIVERY =
-          "Only approved ads awaiting publish can be replaced for partner review";
+          "Only approved or partner-rejected ads can be replaced for partner review";
   public static final String AD_NOT_PARTNER_ADVERTISER =
           "This action applies to partner ads only";
 }

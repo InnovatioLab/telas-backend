@@ -187,7 +187,15 @@ public class AdminAdOperationsServiceImpl implements AdminAdOperationsService {
         authenticatedUserService.validateAdminOrAdsManageAccess();
         Ad ad = adRepository.findById(adId)
                 .orElseThrow(() -> new ResourceNotFoundException(AdValidationMessages.AD_NOT_FOUND));
-        if (!AdValidationType.APPROVED.equals(ad.getValidation())) {
+        boolean partnerAdvertiser = ad.getClient() != null && ad.getClient().isPartner();
+        if (partnerAdvertiser) {
+            AdValidationType validation = ad.getValidation();
+            if (!AdValidationType.APPROVED.equals(validation)
+                    && !AdValidationType.REJECTED.equals(validation)
+                    && !AdValidationType.PENDING.equals(validation)) {
+                throw new BusinessRuleException(AdValidationMessages.AD_NOT_ELIGIBLE_FOR_DELETE);
+            }
+        } else if (!AdValidationType.APPROVED.equals(ad.getValidation())) {
             throw new BusinessRuleException(AdValidationMessages.AD_MUST_BE_APPROVED_TO_DELETE);
         }
         String adName = ad.getName();

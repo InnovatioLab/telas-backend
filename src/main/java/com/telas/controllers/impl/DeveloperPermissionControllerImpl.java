@@ -123,7 +123,15 @@ public class DeveloperPermissionControllerImpl {
         List<String> raw = body.getPermissions();
         if (raw != null) {
             for (String code : raw) {
-                parsed.add(Permission.valueOf(code.trim()));
+                if (code == null || code.isBlank()) {
+                    continue;
+                }
+                String trimmed = code.trim();
+                try {
+                    parsed.add(Permission.valueOf(trimmed));
+                } catch (IllegalArgumentException ignored) {
+                    // Skip obsolete or unknown permission codes from older clients.
+                }
             }
         }
         permissionService.replacePermissionsForAdmin(clientId, parsed, dev.client().getId());
@@ -138,6 +146,7 @@ public class DeveloperPermissionControllerImpl {
         List<String> codes =
                 java.util.Arrays.stream(Permission.values())
                         .map(Enum::name)
+                        .filter(code -> !"ADMIN_ADS_BOX_DISPATCH_TO_SCREEN".equals(code))
                         .sorted()
                         .collect(Collectors.toList());
         return ResponseEntity.status(HttpStatus.OK)

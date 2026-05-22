@@ -245,31 +245,50 @@ public interface AdRepository extends JpaRepository<Ad, UUID>, JpaSpecificationE
 					SELECT COUNT(DISTINCT ad.id)
 					FROM Ad ad
 					JOIN ad.client advertiser
-					INNER JOIN ad.monitorAds ma
-					INNER JOIN ma.id.monitor mon
-					INNER JOIN mon.address addr
-					LEFT JOIN addr.client screenOwner
-					INNER JOIN mon.box box
-					INNER JOIN box.boxAddress ba
+					LEFT JOIN ad.adRequest ar
+					LEFT JOIN ar.targetMonitor monAr
+					LEFT JOIN monAr.address addrAr
+					LEFT JOIN addrAr.client screenOwnerAr
+					LEFT JOIN monAr.box boxAr
+					LEFT JOIN boxAr.boxAddress baAr
+					LEFT JOIN ad.monitorAds ma
+					LEFT JOIN ma.id.monitor monMa
+					LEFT JOIN monMa.address addrMa
+					LEFT JOIN addrMa.client screenOwnerMa
+					LEFT JOIN monMa.box boxMa
+					LEFT JOIN boxMa.boxAddress baMa
 					WHERE ad.validation = com.telas.enums.AdValidationType.APPROVED
 					AND advertiser.role = com.telas.enums.Role.PARTNER
-					AND screenOwner IS NOT NULL
-					AND screenOwner.id <> advertiser.id
-					AND box.active = true
-					AND COALESCE(TRIM(ba.ip), '') <> ''
 					AND ad.partnerBoxStagedAt IS NULL
 					AND ad.onAirNotifiedAt IS NULL
+					AND (
+					    (monAr IS NOT NULL AND screenOwnerAr IS NOT NULL AND screenOwnerAr.id <> advertiser.id
+					     AND boxAr.active = true AND COALESCE(TRIM(baAr.ip), '') <> '')
+					    OR
+					    (monMa IS NOT NULL AND screenOwnerMa IS NOT NULL AND screenOwnerMa.id <> advertiser.id
+					     AND boxMa.active = true AND COALESCE(TRIM(baMa.ip), '') <> '')
+					)
 					AND (
 					    COALESCE(TRIM(:genericFilter), '') = ''
 					    OR LOWER(ad.name) LIKE LOWER(CONCAT('%', TRIM(:genericFilter), '%'))
 					    OR LOWER(advertiser.businessName) LIKE LOWER(CONCAT('%', TRIM(:genericFilter), '%'))
-					    OR LOWER(screenOwner.businessName) LIKE LOWER(CONCAT('%', TRIM(:genericFilter), '%'))
-					    OR LOWER(CONCAT(COALESCE(addr.street, ''), COALESCE(addr.city, ''), COALESCE(addr.state, ''), COALESCE(addr.zipCode, ''))) LIKE LOWER(CONCAT('%', TRIM(:genericFilter), '%'))
+					    OR LOWER(COALESCE(screenOwnerAr.businessName, screenOwnerMa.businessName, '')) LIKE LOWER(CONCAT('%', TRIM(:genericFilter), '%'))
+					    OR LOWER(CONCAT(
+					        COALESCE(addrAr.street, addrMa.street, ''),
+					        COALESCE(addrAr.city, addrMa.city, ''),
+					        COALESCE(addrAr.state, addrMa.state, ''),
+					        COALESCE(addrAr.zipCode, addrMa.zipCode, '')
+					    )) LIKE LOWER(CONCAT('%', TRIM(:genericFilter), '%'))
 					)
 					AND (COALESCE(TRIM(:partnerNameFilter), '') = ''
 					    OR LOWER(advertiser.businessName) LIKE LOWER(CONCAT('%', TRIM(:partnerNameFilter), '%')))
 					AND (COALESCE(TRIM(:screenContainsFilter), '') = ''
-					    OR LOWER(CONCAT(COALESCE(addr.street, ''), COALESCE(addr.city, ''), COALESCE(addr.state, ''), COALESCE(addr.zipCode, ''))) LIKE LOWER(CONCAT('%', TRIM(:screenContainsFilter), '%')))
+					    OR LOWER(CONCAT(
+					        COALESCE(addrAr.street, addrMa.street, ''),
+					        COALESCE(addrAr.city, addrMa.city, ''),
+					        COALESCE(addrAr.state, addrMa.state, ''),
+					        COALESCE(addrAr.zipCode, addrMa.zipCode, '')
+					    )) LIKE LOWER(CONCAT('%', TRIM(:screenContainsFilter), '%')))
 					""",
 			value = """
 					SELECT new com.telas.dtos.response.AdminAdOperationRowDto(
@@ -281,42 +300,61 @@ public interface AdRepository extends JpaRepository<Ad, UUID>, JpaSpecificationE
 					    advertiser.businessName,
 					    advertiser.id,
 					    advertiser.businessName,
-					    COALESCE(addr.street, ''),
-					    COALESCE(addr.city, ''),
-					    COALESCE(addr.state, ''),
-					    COALESCE(addr.zipCode, ''),
-					    mon.id,
-					    ba.ip,
+					    COALESCE(addrAr.street, addrMa.street, ''),
+					    COALESCE(addrAr.city, addrMa.city, ''),
+					    COALESCE(addrAr.state, addrMa.state, ''),
+					    COALESCE(addrAr.zipCode, addrMa.zipCode, ''),
+					    COALESCE(monAr.id, monMa.id),
+					    COALESCE(baAr.ip, baMa.ip),
 					    null,
 					    null
 					)
 					FROM Ad ad
 					JOIN ad.client advertiser
-					INNER JOIN ad.monitorAds ma
-					INNER JOIN ma.id.monitor mon
-					INNER JOIN mon.address addr
-					LEFT JOIN addr.client screenOwner
-					INNER JOIN mon.box box
-					INNER JOIN box.boxAddress ba
+					LEFT JOIN ad.adRequest ar
+					LEFT JOIN ar.targetMonitor monAr
+					LEFT JOIN monAr.address addrAr
+					LEFT JOIN addrAr.client screenOwnerAr
+					LEFT JOIN monAr.box boxAr
+					LEFT JOIN boxAr.boxAddress baAr
+					LEFT JOIN ad.monitorAds ma
+					LEFT JOIN ma.id.monitor monMa
+					LEFT JOIN monMa.address addrMa
+					LEFT JOIN addrMa.client screenOwnerMa
+					LEFT JOIN monMa.box boxMa
+					LEFT JOIN boxMa.boxAddress baMa
 					WHERE ad.validation = com.telas.enums.AdValidationType.APPROVED
 					AND advertiser.role = com.telas.enums.Role.PARTNER
-					AND screenOwner IS NOT NULL
-					AND screenOwner.id <> advertiser.id
-					AND box.active = true
-					AND COALESCE(TRIM(ba.ip), '') <> ''
 					AND ad.partnerBoxStagedAt IS NULL
 					AND ad.onAirNotifiedAt IS NULL
+					AND (
+					    (monAr IS NOT NULL AND screenOwnerAr IS NOT NULL AND screenOwnerAr.id <> advertiser.id
+					     AND boxAr.active = true AND COALESCE(TRIM(baAr.ip), '') <> '')
+					    OR
+					    (monMa IS NOT NULL AND screenOwnerMa IS NOT NULL AND screenOwnerMa.id <> advertiser.id
+					     AND boxMa.active = true AND COALESCE(TRIM(baMa.ip), '') <> '')
+					)
 					AND (
 					    COALESCE(TRIM(:genericFilter), '') = ''
 					    OR LOWER(ad.name) LIKE LOWER(CONCAT('%', TRIM(:genericFilter), '%'))
 					    OR LOWER(advertiser.businessName) LIKE LOWER(CONCAT('%', TRIM(:genericFilter), '%'))
-					    OR LOWER(screenOwner.businessName) LIKE LOWER(CONCAT('%', TRIM(:genericFilter), '%'))
-					    OR LOWER(CONCAT(COALESCE(addr.street, ''), COALESCE(addr.city, ''), COALESCE(addr.state, ''), COALESCE(addr.zipCode, ''))) LIKE LOWER(CONCAT('%', TRIM(:genericFilter), '%'))
+					    OR LOWER(COALESCE(screenOwnerAr.businessName, screenOwnerMa.businessName, '')) LIKE LOWER(CONCAT('%', TRIM(:genericFilter), '%'))
+					    OR LOWER(CONCAT(
+					        COALESCE(addrAr.street, addrMa.street, ''),
+					        COALESCE(addrAr.city, addrMa.city, ''),
+					        COALESCE(addrAr.state, addrMa.state, ''),
+					        COALESCE(addrAr.zipCode, addrMa.zipCode, '')
+					    )) LIKE LOWER(CONCAT('%', TRIM(:genericFilter), '%'))
 					)
 					AND (COALESCE(TRIM(:partnerNameFilter), '') = ''
 					    OR LOWER(advertiser.businessName) LIKE LOWER(CONCAT('%', TRIM(:partnerNameFilter), '%')))
 					AND (COALESCE(TRIM(:screenContainsFilter), '') = ''
-					    OR LOWER(CONCAT(COALESCE(addr.street, ''), COALESCE(addr.city, ''), COALESCE(addr.state, ''), COALESCE(addr.zipCode, ''))) LIKE LOWER(CONCAT('%', TRIM(:screenContainsFilter), '%')))
+					    OR LOWER(CONCAT(
+					        COALESCE(addrAr.street, addrMa.street, ''),
+					        COALESCE(addrAr.city, addrMa.city, ''),
+					        COALESCE(addrAr.state, addrMa.state, ''),
+					        COALESCE(addrAr.zipCode, addrMa.zipCode, '')
+					    )) LIKE LOWER(CONCAT('%', TRIM(:screenContainsFilter), '%')))
 					""")
 	Page<AdminAdOperationRowDto> searchAdsAwaitingBoxDispatch(
 			@Param("genericFilter") String genericFilter,

@@ -265,7 +265,6 @@ public class AttachmentHelper {
         if (AdRequestOrigin.PARTNER.equals(entity.getRequestOrigin())) {
             newAd.setValidation(AdValidationType.PENDING);
             adRepository.save(newAd);
-            attachAdToTargetMonitorIfNeeded(newAd, entity);
         }
 
         String recipientLink = clientAdsReviewLink(client);
@@ -413,9 +412,12 @@ public class AttachmentHelper {
         if (ad.getClient() == null || !ad.getClient().isPartner()) {
             throw new BusinessRuleException(AdValidationMessages.AD_NOT_PARTNER_ADVERTISER);
         }
-        if (!AdValidationType.APPROVED.equals(ad.getValidation())) {
+        AdValidationType validation = ad.getValidation();
+        if (!AdValidationType.APPROVED.equals(validation) && !AdValidationType.REJECTED.equals(validation)) {
             throw new BusinessRuleException(AdValidationMessages.AD_MUST_BE_APPROVED_FOR_PARTNER_REVIEW_DELIVERY);
         }
+
+        removePartnerMaterialsAdFromScreens(ad);
 
         CustomRevisionListener.setUsername(admin.getBusinessName());
         bucketService.deleteAttachment(AttachmentUtils.format(ad));
@@ -472,16 +474,45 @@ public class AttachmentHelper {
         adUnusedTrackingService.syncUnusedStateForAdIds(List.of(entity.getId()));
 
         if (AdValidationType.REJECTED.equals(validation)) {
+            if (isPartnerMaterialsFlowAd(entity)) {
+                removePartnerMaterialsAdFromScreens(entity);
+            }
             notifyAdminsClientRejectedAd(entity, request);
         } else if (AdValidationType.APPROVED.equals(validation)) {
-            if (entity.getAdRequest() != null) {
-                attachAdToTargetMonitorIfNeeded(entity, entity.getAdRequest());
+            if (isPartnerMaterialsFlowAd(entity)) {
+                removePartnerMaterialsAdFromScreens(entity);
+                Ad refreshed = adRepository.findByIdWithClientAndAdRequest(entity.getId()).orElse(entity);
+                notifyClientApprovedAd(refreshed);
+                notifyAdminsClientApprovedAd(refreshed);
+            } else {
+                if (entity.getAdRequest() != null) {
+                    attachAdToTargetMonitorIfNeeded(entity, entity.getAdRequest());
+                }
+                syncMonitorsPlaylistAfterAdApproved(entity);
+                notifyPartnerOnAirAfterApprovalIfEligible(entity);
+                Ad refreshed = adRepository.findByIdWithClientAndAdRequest(entity.getId()).orElse(entity);
+                notifyClientApprovedAd(refreshed);
+                notifyAdminsClientApprovedAd(refreshed);
             }
-            syncMonitorsPlaylistAfterAdApproved(entity);
-            notifyPartnerOnAirAfterApprovalIfEligible(entity);
-            Ad refreshed = adRepository.findByIdWithClientAndAdRequest(entity.getId()).orElse(entity);
-            notifyClientApprovedAd(refreshed);
-            notifyAdminsClientApprovedAd(refreshed);
+        }
+    }
+
+    private boolean isPartnerMaterialsFlowAd(Ad ad) {
+        if (ad == null || ad.getClient() == null || !ad.getClient().isPartner() || ad.getAdRequest() == null) {
+            return false;
+        }
+        return AdRequestOrigin.PARTNER.equals(ad.getAdRequest().getRequestOrigin());
+    }
+
+    private void removePartnerMaterialsAdFromScreens(Ad ad) {
+        if (ad == null) {
+            return;
+        }
+        ad.setOnAirNotifiedAt(null);
+        ad.setPartnerBoxStagedAt(null);
+        adRepository.save(ad);
+        if (!ValidateDataUtils.isNullOrEmptyString(ad.getName())) {
+            monitorHelper.sendBoxesMonitorsRemoveAd(ad, List.of(ad.getName()));
         }
     }
 
