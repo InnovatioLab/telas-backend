@@ -1,0 +1,5 @@
+ALTER TABLE ads
+    ADD COLUMN IF NOT EXISTS partner_box_staged_at TIMESTAMPTZ NULL;
+
+ALTER TABLE ads_aud
+    ADD COLUMN IF NOT EXISTS partner_box_staged_at TIMESTAMPTZ NULL;
