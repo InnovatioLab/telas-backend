@@ -383,10 +383,6 @@ public class SubscriptionHelper {
             if (!clientActiveMonitors.isEmpty() && clientActiveMonitors.contains(monitor)) {
                 throw new BusinessRuleException(SubscriptionValidationMessages.CLIENT_ALREADY_HAS_ACTIVE_SUBSCRIPTION_WITH_MONITOR);
             }
-
-            if (!monitor.isAbleToSendBoxRequest()) {
-                throw new BusinessRuleException(monitor.explainInvalidBoxLinkForCheckout());
-            }
         }
     }
 

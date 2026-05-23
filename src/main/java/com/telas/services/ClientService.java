@@ -7,6 +7,8 @@ import com.telas.dtos.request.ClientRequestDto;
 import com.telas.dtos.request.CreatePartnerRequestDto;
 import com.telas.dtos.request.AdMessageRequestDto;
 import com.telas.dtos.request.RefusedAdRequestDto;
+import com.telas.dtos.request.PartnerAdRemovalRequestDto;
+import com.telas.dtos.request.PermanentDeleteClientRequestDto;
 import com.telas.dtos.request.PermanentDeleteClientRequestDto;
 import com.telas.dtos.request.filters.ClientFilterRequestDto;
 import com.telas.dtos.request.filters.FilterAdRequestDto;
@@ -107,6 +109,8 @@ public interface ClientService {
     PaginationResponseDto<List<PendingAdAdminValidationResponseDto>> findPendingAds(FilterAdRequestDto request);
 
     List<PendingAdAdminValidationResponseDto> findMyPendingValidationAds();
+
+    void requestPartnerAdRemoval(UUID adId, PartnerAdRemovalRequestDto request);
 
     void addMonitorToWishlist(UUID monitorId);
 

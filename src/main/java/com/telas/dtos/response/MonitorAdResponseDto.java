@@ -38,6 +38,10 @@ public final class MonitorAdResponseDto implements Serializable {
 
   private Instant onAirSince;
 
+  private String deploymentStatus;
+
+  private Boolean canRequestRemoval;
+
   public MonitorAdResponseDto(MonitorAd entity, String adLink) {
     id = entity.getAd().getId();
     orderIndex = entity.getOrderIndex();

@@ -21,5 +21,7 @@ public interface AdminAdOperationsService {
 
     void dispatchAdToBox(UUID adId);
 
+    void addAdToPlaylist(UUID adId);
+
     void deliverPartnerCreativeForReview(UUID adId, AttachmentRequestDto request);
 }

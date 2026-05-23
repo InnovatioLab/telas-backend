@@ -35,6 +35,17 @@ public interface MonitorAdRepository extends JpaRepository<MonitorAd, MonitorAdP
             @Param("partnerId") java.util.UUID partnerId);
 
     @Query("""
+            SELECT DISTINCT mon.id
+            FROM MonitorAd ma
+            JOIN ma.id.monitor mon
+            JOIN ma.id.ad ad
+            WHERE ad.client.id = :partnerId
+            AND ad.validation = com.telas.enums.AdValidationType.APPROVED
+            """)
+    java.util.List<java.util.UUID> findDistinctMonitorIdsByAdvertiserClientIdApproved(
+            @Param("partnerId") java.util.UUID partnerId);
+
+    @Query("""
             SELECT ma FROM MonitorAd ma
             JOIN FETCH ma.id.monitor mon
             LEFT JOIN FETCH mon.box box

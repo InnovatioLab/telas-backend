@@ -13,18 +13,20 @@ import com.telas.entities.Notification;
 import com.telas.entities.Subscription;
 import com.telas.enums.NotificationReference;
 import com.telas.enums.SubscriptionStatus;
+import com.telas.helpers.AdPublicationNotificationHelper;
+import com.telas.helpers.AttachmentHelper;
+import com.telas.helpers.BoxAdPushNotificationHelper;
 import com.telas.helpers.MonitorHelper;
+import com.telas.dtos.request.UpdateBoxMonitorsAdRequestDto;
+import com.telas.enums.AdValidationType;
 import com.telas.infra.exceptions.BusinessRuleException;
 import com.telas.infra.exceptions.ResourceNotFoundException;
 import com.telas.infra.security.services.AuthenticatedUserService;
-import com.telas.enums.AdValidationType;
 import com.telas.repositories.AdRepository;
 import com.telas.repositories.MonitorAdRepository;
 import com.telas.repositories.MonitorRepository;
 import com.telas.repositories.NotificationRepository;
 import com.telas.repositories.SubscriptionRepository;
-import com.telas.helpers.AttachmentHelper;
-import com.telas.helpers.BoxAdPushNotificationHelper;
 import com.telas.services.AdminAdOperationsService;
 import com.telas.shared.constants.valitation.AdValidationMessages;
 import com.telas.shared.utils.PaginationFilterUtil;
@@ -89,6 +91,7 @@ public class AdminAdOperationsServiceImpl implements AdminAdOperationsService {
     private final AttachmentHelper attachmentHelper;
     private final MonitorHelper monitorHelper;
     private final BoxAdPushNotificationHelper boxAdPushNotificationHelper;
+    private final AdPublicationNotificationHelper adPublicationNotificationHelper;
     private final UnusedSingleAdDeletionService unusedSingleAdDeletionService;
 
     private static String trimOrEmpty(String value) {
@@ -250,7 +253,6 @@ public class AdminAdOperationsServiceImpl implements AdminAdOperationsService {
         }
 
         for (Monitor monitor : monitorsById.values()) {
-            monitorHelper.detachAdFromMonitor(monitor, adId);
             monitorHelper.stageAdFileOnBox(monitor, ad);
         }
 
@@ -259,7 +261,53 @@ public class AdminAdOperationsServiceImpl implements AdminAdOperationsService {
 
         boxAdPushNotificationHelper.notifyAfterAdStagedToBox(ad, List.copyOf(monitorsById.values()));
 
-        log.info("dispatchAdToBox completed adId={} (available ads on manage screen)", adId);
+        log.info("dispatchAdToBox completed adId={}", adId);
+    }
+
+    @Override
+    @Transactional
+    public void addAdToPlaylist(UUID adId) {
+        authenticatedUserService.validateAdminOrAdsManageAccess();
+
+        Ad ad = adRepository.findByIdWithClientAndAdRequest(adId)
+                .orElseThrow(() -> new ResourceNotFoundException(AdValidationMessages.AD_NOT_FOUND));
+        if (!AdValidationType.APPROVED.equals(ad.getValidation())) {
+            throw new BusinessRuleException(AdValidationMessages.AD_MUST_BE_APPROVED_FOR_BOX_DISPATCH);
+        }
+
+        List<MonitorAd> placements = monitorAdRepository.findByAdIdWithMonitor(adId);
+        Map<UUID, Monitor> monitorsById = resolveDispatchMonitors(ad, placements);
+        if (monitorsById.isEmpty()) {
+            throw new BusinessRuleException(AdValidationMessages.AD_MONITOR_TARGET_NOT_FOUND);
+        }
+
+        for (Monitor target : monitorsById.values()) {
+            boolean alreadyLinked = placements != null && placements.stream()
+                    .anyMatch(p -> p.getMonitor() != null && target.getId().equals(p.getMonitor().getId()));
+            if (!alreadyLinked) {
+                monitorHelper.attachAdToMonitor(target, ad);
+            }
+
+            Monitor monitor = monitorRepository.findById(target.getId())
+                    .orElseThrow(() -> new ResourceNotFoundException(AdValidationMessages.AD_MONITOR_TARGET_NOT_FOUND));
+            List<UpdateBoxMonitorsAdRequestDto> requestList = monitorHelper.buildOrderedBoxUpdateDtos(monitor);
+            Set<String> successfulBaseUrls = monitor.isAbleToSendBoxRequest()
+                    ? monitorHelper.syncBoxAdsPlaylist(monitor, requestList)
+                    : Set.of();
+
+            if (!alreadyLinked) {
+                MonitorAd newPlacement = monitor.getMonitorAds().stream()
+                        .filter(ma -> ma.getAd() != null && adId.equals(ma.getAd().getId()))
+                        .findFirst()
+                        .orElse(null);
+                if (newPlacement != null) {
+                    adPublicationNotificationHelper.notifyAfterPlaylistUpdate(
+                            monitor, List.of(newPlacement), successfulBaseUrls, requestList);
+                }
+            }
+        }
+
+        log.info("addAdToPlaylist completed adId={}", adId);
     }
 
     private Map<UUID, Monitor> resolveDispatchMonitors(Ad ad, List<MonitorAd> placements) {

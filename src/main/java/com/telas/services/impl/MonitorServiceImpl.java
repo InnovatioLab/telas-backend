@@ -15,6 +15,7 @@ import com.telas.dtos.request.filters.FilterMonitorRequestDto;
 import com.telas.dtos.response.*;
 import com.telas.entities.*;
 import com.telas.enums.SubscriptionStatus;
+import com.telas.helpers.AdPublicationNotificationHelper;
 import com.telas.helpers.AdOnAirNotificationHelper;
 import com.telas.helpers.BoxAdPushNotificationHelper;
 import com.telas.helpers.MonitorHelper;
@@ -94,6 +95,8 @@ public class MonitorServiceImpl implements MonitorService {
 	private final MonitorHelper helper;
 
 	private final AdOnAirNotificationHelper adOnAirNotificationHelper;
+
+	private final AdPublicationNotificationHelper adPublicationNotificationHelper;
 
 	private final BoxAdPushNotificationHelper boxAdPushNotificationHelper;
 
@@ -315,13 +318,18 @@ public class MonitorServiceImpl implements MonitorService {
 			throw new ForbiddenException(AuthValidationMessageConstants.ERROR_NO_PERMISSION);
 		}
 		LinkedHashSet<UUID> monitorIds = new LinkedHashSet<>();
-		monitorAdRepository.findDistinctMonitorIdsByAdvertiserClientIdOnAir(partner.getId()).forEach(monitorIds::add);
+		repository.findAllByAddressClientId(partner.getId()).forEach(m -> monitorIds.add(m.getId()));
+		monitorAdRepository.findDistinctMonitorIdsByAdvertiserClientIdApproved(partner.getId())
+				.forEach(monitorIds::add);
+		adRepository.findDistinctPendingTargetMonitorIdsForPartner(partner.getId()).forEach(monitorIds::add);
 
 		return monitorIds.stream()
 				.map(this::findEntityById)
 				.map(monitor -> {
-					List<MonitorAdResponseDto> myAds = helper.getPartnerAdvertiserAdsOnMonitor(monitor, partner.getId());
-					if (myAds.isEmpty()) {
+					List<MonitorAdResponseDto> myAds =
+							helper.getPartnerAdvertiserAdsForPortal(monitor, partner.getId());
+					boolean partnerOwned = partnerOwnsMonitorAddress(partner, monitor);
+					if (myAds.isEmpty() && !partnerOwned) {
 						return null;
 					}
 					return new MonitorResponseDto(
@@ -837,19 +845,13 @@ public class MonitorServiceImpl implements MonitorService {
 
 		addNewMonitorAdsToMonitor(monitor, newMonitorAds);
 
-		if (monitor.isAbleToSendBoxRequest()) {
-			Set<String> successfulBaseUrls = helper.syncBoxAdsPlaylist(monitor, requestList);
-			boolean sendOnAirEmails = successfulBaseUrls.isEmpty();
-			if (!successfulBaseUrls.isEmpty()) {
-				List<AbstractMap.SimpleEntry<MonitorAd, UpdateBoxMonitorsAdRequestDto>> pairsToNotify =
-						buildDeployNotifyPairs(monitor, newMonitorAds, requestList, successfulBaseUrls);
-				if (!pairsToNotify.isEmpty()) {
-					Map<Monitor, List<AbstractMap.SimpleEntry<MonitorAd, UpdateBoxMonitorsAdRequestDto>>> grouped =
-							Map.of(monitor, pairsToNotify);
-					boxAdPushNotificationHelper.notifyAfterSuccessfulPush(grouped, successfulBaseUrls);
-				}
+		if (!newMonitorAds.isEmpty()) {
+			Set<String> successfulBaseUrls = new HashSet<>();
+			if (monitor.isAbleToSendBoxRequest()) {
+				successfulBaseUrls = helper.syncBoxAdsPlaylist(monitor, requestList);
 			}
-			adOnAirNotificationHelper.notifyOnAirForNewMonitorAds(newMonitorAds, monitor, sendOnAirEmails);
+			adPublicationNotificationHelper.notifyAfterPlaylistUpdate(
+					monitor, newMonitorAds, successfulBaseUrls, requestList);
 		}
 
 		Set<UUID> toSync = new HashSet<>(newAdIds);

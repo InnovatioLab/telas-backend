@@ -88,6 +88,11 @@ public final class SharedConstants {
     public static final String TEMPLATE_EMAIL_ADMIN_CLIENT_AD_DEPLOYED_TO_BOX = "email_admin_client_ad_deployed_to_box.ftlh";
     public static final String EMAIL_SUBJECT_ADMIN_CLIENT_AD_DEPLOYED_TO_BOX = "Customer ad deployed to box — Telas";
 
+    public static final String TEMPLATE_EMAIL_PARTNER_AD_REMOVAL_REQUESTED = "email_partner_ad_removal_requested.ftlh";
+    public static final String EMAIL_SUBJECT_PARTNER_AD_REMOVAL_REQUESTED = "Partner requested ad removal — Telas";
+    public static final String TEMPLATE_EMAIL_PARTNER_AD_REMOVAL_CONFIRMED = "email_partner_ad_removal_confirmed.ftlh";
+    public static final String EMAIL_SUBJECT_PARTNER_AD_REMOVAL_CONFIRMED = "We received your ad removal request — Telas";
+
     public static final String TEMPLATE_EMAIL_SCHEDULER_PRERUN = "email_scheduler_prerun.ftlh";
     public static final String TEMPLATE_EMAIL_MONITOR_WISHLIST_AVAILABLE = "email_monitor_wishlist_available.ftlh";
     public static final String EMAIL_SUBJECT_SCHEDULER_PRERUN = "Scheduled job starting — Telas";

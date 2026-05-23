@@ -94,6 +94,15 @@ public class AdminAdOperationsControllerImpl {
                 .body(ResponseDto.fromData(null, HttpStatus.OK, MessageCommonsConstants.UPDATE_SUCCESS_MESSAGE));
     }
 
+    @PostMapping("/ads/{adId}/add-to-playlist")
+    @SecurityRequirement(name = "jwt")
+    public ResponseEntity<ResponseDto<Void>> addAdToPlaylist(@PathVariable UUID adId) {
+        log.info("Admin add ad to playlist requested adId={}", adId);
+        adminAdOperationsService.addAdToPlaylist(adId);
+        return ResponseEntity.status(HttpStatus.OK)
+                .body(ResponseDto.fromData(null, HttpStatus.OK, MessageCommonsConstants.UPDATE_SUCCESS_MESSAGE));
+    }
+
     @GetMapping(value = "/export/subscriptions.csv", produces = "text/csv")
     @SecurityRequirement(name = "jwt")
     public ResponseEntity<byte[]> exportSubscriptionsCsv() {

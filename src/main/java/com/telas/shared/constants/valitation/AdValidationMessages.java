@@ -30,4 +30,8 @@ public final class AdValidationMessages {
           "Only approved or partner-rejected ads can be replaced for partner review";
   public static final String AD_NOT_PARTNER_ADVERTISER =
           "This action applies to partner ads only";
+  public static final String AD_REMOVAL_NOT_ALLOWED =
+          "This ad cannot be removed yet — it must be on a screen playlist first";
+  public static final String AD_NOT_OWNED_BY_PARTNER =
+          "You can only request removal for your own ads";
 }

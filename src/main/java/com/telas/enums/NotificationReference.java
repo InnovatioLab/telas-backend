@@ -411,6 +411,105 @@ public enum NotificationReference {
             return createAdminClientAdDeployedToBoxEmailData(params);
         }
     },
+    AD_ADDED_TO_PLAYLIST_PENDING_SYNC {
+        @Override
+        public String getNotificationMessage(Map<String, String> params) {
+            String adName = params.getOrDefault("adName", "your ad");
+            String summary = params.getOrDefault("monitorsSummary", "");
+            String extra = summary.isBlank() ? "" : "<p><strong>Screen:</strong> " + summary + "</p>";
+            String link = params.getOrDefault("link", "#");
+            return String.format("""
+                    <div class="informacoes">
+                        <h4 class="notification-title">Ad added to screen playlist</h4>
+                        <p><strong>%s</strong> was added to the screen playlist. Box sync is pending.</p>
+                        %s
+                    </div>
+                    <p><a class='details link-text' href="%s">View your ads</a></p>
+                    """, adName, extra, link);
+        }
+
+        @Override
+        public EmailDataDto getEmailData(Map<String, String> params) {
+            return createClientAdDeployedToBoxEmailData(params);
+        }
+    },
+    ADMIN_AD_ADDED_TO_PLAYLIST_PENDING_SYNC {
+        @Override
+        public String getNotificationMessage(Map<String, String> params) {
+            String clientName = params.getOrDefault("clientName", "Customer");
+            String adName = params.getOrDefault("adName", "Ad");
+            String link = params.getOrDefault("link", "");
+            return formatNotificationMessage(
+                    "Ad added to playlist (box pending)",
+                    String.format("%s — %s was saved to the screen playlist; box sync is pending.", clientName, adName),
+                    params,
+                    null,
+                    ObjectUtils.isEmpty(link) ? null : "Open client messages",
+                    false
+            );
+        }
+
+        @Override
+        public EmailDataDto getEmailData(Map<String, String> params) {
+            return createAdminClientAdDeployedToBoxEmailData(params);
+        }
+    },
+    PARTNER_AD_REMOVAL_REQUESTED {
+        @Override
+        public String getNotificationMessage(Map<String, String> params) {
+            String partnerName = params.getOrDefault("partnerName", "Partner");
+            String adName = params.getOrDefault("adName", "Ad");
+            String screen = params.getOrDefault("screenSummary", "");
+            String message = params.getOrDefault("message", "");
+            String body = partnerName + " requested removal of \"" + adName + "\"";
+            if (!screen.isBlank()) {
+                body += " from " + screen;
+            }
+            if (!message.isBlank()) {
+                body += ". Message: " + message;
+            }
+            return formatNotificationMessage(
+                    "Partner ad removal request",
+                    body,
+                    params,
+                    null,
+                    "Open ad requests",
+                    false
+            );
+        }
+
+        @Override
+        public EmailDataDto getEmailData(Map<String, String> params) {
+            EmailDataDto emailData = new EmailDataDto();
+            emailData.setSubject(SharedConstants.EMAIL_SUBJECT_PARTNER_AD_REMOVAL_REQUESTED);
+            emailData.setTemplate(SharedConstants.TEMPLATE_EMAIL_PARTNER_AD_REMOVAL_REQUESTED);
+            emailData.setParams(new HashMap<>(params));
+            return emailData;
+        }
+    },
+    PARTNER_AD_REMOVAL_REQUEST_CONFIRMED {
+        @Override
+        public String getNotificationMessage(Map<String, String> params) {
+            String adName = params.getOrDefault("adName", "your ad");
+            return formatNotificationMessage(
+                    "Removal request received",
+                    "We received your request to remove \"" + adName + "\" from the screen. Our team will review it.",
+                    params,
+                    null,
+                    "Open My screens",
+                    false
+            );
+        }
+
+        @Override
+        public EmailDataDto getEmailData(Map<String, String> params) {
+            EmailDataDto emailData = new EmailDataDto();
+            emailData.setSubject(SharedConstants.EMAIL_SUBJECT_PARTNER_AD_REMOVAL_CONFIRMED);
+            emailData.setTemplate(SharedConstants.TEMPLATE_EMAIL_PARTNER_AD_REMOVAL_CONFIRMED);
+            emailData.setParams(new HashMap<>(params));
+            return emailData;
+        }
+    },
     MONITOR_IN_WISHLIST_NOW_AVAILABLE {
         @Override
         public String getNotificationMessage(Map<String, String> params) {

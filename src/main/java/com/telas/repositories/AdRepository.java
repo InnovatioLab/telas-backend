@@ -12,6 +12,7 @@ import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.time.Instant;
+import java.util.Collection;
 import java.util.List;
 import java.util.UUID;
 
@@ -76,6 +77,14 @@ public interface AdRepository extends JpaRepository<Ad, UUID>, JpaSpecificationE
 		""")
 	List<Ad> findAllValidAdsForMonitor(@Param("validation") AdValidationType validation, @Param("monitorId") UUID monitorId);
 
+	@Query("""
+		SELECT ad FROM Ad ad
+		JOIN FETCH ad.client c
+		WHERE ad.id IN :ids
+		  AND ad.validation = 'APPROVED'
+		  AND ad.type <> 'application/pdf'
+		""")
+	List<Ad> findApprovedNonPdfByIds(@Param("ids") Collection<UUID> ids);
 
 	@Query("""
 		SELECT ad FROM Ad ad
@@ -361,5 +370,34 @@ public interface AdRepository extends JpaRepository<Ad, UUID>, JpaSpecificationE
 			@Param("partnerNameFilter") String partnerNameFilter,
 			@Param("screenContainsFilter") String screenContainsFilter,
 			Pageable pageable);
+
+	@Query("""
+			SELECT DISTINCT ar.targetMonitor.id
+			FROM Ad ad
+			JOIN ad.adRequest ar
+			WHERE ad.client.id = :partnerId
+			AND ad.validation = com.telas.enums.AdValidationType.APPROVED
+			AND ar.targetMonitor IS NOT NULL
+			AND NOT EXISTS (
+			    SELECT 1 FROM MonitorAd ma
+			    WHERE ma.id.ad.id = ad.id AND ma.id.monitor.id = ar.targetMonitor.id
+			)
+			""")
+	List<UUID> findDistinctPendingTargetMonitorIdsForPartner(@Param("partnerId") UUID partnerId);
+
+	@Query("""
+			SELECT ad FROM Ad ad
+			JOIN FETCH ad.adRequest ar
+			WHERE ad.client.id = :partnerId
+			AND ad.validation = com.telas.enums.AdValidationType.APPROVED
+			AND ar.targetMonitor.id = :monitorId
+			AND NOT EXISTS (
+			    SELECT 1 FROM MonitorAd ma
+			    WHERE ma.id.ad.id = ad.id AND ma.id.monitor.id = :monitorId
+			)
+			""")
+	List<Ad> findApprovedPartnerAdsPendingPlaylistOnMonitor(
+			@Param("partnerId") UUID partnerId,
+			@Param("monitorId") UUID monitorId);
 
 }

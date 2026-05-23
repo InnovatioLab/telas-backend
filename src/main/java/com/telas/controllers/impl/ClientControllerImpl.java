@@ -8,6 +8,7 @@ import com.telas.dtos.request.ClientAdRequestToAdminDto;
 import com.telas.dtos.request.ClientRequestDto;
 import com.telas.dtos.request.CreatePartnerRequestDto;
 import com.telas.dtos.request.RefusedAdRequestDto;
+import com.telas.dtos.request.PartnerAdRemovalRequestDto;
 import com.telas.dtos.request.PermanentDeleteClientRequestDto;
 import com.telas.dtos.request.filters.ClientFilterRequestDto;
 import com.telas.dtos.request.filters.FilterAdRequestDto;
@@ -305,6 +306,17 @@ public class ClientControllerImpl implements ClientController {
         service.permanentlyDeleteClientByDeveloper(clientId, request);
         return ResponseEntity.status(HttpStatus.OK)
                 .body(ResponseDto.fromData(null, HttpStatus.OK, MessageCommonsConstants.UPDATE_SUCCESS_MESSAGE));
+    }
+
+    @Override
+    @PostMapping("/me/partner-ads/{adId}/request-removal")
+    @SecurityRequirement(name = "jwt")
+    public ResponseEntity<?> requestPartnerAdRemoval(
+            @PathVariable UUID adId,
+            @RequestBody(required = false) PartnerAdRemovalRequestDto request) {
+        service.requestPartnerAdRemoval(adId, request);
+        return ResponseEntity.status(HttpStatus.OK)
+                .body(ResponseDto.fromData(null, HttpStatus.OK, MessageCommonsConstants.SAVE_SUCCESS_MESSAGE));
     }
 
     @Override

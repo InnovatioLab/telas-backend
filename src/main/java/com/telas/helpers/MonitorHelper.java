@@ -12,7 +12,10 @@ import com.telas.entities.Monitor;
 import com.telas.entities.MonitorAd;
 import com.telas.entities.SubscriptionMonitor;
 import com.telas.enums.AdValidationType;
+import com.telas.enums.PartnerAdDeploymentStatus;
+import com.telas.entities.Client;
 import com.telas.infra.exceptions.BusinessRuleException;
+import com.telas.infra.security.services.AuthenticatedUserService;
 import com.telas.repositories.AdRepository;
 import com.telas.repositories.MonitorRepository;
 import com.telas.repositories.SubscriptionMonitorRepository;
@@ -55,6 +58,8 @@ public class MonitorHelper {
 
 	private final HttpClientUtil httpClient;
 
+	private final AuthenticatedUserService authenticatedUserService;
+
 	@Value("${TOKEN_SECRET}")
 	private String API_KEY;
 
@@ -62,20 +67,27 @@ public class MonitorHelper {
 	@Transactional
 	public List<Ad> getAds(MonitorRequestDto request, UUID monitorId) {
 		Set<UUID> adsIds = request.getAds().stream().map(MonitorAdRequestDto::getId).collect(Collectors.toSet());
-
-		List<Ad> ads = adRepository.findAllValidAdsForMonitor(AdValidationType.APPROVED, monitorId);
-
-		if (ads.isEmpty()) {
+		if (adsIds.isEmpty()) {
 			return Collections.emptyList();
 		}
 
-		Set<UUID> monitorAdsIds = ads.stream().map(Ad::getId).collect(Collectors.toSet());
+		Client actor = authenticatedUserService.getLoggedUser().client();
+		if (actor.isPrivilegedPanelUser()) {
+			List<Ad> approvedAds = adRepository.findApprovedNonPdfByIds(adsIds);
+			Set<UUID> approvedIds = approvedAds.stream().map(Ad::getId).collect(Collectors.toSet());
+			if (!approvedIds.containsAll(adsIds)) {
+				throw new BusinessRuleException(MonitorValidationMessages.AD_NOT_ABLE_TO_ASSIGN_TO_MONITOR);
+			}
+			return approvedAds;
+		}
 
-		if (!monitorAdsIds.containsAll(adsIds)) {
+		List<Ad> assignableAds = adRepository.findAllValidAdsForMonitor(AdValidationType.APPROVED, monitorId);
+		Set<UUID> assignableIds = assignableAds.stream().map(Ad::getId).collect(Collectors.toSet());
+		if (!assignableIds.containsAll(adsIds)) {
 			throw new BusinessRuleException(MonitorValidationMessages.AD_NOT_ABLE_TO_ASSIGN_TO_MONITOR);
 		}
 
-		return ads.stream().filter(ad -> adsIds.contains(ad.getId())).collect(Collectors.toList());
+		return assignableAds.stream().filter(ad -> adsIds.contains(ad.getId())).collect(Collectors.toList());
 	}
 
 
@@ -140,6 +152,75 @@ public class MonitorHelper {
 				})
 				.toList();
 	}
+
+	@Transactional(readOnly = true)
+	public List<MonitorAdResponseDto> getPartnerAdvertiserAdsForPortal(Monitor entity, UUID partnerId) {
+		if (partnerId == null || entity == null) {
+			return List.of();
+		}
+		List<MonitorAdResponseDto> result = new ArrayList<>();
+		Set<UUID> coveredAdIds = new HashSet<>();
+
+		if (entity.getMonitorAds() != null) {
+			for (MonitorAd monitorAd : entity.getMonitorAds()) {
+				Ad ad = monitorAd.getAd();
+				if (ad == null || ad.getClient() == null || !partnerId.equals(ad.getClient().getId())) {
+					continue;
+				}
+				if (!AdValidationType.APPROVED.equals(ad.getValidation())) {
+					continue;
+				}
+				coveredAdIds.add(ad.getId());
+				result.add(toPartnerPortalAdDto(monitorAd, ad));
+			}
+		}
+
+		List<Ad> pendingOnMonitor = adRepository.findApprovedPartnerAdsPendingPlaylistOnMonitor(
+				partnerId, entity.getId());
+		for (Ad ad : pendingOnMonitor) {
+			if (coveredAdIds.add(ad.getId())) {
+				result.add(toPartnerPortalAdDto(null, ad));
+			}
+		}
+		return result;
+	}
+
+	private MonitorAdResponseDto toPartnerPortalAdDto(MonitorAd monitorAd, Ad ad) {
+		String adLink = bucketService.getLink(AttachmentUtils.format(ad));
+		MonitorAdResponseDto dto = monitorAd != null
+				? new MonitorAdResponseDto(monitorAd, adLink)
+				: buildPortalAdDtoWithoutPlacement(ad, adLink);
+		if (ad.getValidation() != null) {
+			dto.setValidation(ad.getValidation().name());
+		}
+		if (ad.getOnAirNotifiedAt() != null) {
+			dto.setOnAirSince(ad.getOnAirNotifiedAt());
+		}
+		PartnerAdDeploymentStatus status = resolvePartnerDeploymentStatus(ad, monitorAd);
+		dto.setDeploymentStatus(status.name());
+		dto.setCanRequestRemoval(monitorAd != null || ad.getOnAirNotifiedAt() != null);
+		return dto;
+	}
+
+	private static MonitorAdResponseDto buildPortalAdDtoWithoutPlacement(Ad ad, String adLink) {
+		MonitorAdResponseDto dto = new MonitorAdResponseDto();
+		dto.setId(ad.getId());
+		dto.setLink(adLink);
+		dto.setFileName(ad.getName());
+		dto.setClientName(ad.getClient() != null ? ad.getClient().getBusinessName() : null);
+		return dto;
+	}
+
+	private static PartnerAdDeploymentStatus resolvePartnerDeploymentStatus(Ad ad, MonitorAd monitorAd) {
+		if (ad.getOnAirNotifiedAt() != null) {
+			return PartnerAdDeploymentStatus.ON_AIR;
+		}
+		if (ad.getPartnerBoxStagedAt() != null) {
+			return PartnerAdDeploymentStatus.STAGED;
+		}
+		return PartnerAdDeploymentStatus.APPROVED_PENDING;
+	}
+
 
 	@Transactional(readOnly = true)
 	public List<MonitorAdResponseDto> getMonitorAdsResponse(Monitor entity) {

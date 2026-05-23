@@ -8,6 +8,7 @@ import com.telas.dtos.request.ClientAdRequestToAdminDto;
 import com.telas.dtos.request.ClientRequestDto;
 import com.telas.dtos.request.CreatePartnerRequestDto;
 import com.telas.dtos.request.RefusedAdRequestDto;
+import com.telas.dtos.request.PartnerAdRemovalRequestDto;
 import com.telas.dtos.request.PermanentDeleteClientRequestDto;
 import com.telas.dtos.request.filters.ClientFilterRequestDto;
 import com.telas.dtos.request.filters.FilterAdRequestDto;
@@ -21,6 +22,7 @@ import com.telas.enums.DefaultStatus;
 import com.telas.enums.Permission;
 import com.telas.enums.NotificationReference;
 import com.telas.enums.Role;
+import com.telas.helpers.AdPublicationNotificationHelper;
 import com.telas.helpers.AttachmentHelper;
 import com.telas.helpers.ClientHelper;
 import com.telas.infra.exceptions.BusinessRuleException;
@@ -48,6 +50,7 @@ import com.telas.services.TermConditionService;
 import com.telas.services.VerificationCodeService;
 import com.telas.shared.audit.CustomRevisionListener;
 import com.telas.shared.constants.SharedConstants;
+import com.telas.shared.constants.valitation.AdValidationMessages;
 import com.telas.shared.constants.valitation.AuthValidationMessageConstants;
 import com.telas.shared.constants.valitation.ClientValidationMessages;
 import com.telas.shared.utils.AttachmentUtils;
@@ -114,6 +117,8 @@ public class ClientServiceImpl implements ClientService {
 	private final NotificationService notificationService;
 
 	private final BusinessQuestionnaireService businessQuestionnaireService;
+
+	private final AdPublicationNotificationHelper adPublicationNotificationHelper;
 
 	@Value("${front.base.url}")
 	private String frontBaseUrl;
@@ -900,6 +905,34 @@ public class ClientServiceImpl implements ClientService {
 						attachmentHelper.getStringLinkFromAd(ad),
 						List.of()))
 				.toList();
+	}
+
+	@Override
+	@Transactional
+	public void requestPartnerAdRemoval(UUID adId, PartnerAdRemovalRequestDto request) {
+		Client partner = authenticatedUserService.getLoggedUser().client();
+		if (!partner.isPartner()) {
+			throw new ForbiddenException(AuthValidationMessageConstants.ERROR_NO_PERMISSION);
+		}
+		Ad ad = adRepository.findByIdWithClientAndAdRequest(adId)
+				.orElseThrow(() -> new ResourceNotFoundException(AdValidationMessages.AD_NOT_FOUND));
+		if (ad.getClient() == null || !partner.getId().equals(ad.getClient().getId())) {
+			throw new BusinessRuleException(AdValidationMessages.AD_NOT_OWNED_BY_PARTNER);
+		}
+		List<MonitorAd> placements = monitorAdRepository.findByAdIdWithMonitor(adId);
+		boolean canRemove = ad.getOnAirNotifiedAt() != null
+				|| (placements != null && !placements.isEmpty());
+		if (!canRemove) {
+			throw new BusinessRuleException(AdValidationMessages.AD_REMOVAL_NOT_ALLOWED);
+		}
+		Monitor monitor = null;
+		if (placements != null && !placements.isEmpty() && placements.get(0).getMonitor() != null) {
+			monitor = placements.get(0).getMonitor();
+		} else if (ad.getAdRequest() != null) {
+			monitor = ad.getAdRequest().getTargetMonitor();
+		}
+		String message = request != null && request.getMessage() != null ? request.getMessage().trim() : "";
+		adPublicationNotificationHelper.notifyPartnerAdRemovalRequested(partner, ad, monitor, message);
 	}
 
 
