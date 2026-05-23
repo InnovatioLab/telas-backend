@@ -4,6 +4,7 @@ import com.telas.entities.Client;
 import com.telas.entities.Subscription;
 import com.telas.enums.NotificationReference;
 import com.telas.enums.Recurrence;
+import com.telas.enums.Role;
 import com.telas.infra.exceptions.ResourceNotFoundException;
 import com.telas.repositories.ClientRepository;
 import com.telas.repositories.MonitorRepository;
@@ -14,6 +15,7 @@ import com.telas.services.CartService;
 import com.telas.services.EmailService;
 import com.telas.services.MonitorSubscriptionService;
 import com.telas.services.NotificationService;
+import com.telas.services.PartnerSlotAccessService;
 import com.telas.services.PaymentService;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -29,6 +31,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -69,6 +72,9 @@ class SubscriptionHelperNotificationDedupTest {
     @Mock
     private EmailService emailService;
 
+    @Mock
+    private PartnerSlotAccessService partnerSlotAccessService;
+
     @InjectMocks
     private SubscriptionHelper helper;
 
@@ -92,6 +98,25 @@ class SubscriptionHelperNotificationDedupTest {
 
         verify(notificationService, times(1)).save(eq(NotificationReference.FIRST_SUBSCRIPTION), eq(client), any(), eq(true));
         verify(notificationService, times(0)).save(eq(NotificationReference.NEW_SUBSCRIPTION), eq(client), any(), anyBoolean());
+    }
+
+    @Test
+    void sendPurchaseConfirmationEmail_shouldSkipPartnerBonusSubscription() {
+        Client partner = new Client();
+        partner.setId(UUID.randomUUID());
+        partner.setRole(Role.PARTNER);
+        partner.setBusinessName("Partner Co");
+
+        Subscription subscription = new Subscription();
+        subscription.setId(UUID.randomUUID());
+        subscription.setClient(partner);
+        subscription.setBonus(true);
+        subscription.setStartedAt(Instant.now());
+        subscription.setRecurrence(Recurrence.MONTHLY);
+
+        helper.sendPurchaseConfirmationEmail(subscription);
+
+        verify(notificationService, never()).save(any(), any(), any(), anyBoolean());
     }
 }
 

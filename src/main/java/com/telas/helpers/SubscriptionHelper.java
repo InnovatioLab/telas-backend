@@ -184,9 +184,6 @@ public class SubscriptionHelper {
 
     @Transactional
     public void handleBonusSubscription(Subscription subscription) {
-        Client client = subscription.getClient();
-
-        sendPurchaseConfirmationEmail(subscription);
     }
 
     @Transactional
@@ -305,6 +302,10 @@ public class SubscriptionHelper {
     }
 
     public void sendPurchaseConfirmationEmail(Subscription subscription) {
+        if (shouldSkipClientPurchaseNotification(subscription)) {
+            return;
+        }
+
         Map<String, String> params = new HashMap<>(Map.of(
                 "name", subscription.getClient().getBusinessName(),
                 "locations", subscription.getMonitorAddressesFormated(),
@@ -345,6 +346,14 @@ public class SubscriptionHelper {
 
     public String getRedirectUrlAfterCreatingNewSubscription() {
         return buildRedirectUrl("next-steps");
+    }
+
+    private boolean shouldSkipClientPurchaseNotification(Subscription subscription) {
+        if (subscription == null || subscription.isBonus()) {
+            return true;
+        }
+        Client client = subscription.getClient();
+        return client == null || client.isPartner();
     }
 
     private void validateCart(Cart cart) {
