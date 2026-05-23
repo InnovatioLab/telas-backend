@@ -142,6 +142,7 @@ public class Client extends BaseAudit implements Serializable {
     }
 
     public void update(ClientRequestDto request, String updatedBy) {
+        businessName = request.getBusinessName();
         industry = request.getIndustry();
         websiteUrl = request.getWebsiteUrl();
         contact.update(request.getContact());

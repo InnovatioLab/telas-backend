@@ -251,9 +251,28 @@ public class ClientHelper {
             throw new BusinessRuleException(AddressValidationMessages.ADDRESS_NOT_BELONG_TO_CLIENT);
         }
 
-        if (!monitorRepository.existsByAddressId(address.getId()) && address.hasChanged(addressRequest)) {
-            BeanUtils.copyProperties(addressRequest, address, "latitude", "longitude", "client", "monitors");
-            address.setUsernameUpdate(client.getBusinessName());
+        if (!address.hasChanged(addressRequest)) {
+            return;
+        }
+
+        boolean linkedToMonitor = monitorRepository.existsByAddressId(address.getId());
+        BeanUtils.copyProperties(
+                addressRequest,
+                address,
+                "latitude",
+                "longitude",
+                "client",
+                "monitors",
+                "locationName",
+                "locationDescription",
+                "photoUrl"
+        );
+        address.setUsernameUpdate(client.getBusinessName());
+
+        if (linkedToMonitor || Role.PARTNER.equals(client.getRole())) {
+            address.setLatitude(null);
+            address.setLongitude(null);
+            mapsService.getAddressCoordinates(address);
         }
     }
 
