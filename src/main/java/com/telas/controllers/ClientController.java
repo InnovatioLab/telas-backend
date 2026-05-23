@@ -157,6 +157,10 @@ public interface ClientController {
     })
     ResponseEntity<?> uploadAdForAdRequest(@Valid AttachmentRequestDto request, UUID adRequestId);
 
+    ResponseEntity<?> approveAdRequestToAds(UUID adRequestId);
+
+    ResponseEntity<?> cancelAdRequest(UUID adRequestId);
+
     @Operation(summary = "Endpoint contract to get paginated clients from filters", responses = {
             @ApiResponse(responseCode = "200", description = "Records found successfully."),
             @ApiResponse(responseCode = "422", description = "Request with invalid data."),

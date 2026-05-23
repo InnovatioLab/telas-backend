@@ -18,6 +18,7 @@ import com.telas.repositories.ClientRepository;
 import com.telas.repositories.MonitorAdRepository;
 import com.telas.repositories.MonitorRepository;
 import com.telas.enums.AdRequestOrigin;
+import com.telas.enums.PartnerSubmissionMode;
 import com.telas.dtos.request.UpdateBoxMonitorsAdRequestDto;
 import com.telas.services.AdUnusedTrackingService;
 import com.telas.services.BucketService;
@@ -444,6 +445,63 @@ public class AttachmentHelper {
                 ),
                 true
         );
+    }
+
+    @Transactional
+    public void adminApproveAdRequestToAds(AdRequest adRequest, Client admin) {
+        if (!PartnerSubmissionMode.PARTNER_FINISHED_CREATIVE.equals(adRequest.getSubmissionMode())) {
+            throw new BusinessRuleException(ClientValidationMessages.AD_REQUEST_NOT_FINISHED_CREATIVE);
+        }
+        Ad ad = adRequest.getAd();
+        if (ad == null) {
+            throw new ResourceNotFoundException(AdValidationMessages.AD_NOT_FOUND);
+        }
+        if (!AdValidationType.PENDING.equals(ad.getValidation())) {
+            throw new BusinessRuleException(AdValidationMessages.AD_ALREADY_VALIDATED);
+        }
+        CustomRevisionListener.setUsername(admin.getBusinessName());
+        ad.setValidation(AdValidationType.APPROVED);
+        adRepository.save(ad);
+        attachAdToTargetMonitorIfNeeded(ad, adRequest);
+        adUnusedTrackingService.syncUnusedStateForAdIds(List.of(ad.getId()));
+        adRequest.closeRequest();
+        adRequestRepository.save(adRequest);
+        Ad refreshed = adRepository.findByIdWithClientAndAdRequest(ad.getId()).orElse(ad);
+        notifyClientApprovedAd(refreshed);
+        notifyAdminsClientApprovedAdForAdsTab(refreshed);
+    }
+
+    private void notifyAdminsClientApprovedAdForAdsTab(Ad entity) {
+        Client client = entity.getClient();
+        String adminLink = frontBaseUrl + "/admin/ads";
+        Map<String, String> params = new HashMap<>();
+        params.put("clientName", client.getBusinessName());
+        params.put("adName", entity.getName());
+        params.put("link", adminLink);
+        for (Client recipient : clientRepository.findAllAdminsAndDevelopers()) {
+            boolean canManageAds = recipient.isDeveloper()
+                    || permissionService.hasPermission(recipient, Permission.ADMIN_ADS_MANAGE);
+            if (!canManageAds) {
+                continue;
+            }
+            boolean sendEmail = !recipient.isDeveloper()
+                    && adminEmailAlertPreferenceService.wantsEmail(
+                            recipient.getId(), com.telas.enums.AdminEmailAlertCategory.ADS_MANAGEMENT);
+            notificationService.save(NotificationReference.ADMIN_CLIENT_AD_APPROVED, recipient, new HashMap<>(params), sendEmail);
+        }
+    }
+
+    @Transactional
+    public void cancelAdRequest(AdRequest adRequest) {
+        Ad ad = adRequest.getAd();
+        if (ad != null && AdValidationType.APPROVED.equals(ad.getValidation())) {
+            throw new BusinessRuleException(ClientValidationMessages.AD_REQUEST_CANNOT_CANCEL);
+        }
+        if (ad != null && isPartnerMaterialsFlowAd(ad)) {
+            removePartnerMaterialsAdFromScreens(ad);
+        }
+        adRequest.closeRequest();
+        adRequestRepository.save(adRequest);
     }
 
     @Transactional

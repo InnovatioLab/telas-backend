@@ -134,6 +134,45 @@ public class ClientHelper {
         return adRequestRepository.save(adRequest);
     }
 
+    @Transactional
+    public AdRequest createPartnerFinishedCreativeRequest(
+            PartnerAdRequestToAdminDto request,
+            Client partner,
+            Monitor targetMonitor,
+            AttachmentRequestDto attachmentRequest) {
+        if (adRequestRepository.existsByClientIdAndRequestOriginAndTargetMonitorIdAndIsActiveTrueAndSubmissionMode(
+                partner.getId(),
+                com.telas.enums.AdRequestOrigin.PARTNER,
+                targetMonitor.getId(),
+                com.telas.enums.PartnerSubmissionMode.PARTNER_FINISHED_CREATIVE)) {
+            throw new BusinessRuleException(ClientValidationMessages.AD_REQUEST_EXISTS);
+        }
+
+        AdRequest adRequest = new AdRequest(request, partner, targetMonitor, List.of());
+        adRequest.setSubmissionMode(com.telas.enums.PartnerSubmissionMode.PARTNER_FINISHED_CREATIVE);
+        adRequest.setAttachmentIds("");
+        adRequestRepository.save(adRequest);
+
+        Ad ad = new Ad(attachmentRequest, partner, adRequest);
+        ad.setValidation(AdValidationType.PENDING);
+        ad.setUsernameCreate(partner.getBusinessName());
+        if (request.getOptionalLabel() != null && !request.getOptionalLabel().isBlank()) {
+            ad.setName(request.getOptionalLabel().trim());
+        }
+        adRepository.save(ad);
+        partner.getAds().add(ad);
+        clientRepository.save(partner);
+
+        bucketService.upload(
+                attachmentRequest.getBytes(),
+                AttachmentUtils.format(ad),
+                attachmentRequest.getType(),
+                new java.io.ByteArrayInputStream(attachmentRequest.getBytes())
+        );
+
+        return adRequest;
+    }
+
     @Transactional(readOnly = true)
     public AdRequest getAdRequestById(UUID adRequestId) {
         return adRequestRepository.findById(adRequestId)

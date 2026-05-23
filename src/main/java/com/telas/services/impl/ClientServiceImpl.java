@@ -442,6 +442,23 @@ public class ClientServiceImpl implements ClientService {
 		attachmentHelper.saveAdsForAdRequest(request, adRequest);
 	}
 
+	@Override
+	@Transactional
+	public void approveAdRequestToAds(UUID adRequestId) {
+		authenticatedUserService.validateAdminOrAdsManageAccess();
+		AdRequest adRequest = helper.getAdRequestById(adRequestId);
+		Client admin = authenticatedUserService.getLoggedUser().client();
+		attachmentHelper.adminApproveAdRequestToAds(adRequest, admin);
+	}
+
+	@Override
+	@Transactional
+	public void cancelAdRequest(UUID adRequestId) {
+		authenticatedUserService.validateAdminOrAdsManageAccess();
+		AdRequest adRequest = helper.getAdRequestById(adRequestId);
+		attachmentHelper.cancelAdRequest(adRequest);
+	}
+
 
 	@Transactional
 	@Override
@@ -759,10 +776,43 @@ public class ClientServiceImpl implements ClientService {
 			Predicate activeClient = criteriaBuilder.equal(clientJoin.get("status"), DefaultStatus.ACTIVE);
 
 			Predicate noAdYet = criteriaBuilder.isNull(adJoin.get("id"));
-			Predicate clientRejectedAd =
+			Predicate rejectedAd =
 				criteriaBuilder.equal(adJoin.get("validation"), AdValidationType.REJECTED);
+			Predicate pendingValidation =
+				criteriaBuilder.equal(adJoin.get("validation"), AdValidationType.PENDING);
 
-			Predicate needsAdminAction = criteriaBuilder.or(noAdYet, clientRejectedAd);
+			Predicate adminUploadNeeded = criteriaBuilder.and(
+				criteriaBuilder.equal(root.get("isActive"), true),
+				criteriaBuilder.or(noAdYet, rejectedAd)
+			);
+
+			Predicate pendingAdvertiserReview = criteriaBuilder.and(
+				pendingValidation,
+				criteriaBuilder.or(
+					criteriaBuilder.equal(root.get("requestOrigin"), AdRequestOrigin.CLIENT),
+					criteriaBuilder.and(
+						criteriaBuilder.equal(root.get("requestOrigin"), AdRequestOrigin.PARTNER),
+						criteriaBuilder.or(
+							criteriaBuilder.isNull(root.get("submissionMode")),
+							criteriaBuilder.notEqual(
+								root.get("submissionMode"),
+								PartnerSubmissionMode.PARTNER_FINISHED_CREATIVE
+							)
+						)
+					)
+				)
+			);
+
+			Predicate adminDirectApproval = criteriaBuilder.and(
+				criteriaBuilder.equal(root.get("submissionMode"), PartnerSubmissionMode.PARTNER_FINISHED_CREATIVE),
+				pendingValidation
+			);
+
+			Predicate visibleInAdminQueue = criteriaBuilder.or(
+				adminUploadNeeded,
+				pendingAdvertiserReview,
+				adminDirectApproval
+			);
 
 			Predicate refusalHistoryOk = criteriaBuilder.or(
 				noAdYet,
@@ -777,9 +827,8 @@ public class ClientServiceImpl implements ClientService {
 
 			List<Predicate> predicates = new ArrayList<>();
 			predicates.add(activeClient);
-			predicates.add(needsAdminAction);
+			predicates.add(visibleInAdminQueue);
 			predicates.add(refusalHistoryOk);
-			predicates.add(criteriaBuilder.equal(root.get("isActive"), true));
 
 			if (request.getRequestOrigin() != null) {
 				predicates.add(criteriaBuilder.equal(root.get("requestOrigin"), request.getRequestOrigin()));

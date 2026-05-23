@@ -400,7 +400,8 @@ public class MonitorServiceImpl implements MonitorService {
 				throw new ForbiddenException(AuthValidationMessageConstants.ERROR_NO_PERMISSION);
 			}
 		} else {
-			if (request.getSubmissionMode() == PartnerSubmissionMode.ADMIN_MATERIALS) {
+			if (request.getSubmissionMode() == PartnerSubmissionMode.ADMIN_MATERIALS
+					|| request.getSubmissionMode() == PartnerSubmissionMode.PARTNER_FINISHED_CREATIVE) {
 				throw new BusinessRuleException(MonitorValidationMessages.PARTNER_MATERIALS_FOREIGN_ONLY);
 			}
 		}
@@ -414,6 +415,7 @@ public class MonitorServiceImpl implements MonitorService {
 					partnerForeignPlacement,
 					partnerForeignPlacement);
 			case ADMIN_MATERIALS -> submitPartnerMaterialsRequest(monitorId, request, actor, monitor);
+			case PARTNER_FINISHED_CREATIVE -> submitPartnerFinishedCreativeRequest(monitorId, request, actor, monitor);
 		};
 	}
 
@@ -443,6 +445,29 @@ public class MonitorServiceImpl implements MonitorService {
 		validatePartnerPlacementAccess(partner, monitor);
 
 		AdRequest created = clientHelper.createPartnerAdRequest(materialsRequest, partner, monitor);
+		notifyAdminsPartnerMaterialsSubmitted(partner, monitor, created);
+		return created.getId();
+	}
+
+	private UUID submitPartnerFinishedCreativeRequest(
+			UUID monitorId,
+			PartnerAdSubmissionRequestDto request,
+			Client partner,
+			Monitor monitor) {
+		if (partner.getAds().size() >= SharedConstants.MAX_ADS_PER_CLIENT) {
+			throw new BusinessRuleException(ClientValidationMessages.MAX_ADS_REACHED);
+		}
+		validatePartnerPlacementAccess(partner, monitor);
+
+		PartnerAdRequestToAdminDto dto = new PartnerAdRequestToAdminDto();
+		dto.setTargetMonitorId(monitorId);
+		dto.setOptionalLabel(request.getOptionalLabel());
+
+		AdRequest created = clientHelper.createPartnerFinishedCreativeRequest(
+				dto,
+				partner,
+				monitor,
+				request.getAttachment());
 		notifyAdminsPartnerMaterialsSubmitted(partner, monitor, created);
 		return created.getId();
 	}
@@ -535,7 +560,7 @@ public class MonitorServiceImpl implements MonitorService {
 		params.put("adLabel", adRequest.getSlogan() != null ? adRequest.getSlogan() : "");
 		params.put("adId", adRequest.getId().toString());
 		params.put("clientId", partner.getId().toString());
-		params.put("link", frontBaseUrl + "/admin/ads");
+		params.put("link", frontBaseUrl + "/admin/ad-requests");
 		clientRepository.findAllAdmins().forEach(admin ->
 				notificationService.save(NotificationReference.ADMIN_PARTNER_PLACEMENT_REQUEST, admin, params, true));
 	}

@@ -196,6 +196,24 @@ public class ClientControllerImpl implements ClientController {
     }
 
     @Override
+    @PostMapping("/ad-requests/{adRequestId}/approve-to-ads")
+    @SecurityRequirement(name = "jwt")
+    public ResponseEntity<?> approveAdRequestToAds(@PathVariable(name = "adRequestId") UUID adRequestId) {
+        service.approveAdRequestToAds(adRequestId);
+        return ResponseEntity.status(HttpStatus.OK)
+                .body(ResponseDto.fromData(null, HttpStatus.OK, MessageCommonsConstants.UPDATE_SUCCESS_MESSAGE));
+    }
+
+    @Override
+    @DeleteMapping("/ad-requests/{adRequestId}")
+    @SecurityRequirement(name = "jwt")
+    public ResponseEntity<?> cancelAdRequest(@PathVariable(name = "adRequestId") UUID adRequestId) {
+        service.cancelAdRequest(adRequestId);
+        return ResponseEntity.status(HttpStatus.OK)
+                .body(ResponseDto.fromData(null, HttpStatus.OK, MessageCommonsConstants.UPDATE_SUCCESS_MESSAGE));
+    }
+
+    @Override
     @GetMapping("/filters")
     @SecurityRequirement(name = "jwt")
     public ResponseEntity<?> findAllFilters(ClientFilterRequestDto request) {

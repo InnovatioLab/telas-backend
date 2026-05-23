@@ -2,8 +2,11 @@ package com.telas.dtos.response;
 
 import com.telas.entities.AdRequest;
 import com.telas.enums.AdRequestOrigin;
+import com.telas.enums.AdRequestWorkflowStatus;
+import com.telas.enums.AdValidationType;
 import com.telas.enums.PartnerSubmissionMode;
 import com.telas.enums.Role;
+import com.telas.helpers.AdRequestWorkflowResolver;
 import lombok.Getter;
 
 import java.io.Serial;
@@ -53,6 +56,12 @@ public final class AdRequestAdminResponseDto implements Serializable {
 
     private final String targetMonitorSummary;
 
+    private final AdRequestWorkflowStatus workflowStatus;
+
+    private final String adminActionLabel;
+
+    private final AdValidationType adValidation;
+
     public AdRequestAdminResponseDto(
             AdRequest adRequest,
             Map<String, Object> linkResponseData,
@@ -75,6 +84,9 @@ public final class AdRequestAdminResponseDto implements Serializable {
                 ? adRequest.getTargetMonitor().getId()
                 : null;
         this.targetMonitorSummary = buildMonitorSummary(adRequest);
+        this.workflowStatus = AdRequestWorkflowResolver.resolve(adRequest);
+        this.adminActionLabel = AdRequestWorkflowResolver.adminActionLabel(this.workflowStatus);
+        this.adValidation = adRequest.getAd() != null ? adRequest.getAd().getValidation() : null;
 
         refusedAds = adRequest.getAd() != null && !adRequest.getAd().getRefusedAds().isEmpty() ?
                 adRequest.getAd().getRefusedAds().stream()

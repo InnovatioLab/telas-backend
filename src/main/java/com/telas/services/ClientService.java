@@ -68,6 +68,10 @@ public interface ClientService {
 
     void uploadAdsForAdRequest(AttachmentRequestDto request, UUID adRequestId);
 
+    void approveAdRequestToAds(UUID adRequestId);
+
+    void cancelAdRequest(UUID adRequestId);
+
     void acceptTermsAndConditions();
 
     void changeRoleToPartner(UUID clientId);

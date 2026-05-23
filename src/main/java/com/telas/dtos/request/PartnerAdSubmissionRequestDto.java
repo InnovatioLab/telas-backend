@@ -55,6 +55,12 @@ public class PartnerAdSubmissionRequestDto implements Serializable {
                     throw new BusinessRuleException(AttachmentValidationMessages.ATTACHMENT_LIST_EMPTY);
                 }
             }
+            case PARTNER_FINISHED_CREATIVE -> {
+                if (attachment == null) {
+                    throw new BusinessRuleException(AttachmentValidationMessages.ATTACHMENT_LIST_EMPTY);
+                }
+                attachment.validate();
+            }
             default -> throw new BusinessRuleException("Unsupported submission mode.");
         }
     }

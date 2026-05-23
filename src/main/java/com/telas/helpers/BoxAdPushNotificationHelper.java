@@ -168,4 +168,78 @@ public class BoxAdPushNotificationHelper {
         }
         return String.join("; ", lines);
     }
+
+    public void notifyAfterAdStagedToBox(Ad ad, List<Monitor> monitors) {
+        if (ad == null || ad.getClient() == null) {
+            return;
+        }
+        String monitorsSummary = monitors == null ? "" : monitors.stream()
+                .map(this::formatMonitorLine)
+                .filter(s -> s != null && !s.isBlank())
+                .reduce((a, b) -> a + "; " + b)
+                .orElse("");
+        notifyDeployed(ad, ad.getClient(), monitorsSummary);
+    }
+
+    private String formatMonitorLine(Monitor monitor) {
+        if (monitor == null) {
+            return "";
+        }
+        String addressPart = monitor.getAddress() != null
+                ? monitor.getAddress().resolveMapLocationDescription()
+                : "";
+        String ip = monitor.getBox() != null && monitor.getBox().getBoxAddress() != null
+                ? monitor.getBox().getBoxAddress().getIp()
+                : "";
+        if (addressPart != null && !addressPart.isBlank() && ip != null && !ip.isBlank()) {
+            return addressPart + " — Box " + ip;
+        }
+        if (addressPart != null && !addressPart.isBlank()) {
+            return addressPart;
+        }
+        if (ip != null && !ip.isBlank()) {
+            return "Box " + ip;
+        }
+        return monitor.getId() != null ? monitor.getId().toString() : "";
+    }
+
+    private void notifyDeployed(Ad ad, Client client, String monitorsSummary) {
+        String subscriptionEndsAt = formatSubscriptionEnds(client.getId());
+        String clientLink = client.isPartner()
+                ? frontBaseUrl + "/client/screens"
+                : frontBaseUrl + "/client/my-telas?tab=ads";
+        String adminLink = frontBaseUrl + "/admin/clients/" + client.getId() + "/messages";
+
+        Map<String, String> clientParams = new HashMap<>();
+        clientParams.put("name", client.getBusinessName());
+        clientParams.put("adName", ad.getName());
+        clientParams.put("link", clientLink);
+        clientParams.put("partner", client.isPartner() ? "true" : "false");
+        clientParams.put("monitorsSummary", monitorsSummary);
+        clientParams.put("subscriptionEndsAt", subscriptionEndsAt);
+        notificationService.save(NotificationReference.CLIENT_AD_DEPLOYED_TO_BOX, client, clientParams, true);
+
+        Map<String, String> adminBase = new HashMap<>();
+        adminBase.put("clientName", client.getBusinessName());
+        adminBase.put("adName", ad.getName());
+        adminBase.put("monitorsSummary", monitorsSummary);
+        adminBase.put("subscriptionEndsAt", subscriptionEndsAt);
+        adminBase.put("link", adminLink);
+
+        for (Client recipient : clientRepository.findAllAdminsAndDevelopers()) {
+            boolean canManageAds = recipient.isDeveloper()
+                    || permissionService.hasPermission(recipient, Permission.ADMIN_ADS_MANAGE);
+            if (!canManageAds) {
+                continue;
+            }
+            boolean sendEmail = !recipient.isDeveloper()
+                    && adminEmailAlertPreferenceService.wantsEmail(
+                            recipient.getId(), com.telas.enums.AdminEmailAlertCategory.ADS_MANAGEMENT);
+            notificationService.save(
+                    NotificationReference.ADMIN_CLIENT_AD_DEPLOYED_TO_BOX,
+                    recipient,
+                    new HashMap<>(adminBase),
+                    sendEmail);
+        }
+    }
 }

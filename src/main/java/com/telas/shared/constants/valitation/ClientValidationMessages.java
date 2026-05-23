@@ -39,6 +39,10 @@ public final class ClientValidationMessages {
     public static final String PARTNER_USE_AD_REQUEST_UPLOAD =
             "Use the ad-request upload endpoint for partner material requests.";
     public static final String AD_REQUEST_NOT_PARTNER = "Ad request is not a partner request.";
+    public static final String AD_REQUEST_CANNOT_CANCEL =
+            "This ad request cannot be cancelled in its current state.";
+    public static final String AD_REQUEST_NOT_FINISHED_CREATIVE =
+            "Ad request is not a partner finished-creative submission.";
     public static final String AD_REQUEST_NOT_MATERIALS =
             "Ad request is not a partner materials submission.";
 }

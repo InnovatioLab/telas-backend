@@ -6,6 +6,7 @@ import com.telas.dtos.response.AdminAdOperationRowDto;
 import com.telas.dtos.response.AdminExpiryNotificationDto;
 import com.telas.dtos.response.PaginationResponseDto;
 import com.telas.entities.Ad;
+import com.telas.entities.Client;
 import com.telas.entities.Monitor;
 import com.telas.entities.MonitorAd;
 import com.telas.entities.Notification;
@@ -23,6 +24,7 @@ import com.telas.repositories.MonitorRepository;
 import com.telas.repositories.NotificationRepository;
 import com.telas.repositories.SubscriptionRepository;
 import com.telas.helpers.AttachmentHelper;
+import com.telas.helpers.BoxAdPushNotificationHelper;
 import com.telas.services.AdminAdOperationsService;
 import com.telas.shared.constants.valitation.AdValidationMessages;
 import com.telas.shared.utils.PaginationFilterUtil;
@@ -86,6 +88,7 @@ public class AdminAdOperationsServiceImpl implements AdminAdOperationsService {
     private final AuthenticatedUserService authenticatedUserService;
     private final AttachmentHelper attachmentHelper;
     private final MonitorHelper monitorHelper;
+    private final BoxAdPushNotificationHelper boxAdPushNotificationHelper;
     private final UnusedSingleAdDeletionService unusedSingleAdDeletionService;
 
     private static String trimOrEmpty(String value) {
@@ -253,6 +256,8 @@ public class AdminAdOperationsServiceImpl implements AdminAdOperationsService {
 
         ad.setPartnerBoxStagedAt(Instant.now());
         adRepository.save(ad);
+
+        boxAdPushNotificationHelper.notifyAfterAdStagedToBox(ad, List.copyOf(monitorsById.values()));
 
         log.info("dispatchAdToBox completed adId={} (available ads on manage screen)", adId);
     }

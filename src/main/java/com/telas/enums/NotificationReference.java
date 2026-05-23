@@ -663,7 +663,13 @@ public enum NotificationReference {
 
         @Override
         public EmailDataDto getEmailData(Map<String, String> params) {
-            return null;
+            EmailDataDto emailData = new EmailDataDto();
+            emailData.setParams(new HashMap<>());
+            emailData.setSubject("Partner ad submitted — Telas");
+            emailData.setTemplate(SharedConstants.TEMPLATE_EMAIL_ADMIN_CLIENT_FIRST_ATTACHMENTS_UPLOADED);
+            emailData.getParams().put("clientName", params.getOrDefault("partnerName", ""));
+            emailData.getParams().put("link", params.getOrDefault("link", ""));
+            return emailData;
         }
     },
     ADMIN_PARTNER_PLACEMENT_REQUEST {
@@ -687,7 +693,13 @@ public enum NotificationReference {
 
         @Override
         public EmailDataDto getEmailData(Map<String, String> params) {
-            return null;
+            EmailDataDto emailData = new EmailDataDto();
+            emailData.setParams(new HashMap<>());
+            emailData.setSubject("Partner placement request — Telas");
+            emailData.setTemplate(SharedConstants.TEMPLATE_EMAIL_ADMIN_CLIENT_FIRST_ATTACHMENTS_UPLOADED);
+            emailData.getParams().put("clientName", params.getOrDefault("partnerName", ""));
+            emailData.getParams().put("link", params.getOrDefault("link", ""));
+            return emailData;
         }
     },
     ADMIN_NEW_PURCHASE {

@@ -1,0 +1,9 @@
+package com.telas.enums;
+
+public enum AdRequestWorkflowStatus {
+    AWAITING_ADMIN_UPLOAD,
+    AWAITING_PARTNER_REVIEW,
+    AWAITING_CLIENT_REVIEW,
+    AWAITING_ADMIN_DIRECT_APPROVAL,
+    REOPENED_AFTER_REJECTION
+}
