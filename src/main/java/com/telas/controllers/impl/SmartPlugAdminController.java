@@ -8,9 +8,7 @@ import com.telas.dtos.response.SmartPlugHistoryPointResponseDto;
 import com.telas.dtos.response.SmartPlugReadingResponseDto;
 import com.telas.dtos.response.SmartPlugOverviewResponseDto;
 import com.telas.dtos.response.SmartPlugResponseDto;
-import com.telas.entities.Client;
 import com.telas.enums.Permission;
-import com.telas.infra.security.model.AuthenticatedUser;
 import com.telas.infra.security.services.AuthenticatedUserService;
 import com.telas.services.SmartPlugIpDiscoveryService;
 import com.telas.services.SmartPlugOverviewService;
@@ -59,11 +57,7 @@ public class SmartPlugAdminController {
                             + "Acesso: utilizador de painel (ADMIN ou DEVELOPER) ou permissão MONITORING_SMART_PLUG_ADMIN.")
     @SecurityRequirement(name = "jwt")
     public ResponseEntity<?> runDiscoveryNow() {
-        AuthenticatedUser user = authenticatedUserService.getLoggedUser();
-        Client client = user.client();
-        if (!client.isPrivilegedPanelUser()) {
-            authenticatedUserService.validatePermission(Permission.MONITORING_SMART_PLUG_DISCOVERY_RUN);
-        }
+        authenticatedUserService.validatePrivilegedPanelOrPermission(Permission.MONITORING_SMART_PLUG_DISCOVERY_RUN);
         Map<String, Object> summary = smartPlugIpDiscoveryService.runDiscoveryCycle();
         return ResponseEntity.status(HttpStatus.OK)
                 .body(ResponseDto.fromData(summary, HttpStatus.OK, MessageCommonsConstants.FIND_ALL_SUCCESS_MESSAGE));

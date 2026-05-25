@@ -6,18 +6,15 @@ import com.telas.entities.Monitor;
 import com.telas.entities.MonitorAd;
 import com.telas.enums.AdValidationType;
 import com.telas.enums.NotificationReference;
-import com.telas.enums.Permission;
 import com.telas.repositories.AdRepository;
-import com.telas.repositories.ClientRepository;
-import com.telas.services.AdminEmailAlertPreferenceService;
 import com.telas.services.NotificationService;
-import com.telas.services.PermissionService;
+import com.telas.services.notification.AdminAdsNotificationService;
+import com.telas.shared.utils.ClientPortalLinkResolver;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.test.util.ReflectionTestUtils;
 
 import java.time.Instant;
 import java.util.List;
@@ -36,21 +33,17 @@ class AdOnAirNotificationHelperTest {
     @Mock
     private NotificationService notificationService;
     @Mock
-    private ClientRepository clientRepository;
-    @Mock
-    private PermissionService permissionService;
-    @Mock
-    private AdminEmailAlertPreferenceService adminEmailAlertPreferenceService;
+    private AdminAdsNotificationService adminAdsNotificationService;
     @Mock
     private AdRepository adRepository;
+    @Mock
+    private ClientPortalLinkResolver clientPortalLinkResolver;
 
     @InjectMocks
     private AdOnAirNotificationHelper helper;
 
     @Test
     void notifyOnAirForNewMonitorAds_shouldDeduplicateByTimestampMarker() {
-        ReflectionTestUtils.setField(helper, "frontBaseUrl", "https://front.test");
-
         Client client = new Client();
         client.setId(UUID.randomUUID());
         client.setBusinessName("ACME");
@@ -73,20 +66,15 @@ class AdOnAirNotificationHelperTest {
         helper.notifyOnAirForNewMonitorAds(List.of(ma), monitor);
 
         verify(notificationService, never()).save(eq(NotificationReference.CLIENT_AD_ON_AIR), any(), any(), anyBoolean());
-        verify(notificationService, never()).save(eq(NotificationReference.ADMIN_AD_ON_AIR), any(), any(), anyBoolean());
+        verify(adminAdsNotificationService, never()).notifyAdmins(any(), any(), anyBoolean());
         verify(adRepository, never()).save(any(Ad.class));
     }
 
     @Test
     void notifyOnAirForNewMonitorAds_whenEligible_shouldNotifyClientAndAdmins() {
-        ReflectionTestUtils.setField(helper, "frontBaseUrl", "https://front.test");
-
         Client client = new Client();
         client.setId(UUID.randomUUID());
         client.setBusinessName("ACME");
-
-        Client admin = new Client();
-        admin.setId(UUID.randomUUID());
 
         Ad ad = new Ad();
         ad.setId(UUID.randomUUID());
@@ -106,29 +94,27 @@ class AdOnAirNotificationHelperTest {
         box.setBoxAddress(addr);
         monitor.setBox(box);
 
-        when(clientRepository.findAllAdminsAndDevelopers()).thenReturn(List.of(admin));
-        when(permissionService.hasPermission(admin, Permission.ADMIN_ADS_MANAGE)).thenReturn(true);
-        when(adminEmailAlertPreferenceService.wantsEmail(admin.getId(), com.telas.enums.AdminEmailAlertCategory.ADS_MANAGEMENT))
-                .thenReturn(true);
+        when(clientPortalLinkResolver.clientAdsTabLink(client)).thenReturn("https://front.test/client/my-telas?tab=ads");
+        when(clientPortalLinkResolver.partnerFlag(client)).thenReturn("false");
+        when(clientPortalLinkResolver.adminClientMessagesLink(client.getId()))
+                .thenReturn("https://front.test/admin/clients/" + client.getId() + "/messages");
         when(adRepository.save(any(Ad.class))).thenAnswer(inv -> inv.getArgument(0));
 
         helper.notifyOnAirForNewMonitorAds(List.of(ma), monitor);
 
         verify(notificationService).save(eq(NotificationReference.CLIENT_AD_ON_AIR), eq(client), any(), eq(true));
-        verify(notificationService).save(eq(NotificationReference.ADMIN_AD_ON_AIR), eq(admin), any(), eq(true));
+        verify(adminAdsNotificationService).notifyAdmins(
+                eq(NotificationReference.ADMIN_AD_ON_AIR),
+                any(),
+                eq(true));
         verify(adRepository).save(eq(ad));
     }
 
     @Test
     void notifyOnAirForNewMonitorAds_whenSendEmailFalse_skipsEmailFlags() {
-        ReflectionTestUtils.setField(helper, "frontBaseUrl", "https://front.test");
-
         Client client = new Client();
         client.setId(UUID.randomUUID());
         client.setBusinessName("ACME");
-
-        Client admin = new Client();
-        admin.setId(UUID.randomUUID());
 
         Ad ad = new Ad();
         ad.setId(UUID.randomUUID());
@@ -148,14 +134,18 @@ class AdOnAirNotificationHelperTest {
         box.setBoxAddress(addr);
         monitor.setBox(box);
 
-        when(clientRepository.findAllAdminsAndDevelopers()).thenReturn(List.of(admin));
-        when(permissionService.hasPermission(admin, Permission.ADMIN_ADS_MANAGE)).thenReturn(true);
+        when(clientPortalLinkResolver.clientAdsTabLink(client)).thenReturn("https://front.test/client/my-telas?tab=ads");
+        when(clientPortalLinkResolver.partnerFlag(client)).thenReturn("false");
+        when(clientPortalLinkResolver.adminClientMessagesLink(client.getId()))
+                .thenReturn("https://front.test/admin/clients/" + client.getId() + "/messages");
         when(adRepository.save(any(Ad.class))).thenAnswer(inv -> inv.getArgument(0));
 
         helper.notifyOnAirForNewMonitorAds(List.of(ma), monitor, false);
 
         verify(notificationService).save(eq(NotificationReference.CLIENT_AD_ON_AIR), eq(client), any(), eq(false));
-        verify(notificationService).save(eq(NotificationReference.ADMIN_AD_ON_AIR), eq(admin), any(), eq(false));
+        verify(adminAdsNotificationService).notifyAdmins(
+                eq(NotificationReference.ADMIN_AD_ON_AIR),
+                any(),
+                eq(false));
     }
 }
-

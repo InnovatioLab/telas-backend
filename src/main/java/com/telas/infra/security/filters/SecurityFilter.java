@@ -6,6 +6,7 @@ import com.telas.infra.security.model.TokenData;
 import com.telas.infra.security.services.AuthenticatedUserService;
 import com.telas.infra.security.services.TokenService;
 import com.telas.shared.constants.AllowedEndpointsConstants;
+import com.telas.shared.constants.valitation.AuthValidationMessageConstants;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -65,6 +66,12 @@ public class SecurityFilter extends OncePerRequestFilter {
                     }
                 } else {
                     SecurityContextHolder.clearContext();
+                    handleException(
+                            response,
+                            HttpStatus.UNAUTHORIZED,
+                            AuthValidationMessageConstants.INVALID_CREDENTIALS
+                    );
+                    return;
                 }
             } else {
                 SecurityContextHolder.clearContext();

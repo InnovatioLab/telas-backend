@@ -12,6 +12,7 @@ import com.telas.repositories.CartRepository;
 import com.telas.services.NotificationService;
 import com.telas.services.PartnerPlacementService;
 import com.telas.services.PartnerSlotAccessService;
+import com.telas.services.partner.PartnerPlacementRules;
 import com.telas.shared.constants.SharedConstants;
 import com.telas.shared.constants.valitation.AuthValidationMessageConstants;
 import com.telas.shared.constants.valitation.CartValidationMessages;
@@ -35,6 +36,7 @@ public class PartnerPlacementServiceImpl implements PartnerPlacementService {
     private final ClientRepository clientRepository;
     private final NotificationService notificationService;
     private final PartnerSlotAccessService partnerSlotAccessService;
+    private final PartnerPlacementRules partnerPlacementRules;
 
     @Value("${front.base.url}")
     private String frontBaseUrl;
@@ -56,7 +58,8 @@ public class PartnerPlacementServiceImpl implements PartnerPlacementService {
         }
 
         List<CartItem> foreignItems = cart.getItems().stream()
-                .filter(item -> item.getMonitor() != null && !item.getMonitor().isPartner(partner))
+                .filter(item -> item.getMonitor() != null
+                        && partnerPlacementRules.isForeignPlacementForPartner(partner, item.getMonitor()))
                 .toList();
 
         if (foreignItems.isEmpty()) {

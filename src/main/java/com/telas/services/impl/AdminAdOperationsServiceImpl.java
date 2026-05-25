@@ -14,7 +14,8 @@ import com.telas.entities.Subscription;
 import com.telas.enums.NotificationReference;
 import com.telas.enums.SubscriptionStatus;
 import com.telas.helpers.AdPublicationNotificationHelper;
-import com.telas.helpers.AttachmentHelper;
+import com.telas.services.ad.AdApprovalWorkflow;
+import com.telas.services.ad.AdUploadService;
 import com.telas.helpers.BoxAdPushNotificationHelper;
 import com.telas.helpers.MonitorHelper;
 import com.telas.dtos.request.UpdateBoxMonitorsAdRequestDto;
@@ -24,6 +25,7 @@ import com.telas.infra.exceptions.ResourceNotFoundException;
 import com.telas.infra.security.services.AuthenticatedUserService;
 import com.telas.repositories.AdRepository;
 import com.telas.repositories.MonitorAdRepository;
+import com.telas.repositories.support.AdAdminQuerySupport;
 import com.telas.repositories.MonitorRepository;
 import com.telas.repositories.NotificationRepository;
 import com.telas.repositories.SubscriptionRepository;
@@ -82,13 +84,14 @@ public class AdminAdOperationsServiceImpl implements AdminAdOperationsService {
     private static final DateTimeFormatter CSV_INSTANT = DateTimeFormatter.ISO_INSTANT;
 
     private final AdRepository adRepository;
-
+    private final AdAdminQuerySupport adAdminQuerySupport;
     private final MonitorAdRepository monitorAdRepository;
     private final MonitorRepository monitorRepository;
     private final NotificationRepository notificationRepository;
     private final SubscriptionRepository subscriptionRepository;
     private final AuthenticatedUserService authenticatedUserService;
-    private final AttachmentHelper attachmentHelper;
+    private final AdUploadService adUploadService;
+    private final AdApprovalWorkflow adApprovalWorkflow;
     private final MonitorHelper monitorHelper;
     private final BoxAdPushNotificationHelper boxAdPushNotificationHelper;
     private final AdPublicationNotificationHelper adPublicationNotificationHelper;
@@ -118,7 +121,7 @@ public class AdminAdOperationsServiceImpl implements AdminAdOperationsService {
         for (AdminAdOperationRowDto row : rows) {
             Ad ad = byId.get(row.getAdId());
             if (ad != null) {
-                row.setAdLink(attachmentHelper.getStringLinkFromAd(ad));
+                row.setAdLink(adUploadService.getStringLinkFromAd(ad));
                 row.setAdMediaType(ad.getType());
             }
         }
@@ -134,14 +137,14 @@ public class AdminAdOperationsServiceImpl implements AdminAdOperationsService {
         Pageable pageable = PaginationFilterUtil.getPageable(request, sort);
         Page<AdminAdOperationRowDto> page;
         if (Boolean.TRUE.equals(request.getAwaitingBoxDispatch())) {
-            page = adRepository.searchAdsAwaitingBoxDispatch(
+            page = adAdminQuerySupport.searchAdsAwaitingBoxDispatch(
                     gf,
                     trimOrEmpty(request.getPartnerName()),
                     trimOrEmpty(request.getScreenContains()),
                     pageable
             );
         } else if (validation == AdValidationType.APPROVED) {
-            page = adRepository.searchApprovedAdsAdminOperations(
+            page = adAdminQuerySupport.searchApprovedAdsAdminOperations(
                     gf,
                     trimOrEmpty(request.getAdvertiserName()),
                     trimOrEmpty(request.getPartnerName()),
@@ -152,9 +155,9 @@ public class AdminAdOperationsServiceImpl implements AdminAdOperationsService {
                     pageable
             );
         } else if (validation == AdValidationType.PENDING || validation == AdValidationType.REJECTED) {
-            page = adRepository.searchAdsAdminOperationsWithoutPlacement(validation, gf, pageable);
+            page = adAdminQuerySupport.searchAdsAdminOperationsWithoutPlacement(validation, gf, pageable);
         } else {
-            page = monitorAdRepository.searchAdminOperations(
+            page = adAdminQuerySupport.searchMonitorAdAdminOperations(
                     gf,
                     validation,
                     pageable
@@ -232,7 +235,7 @@ public class AdminAdOperationsServiceImpl implements AdminAdOperationsService {
         Ad ad = adRepository.findByIdWithClientAndAdRequest(adId)
                 .orElseThrow(() -> new ResourceNotFoundException(AdValidationMessages.AD_NOT_FOUND));
         Client admin = authenticatedUserService.getLoggedUser().client();
-        attachmentHelper.adminDeliverPartnerCreativeForReview(ad, request, admin);
+        adApprovalWorkflow.adminDeliverPartnerCreativeForReview(ad, request, admin);
     }
 
     @Override

@@ -19,8 +19,7 @@ public class UserDetailsServiceImpl implements UserDetailsService {
     @Override
     @Transactional(readOnly = true)
     public UserDetails loadUserByUsername(String email) throws UsernameNotFoundException {
-        return clientRepository.findByEmail(email)
-                .filter(data -> DefaultStatus.ACTIVE.equals(data.getStatus()))
+        return clientRepository.findActiveByEmailForAuth(email)
                 .map(AuthenticatedUser::new)
                 .orElseThrow(() -> new UsernameNotFoundException(ClientValidationMessages.USER_NOT_FOUND));
 

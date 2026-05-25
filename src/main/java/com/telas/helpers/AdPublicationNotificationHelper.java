@@ -6,13 +6,10 @@ import com.telas.entities.Client;
 import com.telas.entities.Monitor;
 import com.telas.entities.MonitorAd;
 import com.telas.enums.NotificationReference;
-import com.telas.enums.Permission;
-import com.telas.repositories.ClientRepository;
-import com.telas.services.AdminEmailAlertPreferenceService;
 import com.telas.services.NotificationService;
-import com.telas.services.PermissionService;
+import com.telas.services.notification.AdminAdsNotificationService;
+import com.telas.shared.utils.ClientPortalLinkResolver;
 import lombok.RequiredArgsConstructor;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
 import java.util.AbstractMap;
@@ -33,12 +30,9 @@ public class AdPublicationNotificationHelper {
     private final BoxAdPushNotificationHelper boxAdPushNotificationHelper;
     private final AdOnAirNotificationHelper adOnAirNotificationHelper;
     private final NotificationService notificationService;
-    private final ClientRepository clientRepository;
-    private final PermissionService permissionService;
-    private final AdminEmailAlertPreferenceService adminEmailAlertPreferenceService;
-
-    @Value("${front.base.url}")
-    private String frontBaseUrl;
+    private final AdminAdsNotificationService adminAdsNotificationService;
+    private final ClientPortalLinkResolver clientPortalLinkResolver;
+    private final MonitorSummaryFormatter monitorSummaryFormatter;
 
     public void notifyAfterPlaylistUpdate(
             Monitor monitor,
@@ -80,21 +74,18 @@ public class AdPublicationNotificationHelper {
     }
 
     private void notifyPlaylistSavedPendingBoxSync(Monitor monitor, List<MonitorAd> newMonitorAds) {
-        String monitorsSummary = formatMonitorLine(monitor);
+        String monitorsSummary = monitorSummaryFormatter.formatMonitorLine(monitor);
         for (MonitorAd ma : newMonitorAds) {
             Ad ad = ma.getAd();
             Client client = ad != null ? ad.getClient() : null;
             if (ad == null || client == null) {
                 continue;
             }
-            String clientLink = client.isPartner()
-                    ? frontBaseUrl + "/client/screens"
-                    : frontBaseUrl + "/client/my-telas?tab=ads";
             Map<String, String> clientParams = new HashMap<>();
             clientParams.put("name", client.getBusinessName());
             clientParams.put("adName", ad.getName());
-            clientParams.put("link", clientLink);
-            clientParams.put("partner", client.isPartner() ? "true" : "false");
+            clientParams.put("link", clientPortalLinkResolver.clientAdsTabLink(client));
+            clientParams.put("partner", clientPortalLinkResolver.partnerFlag(client));
             clientParams.put("monitorsSummary", monitorsSummary);
             notificationService.save(NotificationReference.AD_ADDED_TO_PLAYLIST_PENDING_SYNC, client, clientParams, true);
 
@@ -102,45 +93,9 @@ public class AdPublicationNotificationHelper {
             adminBase.put("clientName", client.getBusinessName());
             adminBase.put("adName", ad.getName());
             adminBase.put("monitorsSummary", monitorsSummary);
-            adminBase.put("link", frontBaseUrl + "/admin/clients/" + client.getId() + "/messages");
-            notifyAdmins(NotificationReference.ADMIN_AD_ADDED_TO_PLAYLIST_PENDING_SYNC, adminBase);
+            adminBase.put("link", clientPortalLinkResolver.adminClientMessagesLink(client.getId()));
+            adminAdsNotificationService.notifyAdmins(NotificationReference.ADMIN_AD_ADDED_TO_PLAYLIST_PENDING_SYNC, adminBase);
         }
-    }
-
-    private void notifyAdmins(NotificationReference reference, Map<String, String> adminBase) {
-        for (Client recipient : clientRepository.findAllAdminsAndDevelopers()) {
-            boolean canManageAds = recipient.isDeveloper()
-                    || permissionService.hasPermission(recipient, Permission.ADMIN_ADS_MANAGE);
-            if (!canManageAds) {
-                continue;
-            }
-            boolean sendEmail = !recipient.isDeveloper()
-                    && adminEmailAlertPreferenceService.wantsEmail(
-                            recipient.getId(), com.telas.enums.AdminEmailAlertCategory.ADS_MANAGEMENT);
-            notificationService.save(reference, recipient, new HashMap<>(adminBase), sendEmail);
-        }
-    }
-
-    private String formatMonitorLine(Monitor monitor) {
-        if (monitor == null) {
-            return "";
-        }
-        String addressPart = monitor.getAddress() != null
-                ? monitor.getAddress().resolveMapLocationDescription()
-                : "";
-        String ip = monitor.getBox() != null && monitor.getBox().getBoxAddress() != null
-                ? monitor.getBox().getBoxAddress().getIp()
-                : "";
-        if (addressPart != null && !addressPart.isBlank() && ip != null && !ip.isBlank()) {
-            return addressPart + " — Box " + ip;
-        }
-        if (addressPart != null && !addressPart.isBlank()) {
-            return addressPart;
-        }
-        if (ip != null && !ip.isBlank()) {
-            return "Box " + ip;
-        }
-        return monitor.getId() != null ? monitor.getId().toString() : "";
     }
 
     private static List<AbstractMap.SimpleEntry<MonitorAd, UpdateBoxMonitorsAdRequestDto>> buildDeployNotifyPairs(
@@ -196,7 +151,7 @@ public class AdPublicationNotificationHelper {
         if (partner == null || ad == null) {
             return;
         }
-        String screenSummary = formatMonitorLine(monitor);
+        String screenSummary = monitorSummaryFormatter.formatMonitorLine(monitor);
         String trimmedMessage = partnerMessage != null ? partnerMessage.trim() : "";
 
         Map<String, String> adminParams = new HashMap<>();
@@ -204,13 +159,13 @@ public class AdPublicationNotificationHelper {
         adminParams.put("adName", ad.getName());
         adminParams.put("screenSummary", screenSummary);
         adminParams.put("message", trimmedMessage);
-        adminParams.put("link", frontBaseUrl + "/admin/ad-requests");
-        notifyAdmins(NotificationReference.PARTNER_AD_REMOVAL_REQUESTED, adminParams);
+        adminParams.put("link", clientPortalLinkResolver.adminAdRequestsLink());
+        adminAdsNotificationService.notifyAdmins(NotificationReference.PARTNER_AD_REMOVAL_REQUESTED, adminParams);
 
         Map<String, String> partnerParams = new HashMap<>();
         partnerParams.put("name", partner.getBusinessName());
         partnerParams.put("adName", ad.getName());
-        partnerParams.put("link", frontBaseUrl + "/client/screens");
+        partnerParams.put("link", clientPortalLinkResolver.clientScreensLink());
         notificationService.save(
                 NotificationReference.PARTNER_AD_REMOVAL_REQUEST_CONFIRMED, partner, partnerParams, true);
     }

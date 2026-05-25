@@ -19,6 +19,12 @@ public interface AuthenticatedUserService {
 
   void validatePermission(Permission permission);
 
+  AuthenticatedUser validatePrivilegedPanelOrPermission(Permission permission);
+
+  AuthenticatedUser validatePartner();
+
+  AuthenticatedUser validateNonPartner();
+
   AuthenticatedUser validateActiveSubscription();
 
   void verifyTermsAccepted(UserDetails user);

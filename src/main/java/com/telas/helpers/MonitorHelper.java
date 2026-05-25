@@ -2,7 +2,6 @@ package com.telas.helpers;
 
 import com.telas.dtos.request.MonitorAdRequestDto;
 import com.telas.dtos.request.MonitorRequestDto;
-import com.telas.dtos.request.RemoveBoxMonitorsAdRequestDto;
 import com.telas.dtos.request.UpdateBoxMonitorsAdRequestDto;
 import com.telas.dtos.response.MonitorAdResponseDto;
 import com.telas.dtos.response.MonitorValidAdResponseDto;
@@ -12,7 +11,6 @@ import com.telas.entities.Monitor;
 import com.telas.entities.MonitorAd;
 import com.telas.entities.SubscriptionMonitor;
 import com.telas.enums.AdValidationType;
-import com.telas.enums.PartnerAdDeploymentStatus;
 import com.telas.entities.Client;
 import com.telas.infra.exceptions.BusinessRuleException;
 import com.telas.infra.security.services.AuthenticatedUserService;
@@ -20,18 +18,15 @@ import com.telas.repositories.AdRepository;
 import com.telas.repositories.MonitorRepository;
 import com.telas.repositories.SubscriptionMonitorRepository;
 import com.telas.services.AddressService;
-import com.telas.services.BucketService;
 import com.telas.services.MapsService;
+import com.telas.services.box.BoxPlaylistClient;
 import com.telas.shared.constants.valitation.MonitorValidationMessages;
-import com.telas.shared.utils.AttachmentUtils;
-import com.telas.shared.utils.HttpClientUtil;
 import jakarta.persistence.criteria.CriteriaBuilder;
 import jakarta.persistence.criteria.Predicate;
 import jakarta.persistence.criteria.Root;
 import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -54,15 +49,11 @@ public class MonitorHelper {
 
 	private final AddressService addressService;
 
-	private final BucketService bucketService;
+	private final MonitorAdDtoMapper monitorAdDtoMapper;
 
-	private final HttpClientUtil httpClient;
+	private final BoxPlaylistClient boxPlaylistClient;
 
 	private final AuthenticatedUserService authenticatedUserService;
-
-	@Value("${TOKEN_SECRET}")
-	private String API_KEY;
-
 
 	@Transactional
 	public List<Ad> getAds(MonitorRequestDto request, UUID monitorId) {
@@ -90,67 +81,24 @@ public class MonitorHelper {
 		return assignableAds.stream().filter(ad -> adsIds.contains(ad.getId())).collect(Collectors.toList());
 	}
 
-
 	@Transactional
 	public void setAddressCoordinates(Address address) {
 		mapsService.getAddressCoordinates(address);
 		addressService.save(address);
 	}
 
-
 	@Transactional(readOnly = true)
 	public List<MonitorValidAdResponseDto> getValidAdsForMonitor(Monitor monitor, String name) {
-		List<Ad> validAds = adRepository.findAllApprovedNotInMonitorFiltered(monitor.getId(), name);
-
-		if (validAds.isEmpty()) {
-			return List.of();
-		}
-
-		return validAds.stream()
-			.map(ad -> new MonitorValidAdResponseDto(ad, bucketService.getLink(AttachmentUtils.format(ad)), false, null))
-			.toList();
+		return monitorAdDtoMapper.toValidAdDtos(adRepository.findAllApprovedNotInMonitorFiltered(monitor.getId(), name));
 	}
-
 
 	@Transactional(readOnly = true)
 	public List<MonitorAdResponseDto> getPartnerAdvertiserAdsOnMonitor(Monitor entity, UUID partnerId) {
-		if (entity.getMonitorAds() == null || partnerId == null) {
-			return List.of();
-		}
-		Map<UUID, SubscriptionMonitor> activeSubscriptionByClientId = subscriptionMonitorRepository
-				.findByMonitorId(entity.getId())
-				.stream()
-				.collect(Collectors.toMap(
-						sm -> sm.getId().getSubscription().getClient().getId(),
-						sm -> sm,
-						(a, b) -> a
-				));
-
-		return entity.getMonitorAds().stream()
-				.filter(ma -> ma.getAd() != null
-						&& ma.getAd().getClient() != null
-						&& partnerId.equals(ma.getAd().getClient().getId())
-						&& ma.getAd().getOnAirNotifiedAt() != null
-						&& com.telas.enums.AdValidationType.APPROVED.equals(ma.getAd().getValidation()))
-				.map(monitorAd -> {
-					MonitorAdResponseDto dto = new MonitorAdResponseDto(
-							monitorAd,
-							bucketService.getLink(AttachmentUtils.format(monitorAd.getAd()))
-					);
-					if (monitorAd.getAd().getValidation() != null) {
-						dto.setValidation(monitorAd.getAd().getValidation().name());
-					}
-					if (monitorAd.getAd().getOnAirNotifiedAt() != null) {
-						dto.setOnAirSince(monitorAd.getAd().getOnAirNotifiedAt());
-					}
-					UUID clientId = monitorAd.getAd().getClient().getId();
-					SubscriptionMonitor sm = activeSubscriptionByClientId.get(clientId);
-					if (sm != null) {
-						dto.setSubscriptionEndsAt(sm.getId().getSubscription().getEndsAt());
-					}
-					return dto;
-				})
-				.toList();
+		return monitorAdDtoMapper.toPartnerAdvertiserAdsOnMonitor(
+				entity,
+				partnerId,
+				loadActiveSubscriptionByClientId(entity.getId())
+		);
 	}
 
 	@Transactional(readOnly = true)
@@ -171,7 +119,7 @@ public class MonitorHelper {
 					continue;
 				}
 				coveredAdIds.add(ad.getId());
-				result.add(toPartnerPortalAdDto(monitorAd, ad));
+				result.add(monitorAdDtoMapper.toPartnerPortalAdDto(monitorAd, ad));
 			}
 		}
 
@@ -179,78 +127,16 @@ public class MonitorHelper {
 				partnerId, entity.getId());
 		for (Ad ad : pendingOnMonitor) {
 			if (coveredAdIds.add(ad.getId())) {
-				result.add(toPartnerPortalAdDto(null, ad));
+				result.add(monitorAdDtoMapper.toPartnerPortalAdDto(null, ad));
 			}
 		}
 		return result;
 	}
 
-	private MonitorAdResponseDto toPartnerPortalAdDto(MonitorAd monitorAd, Ad ad) {
-		String adLink = bucketService.getLink(AttachmentUtils.format(ad));
-		MonitorAdResponseDto dto = monitorAd != null
-				? new MonitorAdResponseDto(monitorAd, adLink)
-				: buildPortalAdDtoWithoutPlacement(ad, adLink);
-		if (ad.getValidation() != null) {
-			dto.setValidation(ad.getValidation().name());
-		}
-		if (ad.getOnAirNotifiedAt() != null) {
-			dto.setOnAirSince(ad.getOnAirNotifiedAt());
-		}
-		PartnerAdDeploymentStatus status = resolvePartnerDeploymentStatus(ad, monitorAd);
-		dto.setDeploymentStatus(status.name());
-		dto.setCanRequestRemoval(monitorAd != null || ad.getOnAirNotifiedAt() != null);
-		return dto;
-	}
-
-	private static MonitorAdResponseDto buildPortalAdDtoWithoutPlacement(Ad ad, String adLink) {
-		MonitorAdResponseDto dto = new MonitorAdResponseDto();
-		dto.setId(ad.getId());
-		dto.setLink(adLink);
-		dto.setFileName(ad.getName());
-		dto.setClientName(ad.getClient() != null ? ad.getClient().getBusinessName() : null);
-		return dto;
-	}
-
-	private static PartnerAdDeploymentStatus resolvePartnerDeploymentStatus(Ad ad, MonitorAd monitorAd) {
-		if (ad.getOnAirNotifiedAt() != null) {
-			return PartnerAdDeploymentStatus.ON_AIR;
-		}
-		if (ad.getPartnerBoxStagedAt() != null) {
-			return PartnerAdDeploymentStatus.STAGED;
-		}
-		return PartnerAdDeploymentStatus.APPROVED_PENDING;
-	}
-
-
 	@Transactional(readOnly = true)
 	public List<MonitorAdResponseDto> getMonitorAdsResponse(Monitor entity) {
-		Map<UUID, SubscriptionMonitor> activeSubscriptionByClientId = subscriptionMonitorRepository
-				.findByMonitorId(entity.getId())
-				.stream()
-				.collect(Collectors.toMap(
-						sm -> sm.getId().getSubscription().getClient().getId(),
-						sm -> sm,
-						(a, b) -> a
-				));
-
-		return entity.getMonitorAds().stream().map(monitorAd -> {
-			MonitorAdResponseDto dto = new MonitorAdResponseDto(
-					monitorAd,
-					bucketService.getLink(AttachmentUtils.format(monitorAd.getAd()))
-			);
-			UUID clientId = monitorAd.getAd() != null && monitorAd.getAd().getClient() != null
-					? monitorAd.getAd().getClient().getId()
-					: null;
-			if (clientId != null) {
-				SubscriptionMonitor sm = activeSubscriptionByClientId.get(clientId);
-				if (sm != null) {
-					dto.setSubscriptionEndsAt(sm.getId().getSubscription().getEndsAt());
-				}
-			}
-			return dto;
-		}).toList();
+		return monitorAdDtoMapper.toMonitorAdsResponse(entity, loadActiveSubscriptionByClientId(entity.getId()));
 	}
-
 
 	@Transactional(readOnly = true)
 	public Predicate createAddressPredicate(CriteriaBuilder criteriaBuilder, Root<Monitor> root, String filter) {
@@ -260,7 +146,6 @@ public class MonitorHelper {
 			criteriaBuilder.concat(criteriaBuilder.concat(root.get("address").get("state"), " "),
 				root.get("address").get("zipCode")))), filter);
 	}
-
 
 	@Transactional(readOnly = true)
 	public List<UpdateBoxMonitorsAdRequestDto> buildOrderedBoxUpdateDtos(Monitor monitor) {
@@ -274,10 +159,9 @@ public class MonitorHelper {
 						&& ma.getMonitor().getBox().getBoxAddress() != null)
 				.sorted(Comparator.comparingInt(ma -> Optional.ofNullable(ma.getOrderIndex()).orElse(0)))
 				.map(ma -> new UpdateBoxMonitorsAdRequestDto(ma.getAd(), ma,
-						bucketService.getLink(AttachmentUtils.format(ma.getAd()))))
+						monitorAdDtoMapper.getAdLink(ma.getAd())))
 				.toList();
 	}
-
 
 	@Transactional
 	public void detachAdFromMonitor(Monitor monitor, UUID adId) {
@@ -305,28 +189,21 @@ public class MonitorHelper {
 		if (monitor == null || ad == null || !monitor.isAbleToSendBoxRequest()) {
 			return false;
 		}
-		String ip = monitor.getBox().getBoxAddress().getIp();
-		if (ip == null || ip.isBlank()) {
+		String baseUrl = boxPlaylistClient.resolveBoxBaseUrl(monitor.getBox().getBoxAddress().getIp());
+		if (baseUrl == null) {
 			return false;
 		}
-		String link = bucketService.getLink(AttachmentUtils.format(ad));
 		UpdateBoxMonitorsAdRequestDto dto = new UpdateBoxMonitorsAdRequestDto();
 		dto.setFileName(ad.getName());
-		dto.setLink(link);
+		dto.setLink(monitorAdDtoMapper.getAdLink(ad));
 		dto.setBlockQuantity(1);
 		dto.setOrderIndex(0);
-		dto.setBaseUrl(String.format("http://%s:8081/", ip));
-		String baseUrl = dto.getBaseUrl();
-		String url = baseUrl.endsWith("/") ? baseUrl + "ad" : baseUrl + "/ad";
-		try {
-			Map<String, String> headers = Map.of("X-API-KEY", API_KEY);
-			httpClient.makePostRequest(url, List.of(dto), Void.class, null, headers);
-			return true;
-		} catch (Exception e) {
-			log.error("Error staging ad file on box monitorId={}, adId={}, message={}",
-					monitor.getId(), ad.getId(), e.getMessage());
-			return false;
+		dto.setBaseUrl(baseUrl);
+		boolean staged = boxPlaylistClient.stageAdFile(baseUrl, dto);
+		if (!staged) {
+			log.error("Error staging ad file on box monitorId={}, adId={}", monitor.getId(), ad.getId());
 		}
+		return staged;
 	}
 
 	public Set<String> syncBoxAdsPlaylist(Monitor monitor, List<UpdateBoxMonitorsAdRequestDto> requestList) {
@@ -334,65 +211,31 @@ public class MonitorHelper {
 		if (monitor == null || monitor.getBox() == null || monitor.getBox().getBoxAddress() == null) {
 			return successfulBaseUrls;
 		}
-		String ip = monitor.getBox().getBoxAddress().getIp();
-		if (ip == null || ip.isBlank()) {
+		String baseUrl = boxPlaylistClient.resolveBoxBaseUrl(monitor.getBox().getBoxAddress().getIp());
+		if (baseUrl == null) {
 			return successfulBaseUrls;
 		}
-		String baseUrl = String.format("http://%s:8081/", ip);
 		List<UpdateBoxMonitorsAdRequestDto> items = requestList != null ? requestList : List.of();
 		if (items.isEmpty()) {
-			String url = baseUrl.endsWith("/") ? baseUrl + "update-ads" : baseUrl + "/update-ads";
-			try {
-				log.warn(
-						"SYNC_BOX: Sending empty playlist to box (monitor may have zero monitorAds or DTO filters dropped all ads). Monitor id: {}, URL: {}",
-						monitor.getId(),
-						url);
-				httpClient.makePostRequest(url, List.of(), Void.class, null, Map.of("X-API-KEY", API_KEY));
+			if (boxPlaylistClient.pushEmptyPlaylist(baseUrl, monitor.getId())) {
 				successfulBaseUrls.add(baseUrl);
-			} catch (Exception e) {
-				log.error("Error while sending empty playlist, URL: {}, message: {}", url, e.getMessage());
 			}
 			return successfulBaseUrls;
 		}
-		return sendBoxesMonitorsUpdateAdsReturnSuccess(items);
+		return boxPlaylistClient.pushPlaylistUpdates(items);
 	}
-
 
 	public Set<String> sendBoxesMonitorsUpdateAdsReturnSuccess(List<UpdateBoxMonitorsAdRequestDto> requestList) {
-		Set<String> successfulBaseUrls = new HashSet<>();
-		if (requestList == null || requestList.isEmpty()) {
-			return successfulBaseUrls;
-		}
-		Map<String, List<UpdateBoxMonitorsAdRequestDto>> grouped = requestList.stream()
-				.filter(Objects::nonNull)
-				.collect(Collectors.groupingBy(UpdateBoxMonitorsAdRequestDto::getBaseUrl));
-		Map<String, String> headers = Map.of("X-API-KEY", API_KEY);
-		grouped.forEach((baseUrl, group) -> {
-			if (baseUrl == null || baseUrl.isBlank()) {
-				log.warn("Skipping box update group with blank baseUrl, size={}", group.size());
-				return;
-			}
-			String url = baseUrl.endsWith("/") ? baseUrl + "update-ads" : baseUrl + "/update-ads";
-			try {
-				log.info("Sending request to update Ads, URL: {}", url);
-				httpClient.makePostRequest(url, group, Void.class, null, headers);
-				successfulBaseUrls.add(baseUrl);
-			} catch (Exception e) {
-				log.error("Error while sending request, URL: {}, message: {}", url, e.getMessage());
-			}
-		});
-		return successfulBaseUrls;
+		return boxPlaylistClient.pushPlaylistUpdates(requestList);
 	}
-
 
 	public void sendBoxesMonitorsRemoveAds(Monitor monitor, List<String> adNamesToRemove) {
-		String url = String.format("http://%s:8081/remove-ads", monitor.getBox().getBoxAddress().getIp());
-		RemoveBoxMonitorsAdRequestDto dto = new RemoveBoxMonitorsAdRequestDto(adNamesToRemove);
-
-		log.info("Sending request to remove ads from boxMonitorsAds for monitor with ID: {}, URL: {}", monitor.getId(), url);
-		executePostRequest(url, dto);
+		if (monitor == null || monitor.getBox() == null || monitor.getBox().getBoxAddress() == null) {
+			return;
+		}
+		log.info("Sending request to remove ads from boxMonitorsAds for monitor with ID: {}", monitor.getId());
+		boxPlaylistClient.pushRemoveAds(monitor.getBox().getBoxAddress().getIp(), adNamesToRemove);
 	}
-
 
 	@Transactional
 	public void sendBoxesMonitorsRemoveAd(Ad ad, List<String> adNameToRemove) {
@@ -409,62 +252,30 @@ public class MonitorHelper {
 			.forEach(monitor -> sendBoxesMonitorsRemoveAds(monitor, adNameToRemove));
 	}
 
-
-	private <T> void executePostRequest(String url, T body) {
-		try {
-			Map<String, String> headers = Map.of("X-API-KEY", API_KEY);
-			httpClient.makePostRequest(url, body, Void.class, null, headers);
-		} catch (Exception e) {
-			log.error("Error while sending request, URL: {}, message: {}", url, e.getMessage());
-		}
-	}
-
-
 	@Transactional(readOnly = true)
 	public List<MonitorValidAdResponseDto> getBoxMonitorAdsResponse(Monitor monitor, List<String> adNames) {
-		return monitor.getMonitorAds().stream().filter(monitorAd -> adNames.contains(monitorAd.getAd().getName()))
-			.map(monitorAd -> {
-				Ad ad = monitorAd.getAd();
-				String adLink = bucketService.getLink(AttachmentUtils.format(ad));
-				return new MonitorValidAdResponseDto(ad, adLink, true, monitorAd.getOrderIndex());
-			}).sorted(Comparator.comparing(MonitorValidAdResponseDto::getOrderIndex)).collect(Collectors.toList());
+		return monitorAdDtoMapper.toBoxMonitorAdsResponse(monitor, adNames);
 	}
-
 
 	@Transactional(readOnly = true)
 	public List<String> getCurrentDisplayedAdsFromBox(Monitor monitor) {
 		if (!monitor.isAbleToSendBoxRequest()) {
 			return Collections.emptyList();
 		}
-
-		String url = "http://" + monitor.getBox().getBoxAddress().getIp() + ":8081/get-ads";
-		try {
-			log.info("Sending request to get current displayed ads from box for monitor with ID: {}, URL: {}",
-				monitor.getId(), url);
-			Object raw = httpClient.makeGetRequest(url, List.class, null);
-			if (!(raw instanceof List<?> list)) {
-				return Collections.emptyList();
-			}
-			return list.stream().map(String::valueOf).toList();
-		} catch (Exception e) {
-			log.error(
-				"Error while sending request to get current displayed ads from box for monitor with ID: {}, URL: {}, message: {}",
-				monitor.getId(), url, e.getMessage());
-			throw e;
-		}
+		return boxPlaylistClient.getCurrentDisplayedAds(
+				monitor.getBox().getBoxAddress().getIp(),
+				monitor.getId()
+		);
 	}
-
 
 	private List<Monitor> getClientMonitorsWithActiveSubscription(UUID clientId) {
 		return repository.findMonitorsWithActiveSubscriptionsByClientId(clientId);
 	}
 
-
 	@Transactional
 	public List<SubscriptionMonitor> getSubscriptionsMonitorsFromMonitor(UUID id) {
 		return subscriptionMonitorRepository.findByMonitorId(id);
 	}
-
 
 	@Transactional
 	public Address getAddress(MonitorRequestDto request) {
@@ -479,4 +290,13 @@ public class MonitorHelper {
 		return address;
 	}
 
+	private Map<UUID, SubscriptionMonitor> loadActiveSubscriptionByClientId(UUID monitorId) {
+		return subscriptionMonitorRepository.findByMonitorId(monitorId)
+				.stream()
+				.collect(Collectors.toMap(
+						sm -> sm.getId().getSubscription().getClient().getId(),
+						sm -> sm,
+						(a, b) -> a
+				));
+	}
 }

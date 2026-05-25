@@ -3,18 +3,9 @@ package com.telas.controllers.impl;
 import com.telas.dtos.request.UpdateEmailAlertPreferencesRequestDto;
 import com.telas.dtos.request.UpdatePartnerPlatformSettingsRequestDto;
 import com.telas.dtos.request.UpdatePermissionsRequestDto;
-import com.telas.dtos.response.AdminPermissionRowResponseDto;
-import com.telas.dtos.response.EmailAlertPreferencesResponseDto;
-import com.telas.dtos.response.PartnerPlatformSettingsResponseDto;
 import com.telas.dtos.response.ResponseDto;
-import com.telas.entities.Client;
-import com.telas.enums.Permission;
-import com.telas.infra.security.model.AuthenticatedUser;
 import com.telas.infra.security.services.AuthenticatedUserService;
-import com.telas.repositories.ClientRepository;
-import com.telas.services.AdminEmailAlertPreferenceService;
-import com.telas.services.PartnerPlatformSettingsService;
-import com.telas.services.PermissionService;
+import com.telas.services.DeveloperAdminService;
 import com.telas.shared.constants.MessageCommonsConstants;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
@@ -30,11 +21,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
 import java.util.UUID;
-import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("developer")
@@ -43,33 +30,17 @@ import java.util.stream.Collectors;
 public class DeveloperPermissionControllerImpl {
 
     private final AuthenticatedUserService authenticatedUserService;
-    private final ClientRepository clientRepository;
-    private final PermissionService permissionService;
-    private final PartnerPlatformSettingsService partnerPlatformSettingsService;
-    private final AdminEmailAlertPreferenceService adminEmailAlertPreferenceService;
+    private final DeveloperAdminService developerAdminService;
 
     @GetMapping("/admins")
     @Operation(summary = "Lista admins com permissões de monitorização")
     @SecurityRequirement(name = "jwt")
     public ResponseEntity<?> listAdminsWithPermissions() {
         authenticatedUserService.validateDeveloper();
-        List<Client> admins = clientRepository.findAllAdmins();
-        List<AdminPermissionRowResponseDto> rows =
-                admins.stream()
-                        .map(
-                                a ->
-                                        new AdminPermissionRowResponseDto(
-                                                a.getId(),
-                                                a.getBusinessName(),
-                                                a.getContact() != null
-                                                        ? a.getContact().getEmail()
-                                                        : "",
-                                                permissionService.listPermissionCodesForClient(a.getId())))
-                        .collect(Collectors.toList());
         return ResponseEntity.status(HttpStatus.OK)
                 .body(
                         ResponseDto.fromData(
-                                rows,
+                                developerAdminService.listAdminsWithPermissions(),
                                 HttpStatus.OK,
                                 MessageCommonsConstants.FIND_ALL_SUCCESS_MESSAGE));
     }
@@ -79,14 +50,10 @@ public class DeveloperPermissionControllerImpl {
     @SecurityRequirement(name = "jwt")
     public ResponseEntity<?> getPartnerPlatformSettings() {
         authenticatedUserService.validateDeveloper();
-        PartnerPlatformSettingsResponseDto data =
-                new PartnerPlatformSettingsResponseDto(
-                        partnerPlatformSettingsService.isSlotsAnyLocationEnabled(),
-                        partnerPlatformSettingsService.isAdminCanCreatePartnerEnabled());
         return ResponseEntity.status(HttpStatus.OK)
                 .body(
                         ResponseDto.fromData(
-                                data,
+                                developerAdminService.getPartnerPlatformSettings(),
                                 HttpStatus.OK,
                                 MessageCommonsConstants.FIND_ALL_SUCCESS_MESSAGE));
     }
@@ -97,18 +64,10 @@ public class DeveloperPermissionControllerImpl {
     public ResponseEntity<?> updatePartnerPlatformSettings(
             @Valid @RequestBody UpdatePartnerPlatformSettingsRequestDto body) {
         authenticatedUserService.validateDeveloper();
-        boolean slotsEnabled =
-                partnerPlatformSettingsService.setSlotsAnyLocationEnabled(
-                        Boolean.TRUE.equals(body.getPartnerSlotsAnyLocationEnabled()));
-        boolean adminCreateEnabled =
-                partnerPlatformSettingsService.setAdminCanCreatePartnerEnabled(
-                        Boolean.TRUE.equals(body.getAdminCanCreatePartnerEnabled()));
-        PartnerPlatformSettingsResponseDto data =
-                new PartnerPlatformSettingsResponseDto(slotsEnabled, adminCreateEnabled);
         return ResponseEntity.status(HttpStatus.OK)
                 .body(
                         ResponseDto.fromData(
-                                data,
+                                developerAdminService.updatePartnerPlatformSettings(body),
                                 HttpStatus.OK,
                                 MessageCommonsConstants.FIND_ALL_SUCCESS_MESSAGE));
     }
@@ -118,23 +77,8 @@ public class DeveloperPermissionControllerImpl {
     @SecurityRequirement(name = "jwt")
     public ResponseEntity<?> replacePermissions(
             @PathVariable UUID clientId, @Valid @RequestBody UpdatePermissionsRequestDto body) {
-        AuthenticatedUser dev = authenticatedUserService.validateDeveloper();
-        Set<Permission> parsed = new HashSet<>();
-        List<String> raw = body.getPermissions();
-        if (raw != null) {
-            for (String code : raw) {
-                if (code == null || code.isBlank()) {
-                    continue;
-                }
-                String trimmed = code.trim();
-                try {
-                    parsed.add(Permission.valueOf(trimmed));
-                } catch (IllegalArgumentException ignored) {
-                    // Skip obsolete or unknown permission codes from older clients.
-                }
-            }
-        }
-        permissionService.replacePermissionsForAdmin(clientId, parsed, dev.client().getId());
+        var dev = authenticatedUserService.validateDeveloper();
+        developerAdminService.replacePermissions(clientId, body, dev.client().getId());
         return ResponseEntity.noContent().build();
     }
 
@@ -143,16 +87,10 @@ public class DeveloperPermissionControllerImpl {
     @SecurityRequirement(name = "jwt")
     public ResponseEntity<?> permissionCatalog() {
         authenticatedUserService.validateDeveloper();
-        List<String> codes =
-                java.util.Arrays.stream(Permission.values())
-                        .map(Enum::name)
-                        .filter(code -> !"ADMIN_ADS_BOX_DISPATCH_TO_SCREEN".equals(code))
-                        .sorted()
-                        .collect(Collectors.toList());
         return ResponseEntity.status(HttpStatus.OK)
                 .body(
                         ResponseDto.fromData(
-                                codes,
+                                developerAdminService.permissionCatalog(),
                                 HttpStatus.OK,
                                 MessageCommonsConstants.FIND_ALL_SUCCESS_MESSAGE));
     }
@@ -165,7 +103,7 @@ public class DeveloperPermissionControllerImpl {
         return ResponseEntity.status(HttpStatus.OK)
                 .body(
                         ResponseDto.fromData(
-                                adminEmailAlertPreferenceService.getCatalog(),
+                                developerAdminService.emailAlertCatalog(),
                                 HttpStatus.OK,
                                 MessageCommonsConstants.FIND_ALL_SUCCESS_MESSAGE));
     }
@@ -175,12 +113,10 @@ public class DeveloperPermissionControllerImpl {
     @SecurityRequirement(name = "jwt")
     public ResponseEntity<?> getEmailAlertPreferences(@PathVariable UUID clientId) {
         authenticatedUserService.validateDeveloper();
-        EmailAlertPreferencesResponseDto data =
-                adminEmailAlertPreferenceService.getPreferencesResponseForAdmin(clientId);
         return ResponseEntity.status(HttpStatus.OK)
                 .body(
                         ResponseDto.fromData(
-                                data,
+                                developerAdminService.getEmailAlertPreferences(clientId),
                                 HttpStatus.OK,
                                 MessageCommonsConstants.FIND_ALL_SUCCESS_MESSAGE));
     }
@@ -191,7 +127,7 @@ public class DeveloperPermissionControllerImpl {
     public ResponseEntity<?> replaceEmailAlertPreferences(
             @PathVariable UUID clientId, @Valid @RequestBody UpdateEmailAlertPreferencesRequestDto body) {
         authenticatedUserService.validateDeveloper();
-        adminEmailAlertPreferenceService.replaceFromRequest(clientId, body.getPreferences());
+        developerAdminService.replaceEmailAlertPreferences(clientId, body);
         return ResponseEntity.noContent().build();
     }
 }

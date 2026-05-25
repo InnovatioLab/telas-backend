@@ -70,7 +70,7 @@ public class AdRequest extends BaseAudit implements Serializable {
     @OneToOne(mappedBy = "adRequest", fetch = FetchType.LAZY)
     private BusinessQuestionnaire businessQuestionnaire;
 
-    @OneToOne
+    @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "client_id", referencedColumnName = "id", nullable = false)
     private Client client;
 

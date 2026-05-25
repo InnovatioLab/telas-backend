@@ -87,6 +87,21 @@ class TestSecuritySupportConfig {
       }
 
       @Override
+      public AuthenticatedUser validatePrivilegedPanelOrPermission(Permission permission) {
+        throw new UnsupportedOperationException("Not used in security endpoint tests");
+      }
+
+      @Override
+      public AuthenticatedUser validatePartner() {
+        throw new UnsupportedOperationException("Not used in security endpoint tests");
+      }
+
+      @Override
+      public AuthenticatedUser validateNonPartner() {
+        throw new UnsupportedOperationException("Not used in security endpoint tests");
+      }
+
+      @Override
       public AuthenticatedUser validateActiveSubscription() {
         throw new UnsupportedOperationException("Not used in security endpoint tests");
       }

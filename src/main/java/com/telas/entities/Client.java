@@ -20,6 +20,7 @@ import java.io.Serial;
 import java.io.Serializable;
 import java.time.Instant;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -97,8 +98,8 @@ public class Client extends BaseAudit implements Serializable {
 
     @NotAudited
     @JsonIgnore
-    @OneToOne(mappedBy = "client", cascade = CascadeType.ALL)
-    private AdRequest adRequest;
+    @OneToMany(mappedBy = "client", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    private List<AdRequest> adRequests = new ArrayList<>();
 
     @NotAudited
     @OneToOne(mappedBy = "client", cascade = CascadeType.ALL)
@@ -212,5 +213,17 @@ public class Client extends BaseAudit implements Serializable {
 
     public boolean isPartner() {
         return Role.PARTNER.equals(role);
+    }
+
+    public AdRequest getAdRequest() {
+        if (adRequests == null || adRequests.isEmpty()) {
+            return null;
+        }
+        return adRequests.stream()
+                .filter(AdRequest::isActive)
+                .max(Comparator.comparing(AdRequest::getCreatedAt, Comparator.nullsLast(Comparator.naturalOrder())))
+                .orElseGet(() -> adRequests.stream()
+                        .max(Comparator.comparing(AdRequest::getCreatedAt, Comparator.nullsLast(Comparator.naturalOrder())))
+                        .orElse(null));
     }
 }

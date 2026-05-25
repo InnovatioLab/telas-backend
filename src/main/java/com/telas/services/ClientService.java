@@ -18,6 +18,7 @@ import com.telas.enums.AdValidationType;
 import com.telas.infra.security.model.AuthenticatedUser;
 import com.telas.infra.security.model.PasswordRequestDto;
 import com.telas.infra.security.model.PasswordUpdateRequestDto;
+import com.telas.shared.model.NamedDownloadResource;
 
 import java.util.List;
 import java.util.Optional;
@@ -62,9 +63,7 @@ public interface ClientService {
 
     void updateAdRequestBusinessQuestionnaire(UUID adRequestId, BusinessQuestionnaireAnswersRequestDto answers);
 
-    byte[] exportAdRequestBusinessQuestionnaireTxtAdmin(UUID adRequestId);
-
-    String resolveAdRequestBusinessQuestionnaireExportFileName(UUID adRequestId);
+    NamedDownloadResource exportAdRequestBusinessQuestionnaireTxtAdmin(UUID adRequestId);
 
     void uploadAds(AttachmentRequestDto request, UUID clientId);
 

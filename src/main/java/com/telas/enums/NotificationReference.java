@@ -1,6 +1,7 @@
 package com.telas.enums;
 
 import com.telas.dtos.EmailDataDto;
+import com.telas.notification.NotificationHandlerRegistryBridge;
 import com.telas.shared.constants.SharedConstants;
 import org.springframework.util.ObjectUtils;
 
@@ -89,44 +90,52 @@ public enum NotificationReference {
     SUBSCRIPTION_ABOUT_TO_EXPIRY_REMINDER {
         @Override
         public String getNotificationMessage(Map<String, String> params) {
-            return String.format("""
+            return NotificationHandlerRegistryBridge.find(this)
+                    .map(handler -> handler.getNotificationMessage(params))
+                    .orElseGet(() -> String.format("""
                     <div class="informacoes">
                         <h4 id="notification-title" class="notification-title">15 Days Before Expiration</h4>
-                        <p>We hope you’ve enjoyed your Ad service with Telas. We wanted to remind you that your current service is set to expire soon.</p>
+                        <p>We hope you've enjoyed your Ad service with Telas. We wanted to remind you that your current service is set to expire soon.</p>
                         <div class="field">
                             <span id="attachment-name" class="field-label">Service End Date: </span>
                             <span class="field-value">%s</span>
                         </div>
                     </div>
                     <p>To continue enjoying our services without interruption, please visit this <a id="link-details" class='details link-text' href="%s">link</a> and renew your subscription before the end date.</p>
-                    """, params.get("endDate"), params.get("link"));
+                    """, params.get("endDate"), params.get("link")));
         }
 
         @Override
         public EmailDataDto getEmailData(Map<String, String> params) {
-            return createEmailData(
-                    SharedConstants.EMAIL_SUBJECT_SUBSCRIPTION_EXPIRING_REMINDER,
-                    SharedConstants.TEMPLATE_EMAIL_SUBSCRIPTION_EXPIRING_REMINDER,
-                    params,
-                    null,
-                    params.get("endDate")
-            );
+            return NotificationHandlerRegistryBridge.find(this)
+                    .map(handler -> handler.getEmailData(params))
+                    .orElseGet(() -> createEmailData(
+                            SharedConstants.EMAIL_SUBJECT_SUBSCRIPTION_EXPIRING_REMINDER,
+                            SharedConstants.TEMPLATE_EMAIL_SUBSCRIPTION_EXPIRING_REMINDER,
+                            params,
+                            null,
+                            params.get("endDate")
+                    ));
         }
     },
     AD_RECEIVED {
         @Override
         public String getNotificationMessage(Map<String, String> params) {
-            return String.format("""
+            return NotificationHandlerRegistryBridge.find(this)
+                    .map(handler -> handler.getNotificationMessage(params))
+                    .orElseGet(() -> String.format("""
                     <div class="informacoes">
                         <h4 id="notification-title" class="notification-title">You received a new Ad!</h4>
                         <p>Please visit this <a id="link-details" class='details link-text' href="%s">link</a> to validate it and start to use your service!</p>
                     </div>
-                    """, params.get("link"));
+                    """, params.get("link")));
         }
 
         @Override
         public EmailDataDto getEmailData(Map<String, String> params) {
-            return createClientAdReceivedEmailData(params);
+            return NotificationHandlerRegistryBridge.find(this)
+                    .map(handler -> handler.getEmailData(params))
+                    .orElseGet(() -> createClientAdReceivedEmailData(params));
         }
     },
     AD_RESUBMITTED_FOR_VALIDATION {
@@ -900,7 +909,9 @@ public enum NotificationReference {
     SUBSCRIPTION_ABOUT_TO_EXPIRY_5_DAYS {
         @Override
         public String getNotificationMessage(Map<String, String> params) {
-            return String.format("""
+            return NotificationHandlerRegistryBridge.find(this)
+                    .map(handler -> handler.getNotificationMessage(params))
+                    .orElseGet(() -> String.format("""
                     <div class="informacoes">
                         <h4 id="notification-title" class="notification-title">5 Days Before Expiration</h4>
                         <p>Your Telas advertising service is ending soon.</p>
@@ -910,16 +921,18 @@ public enum NotificationReference {
                         </div>
                     </div>
                     <p>To continue without interruption, visit this <a id="link-details" class='details link-text' href="%s">link</a>.</p>
-                    """, params.get("endDate"), params.get("link"));
+                    """, params.get("endDate"), params.get("link")));
         }
 
         @Override
         public EmailDataDto getEmailData(Map<String, String> params) {
-            return createCountdownExpiryEmailData(
-                    SharedConstants.EMAIL_SUBJECT_SUBSCRIPTION_EXPIRING_5_DAYS,
-                    SharedConstants.TEMPLATE_EMAIL_SUBSCRIPTION_EXPIRING_COUNTDOWN,
-                    params
-            );
+            return NotificationHandlerRegistryBridge.find(this)
+                    .map(handler -> handler.getEmailData(params))
+                    .orElseGet(() -> createCountdownExpiryEmailData(
+                            SharedConstants.EMAIL_SUBJECT_SUBSCRIPTION_EXPIRING_5_DAYS,
+                            SharedConstants.TEMPLATE_EMAIL_SUBSCRIPTION_EXPIRING_COUNTDOWN,
+                            params
+                    ));
         }
     },
     SUBSCRIPTION_ABOUT_TO_EXPIRY_10_DAYS {

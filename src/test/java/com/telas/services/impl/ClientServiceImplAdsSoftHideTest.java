@@ -4,7 +4,8 @@ import com.telas.dtos.response.ClientResponseDto;
 import com.telas.entities.Ad;
 import com.telas.entities.Client;
 import com.telas.enums.AdValidationType;
-import com.telas.helpers.AttachmentHelper;
+import com.telas.services.ad.AdApprovalWorkflow;
+import com.telas.services.ad.AdUploadService;
 import com.telas.helpers.ClientHelper;
 import com.telas.infra.security.services.AuthenticatedUserService;
 import com.telas.repositories.AdMessageRepository;
@@ -13,7 +14,9 @@ import com.telas.repositories.ClientRepository;
 import com.telas.repositories.MonitorAdRepository;
 import com.telas.services.AdminEmailAlertPreferenceService;
 import com.telas.services.BucketService;
+import com.telas.services.BusinessQuestionnaireService;
 import com.telas.services.ClientPermanentDeletionService;
+import com.telas.services.PartnerPlatformSettingsService;
 import com.telas.services.PermissionService;
 import com.telas.services.TermConditionService;
 import com.telas.services.VerificationCodeService;
@@ -38,7 +41,9 @@ class ClientServiceImplAdsSoftHideTest {
     @Mock
     private ClientHelper helper;
     @Mock
-    private AttachmentHelper attachmentHelper;
+    private AdUploadService adUploadService;
+    @Mock
+    private AdApprovalWorkflow adApprovalWorkflow;
     @Mock
     private VerificationCodeService verificationCodeService;
     @Mock
@@ -59,9 +64,13 @@ class ClientServiceImplAdsSoftHideTest {
     private AdminEmailAlertPreferenceService adminEmailAlertPreferenceService;
     @Mock
     private ClientPermanentDeletionService clientPermanentDeletionService;
+    @Mock
+    private BusinessQuestionnaireService businessQuestionnaireService;
+    @Mock
+    private PartnerPlatformSettingsService partnerPlatformSettingsService;
 
     @InjectMocks
-    private ClientServiceImpl service;
+    private ClientProfileServiceImpl service;
 
     @Test
     void buildClientResponse_mustNotExposeRejectedAdsToClient() {
@@ -84,8 +93,8 @@ class ClientServiceImplAdsSoftHideTest {
 
         client.setAds(List.of(approved, rejected));
 
-        when(attachmentHelper.getStringLinkFromAd(approved)).thenReturn("link-approved");
-        when(attachmentHelper.getDownloadLinkFromAd(approved)).thenReturn("dl-approved");
+        when(adUploadService.getStringLinkFromAd(approved)).thenReturn("link-approved");
+        when(adUploadService.getDownloadLinkFromAd(approved)).thenReturn("dl-approved");
         when(permissionService.listEffectivePermissionCodesForDisplay(client)).thenReturn(List.of());
 
         ClientResponseDto dto = service.buildClientResponse(client);

@@ -22,6 +22,7 @@ import com.telas.enums.AdValidationType;
 import com.telas.infra.security.model.PasswordRequestDto;
 import com.telas.services.ClientService;
 import com.telas.shared.constants.MessageCommonsConstants;
+import com.telas.shared.model.NamedDownloadResource;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -167,13 +168,12 @@ public class ClientControllerImpl implements ClientController {
     @SecurityRequirement(name = "jwt")
     public ResponseEntity<?> downloadAdRequestBusinessQuestionnaireTxt(
             @PathVariable(name = "adRequestId") UUID adRequestId) {
-        byte[] bytes = service.exportAdRequestBusinessQuestionnaireTxtAdmin(adRequestId);
-        String fileName = service.resolveAdRequestBusinessQuestionnaireExportFileName(adRequestId);
+        NamedDownloadResource resource = service.exportAdRequestBusinessQuestionnaireTxtAdmin(adRequestId);
         return ResponseEntity.ok()
                 .header(HttpHeaders.CONTENT_DISPOSITION,
-                        "attachment; filename=\"" + fileName + "\"")
-                .contentType(MediaType.TEXT_PLAIN)
-                .body(bytes);
+                        "attachment; filename=\"" + resource.fileName() + "\"")
+                .contentType(MediaType.parseMediaType(resource.contentType()))
+                .body(resource.content());
     }
 
     @Override

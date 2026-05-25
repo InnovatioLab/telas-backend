@@ -11,8 +11,8 @@ import com.telas.entities.Subscription;
 import com.telas.enums.PaymentStatus;
 import com.telas.enums.Recurrence;
 import com.telas.enums.SubscriptionStatus;
-import com.telas.helpers.ClientHelper;
 import com.telas.helpers.PaymentHelper;
+import com.telas.services.payment.StripeSubscriptionLifecycle;
 import com.telas.infra.exceptions.BusinessRuleException;
 import com.telas.infra.exceptions.ResourceNotFoundException;
 import com.telas.repositories.PaymentRepository;
@@ -47,7 +47,7 @@ public class PaymentServiceImpl implements PaymentService {
 
 	private final PaymentHelper helper;
 
-	private final ClientHelper clientHelper;
+	private final StripeSubscriptionLifecycle stripeSubscriptionLifecycle;
 
 	@Value("${front.base.url}")
 	private String frontBaseUrl;
@@ -162,20 +162,15 @@ public class PaymentServiceImpl implements PaymentService {
 
 		if (Recurrence.MONTHLY.equals(subscription.getRecurrence())) {
 			log.info("Cancelling Stripe subscription with id: {} due to dispute funds withdrawn.", subscription.getId());
-			cancelStripeSubscription(subscription);
-		}
-	}
-
-
-	private void cancelStripeSubscription(Subscription subscription) {
-		try {
-			com.stripe.model.Subscription stripeSubscription = helper.getStripeSubscription(subscription);
-			stripeSubscription.cancel();
-		} catch (StripeException e) {
-			log.error("Error cancelling subscription with id: {} on Stripe, error message: {}", subscription.getId(),
-				e.getMessage());
-			throw new BusinessRuleException(
-				SubscriptionValidationMessages.SUBSCRIPTION_CANCELLATION_ERROR_DURING_DISPUTE + subscription.getId());
+			try {
+				stripeSubscriptionLifecycle.cancelImmediately(subscription);
+			} catch (StripeException e) {
+				log.error("Error cancelling subscription with id: {} on Stripe, error message: {}",
+						subscription.getId(), e.getMessage());
+				throw new BusinessRuleException(
+						SubscriptionValidationMessages.SUBSCRIPTION_CANCELLATION_ERROR_DURING_DISPUTE
+								+ subscription.getId());
+			}
 		}
 	}
 
@@ -187,7 +182,7 @@ public class PaymentServiceImpl implements PaymentService {
 
 
 	private String generateSession(Subscription subscription, Payment payment, Recurrence recurrence) throws StripeException {
-		Customer customer = clientHelper.getOrCreateCustomer(subscription);
+		Customer customer = stripeSubscriptionLifecycle.getOrCreateCustomer(subscription);
 		Map<String, String> metaData = helper.createMetaData(subscription, payment, recurrence);
 
 		String successUrl = frontBaseUrl + (Objects.isNull(recurrence)

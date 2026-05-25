@@ -10,6 +10,7 @@ import com.telas.enums.CodeType;
 import com.telas.enums.DefaultStatus;
 import com.telas.enums.NotificationReference;
 import com.telas.enums.Role;
+import com.telas.helpers.AdPublicationNotificationHelper;
 import com.telas.helpers.ClientHelper;
 import com.telas.infra.exceptions.ForbiddenException;
 import com.telas.infra.security.model.AuthenticatedUser;
@@ -84,9 +85,13 @@ class ClientServiceImplCreatePartnerTest {
     private AdRepository adRepository;
     @Mock
     private PartnerPlatformSettingsService partnerPlatformSettingsService;
+    @Mock
+    private AdPublicationNotificationHelper adPublicationNotificationHelper;
+    @Mock
+    private com.telas.services.ad.AdUploadService adUploadService;
 
     @InjectMocks
-    private ClientServiceImpl service;
+    private PartnerPortalServiceImpl service;
 
     @Test
     void createPartnerByAdmin_whenAdminAndSettingEnabled_mustCreatePartner() {

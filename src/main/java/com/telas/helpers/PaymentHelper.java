@@ -11,19 +11,23 @@ import com.telas.entities.*;
 import com.telas.enums.NotificationReference;
 import com.telas.enums.PaymentStatus;
 import com.telas.enums.Recurrence;
+import com.telas.infra.exceptions.ResourceNotFoundException;
 import com.telas.repositories.ClientRepository;
+import com.telas.repositories.SubscriptionRepository;
 import com.telas.services.NotificationService;
+import com.telas.services.payment.StripeSubscriptionLifecycle;
+import com.telas.services.payment.SubscriptionPurchaseCompletionHandler;
 import com.telas.shared.audit.CustomRevisionListener;
 import com.telas.shared.constants.SharedConstants;
+import com.telas.shared.constants.valitation.SubscriptionValidationMessages;
 import com.telas.shared.utils.DateUtils;
 import com.telas.shared.utils.MoneyUtils;
 import com.telas.shared.utils.ValidateDataUtils;
+import lombok.RequiredArgsConstructor;
 import org.apache.commons.lang3.ObjectUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -34,23 +38,17 @@ import java.util.*;
 import java.util.stream.IntStream;
 
 @Component
+@RequiredArgsConstructor
 public class PaymentHelper {
     private final Logger log = LoggerFactory.getLogger(PaymentHelper.class);
-    private final SubscriptionHelper subscriptionHelper;
+    private final SubscriptionRepository subscriptionRepository;
+    private final SubscriptionPurchaseCompletionHandler subscriptionPurchaseCompletionHandler;
+    private final StripeSubscriptionLifecycle stripeSubscriptionLifecycle;
     private final ClientRepository clientRepository;
     private final NotificationService notificationService;
 
     @Value("${stripe.product.id}")
     private String productId;
-
-    @Autowired
-    public PaymentHelper(@Lazy SubscriptionHelper subscriptionHelper,
-                         ClientRepository clientRepository,
-                         NotificationService notificationService) {
-        this.subscriptionHelper = subscriptionHelper;
-        this.clientRepository = clientRepository;
-        this.notificationService = notificationService;
-    }
 
     @Transactional
     public void updateSubscriptionPeriod(Invoice invoice, Subscription subscription) {
@@ -102,38 +100,6 @@ public class PaymentHelper {
 
         addLineItems(paramsBuilder, subscription.getSubscriptionMonitors(), recurrence, false);
     }
-
-//    private void addLineItems(SessionCreateParams.Builder paramsBuilder, Set<SubscriptionMonitor> subscriptionMonitors, Recurrence recurrence, boolean isMonthly) {
-//        subscriptionMonitors.stream()
-//                .sorted(Comparator.comparing(sm -> sm.getMonitor().getId()))
-//                .filter(sm -> sm.getSlotsQuantity() != null && sm.getSlotsQuantity() > SharedConstants.ZERO)
-//                .forEachOrdered(sm -> {
-//                    BigDecimal unitPricePerSlot = getUnitPricePerSlot(new ArrayList<>(subscriptionMonitors).indexOf(sm), getMultiplier(sm.getSubscription(), recurrence));
-//                    paramsBuilder.addLineItem(createLineItem(sm.getSlotsQuantity(), unitPricePerSlot, isMonthly));
-//                });
-//    }
-//
-//    private SessionCreateParams.LineItem createLineItem(Integer slotsQuantity, BigDecimal unitPricePerSlot, boolean isMonthly) {
-//        SessionCreateParams.LineItem.PriceData.Builder priceDataBuilder =
-//                SessionCreateParams.LineItem.PriceData.builder()
-//                        .setCurrency(SharedConstants.USD)
-//                        .setUnitAmount(unitPricePerSlot.multiply(BigDecimal.valueOf(100)).longValue())
-//                        .setProduct(productId);
-//
-//        if (isMonthly) {
-//            priceDataBuilder.setRecurring(
-//                    SessionCreateParams.LineItem.PriceData.Recurring.builder()
-//                            .setInterval(SessionCreateParams.LineItem.PriceData.Recurring.Interval.MONTH)
-//                            .build()
-//            );
-//        }
-//
-//        return SessionCreateParams.LineItem.builder()
-//                .setQuantity(slotsQuantity.longValue())
-//                .setPriceData(priceDataBuilder.build())
-//                .build();
-//    }
-
 
     private void addLineItems(SessionCreateParams.Builder paramsBuilder, Set<SubscriptionMonitor> subscriptionMonitors, Recurrence recurrence, boolean isMonthly) {
         List<SubscriptionMonitor> monitors = subscriptionMonitors.stream().toList();
@@ -243,25 +209,6 @@ public class PaymentHelper {
                 : MoneyUtils.subtract(recurrence.getMultiplier(), subscription.getRecurrence().getMultiplier());
     }
 
-//    private String getProductPriceIdMonthly() {
-//        try {
-//            PriceListParams params = PriceListParams.builder()
-//                    .setProduct(productId)
-//                    .addAllLookupKey(List.of("subscription"))
-//                    .build();
-//
-//            List<Price> prices = Price.list(params).getData();
-//
-//            return prices.stream()
-//                    .filter(price -> price.getRecurring() != null && "month".equals(price.getRecurring().getInterval()))
-//                    .map(Price::getId)
-//                    .findFirst()
-//                    .orElseThrow(() -> new ResourceNotFoundException(PaymentValidationMessages.PAYMENT_PRODUCT_PRICES_NOT_FOUND));
-//        } catch (StripeException e) {
-//            throw new BusinessRuleException(PaymentValidationMessages.PAYMENT_PRODUCT_PRICES_NOT_FOUND);
-//        }
-//    }
-
     @Transactional
     public boolean isRecurringPayment(Subscription subscription, PaymentIntent paymentIntent) {
         String recurrenceStr = paymentIntent.getMetadata().get("recurrence");
@@ -275,7 +222,7 @@ public class PaymentHelper {
     @Transactional
     public Subscription getSubscriptionFromInvoice(Invoice invoice) {
         UUID subscriptionId = UUID.fromString(invoice.getParent().getSubscriptionDetails().getMetadata().get("subscriptionId"));
-        return subscriptionHelper.findEntityById(subscriptionId);
+        return findEntityById(subscriptionId);
     }
 
     @Transactional
@@ -374,10 +321,10 @@ public class PaymentHelper {
     private void handleSuccessfulPayment(Payment payment, boolean isRecurringPayment) {
         log.info("Payment succeeded with id: {}", payment.getId());
         UUID subscriptionId = payment.getSubscription().getId();
-        Subscription subscription = subscriptionHelper.findEntityById(subscriptionId);
+        Subscription subscription = findEntityById(subscriptionId);
 
         if (!isRecurringPayment) {
-            subscriptionHelper.handleNonRecurringPayment(subscription);
+            subscriptionPurchaseCompletionHandler.handleNonRecurringPayment(subscription);
             updateClientWishlist(subscription);
         }
     }
@@ -406,7 +353,12 @@ public class PaymentHelper {
 
     @Transactional
     public com.stripe.model.Subscription getStripeSubscription(Subscription subscription) throws StripeException {
-        return subscriptionHelper.getStripeSubscription(subscription);
+        return stripeSubscriptionLifecycle.retrieveActiveStripeSubscription(subscription);
+    }
+
+    private Subscription findEntityById(UUID subscriptionId) {
+        return subscriptionRepository.findById(subscriptionId)
+                .orElseThrow(() -> new ResourceNotFoundException(SubscriptionValidationMessages.SUBSCRIPTION_NOT_FOUND));
     }
 
     private void createUpgradeSubscriptionNotification(Subscription subscription) {
@@ -431,6 +383,6 @@ public class PaymentHelper {
     }
 
     public String getSuccessUrl() {
-        return subscriptionHelper.getRedirectUrlAfterCreatingNewSubscription();
+        return subscriptionPurchaseCompletionHandler.redirectUrlAfterCreatingNewSubscription();
     }
 }

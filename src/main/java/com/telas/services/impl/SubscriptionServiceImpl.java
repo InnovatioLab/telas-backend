@@ -13,7 +13,9 @@ import com.telas.entities.Subscription;
 import com.telas.enums.Recurrence;
 import com.telas.enums.Role;
 import com.telas.enums.SubscriptionStatus;
+import com.telas.helpers.SubscriptionExpiryNotificationHelper;
 import com.telas.helpers.SubscriptionHelper;
+import com.telas.services.payment.StripeSubscriptionLifecycle;
 import com.telas.infra.exceptions.BusinessRuleException;
 import com.telas.infra.exceptions.ResourceNotFoundException;
 import com.telas.infra.security.services.AuthenticatedUserService;
@@ -24,6 +26,7 @@ import com.telas.scheduler.SchedulerJobRunContext;
 import com.telas.services.RemoveMonitorAdsOutcome;
 import com.telas.services.SubscriptionService;
 import com.telas.shared.constants.valitation.SubscriptionValidationMessages;
+import com.telas.shared.jpa.SpecificationFactory;
 import com.telas.shared.utils.PaginationFilterUtil;
 import jakarta.persistence.criteria.CriteriaBuilder;
 import jakarta.persistence.criteria.Predicate;
@@ -44,11 +47,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
 import java.time.LocalDate;
-import java.time.format.DateTimeFormatter;
-import java.time.format.DateTimeParseException;
 import java.util.*;
-
-import static java.util.Locale.US;
 
 @Service
 @RequiredArgsConstructor
@@ -62,6 +61,8 @@ public class SubscriptionServiceImpl implements SubscriptionService {
     private final MonitorRepository monitorRepository;
     private final AuthenticatedUserService authenticatedUserService;
     private final SubscriptionHelper helper;
+    private final SubscriptionExpiryNotificationHelper expiryNotificationHelper;
+    private final StripeSubscriptionLifecycle stripeSubscriptionLifecycle;
     private final SchedulerJobRunContext schedulerJobRunContext;
 
     @Override
@@ -307,27 +308,27 @@ public class SubscriptionServiceImpl implements SubscriptionService {
 
         if (!subscriptionsReminder15.isEmpty()) {
             log.info("Found {} subscriptions expiring in 15 days, sending reminder emails.", subscriptionsReminder15.size());
-            subscriptionsReminder15.forEach(helper::sendSubscriptionAboutToExpiryEmail);
+            subscriptionsReminder15.forEach(expiryNotificationHelper::sendAboutToExpiryEmail);
         }
 
         if (!subscriptionsReminder10.isEmpty()) {
             log.info("Found {} subscriptions expiring in 10 days, sending reminder emails.", subscriptionsReminder10.size());
-            subscriptionsReminder10.forEach(helper::sendSubscriptionTenDaysBeforeExpiryEmail);
+            subscriptionsReminder10.forEach(expiryNotificationHelper::sendTenDaysBeforeExpiryEmail);
         }
 
         if (!subscriptionsReminder5.isEmpty()) {
             log.info("Found {} subscriptions expiring in 5 days, sending reminder emails.", subscriptionsReminder5.size());
-            subscriptionsReminder5.forEach(helper::sendSubscriptionFiveDaysBeforeExpiryEmail);
+            subscriptionsReminder5.forEach(expiryNotificationHelper::sendFiveDaysBeforeExpiryEmail);
         }
 
         if (!subscriptionsReminder3.isEmpty()) {
             log.info("Found {} subscriptions expiring in 3 days, sending reminder emails.", subscriptionsReminder3.size());
-            subscriptionsReminder3.forEach(helper::sendSubscriptionThreeDaysBeforeExpiryEmail);
+            subscriptionsReminder3.forEach(expiryNotificationHelper::sendThreeDaysBeforeExpiryEmail);
         }
 
         if (!subscriptionsPenultimateDay.isEmpty()) {
             log.info("Found {} subscriptions on penultimate day (end date tomorrow), sending final reminder emails.", subscriptionsPenultimateDay.size());
-            subscriptionsPenultimateDay.forEach(helper::sendSubscriptionPenultimateDayEmail);
+            subscriptionsPenultimateDay.forEach(expiryNotificationHelper::sendPenultimateDayEmail);
         }
 
         if (subscriptionsReminder15.isEmpty() && subscriptionsReminder10.isEmpty() && subscriptionsReminder5.isEmpty()
@@ -423,21 +424,14 @@ public class SubscriptionServiceImpl implements SubscriptionService {
 
     private void handleStripeCancellation(Subscription subscription, Client client) {
         try {
-            com.stripe.model.Subscription stripeSubscription = helper.getStripeSubscription(subscription);
+            com.stripe.model.Subscription stripeSubscription =
+                    stripeSubscriptionLifecycle.retrieveActiveStripeSubscription(subscription);
 
             if (client.isPrivilegedPanelUser()) {
                 log.info("Subscription with id: {} set to cancel NOW by admin, removing monitors ads", subscription.getId());
-                stripeSubscription.cancel();
+                stripeSubscriptionLifecycle.cancelImmediately(stripeSubscription);
             } else {
-                stripeSubscription.update(Map.of("cancel_at_period_end", true));
-                log.info("Subscription with id: {} set to cancel at the end of the billing period.", subscription.getId());
-                subscription.setCancelAtPeriodEnd(true);
-                subscription.setCancelRequestedAt(Instant.now());
-                if (stripeSubscription.getCancelAt() != null) {
-                    Instant effectiveAt = Instant.ofEpochSecond(stripeSubscription.getCancelAt());
-                    subscription.setCancelAtPeriodEndAt(effectiveAt);
-                    subscription.setEndsAt(effectiveAt);
-                }
+                stripeSubscriptionLifecycle.applyCancelAtPeriodEnd(subscription, stripeSubscription);
                 helper.setAuditInfo(subscription, client.getBusinessName());
                 repository.save(subscription);
             }
@@ -460,37 +454,10 @@ public class SubscriptionServiceImpl implements SubscriptionService {
             predicates.add(criteriaBuilder.like(criteriaBuilder.lower(root.get("status")), filter));
             predicates.add(criteriaBuilder.like(criteriaBuilder.lower(root.get("recurrence")), filter));
 
-            addDatePredicates(predicates, criteriaBuilder, root, genericFilter);
-            addIdPredicate(predicates, criteriaBuilder, root, genericFilter);
+            SpecificationFactory.addDatePredicates(predicates, criteriaBuilder, root, genericFilter, "startedAt", "endsAt");
+            SpecificationFactory.addIdPredicate(predicates, criteriaBuilder, root, "id", genericFilter);
             return criteriaBuilder.or(predicates.toArray(new Predicate[0]));
         });
-    }
-
-    private void addDatePredicates(List<Predicate> predicates, CriteriaBuilder criteriaBuilder, Root<Subscription> root, String genericFilter) {
-        try {
-            LocalDate date = LocalDate.parse(genericFilter);
-            predicates.add(criteriaBuilder.equal(criteriaBuilder.function("date", LocalDate.class, root.get("startedAt")), date));
-            predicates.add(criteriaBuilder.equal(criteriaBuilder.function("date", LocalDate.class, root.get("endsAt")), date));
-            return;
-        } catch (DateTimeParseException ignored) {
-        }
-
-        try {
-            DateTimeFormatter usFormatter = DateTimeFormatter.ofPattern("MM/dd/yyyy", US);
-            LocalDate date = LocalDate.parse(genericFilter, usFormatter);
-            predicates.add(criteriaBuilder.equal(criteriaBuilder.function("date", LocalDate.class, root.get("startedAt")), date));
-            predicates.add(criteriaBuilder.equal(criteriaBuilder.function("date", LocalDate.class, root.get("endsAt")), date));
-        } catch (DateTimeParseException ignored) {
-        }
-    }
-
-
-    private void addIdPredicate(List<Predicate> predicates, CriteriaBuilder criteriaBuilder, Root<Subscription> root, String genericFilter) {
-        try {
-            UUID id = UUID.fromString(genericFilter);
-            predicates.add(criteriaBuilder.equal(root.get("id"), id));
-        } catch (IllegalArgumentException ignored) {
-        }
     }
 
     private void persistSubscriptionClient(Client client, Subscription subscription) {

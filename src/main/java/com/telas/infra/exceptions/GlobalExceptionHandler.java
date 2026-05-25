@@ -5,7 +5,9 @@ import com.stripe.exception.StripeException;
 import com.telas.dtos.response.ResponseDto;
 import com.telas.services.ApplicationLogService;
 import jakarta.persistence.OptimisticLockException;
+import jakarta.persistence.PersistenceException;
 import org.springframework.context.support.DefaultMessageSourceResolvable;
+import org.springframework.dao.DataAccessException;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
@@ -202,6 +204,15 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
         logException("StripeException", ex, obj);
 
         return handleExceptionInternal(ex, obj, new HttpHeaders(), HttpStatus.BAD_REQUEST, request);
+    }
+
+    @ExceptionHandler({DataAccessException.class, PersistenceException.class})
+    @ResponseStatus(HttpStatus.INTERNAL_SERVER_ERROR)
+    public ResponseEntity<?> handleDataAccessException(RuntimeException ex, WebRequest request) {
+        String error = "A database error occurred while processing the request.";
+        ResponseDto<Object> obj = ResponseDto.fromData(null, HttpStatus.INTERNAL_SERVER_ERROR, error, List.of(ex.getMessage()));
+        logException(ex.getClass().getSimpleName(), ex, obj);
+        return handleExceptionInternal(ex, obj, new HttpHeaders(), HttpStatus.INTERNAL_SERVER_ERROR, request);
     }
 
     @ExceptionHandler({OptimisticLockException.class})

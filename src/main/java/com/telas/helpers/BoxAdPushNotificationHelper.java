@@ -7,15 +7,12 @@ import com.telas.entities.Monitor;
 import com.telas.entities.MonitorAd;
 import com.telas.entities.Subscription;
 import com.telas.enums.NotificationReference;
-import com.telas.enums.Permission;
-import com.telas.repositories.ClientRepository;
 import com.telas.repositories.SubscriptionRepository;
-import com.telas.services.AdminEmailAlertPreferenceService;
 import com.telas.services.NotificationService;
-import com.telas.services.PermissionService;
+import com.telas.services.notification.AdminAdsNotificationService;
 import com.telas.shared.constants.SharedConstants;
+import com.telas.shared.utils.ClientPortalLinkResolver;
 import lombok.RequiredArgsConstructor;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
 import java.time.Instant;
@@ -39,13 +36,10 @@ public class BoxAdPushNotificationHelper {
             .withZone(ZoneId.of(SharedConstants.ZONE_ID));
 
     private final NotificationService notificationService;
-    private final ClientRepository clientRepository;
+    private final AdminAdsNotificationService adminAdsNotificationService;
     private final SubscriptionRepository subscriptionRepository;
-    private final PermissionService permissionService;
-    private final AdminEmailAlertPreferenceService adminEmailAlertPreferenceService;
-
-    @Value("${front.base.url}")
-    private String frontBaseUrl;
+    private final ClientPortalLinkResolver clientPortalLinkResolver;
+    private final MonitorSummaryFormatter monitorSummaryFormatter;
 
     public void notifyAfterSuccessfulPush(
             Map<Monitor, List<AbstractMap.SimpleEntry<MonitorAd, UpdateBoxMonitorsAdRequestDto>>> grouped,
@@ -75,42 +69,7 @@ public class BoxAdPushNotificationHelper {
             }
             String monitorsSummary = buildMonitorsSummaryForAd(grouped, successfulBaseUrls, ad.getId());
             String subscriptionEndsAt = formatSubscriptionEnds(client.getId());
-            String clientLink = client.isPartner()
-                    ? frontBaseUrl + "/client/screens"
-                    : frontBaseUrl + "/client/my-telas?tab=ads";
-            String adminLink = frontBaseUrl + "/admin/clients/" + client.getId() + "/messages";
-
-            Map<String, String> clientParams = new HashMap<>();
-            clientParams.put("name", client.getBusinessName());
-            clientParams.put("adName", ad.getName());
-            clientParams.put("link", clientLink);
-            clientParams.put("partner", client.isPartner() ? "true" : "false");
-            clientParams.put("monitorsSummary", monitorsSummary);
-            clientParams.put("subscriptionEndsAt", subscriptionEndsAt);
-            notificationService.save(NotificationReference.CLIENT_AD_DEPLOYED_TO_BOX, client, clientParams, true);
-
-            Map<String, String> adminBase = new HashMap<>();
-            adminBase.put("clientName", client.getBusinessName());
-            adminBase.put("adName", ad.getName());
-            adminBase.put("monitorsSummary", monitorsSummary);
-            adminBase.put("subscriptionEndsAt", subscriptionEndsAt);
-            adminBase.put("link", adminLink);
-
-            for (Client recipient : clientRepository.findAllAdminsAndDevelopers()) {
-                boolean canManageAds = recipient.isDeveloper()
-                        || permissionService.hasPermission(recipient, Permission.ADMIN_ADS_MANAGE);
-                if (!canManageAds) {
-                    continue;
-                }
-                boolean sendEmail = !recipient.isDeveloper()
-                        && adminEmailAlertPreferenceService.wantsEmail(
-                                recipient.getId(), com.telas.enums.AdminEmailAlertCategory.ADS_MANAGEMENT);
-                notificationService.save(
-                        NotificationReference.ADMIN_CLIENT_AD_DEPLOYED_TO_BOX,
-                        recipient,
-                        new HashMap<>(adminBase),
-                        sendEmail);
-            }
+            notifyDeployed(ad, client, monitorsSummary);
         }
     }
 
@@ -148,23 +107,7 @@ public class BoxAdPushNotificationHelper {
             if (!relevant) {
                 continue;
             }
-            String addressPart = "";
-            if (monitor.getAddress() != null && monitor.getAddress().resolveMapLocationDescription() != null) {
-                addressPart = monitor.getAddress().resolveMapLocationDescription();
-            }
-            String ip = "";
-            if (monitor.getBox() != null && monitor.getBox().getBoxAddress() != null
-                    && monitor.getBox().getBoxAddress().getIp() != null) {
-                ip = monitor.getBox().getBoxAddress().getIp();
-            }
-            String line = addressPart;
-            if (!ip.isBlank()) {
-                line = line.isBlank() ? "Box " + ip : line + " — Box " + ip;
-            }
-            if (line.isBlank()) {
-                line = monitor.getId().toString();
-            }
-            lines.add(line);
+            lines.add(monitorSummaryFormatter.formatMonitorLine(monitor));
         }
         return String.join("; ", lines);
     }
@@ -173,48 +116,18 @@ public class BoxAdPushNotificationHelper {
         if (ad == null || ad.getClient() == null) {
             return;
         }
-        String monitorsSummary = monitors == null ? "" : monitors.stream()
-                .map(this::formatMonitorLine)
-                .filter(s -> s != null && !s.isBlank())
-                .reduce((a, b) -> a + "; " + b)
-                .orElse("");
+        String monitorsSummary = monitorSummaryFormatter.formatMonitorsSummary(monitors);
         notifyDeployed(ad, ad.getClient(), monitorsSummary);
-    }
-
-    private String formatMonitorLine(Monitor monitor) {
-        if (monitor == null) {
-            return "";
-        }
-        String addressPart = monitor.getAddress() != null
-                ? monitor.getAddress().resolveMapLocationDescription()
-                : "";
-        String ip = monitor.getBox() != null && monitor.getBox().getBoxAddress() != null
-                ? monitor.getBox().getBoxAddress().getIp()
-                : "";
-        if (addressPart != null && !addressPart.isBlank() && ip != null && !ip.isBlank()) {
-            return addressPart + " — Box " + ip;
-        }
-        if (addressPart != null && !addressPart.isBlank()) {
-            return addressPart;
-        }
-        if (ip != null && !ip.isBlank()) {
-            return "Box " + ip;
-        }
-        return monitor.getId() != null ? monitor.getId().toString() : "";
     }
 
     private void notifyDeployed(Ad ad, Client client, String monitorsSummary) {
         String subscriptionEndsAt = formatSubscriptionEnds(client.getId());
-        String clientLink = client.isPartner()
-                ? frontBaseUrl + "/client/screens"
-                : frontBaseUrl + "/client/my-telas?tab=ads";
-        String adminLink = frontBaseUrl + "/admin/clients/" + client.getId() + "/messages";
 
         Map<String, String> clientParams = new HashMap<>();
         clientParams.put("name", client.getBusinessName());
         clientParams.put("adName", ad.getName());
-        clientParams.put("link", clientLink);
-        clientParams.put("partner", client.isPartner() ? "true" : "false");
+        clientParams.put("link", clientPortalLinkResolver.clientAdsTabLink(client));
+        clientParams.put("partner", clientPortalLinkResolver.partnerFlag(client));
         clientParams.put("monitorsSummary", monitorsSummary);
         clientParams.put("subscriptionEndsAt", subscriptionEndsAt);
         notificationService.save(NotificationReference.CLIENT_AD_DEPLOYED_TO_BOX, client, clientParams, true);
@@ -224,22 +137,7 @@ public class BoxAdPushNotificationHelper {
         adminBase.put("adName", ad.getName());
         adminBase.put("monitorsSummary", monitorsSummary);
         adminBase.put("subscriptionEndsAt", subscriptionEndsAt);
-        adminBase.put("link", adminLink);
-
-        for (Client recipient : clientRepository.findAllAdminsAndDevelopers()) {
-            boolean canManageAds = recipient.isDeveloper()
-                    || permissionService.hasPermission(recipient, Permission.ADMIN_ADS_MANAGE);
-            if (!canManageAds) {
-                continue;
-            }
-            boolean sendEmail = !recipient.isDeveloper()
-                    && adminEmailAlertPreferenceService.wantsEmail(
-                            recipient.getId(), com.telas.enums.AdminEmailAlertCategory.ADS_MANAGEMENT);
-            notificationService.save(
-                    NotificationReference.ADMIN_CLIENT_AD_DEPLOYED_TO_BOX,
-                    recipient,
-                    new HashMap<>(adminBase),
-                    sendEmail);
-        }
+        adminBase.put("link", clientPortalLinkResolver.adminClientMessagesLink(client.getId()));
+        adminAdsNotificationService.notifyAdmins(NotificationReference.ADMIN_CLIENT_AD_DEPLOYED_TO_BOX, adminBase);
     }
 }

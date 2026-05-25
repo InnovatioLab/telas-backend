@@ -6,14 +6,11 @@ import com.telas.entities.Monitor;
 import com.telas.entities.MonitorAd;
 import com.telas.enums.AdValidationType;
 import com.telas.enums.NotificationReference;
-import com.telas.enums.Permission;
 import com.telas.repositories.AdRepository;
-import com.telas.repositories.ClientRepository;
-import com.telas.services.AdminEmailAlertPreferenceService;
 import com.telas.services.NotificationService;
-import com.telas.services.PermissionService;
+import com.telas.services.notification.AdminAdsNotificationService;
+import com.telas.shared.utils.ClientPortalLinkResolver;
 import lombok.RequiredArgsConstructor;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
 import java.time.Instant;
@@ -26,13 +23,9 @@ import java.util.Map;
 public class AdOnAirNotificationHelper {
 
     private final NotificationService notificationService;
-    private final ClientRepository clientRepository;
-    private final PermissionService permissionService;
-    private final AdminEmailAlertPreferenceService adminEmailAlertPreferenceService;
+    private final AdminAdsNotificationService adminAdsNotificationService;
     private final AdRepository adRepository;
-
-    @Value("${front.base.url}")
-    private String frontBaseUrl;
+    private final ClientPortalLinkResolver clientPortalLinkResolver;
 
     public void notifyOnAirForNewMonitorAds(List<MonitorAd> newMonitorAds, Monitor monitor) {
         notifyOnAirForNewMonitorAds(newMonitorAds, monitor, true, true);
@@ -74,37 +67,20 @@ public class AdOnAirNotificationHelper {
                 Map<String, String> clientParams = new HashMap<>();
                 clientParams.put("name", client.getBusinessName());
                 clientParams.put("adName", ad.getName());
-                String clientLink = client.isPartner()
-                        ? frontBaseUrl + "/client/screens"
-                        : frontBaseUrl + "/client/my-telas?tab=ads";
-                clientParams.put("link", clientLink);
-                clientParams.put("partner", client.isPartner() ? "true" : "false");
+                clientParams.put("link", clientPortalLinkResolver.clientAdsTabLink(client));
+                clientParams.put("partner", clientPortalLinkResolver.partnerFlag(client));
                 notificationService.save(NotificationReference.CLIENT_AD_ON_AIR, client, clientParams, sendEmailNotifications);
             }
 
-            String adminLink = frontBaseUrl + "/admin/clients/" + client.getId() + "/messages";
             Map<String, String> adminParams = new HashMap<>();
             adminParams.put("clientName", client.getBusinessName());
             adminParams.put("adName", ad.getName());
-            adminParams.put("link", adminLink);
-            for (Client recipient : clientRepository.findAllAdminsAndDevelopers()) {
-                boolean canManageAds = recipient.isDeveloper()
-                        || permissionService.hasPermission(recipient, Permission.ADMIN_ADS_MANAGE);
-                if (!canManageAds) {
-                    continue;
-                }
-                boolean sendAdminEmail = sendEmailNotifications
-                        && !recipient.isDeveloper()
-                        && adminEmailAlertPreferenceService.wantsEmail(
-                                recipient.getId(), com.telas.enums.AdminEmailAlertCategory.ADS_MANAGEMENT);
-                notificationService.save(
-                        NotificationReference.ADMIN_AD_ON_AIR,
-                        recipient,
-                        new HashMap<>(adminParams),
-                        sendAdminEmail
-                );
-            }
+            adminParams.put("link", clientPortalLinkResolver.adminClientMessagesLink(client.getId()));
+            adminAdsNotificationService.notifyAdmins(
+                    NotificationReference.ADMIN_AD_ON_AIR,
+                    adminParams,
+                    sendEmailNotifications
+            );
         }
     }
 }
-

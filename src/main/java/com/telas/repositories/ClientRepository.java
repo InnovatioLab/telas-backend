@@ -29,6 +29,13 @@ public interface ClientRepository extends JpaRepository<Client, UUID>, JpaSpecif
     @Query("SELECT DISTINCT c FROM Client c LEFT JOIN FETCH c.addresses LEFT JOIN c.attachments LEFT JOIN c.ads LEFT JOIN c.subscriptions WHERE c.contact.email = :email")
     Optional<Client> findByEmail(String email);
 
+    @Query("""
+            SELECT c FROM Client c
+            JOIN FETCH c.contact
+            WHERE c.contact.email = :email AND c.status = 'ACTIVE'
+            """)
+    Optional<Client> findActiveByEmailForAuth(String email);
+
     @Query("SELECT c FROM Client c WHERE c.role = 'ADMIN'")
     List<Client> findAllAdmins();
 

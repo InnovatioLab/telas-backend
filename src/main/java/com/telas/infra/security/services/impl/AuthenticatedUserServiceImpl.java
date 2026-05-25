@@ -52,8 +52,7 @@ public class AuthenticatedUserServiceImpl implements AuthenticatedUserService {
         }
 
         if (email != null) {
-            Client client = clientRepository.findByEmail(email)
-                    .filter(data -> DefaultStatus.ACTIVE.equals(data.getStatus()))
+            Client client = clientRepository.findActiveByEmailForAuth(email)
                     .orElseThrow(() -> new UnauthorizedException(AuthValidationMessageConstants.ERROR_NO_AUTHENTICATION));
             return new AuthenticatedUser(client);
         }
@@ -118,6 +117,37 @@ public class AuthenticatedUserServiceImpl implements AuthenticatedUserService {
         if (!permissionService.hasPermission(loggedClient, permission)) {
             throw new ForbiddenException(AuthValidationMessageConstants.ERROR_NO_PERMISSION);
         }
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public AuthenticatedUser validatePrivilegedPanelOrPermission(Permission permission) {
+        Client loggedClient = getLoggedUser().client();
+        if (loggedClient.isPrivilegedPanelUser()) {
+            return new AuthenticatedUser(loggedClient);
+        }
+        validatePermission(permission);
+        return new AuthenticatedUser(loggedClient);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public AuthenticatedUser validatePartner() {
+        Client loggedClient = getLoggedUser().client();
+        if (loggedClient.isPartner()) {
+            return new AuthenticatedUser(loggedClient);
+        }
+        throw new ForbiddenException(AuthValidationMessageConstants.ERROR_NO_PERMISSION);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public AuthenticatedUser validateNonPartner() {
+        Client loggedClient = getLoggedUser().client();
+        if (loggedClient.isPartner()) {
+            throw new ForbiddenException(AuthValidationMessageConstants.ERROR_NO_PERMISSION);
+        }
+        return new AuthenticatedUser(loggedClient);
     }
 
     @Override

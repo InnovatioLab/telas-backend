@@ -2,31 +2,26 @@ package com.telas.helpers;
 
 import com.stripe.exception.StripeException;
 import com.stripe.model.Customer;
-import com.stripe.model.CustomerSearchResult;
-import com.stripe.param.CustomerCreateParams;
-import com.stripe.param.CustomerSearchParams;
 import com.telas.dtos.request.*;
 import com.telas.entities.*;
 import com.telas.enums.AdValidationType;
 import com.telas.enums.NotificationReference;
-import com.telas.enums.Role;
 import com.telas.infra.exceptions.BusinessRuleException;
 import com.telas.infra.exceptions.ResourceNotFoundException;
 import com.telas.repositories.*;
-import com.telas.services.AddressService;
-import com.telas.services.PartnerSlotAccessService;
 import com.telas.services.BucketService;
-import com.telas.services.MapsService;
 import com.telas.services.NotificationService;
+import com.telas.services.PartnerSlotAccessService;
+import com.telas.services.box.BoxPlaylistClient;
+import com.telas.services.client.ClientAddressService;
+import com.telas.services.payment.StripeSubscriptionLifecycle;
 import com.telas.shared.constants.SharedConstants;
 import com.telas.shared.constants.valitation.*;
 import com.telas.shared.utils.AttachmentUtils;
-import com.telas.shared.utils.HttpClientUtil;
 import com.telas.shared.utils.ValidateDataUtils;
 import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
@@ -45,19 +40,16 @@ public class ClientHelper {
     private final AdRepository adRepository;
     private final AdRequestRepository adRequestRepository;
     private final SubscriptionMonitorRepository subscriptionMonitorRepository;
-    private final AddressService addressService;
-    private final MapsService mapsService;
-    private final HttpClientUtil httpClient;
+    private final ClientAddressService clientAddressService;
     private final BucketService bucketService;
     private final NotificationService notificationService;
     private final BoxAdPushNotificationHelper boxAdPushNotificationHelper;
     private final PartnerSlotAccessService partnerSlotAccessService;
+    private final BoxPlaylistClient boxPlaylistClient;
+    private final StripeSubscriptionLifecycle stripeSubscriptionLifecycle;
 
     @Value("${front.base.url}")
     private String frontBaseUrl;
-
-    @Value("${TOKEN_SECRET}")
-    private String API_KEY;
 
     @Transactional(readOnly = true)
     public void validateClientRequest(ClientRequestDto request, Client client) {
@@ -78,9 +70,7 @@ public class ClientHelper {
 
     @Transactional
     public void verifyAddressesUnique(List<AddressRequestDto> addresses, Client client) {
-        if (!ValidateDataUtils.isNullOrEmpty(addresses) && Objects.nonNull(client)) {
-            addressService.createEntityList(addresses, client);
-        }
+        clientAddressService.verifyAddressesUnique(addresses, client);
     }
 
     @Transactional
@@ -179,7 +169,6 @@ public class ClientHelper {
                 .orElseThrow(() -> new ResourceNotFoundException(AdValidationMessages.AD_REQUEST_NOT_FOUND));
     }
 
-
     List<Attachment> getAttachmentsByIds(List<UUID> attachmentsIds) {
         return attachmentRepository.findByIdIn(attachmentsIds).orElseThrow(() -> new ResourceNotFoundException(AttachmentValidationMessages.ATTACHMENTS_NOT_FOUND));
     }
@@ -197,7 +186,6 @@ public class ClientHelper {
         }
     }
 
-
     @Transactional(readOnly = true)
     public Ad getAdById(UUID adId) {
         return adRepository.findByIdWithClientAndAdRequest(adId)
@@ -206,74 +194,7 @@ public class ClientHelper {
 
     @Transactional
     public void updateAddresses(List<AddressRequestDto> requestList, Client client) {
-        Set<UUID> receivedAddressIds = requestList.stream()
-                .map(AddressRequestDto::getId)
-                .filter(Objects::nonNull)
-                .collect(Collectors.toSet());
-
-        List<Address> addressesToRemove = client.getAddresses().stream()
-                .filter(address -> !receivedAddressIds.contains(address.getId()))
-                .toList();
-
-
-        addressesToRemove.forEach(address -> {
-            if (monitorRepository.existsByAddressId(address.getId())) {
-                throw new BusinessRuleException(AddressValidationMessages.ADDRESS_IN_USE_BY_MONITOR);
-            }
-        });
-
-        requestList.forEach(addressRequest -> {
-            if (addressRequest.getId() == null) {
-                createAddress(addressRequest, client);
-            } else {
-                updateExistingAddress(addressRequest, client);
-            }
-        });
-
-        if (!addressesToRemove.isEmpty()) {
-            client.getAddresses().removeAll(addressesToRemove);
-            addressService.deleteMany(addressesToRemove);
-        }
-    }
-
-    private void createAddress(AddressRequestDto addressRequest, Client client) {
-        Address address = addressService.createAddress(addressRequest, client);
-
-        if (Role.PARTNER.equals(client.getRole()) && address.getLatitude() == null && address.getLongitude() == null) {
-            mapsService.getAddressCoordinates(address);
-        }
-    }
-
-    private void updateExistingAddress(AddressRequestDto addressRequest, Client client) {
-        Address address = addressService.findById(addressRequest.getId());
-
-        if (!address.getClient().getId().equals(client.getId())) {
-            throw new BusinessRuleException(AddressValidationMessages.ADDRESS_NOT_BELONG_TO_CLIENT);
-        }
-
-        if (!address.hasChanged(addressRequest)) {
-            return;
-        }
-
-        boolean linkedToMonitor = monitorRepository.existsByAddressId(address.getId());
-        BeanUtils.copyProperties(
-                addressRequest,
-                address,
-                "latitude",
-                "longitude",
-                "client",
-                "monitors",
-                "locationName",
-                "locationDescription",
-                "photoUrl"
-        );
-        address.setUsernameUpdate(client.getBusinessName());
-
-        if (linkedToMonitor || Role.PARTNER.equals(client.getRole())) {
-            address.setLatitude(null);
-            address.setLongitude(null);
-            mapsService.getAddressCoordinates(address);
-        }
+        clientAddressService.updateAddresses(requestList, client);
     }
 
     @Transactional(readOnly = true)
@@ -371,45 +292,21 @@ public class ClientHelper {
         }
 
         if (!requestList.isEmpty()) {
-            Set<String> successfulBaseUrls = sendBoxesMonitorsUpdateAd(requestList);
+            Set<String> successfulBaseUrls = boxPlaylistClient.pushPlaylistUpdates(requestList);
             if (!successfulBaseUrls.isEmpty()) {
                 boxAdPushNotificationHelper.notifyAfterSuccessfulPush(grouped, successfulBaseUrls);
             }
         }
     }
 
-
     @Transactional
     public Customer getOrCreateCustomer(Subscription subscription) throws StripeException {
-        return getOrCreateCustomer(subscription.getClient());
+        return stripeSubscriptionLifecycle.getOrCreateCustomer(subscription);
     }
 
     @Transactional
     public Customer getOrCreateCustomer(Client client) throws StripeException {
-        if (Objects.nonNull(client.getStripeCustomerId())) {
-            try {
-                return Customer.retrieve(client.getStripeCustomerId());
-            } catch (StripeException e) {
-                log.warn("Failed to retrieve Customer from Stripe, creating new one.");
-            }
-        }
-
-        String email = client.getContact().getEmail();
-        CustomerSearchResult result = Customer.search(
-                CustomerSearchParams.builder()
-                        .setQuery("email:'" + email + "'")
-                        .build()
-        );
-
-        Address clientAddress = client.getAddresses().stream().findFirst().orElse(null);
-
-        Customer customer = result.getData().isEmpty()
-                ? createCustomer(client, clientAddress)
-                : result.getData().get(0);
-
-        client.setStripeCustomerId(customer.getId());
-        clientRepository.save(client);
-        return customer;
+        return stripeSubscriptionLifecycle.getOrCreateCustomer(client);
     }
 
     private boolean isMonitorEligibleForAd(Client client, Monitor monitor) {
@@ -454,36 +351,6 @@ public class ClientHelper {
         );
     }
 
-    private Set<String> sendBoxesMonitorsUpdateAd(List<UpdateBoxMonitorsAdRequestDto> requestList) {
-        Set<String> successfulBaseUrls = new HashSet<>();
-        if (requestList == null || requestList.isEmpty()) {
-            return successfulBaseUrls;
-        }
-
-        Map<String, List<UpdateBoxMonitorsAdRequestDto>> grouped = requestList.stream()
-                .filter(Objects::nonNull)
-                .collect(Collectors.groupingBy(UpdateBoxMonitorsAdRequestDto::getBaseUrl));
-
-        Map<String, String> headers = Map.of("X-API-KEY", API_KEY);
-
-        grouped.forEach((baseUrl, group) -> {
-            if (baseUrl == null || baseUrl.isBlank()) {
-                log.warn("Ignorando grupo com baseUrl nula ou vazia. Itens: {}", group.size());
-                return;
-            }
-
-            String url = baseUrl.endsWith("/") ? baseUrl + "update-ads" : baseUrl + "/update-ads";
-            try {
-                log.info("Sending ad update to box URL: {}", url);
-                httpClient.makePostRequest(url, group, Void.class, null, headers);
-                successfulBaseUrls.add(baseUrl);
-            } catch (Exception e) {
-                log.error("Error sending ad update to box URL: {}, message: {}", url, e.getMessage());
-            }
-        });
-        return successfulBaseUrls;
-    }
-
     @Transactional
     public void addMonitorToWishlist(UUID monitorId, Client client) {
         Monitor monitor = monitorRepository.findById(monitorId)
@@ -507,22 +374,6 @@ public class ClientHelper {
         return monitorRepository.findMonitorsWithActiveSubscriptionsByClientId(id);
     }
 
-    private Customer createCustomer(Client client, Address address) throws StripeException {
-        return Customer.create(CustomerCreateParams.builder()
-                .setEmail(client.getContact().getEmail())
-                .setName(client.getBusinessName())
-                .setPhone(client.getContact().getPhone())
-                .setAddress(CustomerCreateParams.Address.builder()
-                        .setLine1(address != null ? address.getStreet() : null)
-                        .setLine2(address != null ? address.getAddress2() : null)
-                        .setCity(address != null ? address.getCity() : null)
-                        .setState(address != null ? address.getState() : null)
-                        .setPostalCode(address != null ? address.getZipCode() : null)
-                        .setCountry(address != null ? address.getCountry() : null)
-                        .build())
-                .build());
-    }
-
     @Transactional
     public void validateEmail(String email) {
         if (ValidateDataUtils.isNullOrEmptyString(email)) {
@@ -533,5 +384,4 @@ public class ClientHelper {
             throw new BusinessRuleException(ContactValidationMessages.EMAIL_INVALID);
         }
     }
-
 }

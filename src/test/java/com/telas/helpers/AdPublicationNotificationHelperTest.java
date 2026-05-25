@@ -8,23 +8,20 @@ import com.telas.entities.MonitorAd;
 import com.telas.enums.AdValidationType;
 import com.telas.enums.NotificationReference;
 import com.telas.enums.Role;
-import com.telas.repositories.ClientRepository;
-import com.telas.services.AdminEmailAlertPreferenceService;
 import com.telas.services.NotificationService;
-import com.telas.services.PermissionService;
+import com.telas.services.notification.AdminAdsNotificationService;
+import com.telas.shared.utils.ClientPortalLinkResolver;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.test.util.ReflectionTestUtils;
 
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
 
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -39,19 +36,17 @@ class AdPublicationNotificationHelperTest {
     @Mock
     private NotificationService notificationService;
     @Mock
-    private ClientRepository clientRepository;
+    private AdminAdsNotificationService adminAdsNotificationService;
     @Mock
-    private PermissionService permissionService;
+    private ClientPortalLinkResolver clientPortalLinkResolver;
     @Mock
-    private AdminEmailAlertPreferenceService adminEmailAlertPreferenceService;
+    private MonitorSummaryFormatter monitorSummaryFormatter;
 
     @InjectMocks
     private AdPublicationNotificationHelper helper;
 
     @Test
     void notifyAfterPlaylistUpdate_withSuccessfulSync_shouldNotifyDeployAndOnAir() {
-        ReflectionTestUtils.setField(helper, "frontBaseUrl", "https://front.test");
-
         Client client = new Client();
         client.setId(UUID.randomUUID());
         client.setBusinessName("Partner Co");
@@ -86,8 +81,6 @@ class AdPublicationNotificationHelperTest {
 
     @Test
     void notifyAfterPlaylistUpdate_withoutBoxSync_shouldNotifyPendingPlaylist() {
-        ReflectionTestUtils.setField(helper, "frontBaseUrl", "https://front.test");
-
         Client client = new Client();
         client.setId(UUID.randomUUID());
         client.setBusinessName("Partner Co");
@@ -105,6 +98,12 @@ class AdPublicationNotificationHelperTest {
         Monitor monitor = new Monitor();
         monitor.setId(UUID.randomUUID());
 
+        when(monitorSummaryFormatter.formatMonitorLine(monitor)).thenReturn("");
+        when(clientPortalLinkResolver.clientAdsTabLink(client)).thenReturn("https://front.test/client/screens");
+        when(clientPortalLinkResolver.partnerFlag(client)).thenReturn("true");
+        when(clientPortalLinkResolver.adminClientMessagesLink(client.getId()))
+                .thenReturn("https://front.test/admin/clients/" + client.getId() + "/messages");
+
         helper.notifyAfterPlaylistUpdate(monitor, List.of(monitorAd), Set.of(), List.of());
 
         verify(notificationService).save(
@@ -112,6 +111,9 @@ class AdPublicationNotificationHelperTest {
                 eq(client),
                 any(),
                 eq(true));
+        verify(adminAdsNotificationService).notifyAdmins(
+                eq(NotificationReference.ADMIN_AD_ADDED_TO_PLAYLIST_PENDING_SYNC),
+                any());
         verify(adOnAirNotificationHelper).notifyOnAirForNewMonitorAds(
                 List.of(monitorAd), monitor, false);
     }

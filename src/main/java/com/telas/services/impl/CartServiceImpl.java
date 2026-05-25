@@ -16,6 +16,7 @@ import com.telas.repositories.SubscriptionRepository;
 import com.telas.repositories.SubscriptionFlowRepository;
 import com.telas.services.CartService;
 import com.telas.services.PartnerSlotAccessService;
+import com.telas.services.partner.PartnerPlacementRules;
 import com.telas.shared.constants.SharedConstants;
 import com.telas.shared.constants.valitation.CartValidationMessages;
 import com.telas.shared.constants.valitation.MonitorValidationMessages;
@@ -37,6 +38,7 @@ public class CartServiceImpl implements CartService {
     private final AuthenticatedUserService authenticatedUserService;
     private final MonitorRepository monitorRepository;
     private final PartnerSlotAccessService partnerSlotAccessService;
+    private final PartnerPlacementRules partnerPlacementRules;
 
     @Override
     @Transactional
@@ -178,7 +180,7 @@ public class CartServiceImpl implements CartService {
                 throw new BusinessRuleException(CartValidationMessages.MAX_QUANTITY_MONITOR_BLOCK);
             }
 
-            if (!monitor.isPartner(cart.getClient())) {
+            if (!partnerPlacementRules.partnerOwnsMonitor(monitor, cart.getClient())) {
                 CartItem cartItem = actualItems.get(monitorId);
                 
                 if (cartItem == null) {

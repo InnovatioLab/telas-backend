@@ -23,6 +23,7 @@ import java.time.ZoneOffset;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.Set;
+import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
@@ -64,10 +65,10 @@ public class TokenServiceImpl implements TokenService {
                     .build()
                     .verify(token);
 
-            Long id = decodedJWT.getClaim("id").asLong();
             String email = decodedJWT.getClaim("email").asString();
+            UUID clientId = resolveClientId(decodedJWT.getClaim("id"));
 
-            return new TokenData(id, email);
+            return new TokenData(clientId, email);
         } catch (JWTVerificationException ex) {
             log.error("Error while verifying JWT token, message: {}", ex.getMessage());
             return null;
@@ -86,5 +87,18 @@ public class TokenServiceImpl implements TokenService {
                 set.add(String.valueOf(permission))
         );
         return set;
+    }
+
+    private static UUID resolveClientId(com.auth0.jwt.interfaces.Claim idClaim) {
+        if (idClaim == null || idClaim.isNull()) {
+            return null;
+        }
+
+        String idAsString = idClaim.asString();
+        if (idAsString == null || idAsString.isBlank()) {
+            return null;
+        }
+
+        return UUID.fromString(idAsString);
     }
 }

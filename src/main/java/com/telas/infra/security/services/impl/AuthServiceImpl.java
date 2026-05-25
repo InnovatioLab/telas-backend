@@ -2,6 +2,7 @@ package com.telas.infra.security.services.impl;
 
 import com.telas.infra.exceptions.BusinessRuleException;
 import com.telas.infra.exceptions.UnauthorizedException;
+import org.springframework.util.StringUtils;
 import com.telas.infra.security.model.AuthenticatedUser;
 import com.telas.infra.security.model.LoginRequestDto;
 import com.telas.infra.security.model.PasswordRequestDto;
@@ -31,8 +32,13 @@ public class AuthServiceImpl implements AuthService {
     @Override
     @Transactional(readOnly = true)
     public String login(LoginRequestDto requestDto) {
+        String loginId = requestDto.getUsername();
+        if (!StringUtils.hasText(loginId) || !loginId.contains("@")) {
+            throw new BusinessRuleException(AuthValidationMessageConstants.LOGIN_REQUIRES_EMAIL);
+        }
+
         try {
-            AuthenticatedUser authenticatedUser = (AuthenticatedUser) userDetailsService.loadUserByUsername(requestDto.getUsername());
+            AuthenticatedUser authenticatedUser = (AuthenticatedUser) userDetailsService.loadUserByUsername(loginId);
 
             if (!passwordEncoder.matches(requestDto.getPassword(), authenticatedUser.getPassword())) {
                 throw new BusinessRuleException(AuthValidationMessageConstants.INVALID_CREDENTIALS);

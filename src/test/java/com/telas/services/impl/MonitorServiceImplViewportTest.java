@@ -3,10 +3,7 @@ package com.telas.services.impl;
 import com.telas.infra.exceptions.BusinessRuleException;
 import com.telas.infra.security.services.AuthenticatedUserService;
 import com.telas.repositories.MonitorRepository;
-import com.telas.services.AdUnusedTrackingService;
-import com.telas.services.BucketService;
-import com.telas.services.SubscriptionService;
-import com.telas.helpers.MonitorHelper;
+import com.telas.services.monitor.MonitorMapQueryService;
 import com.telas.shared.constants.valitation.MonitorValidationMessages;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -14,7 +11,6 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.test.util.ReflectionTestUtils;
 
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
@@ -31,24 +27,14 @@ class MonitorServiceImplViewportTest {
     @Mock
     private MonitorRepository repository;
 
-    @Mock
-    private BucketService bucketService;
-
-    @Mock
-    private SubscriptionService subscriptionService;
-
-    @Mock
-    private MonitorHelper helper;
-
-    @Mock
-    private AdUnusedTrackingService adUnusedTrackingService;
-
     @InjectMocks
+    private MonitorMapQueryService monitorMapQueryService;
+
     private MonitorServiceImpl monitorService;
 
     @BeforeEach
-    void setStripeProductId() {
-        ReflectionTestUtils.setField(monitorService, "productId", "price_test");
+    void setUp() {
+        monitorService = new MonitorServiceImpl(null, monitorMapQueryService, null);
     }
 
     @Test

@@ -7,16 +7,11 @@ import com.telas.enums.Recurrence;
 import com.telas.enums.Role;
 import com.telas.infra.exceptions.ResourceNotFoundException;
 import com.telas.repositories.ClientRepository;
-import com.telas.repositories.MonitorRepository;
 import com.telas.repositories.SubscriptionFlowRepository;
-import com.telas.repositories.SubscriptionRepository;
-import com.telas.services.BucketService;
 import com.telas.services.CartService;
 import com.telas.services.EmailService;
-import com.telas.services.MonitorSubscriptionService;
 import com.telas.services.NotificationService;
-import com.telas.services.PartnerSlotAccessService;
-import com.telas.services.PaymentService;
+import com.telas.services.payment.SubscriptionPurchaseCompletionHandler;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -40,31 +35,13 @@ import static org.mockito.Mockito.when;
 class SubscriptionHelperNotificationDedupTest {
 
     @Mock
-    private SubscriptionRepository repository;
-
-    @Mock
     private SubscriptionFlowRepository subscriptionFlowRepository;
 
     @Mock
     private CartService cartService;
 
     @Mock
-    private MonitorRepository monitorRepository;
-
-    @Mock
-    private MonitorSubscriptionService monitorSubscriptionService;
-
-    @Mock
-    private BucketService bucketService;
-
-    @Mock
     private NotificationService notificationService;
-
-    @Mock
-    private PaymentService paymentService;
-
-    @Mock
-    private ClientHelper clientHelper;
 
     @Mock
     private ClientRepository clientRepository;
@@ -72,11 +49,8 @@ class SubscriptionHelperNotificationDedupTest {
     @Mock
     private EmailService emailService;
 
-    @Mock
-    private PartnerSlotAccessService partnerSlotAccessService;
-
     @InjectMocks
-    private SubscriptionHelper helper;
+    private SubscriptionPurchaseCompletionHandler handler;
 
     @Test
     void handleNonRecurringPayment_shouldNotCreateDuplicateClientConfirmationNotification() {
@@ -94,7 +68,7 @@ class SubscriptionHelperNotificationDedupTest {
         doThrow(new ResourceNotFoundException("cart not found")).when(cartService).findActiveByClientIdWithItens(any());
         when(clientRepository.findAllAdmins()).thenReturn(List.of());
 
-        helper.handleNonRecurringPayment(subscription);
+        handler.handleNonRecurringPayment(subscription);
 
         verify(notificationService, times(1)).save(eq(NotificationReference.FIRST_SUBSCRIPTION), eq(client), any(), eq(true));
         verify(notificationService, times(0)).save(eq(NotificationReference.NEW_SUBSCRIPTION), eq(client), any(), anyBoolean());
@@ -114,9 +88,8 @@ class SubscriptionHelperNotificationDedupTest {
         subscription.setStartedAt(Instant.now());
         subscription.setRecurrence(Recurrence.MONTHLY);
 
-        helper.sendPurchaseConfirmationEmail(subscription);
+        handler.sendPurchaseConfirmationEmail(subscription);
 
         verify(notificationService, never()).save(any(), any(), any(), anyBoolean());
     }
 }
-

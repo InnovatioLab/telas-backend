@@ -2,1153 +2,139 @@ package com.telas.services.impl;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.telas.dtos.request.AttachmentRequestDto;
-import com.telas.dtos.request.MonitorAdRequestDto;
-import com.telas.dtos.request.PartnerAdRequestToAdminDto;
+import com.telas.dtos.request.MonitorRequestDto;
 import com.telas.dtos.request.PartnerAdSubmissionRequestDto;
 import com.telas.dtos.request.PartnerDirectAdRequestDto;
-import com.telas.enums.AdRequestOrigin;
-import com.telas.enums.PartnerSubmissionMode;
-import com.telas.helpers.ClientHelper;
-import com.telas.dtos.request.MonitorRequestDto;
-import com.telas.dtos.request.UpdateBoxMonitorsAdRequestDto;
 import com.telas.dtos.request.filters.FilterMonitorRequestDto;
 import com.telas.dtos.response.*;
-import com.telas.entities.*;
-import com.telas.enums.SubscriptionStatus;
-import com.telas.helpers.AdPublicationNotificationHelper;
-import com.telas.helpers.AdOnAirNotificationHelper;
-import com.telas.helpers.BoxAdPushNotificationHelper;
-import com.telas.helpers.MonitorHelper;
-import com.telas.infra.exceptions.BusinessRuleException;
-import com.telas.infra.exceptions.ForbiddenException;
-import com.telas.infra.exceptions.ResourceNotFoundException;
-import com.telas.infra.security.model.AuthenticatedUser;
-import com.telas.infra.security.services.AuthenticatedUserService;
-import com.telas.repositories.AdRepository;
-import com.telas.repositories.ClientRepository;
-import com.telas.repositories.MonitorAdRepository;
-import com.telas.repositories.MonitorRepository;
-import com.telas.shared.constants.valitation.ClientValidationMessages;
-import com.telas.enums.AdValidationType;
-import com.telas.enums.NotificationReference;
-import com.telas.services.AdUnusedTrackingService;
-import com.telas.services.BucketService;
+import com.telas.entities.Monitor;
+import com.telas.entities.Subscription;
 import com.telas.services.MonitorService;
-import com.telas.services.NotificationService;
-import com.telas.services.MonitorSubscriptionService;
-import com.telas.services.PartnerSlotAccessService;
 import com.telas.services.RemoveMonitorAdsOutcome;
-import com.telas.services.SubscriptionService;
-import com.telas.services.impl.UnusedSingleAdDeletionService;
-import com.telas.shared.audit.CustomRevisionListener;
-import com.telas.shared.constants.valitation.AuthValidationMessageConstants;
-import com.telas.shared.constants.SharedConstants;
-import com.telas.shared.constants.valitation.MonitorValidationMessages;
-import com.telas.shared.utils.AttachmentUtils;
-import com.telas.shared.utils.MonitorBlocksUtils;
-import com.telas.shared.utils.PaginationFilterUtil;
-import com.telas.shared.utils.ValidateDataUtils;
-import jakarta.persistence.criteria.Predicate;
+import com.telas.services.monitor.MonitorCrudService;
+import com.telas.services.monitor.MonitorMapQueryService;
+import com.telas.services.monitor.PartnerMonitorAdService;
 import lombok.RequiredArgsConstructor;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageRequest;
-import org.springframework.data.domain.Pageable;
-import org.springframework.data.domain.Sort;
-import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.transaction.support.TransactionSynchronization;
-import org.springframework.transaction.support.TransactionSynchronizationManager;
 
-import java.util.*;
-import java.util.concurrent.atomic.AtomicInteger;
-import java.util.stream.Collectors;
-import java.util.stream.IntStream;
+import java.util.List;
+import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
 public class MonitorServiceImpl implements MonitorService {
 
-	private static final double MAX_VIEWPORT_AXIS_SPAN_DEG = 0.5;
-	private static final double VIEWPORT_AXIS_SPAN_FP_EPSILON = 1e-6;
-	private static final int VIEWPORT_MAX_RESULTS = 300;
-
-	private final Logger log = LoggerFactory.getLogger(MonitorServiceImpl.class);
-
-	private final AuthenticatedUserService authenticatedUserService;
-
-	private final MonitorRepository repository;
-
-	private final AdRepository adRepository;
-
-	private final MonitorAdRepository monitorAdRepository;
-
-	private final ClientRepository clientRepository;
-
-	private final BucketService bucketService;
-
-	private final SubscriptionService subscriptionService;
-
-	private final MonitorHelper helper;
-
-	private final AdOnAirNotificationHelper adOnAirNotificationHelper;
-
-	private final AdPublicationNotificationHelper adPublicationNotificationHelper;
-
-	private final BoxAdPushNotificationHelper boxAdPushNotificationHelper;
-
-	private final AdUnusedTrackingService adUnusedTrackingService;
-
-	private final MonitorSubscriptionService monitorSubscriptionService;
-
-	private final UnusedSingleAdDeletionService unusedSingleAdDeletionService;
-
-	private final PartnerSlotAccessService partnerSlotAccessService;
-
-	private final NotificationService notificationService;
-
-	private final ClientHelper clientHelper;
-
-	@Value("${stripe.product.id}")
-	private String productId;
-
-	@Value("${front.base.url}")
-	private String frontBaseUrl;
-
+	private final MonitorCrudService monitorCrudService;
+	private final MonitorMapQueryService monitorMapQueryService;
+	private final PartnerMonitorAdService partnerMonitorAdService;
 
 	@Override
 	@Transactional
-	public UUID save(MonitorRequestDto request, UUID monitorId) throws JsonProcessingException {
-		AuthenticatedUser authenticatedUser = authenticatedUserService.getLoggedUser();
-		validateSaveAccess(monitorId, authenticatedUser);
-		request.validate();
-		Address address = helper.getAddress(request);
-
-		if (monitorId != null) {
-			validateAddressAvailability(address, monitorId);
-			final List<Ad> ads;
-			if (request.getAds() == null) {
-				Monitor current = findEntityById(monitorId);
-				ads = new ArrayList<>(current.getAds());
-			} else if (request.getAds().isEmpty()) {
-				ads = List.of();
-			} else {
-				ads = helper.getAds(request, monitorId);
-			}
-			updateExistingMonitor(request, monitorId, authenticatedUser, address, ads);
-			return null;
-		}
-
-		validateAddressAvailability(address);
-		Monitor created = createNewMonitor(authenticatedUser, address);
-		return created.getId();
-	}
-
-	private void validateSaveAccess(UUID monitorId, AuthenticatedUser user) {
-		Client c = user.client();
-		if (c.isAdmin() || c.isDeveloper()) {
-			return;
-		}
-		if (monitorId == null) {
-			throw new ForbiddenException(AuthValidationMessageConstants.ERROR_NO_PERMISSION);
-		}
-		Monitor monitor = findEntityById(monitorId);
-		if (c.isPartner() && partnerOwnsMonitorAddress(c, monitor)) {
-			return;
-		}
-		if (repository.hasActiveSubscriptionForClientAndMonitor(c.getId(), monitorId)) {
-			return;
-		}
-		throw new ForbiddenException(AuthValidationMessageConstants.ERROR_NO_PERMISSION);
-	}
-
-	private static boolean partnerOwnsMonitorAddress(Client partner, Monitor monitor) {
-		if (monitor.getAddress() == null || monitor.getAddress().getClient() == null) {
-			return false;
-		}
-		return monitor.getAddress().getClient().getId().equals(partner.getId());
+	public UUID save(MonitorRequestDto requestDto, UUID monitorId) throws JsonProcessingException {
+		return monitorCrudService.save(requestDto, monitorId);
 	}
 
 	@Override
 	@Transactional
 	public RemoveMonitorAdsOutcome removeMonitorAdsFromSubscription(Subscription subscription) {
-		return monitorSubscriptionService.removeMonitorAdsFromSubscription(subscription);
+		return monitorCrudService.removeMonitorAdsFromSubscription(subscription);
 	}
-
 
 	@Override
 	@Transactional(readOnly = true)
 	public MonitorResponseDto findById(UUID monitorId) {
-		Monitor entity = repository.findById(monitorId)
-			.orElseThrow(() -> new ResourceNotFoundException(MonitorValidationMessages.MONITOR_NOT_FOUND));
-
-		List<MonitorAdResponseDto> adLinks = helper.getMonitorAdsResponse(entity);
-
-		return new MonitorResponseDto(entity, adLinks, adRepository.countAllApprovedNotInMonitor(entity.getId()));
+		return monitorCrudService.findById(monitorId);
 	}
-
 
 	@Override
 	@Transactional
 	public Monitor findEntityById(UUID monitorId) {
-		return repository.findById(monitorId)
-			.orElseThrow(() -> new ResourceNotFoundException(MonitorValidationMessages.MONITOR_NOT_FOUND));
+		return monitorCrudService.findEntityById(monitorId);
 	}
-
 
 	@Override
 	@Transactional(readOnly = true)
 	public List<MonitorMapsResponseDto> findNearestActiveMonitors(String zipCode) {
-		Client client = authenticatedUserService.getLoggedUser().client();
-		return repository.findAvailableMonitorsByZipCode(zipCode, client.getId()).stream()
-				.map(monitor -> toMonitorMapsResponseDto(monitor, client))
-				.toList();
+		return monitorMapQueryService.findNearestActiveMonitors(zipCode);
 	}
 
 	@Override
 	@Transactional(readOnly = true)
 	public List<MonitorMapsResponseDto> findAvailableMonitorsInViewport(
 			double minLat, double maxLat, double minLng, double maxLng) {
-		validateViewportBounds(minLat, maxLat, minLng, maxLng);
-		Client client = authenticatedUserService.getLoggedUser().client();
-		Pageable pageable = PageRequest.of(0, VIEWPORT_MAX_RESULTS);
-		return repository
-				.findAvailableMonitorsInBounds(minLat, maxLat, minLng, maxLng, client.getId(), pageable)
-				.getContent()
-				.stream()
-				.map(monitor -> toMonitorMapsResponseDto(monitor, client))
-				.toList();
-	}
-
-	private void validateViewportBounds(double minLat, double maxLat, double minLng, double maxLng) {
-		if (minLat >= maxLat || minLng >= maxLng) {
-			throw new BusinessRuleException(MonitorValidationMessages.MONITOR_VIEWPORT_BOUNDS_INVALID);
-		}
-		if (minLat < -90 || maxLat > 90 || minLng < -180 || maxLng > 180) {
-			throw new BusinessRuleException(MonitorValidationMessages.MONITOR_VIEWPORT_BOUNDS_INVALID);
-		}
-		double latSpan = maxLat - minLat;
-		double lngSpan = maxLng - minLng;
-		if (latSpan > MAX_VIEWPORT_AXIS_SPAN_DEG + VIEWPORT_AXIS_SPAN_FP_EPSILON
-				|| lngSpan > MAX_VIEWPORT_AXIS_SPAN_DEG + VIEWPORT_AXIS_SPAN_FP_EPSILON) {
-			throw new BusinessRuleException(MonitorValidationMessages.MONITOR_VIEWPORT_BOUNDS_INVALID);
-		}
+		return monitorMapQueryService.findAvailableMonitorsInViewport(minLat, maxLat, minLng, maxLng);
 	}
 
 	@Override
 	@Transactional(readOnly = true)
 	public List<MonitorMapsResponseDto> findMonitorsForAdminMapByZipCode(String zipCode) {
-		authenticatedUserService.validateAdmin();
-		return repository.findAllForAdminMapByZipCode(zipCode).stream().map(this::toMonitorMapsResponseDto).toList();
+		return monitorMapQueryService.findMonitorsForAdminMapByZipCode(zipCode);
 	}
-
-	private MonitorMapsResponseDto toMonitorMapsResponseDto(Monitor monitor) {
-		return toMonitorMapsResponseDto(monitor, null);
-	}
-
-	private MonitorMapsResponseDto toMonitorMapsResponseDto(Monitor monitor, Client viewingClient) {
-		List<SubscriptionMonitor> subscriptionMonitors = helper.getSubscriptionsMonitorsFromMonitor(monitor.getId());
-
-		int totalSubscriptionBlocks = MonitorBlocksUtils.sumSubscriptionBlocks(subscriptionMonitors);
-
-		Map<UUID, SubscriptionMonitor> subsByClientId = subscriptionMonitors.stream()
-			.filter(sm -> sm.getSubscription() != null && sm.getSubscription().getClient() != null)
-			.collect(Collectors.toMap(sm -> sm.getSubscription().getClient().getId(), sm -> sm, (a, b) -> a));
-
-		long unmatchedAdsCount = monitor.getMonitorAds().stream().filter(ma -> {
-			UUID clientIdAd =
-				ma.getAd() != null && ma.getAd().getClient() != null ? ma.getAd().getClient().getId() : null;
-			return clientIdAd == null || !subsByClientId.containsKey(clientIdAd);
-		}).count();
-
-		int adsDailyMinutes = MonitorBlocksUtils.calculateAdsDailyDisplayTimeInMinutes(monitor.getMaxBlocks(),
-			totalSubscriptionBlocks, unmatchedAdsCount);
-
-		Client viewingPartner = viewingClient != null && viewingClient.isPartner() ? viewingClient : null;
-		return new MonitorMapsResponseDto(monitor, adsDailyMinutes, viewingPartner);
-	}
-
 
 	@Override
 	@Transactional(readOnly = true)
 	public List<MonitorsBoxMinResponseDto> findAllMonitors() {
-		return repository.findAll().stream().map(MonitorsBoxMinResponseDto::new).collect(Collectors.toList());
+		return monitorCrudService.findAllMonitors();
 	}
-
 
 	@Override
 	@Transactional(readOnly = true)
 	public List<MonitorValidAdResponseDto> findValidAdsForMonitor(UUID monitorId, String name) {
-		authenticatedUserService.validateAdmin();
-		Monitor monitor = findEntityById(monitorId);
-		return helper.getValidAdsForMonitor(monitor, name);
+		return monitorCrudService.findValidAdsForMonitor(monitorId, name);
 	}
-
 
 	@Override
 	@Transactional(readOnly = true)
 	public PaginationResponseDto<List<MonitorResponseDto>> findAllByFilters(FilterMonitorRequestDto request) {
-		authenticatedUserService.validateAdmin();
-
-		Sort order = request.setOrdering();
-		Pageable pageable = PaginationFilterUtil.getPageable(request, order);
-		Specification<Monitor> filter = PaginationFilterUtil.addSpecificationFilter(null, request.getGenericFilter(),
-			this::filterMonitors);
-
-		Page<Monitor> page = repository.findAll(filter, pageable);
-		List<MonitorResponseDto> response = page.stream()
-			.map(monitor -> new MonitorResponseDto(
-				monitor,
-				helper.getMonitorAdsResponse(monitor),
-				adRepository.countAllApprovedNotInMonitor(monitor.getId())
-			)).toList();
-
-		return PaginationResponseDto.fromResult(response, (int) page.getTotalElements(), page.getTotalPages(),
-			request.getPage());
+		return monitorCrudService.findAllByFilters(request);
 	}
 
 	@Override
 	@Transactional(readOnly = true)
 	public List<MonitorResponseDto> findMonitorsForLoggedPartner() {
-		Client partner = authenticatedUserService.getLoggedUser().client();
-		if (!partner.isPartner()) {
-			throw new ForbiddenException(AuthValidationMessageConstants.ERROR_NO_PERMISSION);
-		}
-		LinkedHashSet<UUID> monitorIds = new LinkedHashSet<>();
-		repository.findAllByAddressClientId(partner.getId()).forEach(m -> monitorIds.add(m.getId()));
-		monitorAdRepository.findDistinctMonitorIdsByAdvertiserClientIdApproved(partner.getId())
-				.forEach(monitorIds::add);
-		adRepository.findDistinctPendingTargetMonitorIdsForPartner(partner.getId()).forEach(monitorIds::add);
-
-		return monitorIds.stream()
-				.map(this::findEntityById)
-				.map(monitor -> {
-					List<MonitorAdResponseDto> myAds =
-							helper.getPartnerAdvertiserAdsForPortal(monitor, partner.getId());
-					boolean partnerOwned = partnerOwnsMonitorAddress(partner, monitor);
-					if (myAds.isEmpty() && !partnerOwned) {
-						return null;
-					}
-					return new MonitorResponseDto(
-							monitor,
-							myAds,
-							adRepository.countAllApprovedNotInMonitor(monitor.getId()),
-							myAds.size());
-				})
-				.filter(Objects::nonNull)
-				.toList();
+		return partnerMonitorAdService.findMonitorsForLoggedPartner();
 	}
 
 	@Override
 	@Transactional(readOnly = true)
 	public MonitorResponseDto findMonitorForPartnerPlacement(UUID monitorId) {
-		Client partner = authenticatedUserService.getLoggedUser().client();
-		if (!partner.isPartner()) {
-			throw new ForbiddenException(AuthValidationMessageConstants.ERROR_NO_PERMISSION);
-		}
-		Monitor monitor = findEntityById(monitorId);
-		validatePartnerPlacementAccess(partner, monitor);
-		return new MonitorResponseDto(
-				monitor,
-				helper.getMonitorAdsResponse(monitor),
-				adRepository.countAllApprovedNotInMonitor(monitor.getId()));
+		return partnerMonitorAdService.findMonitorForPartnerPlacement(monitorId);
 	}
 
 	@Override
 	@Transactional
 	public UUID uploadDirectAdToMonitor(UUID monitorId, AttachmentRequestDto request) {
-		request.validate();
-		Client actor = authenticatedUserService.getLoggedUser().client();
-		if (actor.isPartner()) {
-			throw new ForbiddenException(AuthValidationMessageConstants.ERROR_NO_PERMISSION);
-		}
-		authenticatedUserService.validateAdmin();
-		return executeDirectAdUpload(monitorId, request, null, actor, false, false);
+		return partnerMonitorAdService.uploadDirectAdToMonitor(monitorId, request);
 	}
 
 	@Override
 	@Transactional
 	public UUID uploadPartnerDirectAdToMonitor(UUID monitorId, PartnerDirectAdRequestDto request) {
-		Client actor = authenticatedUserService.getLoggedUser().client();
-		if (!actor.isPartner()) {
-			throw new ForbiddenException(AuthValidationMessageConstants.ERROR_NO_PERMISSION);
-		}
-		Monitor monitor = findEntityById(monitorId);
-		boolean partnerForeignPlacement = !partnerOwnsMonitorAddress(actor, monitor);
-		if (partnerForeignPlacement) {
-			request.validateForeignPlacement();
-			if (!partnerSlotAccessService.hasGlobalSlotsPermission(actor)) {
-				throw new ForbiddenException(AuthValidationMessageConstants.ERROR_NO_PERMISSION);
-			}
-		} else {
-			request.validate();
-		}
-		PartnerAdSubmissionRequestDto submission = new PartnerAdSubmissionRequestDto();
-		submission.setSubmissionMode(PartnerSubmissionMode.READY_CREATIVE);
-		submission.setAttachment(request.getAttachment());
-		submission.setOptionalLabel(request.getAdLabel());
-		return submitPartnerAdSubmission(monitorId, submission);
+		return partnerMonitorAdService.uploadPartnerDirectAdToMonitor(monitorId, request);
 	}
 
 	@Override
 	@Transactional
 	public UUID submitPartnerAdSubmission(UUID monitorId, PartnerAdSubmissionRequestDto request) {
-		request.validate();
-		Client actor = authenticatedUserService.getLoggedUser().client();
-		if (!actor.isPartner()) {
-			throw new ForbiddenException(AuthValidationMessageConstants.ERROR_NO_PERMISSION);
-		}
-		Monitor monitor = findEntityById(monitorId);
-		boolean partnerForeignPlacement = !partnerOwnsMonitorAddress(actor, monitor);
-		if (partnerForeignPlacement) {
-			if (!partnerSlotAccessService.hasGlobalSlotsPermission(actor)) {
-				throw new ForbiddenException(AuthValidationMessageConstants.ERROR_NO_PERMISSION);
-			}
-		} else {
-			if (request.getSubmissionMode() == PartnerSubmissionMode.ADMIN_MATERIALS
-					|| request.getSubmissionMode() == PartnerSubmissionMode.PARTNER_FINISHED_CREATIVE) {
-				throw new BusinessRuleException(MonitorValidationMessages.PARTNER_MATERIALS_FOREIGN_ONLY);
-			}
-		}
-
-		return switch (request.getSubmissionMode()) {
-			case READY_CREATIVE -> executeDirectAdUpload(
-					monitorId,
-					request.getAttachment(),
-					resolveOptionalLabel(request),
-					actor,
-					partnerForeignPlacement,
-					partnerForeignPlacement);
-			case ADMIN_MATERIALS -> submitPartnerMaterialsRequest(monitorId, request, actor, monitor);
-			case PARTNER_FINISHED_CREATIVE -> submitPartnerFinishedCreativeRequest(monitorId, request, actor, monitor);
-		};
-	}
-
-	private String resolveOptionalLabel(PartnerAdSubmissionRequestDto request) {
-		if (request.getOptionalLabel() != null && !request.getOptionalLabel().isBlank()) {
-			return request.getOptionalLabel().trim();
-		}
-		if (request.getAttachment() != null && request.getAttachment().getName() != null) {
-			return request.getAttachment().getName().replaceAll("\\.[^.]+$", "");
-		}
-		return null;
-	}
-
-	private UUID submitPartnerMaterialsRequest(
-			UUID monitorId,
-			PartnerAdSubmissionRequestDto request,
-			Client partner,
-			Monitor monitor) {
-		PartnerAdRequestToAdminDto materialsRequest = new PartnerAdRequestToAdminDto();
-		materialsRequest.setTargetMonitorId(monitorId);
-		materialsRequest.setAttachmentIds(request.getAttachmentIds());
-		materialsRequest.setOptionalLabel(request.getOptionalLabel());
-
-		if (partner.getAds().size() >= SharedConstants.MAX_ADS_PER_CLIENT) {
-			throw new BusinessRuleException(ClientValidationMessages.MAX_ADS_REACHED);
-		}
-		validatePartnerPlacementAccess(partner, monitor);
-
-		AdRequest created = clientHelper.createPartnerAdRequest(materialsRequest, partner, monitor);
-		notifyAdminsPartnerMaterialsSubmitted(partner, monitor, created);
-		return created.getId();
-	}
-
-	private UUID submitPartnerFinishedCreativeRequest(
-			UUID monitorId,
-			PartnerAdSubmissionRequestDto request,
-			Client partner,
-			Monitor monitor) {
-		if (partner.getAds().size() >= SharedConstants.MAX_ADS_PER_CLIENT) {
-			throw new BusinessRuleException(ClientValidationMessages.MAX_ADS_REACHED);
-		}
-		validatePartnerPlacementAccess(partner, monitor);
-
-		PartnerAdRequestToAdminDto dto = new PartnerAdRequestToAdminDto();
-		dto.setTargetMonitorId(monitorId);
-		dto.setOptionalLabel(request.getOptionalLabel());
-
-		AdRequest created = clientHelper.createPartnerFinishedCreativeRequest(
-				dto,
-				partner,
-				monitor,
-				request.getAttachment());
-		notifyAdminsPartnerMaterialsSubmitted(partner, monitor, created);
-		return created.getId();
-	}
-
-	private UUID executeDirectAdUpload(
-			UUID monitorId,
-			AttachmentRequestDto request,
-			String adLabel,
-			Client actor,
-			boolean partnerForeignPlacement,
-			boolean deferBoxSyncForForeign) {
-		Monitor monitor = findEntityById(monitorId);
-
-		final Client adOwner;
-		if (actor.isPartner()) {
-			validatePartnerPlacementAccess(actor, monitor);
-			adOwner = clientRepository.findById(actor.getId())
-					.orElseThrow(() -> new ResourceNotFoundException(ClientValidationMessages.USER_NOT_FOUND));
-			if (adOwner.getAds().size() >= SharedConstants.MAX_ADS_PER_CLIENT) {
-				throw new BusinessRuleException(ClientValidationMessages.MAX_ADS_REACHED);
-			}
-		} else {
-			adOwner = actor;
-		}
-
-		Ad ad = new Ad(request, adOwner);
-		if (adLabel != null && !adLabel.isBlank()) {
-			ad.setName(adLabel.trim());
-		}
-		ad.setValidation(AdValidationType.APPROVED);
-		ad.setUsernameCreate(actor.getBusinessName());
-		Ad saved = adRepository.save(ad);
-		adOwner.getAds().add(saved);
-		clientRepository.save(adOwner);
-
-		bucketService.upload(
-			request.getBytes(),
-			AttachmentUtils.format(saved),
-			request.getType(),
-			new java.io.ByteArrayInputStream(request.getBytes())
-		);
-
-		List<Ad> nextAds = new ArrayList<>(monitor.getAds());
-		nextAds.add(saved);
-		validateMonitorAdsQuotas(monitor, nextAds);
-
-		monitor.getMonitorAds().add(new MonitorAd(monitor, saved));
-		repository.save(monitor);
-		adUnusedTrackingService.syncUnusedStateForAdIds(List.of(saved.getId()));
-
-		if (partnerForeignPlacement && deferBoxSyncForForeign) {
-			notifyAdminsPartnerForeignAdReadyForDispatch(actor, monitor, saved);
-		} else if (!partnerForeignPlacement && monitor.isAbleToSendBoxRequest()) {
-			List<UpdateBoxMonitorsAdRequestDto> playlist = helper.buildOrderedBoxUpdateDtos(monitor);
-			helper.syncBoxAdsPlaylist(monitor, playlist);
-		}
-
-		return saved.getId();
-	}
-
-	private void validatePartnerPlacementAccess(Client partner, Monitor monitor) {
-		if (!partnerSlotAccessService.canAddBlocks(
-				partner, monitor, SharedConstants.MIN_QUANTITY_MONITOR_BLOCK)) {
-			throw new BusinessRuleException(MonitorValidationMessages.MONITOR_BLOCKS_UNAVAILABLE);
-		}
-	}
-
-	private void notifyAdminsPartnerForeignAdReadyForDispatch(Client partner, Monitor monitor, Ad ad) {
-		String monitorLabel = monitor.getAddress() != null
-				? monitor.getAddress().resolveMapLocationName()
-				: monitor.getId().toString();
-		Map<String, String> params = new HashMap<>();
-		params.put("partnerName", partner.getBusinessName() != null ? partner.getBusinessName() : "");
-		params.put("monitorLabel", monitorLabel != null ? monitorLabel : "");
-		params.put("adLabel", ad.getName() != null ? ad.getName() : "");
-		params.put("adId", ad.getId().toString());
-		params.put("clientId", partner.getId().toString());
-		params.put("link", frontBaseUrl + "/admin/ads");
-		clientRepository.findAllAdmins().forEach(admin ->
-				notificationService.save(NotificationReference.ADMIN_PARTNER_FOREIGN_AD_SUBMITTED, admin, params, true));
-	}
-
-	private void notifyAdminsPartnerMaterialsSubmitted(Client partner, Monitor monitor, AdRequest adRequest) {
-		String monitorLabel = monitor.getAddress() != null
-				? monitor.getAddress().resolveMapLocationName()
-				: monitor.getId().toString();
-		Map<String, String> params = new HashMap<>();
-		params.put("partnerName", partner.getBusinessName() != null ? partner.getBusinessName() : "");
-		params.put("monitorLabel", monitorLabel != null ? monitorLabel : "");
-		params.put("adLabel", adRequest.getSlogan() != null ? adRequest.getSlogan() : "");
-		params.put("adId", adRequest.getId().toString());
-		params.put("clientId", partner.getId().toString());
-		params.put("link", frontBaseUrl + "/admin/ad-requests");
-		clientRepository.findAllAdmins().forEach(admin ->
-				notificationService.save(NotificationReference.ADMIN_PARTNER_PLACEMENT_REQUEST, admin, params, true));
+		return partnerMonitorAdService.submitPartnerAdSubmission(monitorId, request);
 	}
 
 	@Override
 	@Transactional
 	public void deleteAvailableAd(UUID monitorId, UUID adId) {
-		authenticatedUserService.validateAdmin();
-		Monitor monitor = findEntityById(monitorId);
-		Ad ad = adRepository.findById(adId)
-				.orElseThrow(() -> new ResourceNotFoundException("Ad not found"));
-
-		boolean alreadyInMonitor = monitor.getMonitorAds().stream()
-				.anyMatch(ma -> ma.getAd() != null && adId.equals(ma.getAd().getId()));
-		if (alreadyInMonitor) {
-			throw new BusinessRuleException("Ad is already attached to this monitor.");
-		}
-		if (ad.getMonitorAds() != null && !ad.getMonitorAds().isEmpty()) {
-			throw new BusinessRuleException("Ad is attached to a monitor and cannot be removed.");
-		}
-		unusedSingleAdDeletionService.deleteAdInNewTransaction(adId);
+		monitorCrudService.deleteAvailableAd(monitorId, adId);
 	}
-
-	private void validateMonitorAdsQuotas(Monitor monitor, List<Ad> ads) {
-		int totalCap = monitor.getMaxBlocks() != null ? monitor.getMaxBlocks() : SharedConstants.MAX_MONITOR_ADS;
-		totalCap = Math.min(totalCap, SharedConstants.MAX_MONITOR_ADS);
-
-		int partnerCap = Math.min(10, totalCap);
-		int clientCap = Math.max(0, totalCap - partnerCap);
-
-		long partnerCount = ads.stream().filter(ad -> {
-			Client c = ad.getClient();
-			if (c == null) return false;
-			return c.isPartner() || c.isAdmin() || c.isDeveloper();
-		}).count();
-
-		long clientCount = ads.size() - partnerCount;
-
-		if (ads.size() > totalCap) {
-			throw new BusinessRuleException(MonitorValidationMessages.ADS_LIMIT_EXCEEDED + totalCap);
-		}
-		if (partnerCount > partnerCap) {
-			throw new BusinessRuleException(MonitorValidationMessages.PARTNER_ADS_LIMIT_EXCEEDED);
-		}
-		if (clientCount > clientCap) {
-			throw new BusinessRuleException(MonitorValidationMessages.CLIENT_ADS_LIMIT_EXCEEDED);
-		}
-	}
-
 
 	@Override
 	@Transactional
 	public void delete(UUID monitorId) {
-		authenticatedUserService.validateAdmin();
-		Monitor monitor = findEntityById(monitorId);
-		ensureNoActiveSubscription(monitor);
-		Set<UUID> adIds =
-				monitor.getMonitorAds().stream().map(ma -> ma.getAd().getId()).collect(Collectors.toSet());
-		clearMonitorAssociations(monitor);
-		repository.delete(monitor);
-		adUnusedTrackingService.syncUnusedStateForAdIds(adIds);
+		monitorCrudService.delete(monitorId);
 	}
-
 
 	@Override
 	@Transactional(readOnly = true)
 	public List<MonitorValidAdResponseDto> findCurrentDisplayedAdsFromBox(UUID monitorId) {
-		authenticatedUserService.validateAdmin();
-		Monitor monitor = findEntityById(monitorId);
-		List<String> adNames = helper.getCurrentDisplayedAdsFromBox(monitor);
-
-		if (adNames.isEmpty()) {
-			return List.of();
-		}
-
-		return helper.getBoxMonitorAdsResponse(monitor, adNames);
-	}
-
-
-	private void ensureNoActiveSubscription(Monitor monitor) {
-		if (repository.existsActiveSubscriptionByMonitorId(monitor.getId())) {
-			throw new BusinessRuleException(MonitorValidationMessages.MONITOR_HAS_ACTIVE_SUBSCRIPTION);
-		}
-	}
-
-
-	private void clearMonitorAssociations(Monitor monitor) {
-		monitor.getMonitorAds().clear();
-		monitor.setBox(null);
-	}
-
-
-	private Specification<Monitor> filterMonitors(Specification<Monitor> specification, String genericFilter) {
-		return specification.and((root, query, criteriaBuilder) -> {
-			String filter = "%" + genericFilter.toLowerCase() + "%";
-			List<Predicate> predicates = new ArrayList<>();
-
-			String filterKey = genericFilter.toLowerCase();
-			if ("active".equals(filterKey)) {
-				predicates.add(criteriaBuilder.equal(root.get("active"), true));
-			} else if ("inactive".equals(filterKey)) {
-				predicates.add(criteriaBuilder.equal(root.get("active"), false));
-			}
-
-			Predicate addressPredicate = helper.createAddressPredicate(criteriaBuilder, root, filter);
-			predicates.add(addressPredicate);
-			return criteriaBuilder.or(predicates.toArray(new Predicate[0]));
-		});
-	}
-
-
-	private Monitor createNewMonitor(AuthenticatedUser authenticatedUser, Address address) {
-		setCoordinatesIfMissing(address);
-
-		Monitor monitor = new Monitor(address, productId);
-		monitor.setUsernameCreate(authenticatedUser.client().getBusinessName());
-		repository.save(monitor);
-		subscriptionService.savePartnerBonusSubscription(address.getClient(), monitor);
-		return monitor;
-	}
-
-
-	private void updateExistingMonitor(MonitorRequestDto request, UUID monitorId, AuthenticatedUser authenticatedUser,
-		Address address, List<Ad> ads) {
-		Monitor monitor = findEntityById(monitorId);
-
-		if (isAddressChanged(monitor.getAddress(), address)) {
-			ads = handleAddressChange(monitor, address, ads, request);
-		}
-
-		updateMonitorMetadata(authenticatedUser, monitor);
-		updateMonitorDetails(request, monitor, ads);
-		repository.save(monitor);
-	}
-
-
-	private List<Ad> handleAddressChange(Monitor monitor, Address newAddress, List<Ad> ads, MonitorRequestDto request) {
-		Address oldAddress = monitor.getAddress();
-		Client oldPartner = getClientFromAddress(oldAddress);
-		Client newPartner = newAddress.getClient();
-
-		monitor.setAddress(newAddress);
-		handlePartnerSubscriptionChanges(oldPartner, newPartner, monitor);
-		setCoordinatesIfMissing(newAddress);
-
-		boolean hasSpaceForPartner = hasSpaceForPartnerAds(request, ads, newPartner);
-
-		List<Ad> updatedAds = hasSpaceForPartner ? addNewPartnerAds(ads, newPartner) : ads;
-
-		if (hasSpaceForPartner && !ValidateDataUtils.isNullOrEmpty(newPartner.getApprovedAds())) {
-			addPartnerAdsToRequest(newPartner, request, updatedAds);
-		}
-
-		return updatedAds;
-	}
-
-
-	private List<Ad> addNewPartnerAds(List<Ad> ads, Client newPartner) {
-		if (newPartner == null || ValidateDataUtils.isNullOrEmpty(newPartner.getApprovedAds())) {
-			return ads;
-		}
-
-		List<Ad> mutable = ValidateDataUtils.isNullOrEmpty(ads) ? new ArrayList<>() : new ArrayList<>(ads);
-		Set<UUID> adIds = mutable.stream().map(Ad::getId).filter(Objects::nonNull).collect(Collectors.toSet());
-
-		newPartner.getApprovedAds().stream().filter(ad -> ad != null && ad.getId() != null && !adIds.contains(ad.getId()))
-			.forEach(mutable::add);
-
-		return mutable;
-	}
-
-
-	private void validateAddressAvailability(Address address) {
-		if (repository.existsByAddressId(address.getId())) {
-			throw new BusinessRuleException(MonitorValidationMessages.ADDRESS_ALREADY_IN_USE);
-		}
-	}
-
-
-	private void validateAddressAvailability(Address address, UUID monitorId) {
-		if (repository.existsByAddressIdAndIdNot(address.getId(), monitorId)) {
-			throw new BusinessRuleException(MonitorValidationMessages.ADDRESS_ALREADY_IN_USE);
-		}
-	}
-
-
-	private void setCoordinatesIfMissing(Address address) {
-		if (!address.hasLocation()) {
-			helper.setAddressCoordinates(address);
-		}
-	}
-
-
-	private Client getClientFromAddress(Address address) {
-		return address != null ? address.getClient() : null;
-	}
-
-
-	private boolean isAddressChanged(Address oldAddress, Address newAddress) {
-		return !Objects.equals(oldAddress != null ? oldAddress.getId() : null, newAddress.getId());
-	}
-
-
-	private void handlePartnerSubscriptionChanges(Client oldPartner, Client newPartner, Monitor monitor) {
-		if (oldPartner != null && oldPartner.isPartner()) {
-			cancelPartnerBonusSubscription(oldPartner);
-		}
-		if (newPartner != null && newPartner.isPartner()) {
-			UUID partnerId = newPartner.getId();
-			UUID monitorId = monitor.getId();
-			if (TransactionSynchronizationManager.isSynchronizationActive()) {
-				TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
-					@Override
-					public void afterCommit() {
-						subscriptionService.schedulePartnerBonusAfterMonitorCommit(partnerId, monitorId);
-					}
-				});
-			} else {
-				subscriptionService.schedulePartnerBonusAfterMonitorCommit(partnerId, monitorId);
-			}
-		}
-	}
-
-
-	private void cancelPartnerBonusSubscription(Client partner) {
-		try {
-			subscriptionService.cancelBonusSubscription(partner);
-		} catch (RuntimeException e) {
-			log.error("cancelPartnerBonusSubscription failed for partner {}: {}", partner.getId(), e.getMessage(), e);
-		}
-	}
-
-
-	private void updateMonitorMetadata(AuthenticatedUser authenticatedUser, Monitor monitor) {
-		String usernameUpdate = authenticatedUser.client().getBusinessName();
-		CustomRevisionListener.setUsername(usernameUpdate);
-		monitor.setUsernameUpdate(usernameUpdate);
-	}
-
-
-	private void updateMonitorDetails(MonitorRequestDto request, Monitor monitor, List<Ad> ads) {
-		monitor.setProductId(productId);
-		monitor.setActive(request.getActive() != null ? request.getActive() : monitor.isActive());
-		updateMonitorAds(request, monitor, ads);
-	}
-
-
-	private void updateMonitorAds(MonitorRequestDto request, Monitor monitor, List<Ad> ads) {
-		validateMonitorAdsQuotas(monitor, ads);
-		Set<UUID> newAdIds = buildNewAdIds(ads);
-		Set<UUID> removedAdIds =
-				monitor.getMonitorAds().stream()
-						.filter(ma -> !newAdIds.contains(ma.getAd().getId()))
-						.map(ma -> ma.getAd().getId())
-						.collect(Collectors.toSet());
-		removeStaleMonitorAds(monitor, newAdIds);
-
-		Map<UUID, MonitorAdRequestDto> adRequestMap = mapAdsById(request);
-		Map<UUID, MonitorAd> existingAfterRemoval = buildExistingAfterRemoval(monitor);
-		Map<UUID, SubscriptionMonitor> subscriptionByClientId = buildSubscriptionByClientId(monitor);
-
-		List<MonitorAd> newMonitorAds = createNewMonitorAds(ads, existingAfterRemoval, adRequestMap, monitor);
-		updateOrderIndexes(ads, existingAfterRemoval, adRequestMap);
-
-		Map<UUID, MonitorAd> newMonitorAdsByAdId = newMonitorAds.stream()
-			.collect(Collectors.toMap(ma -> ma.getAd().getId(), ma -> ma));
-
-		Map<UUID, Integer> blockQuantities =
-				resolveBlockQuantities(ads, adRequestMap, subscriptionByClientId, monitor);
-		applyBlockQuantities(existingAfterRemoval, newMonitorAdsByAdId, blockQuantities);
-		validatePartnerBlockTotalsOnMonitor(monitor);
-
-		List<UpdateBoxMonitorsAdRequestDto> requestList = buildRequestList(ads, existingAfterRemoval, newMonitorAdsByAdId);
-
-		addNewMonitorAdsToMonitor(monitor, newMonitorAds);
-
-		if (!newMonitorAds.isEmpty()) {
-			Set<String> successfulBaseUrls = new HashSet<>();
-			if (monitor.isAbleToSendBoxRequest()) {
-				successfulBaseUrls = helper.syncBoxAdsPlaylist(monitor, requestList);
-			}
-			adPublicationNotificationHelper.notifyAfterPlaylistUpdate(
-					monitor, newMonitorAds, successfulBaseUrls, requestList);
-		}
-
-		Set<UUID> toSync = new HashSet<>(newAdIds);
-		toSync.addAll(removedAdIds);
-		adUnusedTrackingService.syncUnusedStateForAdIds(toSync);
-	}
-
-
-	private Set<UUID> buildNewAdIds(List<Ad> ads) {
-		return ads.stream().map(Ad::getId).collect(Collectors.toSet());
-	}
-
-
-	private void removeStaleMonitorAds(Monitor monitor, Set<UUID> newAdIds) {
-		monitor.getMonitorAds().removeIf(ma -> !newAdIds.contains(ma.getAd().getId()));
-	}
-
-
-	private Map<UUID, MonitorAd> buildExistingAfterRemoval(Monitor monitor) {
-		return monitor.getMonitorAds().stream().collect(Collectors.toMap(ma -> ma.getAd().getId(), ma -> ma));
-	}
-
-
-	private Map<UUID, SubscriptionMonitor> buildSubscriptionByClientId(Monitor monitor) {
-		List<SubscriptionMonitor> subscriptionMonitors = helper.getSubscriptionsMonitorsFromMonitor(monitor.getId());
-		return subscriptionMonitors.stream()
-			.filter(sm -> sm.getSubscription() != null && sm.getSubscription().getClient() != null
-				&& sm.getSubscription().getClient().getId() != null)
-			.collect(Collectors.toMap(sm -> sm.getSubscription().getClient().getId(), sm -> sm, (a, b) -> a));
-	}
-
-
-	private List<MonitorAd> createNewMonitorAds(List<Ad> ads, Map<UUID, MonitorAd> existingAfterRemoval,
-		Map<UUID, MonitorAdRequestDto> adRequestMap, Monitor monitor) {
-		return ads.stream().filter(ad -> !existingAfterRemoval.containsKey(ad.getId())).map(ad -> {
-			MonitorAdRequestDto reqDto = adRequestMap.get(ad.getId());
-			// Se não veio MonitorAdRequestDto (ex.: ad do partner inserido automaticamente), utiliza outro construtor
-			return reqDto != null ? new MonitorAd(reqDto, monitor, ad) : new MonitorAd(monitor, ad);
-		}).toList();
-	}
-
-
-	private void updateOrderIndexes(List<Ad> ads, Map<UUID, MonitorAd> existingAfterRemoval,
-		Map<UUID, MonitorAdRequestDto> adRequestMap) {
-		ads.stream().filter(ad -> existingAfterRemoval.containsKey(ad.getId())).forEach(ad -> {
-			MonitorAd ma = existingAfterRemoval.get(ad.getId());
-			MonitorAdRequestDto dto = adRequestMap.get(ad.getId());
-			if (ma != null && dto != null) {
-				ma.setOrderIndex(dto.getOrderIndex());
-			}
-		});
-	}
-
-
-	private Map<UUID, Integer> resolveBlockQuantities(
-			List<Ad> ads,
-			Map<UUID, MonitorAdRequestDto> adRequestMap,
-			Map<UUID, SubscriptionMonitor> subscriptionByClientId,
-			Monitor monitor) {
-		Map<UUID, Integer> blockQuantities = new HashMap<>(ads.size());
-
-		ads.forEach(ad -> {
-			UUID adId = ad.getId();
-			UUID clientId = ad.getClient() != null ? ad.getClient().getId() : null;
-			SubscriptionMonitor matched = clientId != null ? subscriptionByClientId.get(clientId) : null;
-
-			Integer blockQuantity = (matched != null && matched.getSlotsQuantity() != null
-				&& matched.getSlotsQuantity() != SharedConstants.PARTNER_RESERVED_SLOTS)
-				? matched.getSlotsQuantity()
-				: Optional.ofNullable(adRequestMap.get(adId)).map(MonitorAdRequestDto::getBlockQuantity)
-					.orElse(SharedConstants.MIN_QUANTITY_MONITOR_BLOCK);
-
-			blockQuantities.put(adId, blockQuantity);
-		});
-
-		Map<UUID, List<Ad>> partnerQuotaAdsByClient =
-				ads.stream()
-						.filter(
-								ad ->
-										ad.getClient() != null
-												&& partnerSlotAccessService.usesPartnerQuotaOnMonitor(
-														ad.getClient(), monitor))
-						.collect(Collectors.groupingBy(ad -> ad.getClient().getId()));
-
-		partnerQuotaAdsByClient
-				.values()
-				.forEach(clientAds -> blockQuantities.putAll(distributePartnerBlockQuantities(clientAds)));
-
-		return blockQuantities;
-	}
-
-	private void validatePartnerBlockTotalsOnMonitor(Monitor monitor) {
-		Map<UUID, Integer> totalsByClient = new HashMap<>();
-		for (MonitorAd monitorAd : monitor.getMonitorAds()) {
-			if (monitorAd.getAd() == null || monitorAd.getAd().getClient() == null) {
-				continue;
-			}
-			Client client = monitorAd.getAd().getClient();
-			if (!partnerSlotAccessService.usesPartnerQuotaOnMonitor(client, monitor)) {
-				continue;
-			}
-			int blocks =
-					monitorAd.getBlockQuantity() != null
-							? monitorAd.getBlockQuantity()
-							: SharedConstants.MIN_QUANTITY_MONITOR_BLOCK;
-			totalsByClient.merge(client.getId(), blocks, Integer::sum);
-		}
-		totalsByClient.forEach(
-				(clientId, total) -> {
-					if (total > SharedConstants.PARTNER_RESERVED_SLOTS) {
-						throw new BusinessRuleException(MonitorValidationMessages.MONITOR_BLOCKS_BEYOND_LIMIT);
-					}
-				});
-	}
-
-
-	private void applyBlockQuantities(Map<UUID, MonitorAd> existingAfterRemoval, Map<UUID, MonitorAd> newMonitorAdsByAdId,
-		Map<UUID, Integer> blockQuantities) {
-		blockQuantities.forEach((adId, quantity) -> {
-			MonitorAd monitorAd = existingAfterRemoval.getOrDefault(adId, newMonitorAdsByAdId.get(adId));
-			if (monitorAd != null) {
-				monitorAd.setBlockQuantity(quantity);
-			}
-		});
-	}
-
-
-	private static List<AbstractMap.SimpleEntry<MonitorAd, UpdateBoxMonitorsAdRequestDto>> buildDeployNotifyPairs(
-			Monitor monitor,
-			List<MonitorAd> newMonitorAds,
-			List<UpdateBoxMonitorsAdRequestDto> requestList,
-			Set<String> successfulBaseUrls) {
-		if (requestList == null || requestList.isEmpty() || successfulBaseUrls == null || successfulBaseUrls.isEmpty()) {
-			return List.of();
-		}
-		List<AbstractMap.SimpleEntry<MonitorAd, UpdateBoxMonitorsAdRequestDto>> allPairs =
-				buildMonitorAdPushPairs(monitor, requestList);
-		Set<UUID> newAdIds = newMonitorAds.stream()
-				.map(ma -> ma.getAd() != null ? ma.getAd().getId() : null)
-				.filter(Objects::nonNull)
-				.collect(Collectors.toSet());
-		List<AbstractMap.SimpleEntry<MonitorAd, UpdateBoxMonitorsAdRequestDto>> filtered = allPairs.stream()
-				.filter(p -> {
-					MonitorAd ma = p.getKey();
-					UpdateBoxMonitorsAdRequestDto dto = p.getValue();
-					if (ma == null || ma.getAd() == null || dto == null || dto.getBaseUrl() == null) {
-						return false;
-					}
-					if (!successfulBaseUrls.contains(dto.getBaseUrl())) {
-						return false;
-					}
-					return newAdIds.contains(ma.getAd().getId());
-				})
-				.toList();
-		if (!filtered.isEmpty()) {
-			return filtered;
-		}
-		List<AbstractMap.SimpleEntry<MonitorAd, UpdateBoxMonitorsAdRequestDto>> fallback = new ArrayList<>();
-		for (MonitorAd ma : newMonitorAds) {
-			if (ma.getAd() == null) {
-				continue;
-			}
-			UpdateBoxMonitorsAdRequestDto dto = requestList.stream()
-					.filter(Objects::nonNull)
-					.filter(d -> Objects.equals(ma.getAd().getName(), d.getFileName()))
-					.filter(d -> d.getBaseUrl() != null && successfulBaseUrls.contains(d.getBaseUrl()))
-					.findFirst()
-					.orElse(null);
-			if (dto != null) {
-				fallback.add(new AbstractMap.SimpleEntry<>(ma, dto));
-			}
-		}
-		return fallback;
-	}
-
-
-	private static List<AbstractMap.SimpleEntry<MonitorAd, UpdateBoxMonitorsAdRequestDto>> buildMonitorAdPushPairs(
-			Monitor monitor,
-			List<UpdateBoxMonitorsAdRequestDto> requestList) {
-		if (requestList == null || requestList.isEmpty()) {
-			return List.of();
-		}
-		List<AbstractMap.SimpleEntry<MonitorAd, UpdateBoxMonitorsAdRequestDto>> pairs = new ArrayList<>();
-		for (UpdateBoxMonitorsAdRequestDto dto : requestList) {
-			if (dto == null || dto.getFileName() == null) {
-				continue;
-			}
-			MonitorAd ma = monitor.getMonitorAds().stream()
-					.filter(x -> x.getAd() != null && dto.getFileName().equals(x.getAd().getName()))
-					.findFirst()
-					.orElse(null);
-			if (ma != null) {
-				pairs.add(new AbstractMap.SimpleEntry<>(ma, dto));
-			}
-		}
-		return pairs;
-	}
-
-
-	private List<UpdateBoxMonitorsAdRequestDto> buildRequestList(List<Ad> ads, Map<UUID, MonitorAd> existingAfterRemoval,
-		Map<UUID, MonitorAd> newMonitorAdsByAdId) {
-		List<UpdateBoxMonitorsAdRequestDto> requestList = ads.stream()
-			.map(ad -> {
-				MonitorAd monitorAd = existingAfterRemoval.getOrDefault(ad.getId(), newMonitorAdsByAdId.get(ad.getId()));
-				if (monitorAd == null || monitorAd.getMonitor() == null || monitorAd.getMonitor().getBox() == null) {
-					return null;
-				}
-				String link = bucketService.getLink(AttachmentUtils.format(ad));
-				return new UpdateBoxMonitorsAdRequestDto(ad, monitorAd, link);
-			})
-			.filter(Objects::nonNull)
-			.toList();
-
-		int totalBlockQuantity = requestList.stream().mapToInt(dto -> Optional.ofNullable(dto.getBlockQuantity()).orElse(0))
-			.sum();
-
-		if (totalBlockQuantity > SharedConstants.MAX_MONITOR_ADS) {
-			throw new BusinessRuleException(MonitorValidationMessages.MONITOR_BLOCKS_BEYOND_LIMIT);
-		}
-
-		return requestList;
-	}
-
-
-	private void addNewMonitorAdsToMonitor(Monitor monitor, List<MonitorAd> newMonitorAds) {
-		if (!newMonitorAds.isEmpty()) {
-			monitor.getMonitorAds().addAll(newMonitorAds);
-		}
-	}
-
-
-	private Map<UUID, MonitorAdRequestDto> mapAdsById(MonitorRequestDto request) {
-		if (ValidateDataUtils.isNullOrEmpty(request.getAds())) {
-			return Collections.emptyMap();
-		}
-		return request.getAds().stream()
-			.collect(Collectors.toMap(MonitorAdRequestDto::getId, dto -> dto, (a, b) -> a));
-	}
-
-
-	private boolean hasSpaceForPartnerAds(MonitorRequestDto request, List<Ad> ads, Client newPartner) {
-		if (newPartner == null || !newPartner.isPartner() || ValidateDataUtils.isNullOrEmpty(request.getAds())) {
-			return true;
-		}
-
-		UUID partnerId = newPartner.getId();
-
-		Set<UUID> partnerAdIds = ads.stream()
-			.filter(ad -> ad.getClient() != null && ad.getClient().isPartner() && Objects.equals(ad.getClient().getId(),
-				partnerId)).map(Ad::getId).collect(Collectors.toSet());
-
-		int totalNonPartnerBlockQuantity = request.getAds().stream().filter(dto -> !partnerAdIds.contains(dto.getId()))
-			.mapToInt(MonitorAdRequestDto::getBlockQuantity).sum();
-
-		return totalNonPartnerBlockQuantity <= (SharedConstants.MAX_MONITOR_ADS - SharedConstants.PARTNER_RESERVED_SLOTS);
-	}
-
-
-	private void addPartnerAdsToRequest(Client partner, MonitorRequestDto request, List<Ad> allAds) {
-		if (request.getAds() == null) {
-			request.setAds(new ArrayList<>());
-		}
-		List<Ad> partnerAds = partner.getApprovedAds().stream()
-			.filter(ad -> allAds.stream().anyMatch(a -> Objects.equals(a.getId(), ad.getId()))).toList();
-
-		if (partnerAds.isEmpty()) {
-			return;
-		}
-
-		Map<UUID, Integer> blockQuantities = distributePartnerBlockQuantities(partnerAds);
-
-		AtomicInteger maxOrderIndex = new AtomicInteger(
-			request.getAds().stream().mapToInt(MonitorAdRequestDto::getOrderIndex).max().orElse(0));
-
-		partnerAds.forEach(ad -> {
-			MonitorAdRequestDto dto = new MonitorAdRequestDto();
-			dto.setId(ad.getId());
-			dto.setOrderIndex(maxOrderIndex.incrementAndGet());
-			dto.setBlockQuantity(blockQuantities.get(ad.getId()));
-			request.getAds().add(dto);
-		});
-	}
-
-
-	private Map<UUID, Integer> distributePartnerBlockQuantities(List<Ad> partnerAds) {
-		if (partnerAds == null || partnerAds.isEmpty()) {
-			return Collections.emptyMap();
-		}
-
-		int adsCount = partnerAds.size();
-		int capacity = (int) (adsCount / 0.75f) + 1;
-		Map<UUID, Integer> blockQuantities = new HashMap<>(capacity);
-
-		final int[][] distributions = {{}, {5}, {3, 2}, {2, 2, 1}, {2, 1, 1, 1}, {1, 1, 1, 1, 1}};
-
-		int[] dist = distributions[adsCount];
-		IntStream.range(0, adsCount).forEach(i -> blockQuantities.put(partnerAds.get(i).getId(), dist[i]));
-		return blockQuantities;
+		return monitorCrudService.findCurrentDisplayedAdsFromBox(monitorId);
 	}
 }

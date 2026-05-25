@@ -1,10 +1,7 @@
 package com.telas.helpers;
 
 import com.stripe.exception.StripeException;
-import com.stripe.model.Customer;
 import com.stripe.model.Invoice;
-import com.stripe.model.billingportal.Session;
-import com.stripe.param.billingportal.SessionCreateParams;
 import com.telas.dtos.response.MonitorAdResponseDto;
 import com.telas.dtos.response.SubscriptionMonitorResponseDto;
 import com.telas.dtos.response.SubscriptionResponseDto;
@@ -13,30 +10,26 @@ import com.telas.enums.NotificationReference;
 import com.telas.enums.Recurrence;
 import com.telas.enums.SubscriptionStatus;
 import com.telas.infra.exceptions.BusinessRuleException;
-import com.telas.infra.exceptions.ForbiddenException;
 import com.telas.infra.exceptions.ResourceNotFoundException;
 import com.telas.repositories.ClientRepository;
 import com.telas.repositories.MonitorRepository;
 import com.telas.repositories.SubscriptionFlowRepository;
 import com.telas.repositories.SubscriptionRepository;
 import com.telas.services.*;
+import com.telas.services.payment.StripeSubscriptionLifecycle;
+import com.telas.services.payment.SubscriptionPurchaseCompletionHandler;
+import com.telas.services.partner.PartnerPlacementRules;
 import com.telas.shared.audit.CustomRevisionListener;
 import com.telas.shared.constants.SharedConstants;
 import com.telas.shared.constants.valitation.CartValidationMessages;
 import com.telas.shared.constants.valitation.MonitorValidationMessages;
 import com.telas.shared.constants.valitation.SubscriptionValidationMessages;
-import com.telas.shared.utils.AttachmentUtils;
-import com.telas.shared.utils.DateUtils;
-import com.telas.shared.utils.ValidateDataUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.util.ObjectUtils;
-import org.springframework.web.util.HtmlUtils;
 
 import java.time.Instant;
 import java.util.*;
@@ -50,19 +43,14 @@ public class SubscriptionHelper {
     private final CartService cartService;
     private final MonitorRepository monitorRepository;
     private final MonitorSubscriptionService monitorSubscriptionService;
-    private final BucketService bucketService;
+    private final AdMediaLinkFactory adMediaLinkFactory;
     private final NotificationService notificationService;
     private final PaymentService paymentService;
     private final ClientHelper clientHelper;
-    private final ClientRepository clientRepository;
-    private final EmailService emailService;
+    private final StripeSubscriptionLifecycle stripeSubscriptionLifecycle;
+    private final SubscriptionPurchaseCompletionHandler subscriptionPurchaseCompletionHandler;
     private final PartnerSlotAccessService partnerSlotAccessService;
-
-    @Value("${front.base.url}")
-    private String frontBaseUrl;
-
-    @Value("${admin.purchase.notification.email:}")
-    private String adminPurchaseNotificationEmail;
+    private final PartnerPlacementRules partnerPlacementRules;
 
     public SubscriptionHelper(
             SubscriptionRepository repository,
@@ -70,26 +58,28 @@ public class SubscriptionHelper {
             @Lazy CartService cartService,
             MonitorRepository monitorRepository,
             MonitorSubscriptionService monitorSubscriptionService,
-            BucketService bucketService,
+            AdMediaLinkFactory adMediaLinkFactory,
             NotificationService notificationService,
             PaymentService paymentService,
             ClientHelper clientHelper,
-            ClientRepository clientRepository,
-            EmailService emailService,
-            PartnerSlotAccessService partnerSlotAccessService
+            StripeSubscriptionLifecycle stripeSubscriptionLifecycle,
+            SubscriptionPurchaseCompletionHandler subscriptionPurchaseCompletionHandler,
+            PartnerSlotAccessService partnerSlotAccessService,
+            PartnerPlacementRules partnerPlacementRules
     ) {
         this.repository = repository;
         this.subscriptionFlowRepository = subscriptionFlowRepository;
         this.cartService = cartService;
         this.monitorRepository = monitorRepository;
         this.monitorSubscriptionService = monitorSubscriptionService;
-        this.bucketService = bucketService;
+        this.adMediaLinkFactory = adMediaLinkFactory;
         this.notificationService = notificationService;
         this.paymentService = paymentService;
         this.clientHelper = clientHelper;
-        this.clientRepository = clientRepository;
-        this.emailService = emailService;
+        this.stripeSubscriptionLifecycle = stripeSubscriptionLifecycle;
+        this.subscriptionPurchaseCompletionHandler = subscriptionPurchaseCompletionHandler;
         this.partnerSlotAccessService = partnerSlotAccessService;
+        this.partnerPlacementRules = partnerPlacementRules;
     }
 
     @Transactional
@@ -138,12 +128,7 @@ public class SubscriptionHelper {
 
     @Transactional
     public com.stripe.model.Subscription getStripeSubscription(Subscription subscription) throws StripeException {
-        validateStripeId(subscription.getStripeId());
-
-        com.stripe.model.Subscription stripeSubscription = com.stripe.model.Subscription.retrieve(subscription.getStripeId());
-        validateStripeSubscription(stripeSubscription);
-
-        return stripeSubscription;
+        return stripeSubscriptionLifecycle.retrieveActiveStripeSubscription(subscription);
     }
 
     @Transactional(readOnly = true)
@@ -160,7 +145,7 @@ public class SubscriptionHelper {
                         Monitor::getId,
                         monitor -> monitor.getMonitorAds().stream()
                                 .filter(monitorAd -> loggedUser.isAdmin() || monitorAd.getAd().getClient().getId().equals(loggedUser.getId()))
-                                .map(monitorAd -> new MonitorAdResponseDto(monitorAd, bucketService.getLink(AttachmentUtils.format(monitorAd.getAd()))))
+                                .map(monitorAd -> new MonitorAdResponseDto(monitorAd, adMediaLinkFactory.getLink(monitorAd.getAd())))
                                 .toList()
                 ));
 
@@ -173,13 +158,7 @@ public class SubscriptionHelper {
 
     @Transactional
     public void handleNonRecurringPayment(Subscription subscription) {
-        Client client = subscription.getClient();
-        inactivateCart(client);
-        deleteSubscriptionFlow(client);
-
-        sendPurchaseConfirmationEmail(subscription);
-
-        notifyAdminsNewPurchase(subscription);
+        subscriptionPurchaseCompletionHandler.handleNonRecurringPayment(subscription);
     }
 
     @Transactional
@@ -240,84 +219,8 @@ public class SubscriptionHelper {
         return remainingTime > SharedConstants.MAX_BILLING_CYCLE_ANCHOR;
     }
 
-
-    @Transactional
-    public void sendSubscriptionAboutToExpiryEmail(Subscription subscription) {
-        Map<String, String> params = new HashMap<>(Map.of(
-                "name", subscription.getClient().getBusinessName(),
-                "link", buildRedirectUrl("subscriptions/" + subscription.getId()),
-                "endDate", DateUtils.formatInstantToString(subscription.getEndsAt())
-        ));
-
-        notificationService.save(NotificationReference.SUBSCRIPTION_ABOUT_TO_EXPIRY_REMINDER, subscription.getClient(), params, true);
-    }
-
-    @Transactional
-    public void sendSubscriptionTenDaysBeforeExpiryEmail(Subscription subscription) {
-        notificationService.save(
-                NotificationReference.SUBSCRIPTION_ABOUT_TO_EXPIRY_10_DAYS,
-                subscription.getClient(),
-                buildCountdownExpiryParams(subscription, "10"),
-                true
-        );
-    }
-
-    @Transactional
-    public void sendSubscriptionFiveDaysBeforeExpiryEmail(Subscription subscription) {
-        notificationService.save(
-                NotificationReference.SUBSCRIPTION_ABOUT_TO_EXPIRY_5_DAYS,
-                subscription.getClient(),
-                buildCountdownExpiryParams(subscription, "5"),
-                true
-        );
-    }
-
-    @Transactional
-    public void sendSubscriptionThreeDaysBeforeExpiryEmail(Subscription subscription) {
-        notificationService.save(
-                NotificationReference.SUBSCRIPTION_ABOUT_TO_EXPIRY_3_DAYS,
-                subscription.getClient(),
-                buildCountdownExpiryParams(subscription, "3"),
-                true
-        );
-    }
-
-    @Transactional
-    public void sendSubscriptionPenultimateDayEmail(Subscription subscription) {
-        Map<String, String> params = new HashMap<>(Map.of(
-                "name", subscription.getClient().getBusinessName(),
-                "link", buildRedirectUrl("subscriptions/" + subscription.getId()),
-                "endDate", DateUtils.formatInstantToString(subscription.getEndsAt())
-        ));
-        notificationService.save(NotificationReference.SUBSCRIPTION_ABOUT_TO_EXPIRY_PENULTIMATE_DAY, subscription.getClient(), params, true);
-    }
-
-    private Map<String, String> buildCountdownExpiryParams(Subscription subscription, String daysRemaining) {
-        return new HashMap<>(Map.of(
-                "name", subscription.getClient().getBusinessName(),
-                "link", buildRedirectUrl("subscriptions/" + subscription.getId()),
-                "endDate", DateUtils.formatInstantToString(subscription.getEndsAt()),
-                "daysRemaining", daysRemaining
-        ));
-    }
-
     public void sendPurchaseConfirmationEmail(Subscription subscription) {
-        if (shouldSkipClientPurchaseNotification(subscription)) {
-            return;
-        }
-
-        Map<String, String> params = new HashMap<>(Map.of(
-                "name", subscription.getClient().getBusinessName(),
-                "locations", subscription.getMonitorAddressesFormated(),
-                "startDate", DateUtils.formatInstantToString(subscription.getStartedAt()),
-                "link", getRedirectUrlAfterCreatingNewSubscription()
-        ));
-
-        if (subscription.getEndsAt() != null) {
-            params.put("endDate", DateUtils.formatInstantToString(subscription.getEndsAt()));
-        }
-
-        notificationService.save(NotificationReference.FIRST_SUBSCRIPTION, subscription.getClient(), params, true);
+        subscriptionPurchaseCompletionHandler.sendPurchaseConfirmationEmail(subscription);
     }
 
     @Transactional
@@ -336,7 +239,7 @@ public class SubscriptionHelper {
                         "monitorsAddress", wishlistMonitors.stream()
                                 .map(m -> m.getAddress().getCoordinatesParams())
                                 .collect(Collectors.joining(", ")),
-                        "link", buildRedirectUrl("wishlist")
+                        "link", "/client/wishlist"
                 );
 
                 notificationService.save(NotificationReference.MONITOR_IN_WISHLIST_NOW_AVAILABLE, client, params, true);
@@ -345,15 +248,7 @@ public class SubscriptionHelper {
     }
 
     public String getRedirectUrlAfterCreatingNewSubscription() {
-        return buildRedirectUrl("next-steps");
-    }
-
-    private boolean shouldSkipClientPurchaseNotification(Subscription subscription) {
-        if (subscription == null || subscription.isBonus()) {
-            return true;
-        }
-        Client client = subscription.getClient();
-        return client == null || client.isPartner();
+        return subscriptionPurchaseCompletionHandler.redirectUrlAfterCreatingNewSubscription();
     }
 
     private void validateCart(Cart cart) {
@@ -373,7 +268,7 @@ public class SubscriptionHelper {
                 items.stream()
                         .map(CartItem::getMonitor)
                         .filter(Objects::nonNull)
-                        .filter(monitor -> !monitor.isPartner(client))
+                        .filter(monitor -> !partnerPlacementRules.partnerOwnsMonitor(monitor, client))
                         .map(Monitor::getId)
                         .toList()
         ).stream().collect(Collectors.toMap(Monitor::getId, monitor -> monitor));
@@ -393,135 +288,6 @@ public class SubscriptionHelper {
                 throw new BusinessRuleException(SubscriptionValidationMessages.CLIENT_ALREADY_HAS_ACTIVE_SUBSCRIPTION_WITH_MONITOR);
             }
         }
-    }
-
-    private void validateStripeId(String stripeId) {
-        if (ValidateDataUtils.isNullOrEmptyString(stripeId)) {
-            throw new BusinessRuleException(SubscriptionValidationMessages.SUBSCRIPTION_WITHOUT_STRIPE_ID);
-        }
-    }
-
-    private void validateStripeSubscription(com.stripe.model.Subscription stripeSubscription) {
-        if (stripeSubscription == null) {
-            throw new ResourceNotFoundException(SubscriptionValidationMessages.SUBSCRIPTION_NOT_FOUND_IN_STRIPE);
-        }
-
-        if (!"active".equals(stripeSubscription.getStatus())) {
-            throw new BusinessRuleException(SubscriptionValidationMessages.SUBSCRIPTION_NOT_ACTIVE_IN_STRIPE + stripeSubscription.getId());
-        }
-    }
-
-    private void notifyAdminsNewPurchase(Subscription subscription) {
-        Map<String, String> params = buildAdminNewPurchaseParams(subscription);
-        clientRepository.findAllAdmins().forEach(admin ->
-                notificationService.save(NotificationReference.ADMIN_NEW_PURCHASE, admin, params, true));
-
-        if (!ValidateDataUtils.isNullOrEmptyString(adminPurchaseNotificationEmail)) {
-            try {
-                var emailData = NotificationReference.ADMIN_NEW_PURCHASE.getEmailData(params);
-                if (emailData != null) {
-                    emailData.setEmail(adminPurchaseNotificationEmail.trim());
-                    emailData.getParams().put("clientId", subscription.getClient().getId().toString());
-                    emailService.send(emailData);
-                }
-            } catch (RuntimeException e) {
-                log.error("Failed to send admin new purchase email to configured address", e);
-            }
-        }
-    }
-
-    private Map<String, String> buildAdminNewPurchaseParams(Subscription subscription) {
-        Client client = subscription.getClient();
-        Map<String, String> params = new HashMap<>();
-        params.put("buyerName", client.getBusinessName() != null ? client.getBusinessName() : "");
-        params.put("subscriptionId", subscription.getId().toString());
-        params.put("monitorsDetailHtml", buildMonitorsDetailHtml(subscription));
-        params.put("attachmentListHtml", buildAttachmentListHtml(client));
-        params.put("veiculationSummary", formatVeiculationPeriod(subscription));
-        return params;
-    }
-
-    private String buildMonitorsDetailHtml(Subscription subscription) {
-        List<SubscriptionMonitor> ordered = subscription.getSubscriptionMonitors().stream()
-                .sorted(Comparator.comparing(sm -> sm.getMonitor().getId()))
-                .toList();
-        StringBuilder sb = new StringBuilder();
-        for (SubscriptionMonitor sm : ordered) {
-            Monitor monitor = sm.getMonitor();
-            Address address = monitor.getAddress();
-            String label = address.getLocationName() != null && !address.getLocationName().isBlank()
-                    ? HtmlUtils.htmlEscape(address.getLocationName().trim())
-                    : "Display location";
-            sb.append("<div style=\"margin-bottom:18px;border-bottom:1px solid #e0e0e0;padding-bottom:12px;\">");
-            sb.append("<strong>").append(label).append("</strong><br/>");
-            sb.append("Blocks purchased: ").append(HtmlUtils.htmlEscape(String.valueOf(sm.getSlotsQuantity()))).append("<br/>");
-            sb.append(address.getFullAddressFormattedHtml());
-            sb.append("</div>");
-        }
-        if (sb.isEmpty()) {
-            return "<p>No monitors linked to this subscription.</p>";
-        }
-        return sb.toString();
-    }
-
-    private String buildAttachmentListHtml(Client client) {
-        Optional<Ad> adOpt = resolveOldestApprovedAd(client);
-        if (adOpt.isEmpty()) {
-            return "<p>No approved ad linked for this order.</p>";
-        }
-        List<Attachment> attachments = adOpt.get().getAttachments().stream()
-                .sorted(Comparator.comparing(Attachment::getName, String.CASE_INSENSITIVE_ORDER))
-                .toList();
-        if (attachments.isEmpty()) {
-            return "<p>No files linked to the ad for this order.</p>";
-        }
-        StringBuilder ul = new StringBuilder("<ul style=\"margin:0;padding-left:20px;\">");
-        for (Attachment att : attachments) {
-            ul.append("<li>")
-                    .append(HtmlUtils.htmlEscape(att.getName()))
-                    .append(" (")
-                    .append(HtmlUtils.htmlEscape(att.getType()))
-                    .append(")</li>");
-        }
-        ul.append("</ul>");
-        return ul.toString();
-    }
-
-    private Optional<Ad> resolveOldestApprovedAd(Client client) {
-        return client.getApprovedAds().stream()
-                .filter(Objects::nonNull)
-                .min(Comparator.comparing(Ad::getCreatedAt, Comparator.nullsLast(Comparator.naturalOrder())));
-    }
-
-    private String formatVeiculationPeriod(Subscription subscription) {
-        Recurrence recurrence = subscription.getRecurrence();
-        String start = subscription.getStartedAt() != null
-                ? DateUtils.formatInstantToString(subscription.getStartedAt())
-                : "";
-        if (Recurrence.MONTHLY.equals(recurrence)) {
-            return "Monthly (continuous renewal). Start: " + start + ".";
-        }
-        String end = subscription.getEndsAt() != null ? DateUtils.formatInstantToString(subscription.getEndsAt()) : "";
-        long days = recurrence.getDays();
-        return "Plan " + recurrence.name().replace('_', ' ') + " (" + days + " days). " + start + " to " + end + ".";
-    }
-
-    private void createNewSubscriptionNotification(Subscription subscription) {
-        Map<String, String> params = new HashMap<>(Map.of(
-                "locations", subscription.getMonitorAddressesFormated(),
-                "startDate", DateUtils.formatInstantToString(subscription.getStartedAt()),
-                "link", "/client/subscriptions/" + subscription.getId()
-        ));
-
-        if (subscription.getEndsAt() != null) {
-            params.put("endDate", DateUtils.formatInstantToString(subscription.getEndsAt()));
-        }
-
-        notificationService.save(NotificationReference.NEW_SUBSCRIPTION, subscription.getClient(), params, false);
-    }
-
-    private String buildRedirectUrl(String path) {
-        return "/client/" + path;
     }
 
     @Transactional(readOnly = true)
@@ -545,7 +311,7 @@ public class SubscriptionHelper {
                 log.info("Skipping void for paid invoice {}.", invoice.getId());
                 return;
             }
-            
+
             invoice.voidInvoice();
             log.info("Invoice {} voided successfully.", invoice.getId());
         } catch (StripeException e) {
@@ -555,35 +321,11 @@ public class SubscriptionHelper {
 
     @Transactional
     public String generateCustomerPortalSession(Client client) throws StripeException {
-        if (!repository.existsByClientId(client.getId())) {
-            throw new ForbiddenException(SubscriptionValidationMessages.CLIENT_WITHOUT_SUBSCRIPTIONS);
-        }
-
-        if (ObjectUtils.isEmpty(client.getStripeCustomerId())) {
-            throw new ForbiddenException(SubscriptionValidationMessages.CLIENT_WITHOUT_STRIPE_ID);
-        }
-
-        try {
-            Customer customer = clientHelper.getOrCreateCustomer(client);
-            SessionCreateParams params = SessionCreateParams.builder()
-                    .setCustomer(customer.getId())
-
-                    .setReturnUrl(frontBaseUrl + buildRedirectUrl("subscriptions"))
-                    .build();
-
-            Session session = Session.create(params);
-            return session.getUrl();
-        } catch (StripeException e) {
-            log.error("Error when creating customer portal session for clientStripeCustomerId: {}, error: {}", client.getStripeCustomerId(), e.getMessage());
-            throw e;
-        }
-
+        return stripeSubscriptionLifecycle.createCustomerPortalSession(client, "/client/subscriptions");
     }
 
     @Transactional
     public String process(Subscription subscription, Recurrence recurrence) {
         return paymentService.process(subscription, recurrence);
     }
-
-
 }

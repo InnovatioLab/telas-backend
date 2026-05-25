@@ -1,1224 +1,300 @@
 package com.telas.services.impl;
 
-import com.telas.dtos.EmailDataDto;
-import com.telas.dtos.request.AttachmentRequestDto;
-import com.telas.dtos.request.AdMessageRequestDto;
-import com.telas.dtos.request.BusinessQuestionnaireAnswersRequestDto;
-import com.telas.dtos.request.ClientAdRequestToAdminDto;
-import com.telas.dtos.request.ClientRequestDto;
-import com.telas.dtos.request.CreatePartnerRequestDto;
-import com.telas.dtos.request.RefusedAdRequestDto;
-import com.telas.dtos.request.PartnerAdRemovalRequestDto;
-import com.telas.dtos.request.PermanentDeleteClientRequestDto;
+import com.telas.dtos.request.*;
 import com.telas.dtos.request.filters.ClientFilterRequestDto;
 import com.telas.dtos.request.filters.FilterAdRequestDto;
 import com.telas.dtos.response.*;
-import com.telas.entities.*;
-import com.telas.enums.AdRequestOrigin;
+import com.telas.entities.Client;
 import com.telas.enums.AdValidationType;
-import com.telas.enums.CodeType;
-import com.telas.enums.PartnerSubmissionMode;
-import com.telas.enums.DefaultStatus;
-import com.telas.enums.Permission;
-import com.telas.enums.NotificationReference;
-import com.telas.enums.Role;
-import com.telas.helpers.AdPublicationNotificationHelper;
-import com.telas.helpers.AttachmentHelper;
-import com.telas.helpers.ClientHelper;
-import com.telas.infra.exceptions.BusinessRuleException;
-import com.telas.infra.exceptions.ForbiddenException;
-import com.telas.infra.exceptions.ResourceNotFoundException;
-import com.telas.infra.exceptions.UnauthorizedException;
 import com.telas.infra.security.model.AuthenticatedUser;
 import com.telas.infra.security.model.PasswordRequestDto;
 import com.telas.infra.security.model.PasswordUpdateRequestDto;
-import com.telas.infra.security.services.AuthenticatedUserService;
-import com.telas.repositories.AdRepository;
-import com.telas.repositories.AdRequestRepository;
-import com.telas.repositories.AdMessageRepository;
-import com.telas.repositories.ClientRepository;
-import com.telas.repositories.MonitorAdRepository;
-import com.telas.services.AdminEmailAlertPreferenceService;
-import com.telas.services.ClientPermanentDeletionService;
-import com.telas.services.BusinessQuestionnaireService;
-import com.telas.services.BucketService;
-import com.telas.services.ClientService;
-import com.telas.services.NotificationService;
-import com.telas.services.PartnerPlatformSettingsService;
-import com.telas.services.PermissionService;
-import com.telas.services.TermConditionService;
-import com.telas.services.VerificationCodeService;
-import com.telas.shared.audit.CustomRevisionListener;
-import com.telas.shared.constants.SharedConstants;
-import com.telas.shared.constants.valitation.AdValidationMessages;
-import com.telas.shared.constants.valitation.AuthValidationMessageConstants;
-import com.telas.shared.constants.valitation.ClientValidationMessages;
-import com.telas.shared.utils.AttachmentUtils;
-import com.telas.shared.utils.PaginationFilterUtil;
-import jakarta.persistence.criteria.CriteriaBuilder;
-import jakarta.persistence.criteria.Join;
-import jakarta.persistence.criteria.JoinType;
-import jakarta.persistence.criteria.Predicate;
-import jakarta.persistence.criteria.Root;
+import com.telas.services.*;
+import com.telas.shared.model.NamedDownloadResource;
 import lombok.RequiredArgsConstructor;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.Pageable;
-import org.springframework.data.domain.Sort;
-import org.springframework.data.jpa.domain.Specification;
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.Instant;
-import java.time.LocalDate;
-import java.time.format.DateTimeFormatter;
-import java.time.format.DateTimeParseException;
-import java.util.*;
-
-import static java.util.Locale.US;
+import java.util.List;
+import java.util.Optional;
+import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
 public class ClientServiceImpl implements ClientService {
 
-	private final ClientRepository repository;
-
-	private final PasswordEncoder passwordEncoder;
-
-	private final ClientHelper helper;
-
-	private final AttachmentHelper attachmentHelper;
-
-	private final VerificationCodeService verificationCodeService;
-
-	private final AuthenticatedUserService authenticatedUserService;
-
-	private final BucketService bucketService;
-
-	private final TermConditionService termConditionService;
-
-	private final AdRequestRepository adRequestRepository;
-
-	private final AdMessageRepository adMessageRepository;
-
-	private final MonitorAdRepository monitorAdRepository;
-
-	private final AdRepository adRepository;
-
-	private final PermissionService permissionService;
-
-	private final PartnerPlatformSettingsService partnerPlatformSettingsService;
-
-	private final AdminEmailAlertPreferenceService adminEmailAlertPreferenceService;
-
-	private final ClientPermanentDeletionService clientPermanentDeletionService;
-
-	private final NotificationService notificationService;
-
-	private final BusinessQuestionnaireService businessQuestionnaireService;
-
-	private final AdPublicationNotificationHelper adPublicationNotificationHelper;
-
-	@Value("${front.base.url}")
-	private String frontBaseUrl;
-
-	@Override
-	@Transactional
-	public void save(ClientRequestDto request) {
-		helper.validateClientRequest(request, null);
-
-		Client client = new Client(request);
-		helper.verifyAddressesUnique(request.getAddresses(), client);
-		VerificationCode verificationCode = verificationCodeService.save(CodeType.CONTACT, client);
-
-		client.setVerificationCode(verificationCode);
-
-		client.setRole(Role.CLIENT);
-
-		Client savedClient = repository.save(client);
-		if (Role.ADMIN.equals(savedClient.getRole())) {
-			adminEmailAlertPreferenceService.ensureDefaultEmailPreferencesForAdmin(savedClient.getId());
-		}
-		sendContactConfirmationEmail(savedClient, verificationCode);
-		notifyAdminsNewClientRegistered(savedClient);
-	}
-
-	private void notifyAdminsNewClientRegistered(Client client) {
-		if (client == null || !Role.CLIENT.equals(client.getRole())) {
-			return;
-		}
-		String contactEmail = "";
-		if (client.getContact() != null && client.getContact().getEmail() != null) {
-			contactEmail = client.getContact().getEmail();
-		}
-		String adminLink = frontBaseUrl + "/admin/clients/" + client.getId();
-		Map<String, String> params = new HashMap<>();
-		params.put("businessName", client.getBusinessName() != null ? client.getBusinessName() : "");
-		params.put("contactEmail", contactEmail);
-		params.put("clientId", client.getId().toString());
-		params.put("link", adminLink);
-		repository.findAllAdmins().forEach(admin ->
-				notificationService.save(NotificationReference.ADMIN_NEW_CLIENT_REGISTERED, admin, new HashMap<>(params), true));
-	}
-
-
-	@Override
-	@Transactional(readOnly = true)
-	public ClientResponseDto findById(UUID id) {
-		return buildClientResponse(findEntityById(id));
-	}
-
-
-	@Override
-	@Transactional(readOnly = true)
-	public ClientResponseDto findByEmailUnprotected(String email) {
-		return repository.findByEmail(email).map(this::buildClientResponse)
-			.orElseThrow(() -> new ResourceNotFoundException(ClientValidationMessages.USER_NOT_FOUND));
-	}
-
-
-	@Override
-	@Transactional(readOnly = true)
-	public Client findActiveEntityById(UUID id) {
-		return repository.findActiveById(id)
-			.orElseThrow(() -> new ResourceNotFoundException(ClientValidationMessages.USER_NOT_FOUND));
-	}
-
-
-	@Override
-	@Transactional(readOnly = true)
-	public Client findEntityById(UUID id) {
-		return repository.findById(id)
-			.orElseThrow(() -> new ResourceNotFoundException(ClientValidationMessages.USER_NOT_FOUND));
-	}
-
-
-	@Override
-	@Transactional(readOnly = true)
-	public ClientResponseDto getDataFromToken() {
-		UUID clientId = authenticatedUserService.getLoggedUser().client().getId();
-		Client client = repository.findActiveIdFromToken(clientId)
-			.orElseThrow(() -> new ResourceNotFoundException(ClientValidationMessages.USER_NOT_FOUND));
-		client.getAttachments().size();
-		client.getAds().size();
-		return buildClientResponse(client);
-	}
-
-
-	@Override
-	@Transactional
-	public void validateCode(String email, String codigo) {
-		helper.validateEmail(email);
-		Client client = findByEmail(email);
-		verificationCodeService.validate(client, codigo);
-		repository.save(client);
-	}
-
-
-	@Override
-	@Transactional
-	public void resendCode(String email) {
-		helper.validateEmail(email);
-		Client client = findByEmail(email);
-		VerificationCode verificationCode = verificationCodeService.save(CodeType.CONTACT, client);
-		client.setVerificationCode(verificationCode);
-		repository.save(client);
-
-		Map<String, String> params = new HashMap<>();
-		params.put("verificationCode", verificationCode.getCode());
-		params.put("name", client.getBusinessName());
-		params.put("clientId", client.getId().toString());
-
-		EmailDataDto emailData = new EmailDataDto(client.getContact().getEmail(),
-			SharedConstants.TEMPLATE_EMAIL_CONTACT_VERIFICATION, SharedConstants.EMAIL_SUBJECT_CONTACT_VERIFICATION,
-			params);
-		verificationCodeService.send(emailData);
-	}
-
-
-	@Override
-	@Transactional
-	public void createPassword(String email, PasswordRequestDto request) {
-		request.validate();
-		helper.validateEmail(email);
-		Client client = findByEmail(email);
-
-		if (!DefaultStatus.ACTIVE.equals(client.getStatus())) {
-			helper.verifyValidationCode(client);
-			String hashedPass = passwordEncoder.encode(request.getPassword());
-			client.setPassword(hashedPass);
-			client.setStatus(DefaultStatus.ACTIVE);
-
-			repository.save(client);
-		}
-	}
-
-
-	@Override
-	@Transactional
-	public void sendResetPasswordCode(String email) {
-		helper.validateEmail(email);
-		Client client = findActiveByEmail(email);
-
-		VerificationCode verificationCode = verificationCodeService.save(CodeType.PASSWORD, client);
-		client.setVerificationCode(verificationCode);
-		repository.save(client);
-
-		Map<String, String> params = new HashMap<>();
-		params.put("verificationCode", verificationCode.getCode());
-		params.put("name", client.getBusinessName());
-		params.put("clientId", client.getId().toString());
-
-		EmailDataDto emailData = new EmailDataDto(client.getContact().getEmail(),
-			SharedConstants.TEMPLATE_EMAIL_RESET_PASSWORD, SharedConstants.EMAIL_SUBJECT_RESET_PASSWORD, params);
-		verificationCodeService.send(emailData);
-	}
-
-
-	@Override
-	@Transactional
-	public void resetPassword(String email, PasswordRequestDto request) {
-		request.validate();
-		Client client = findActiveByEmail(email);
-
-		if (!CodeType.PASSWORD.equals(client.getVerificationCode().getCodeType())) {
-			throw new BusinessRuleException(AuthValidationMessageConstants.INVALID_CODE_TYPE_FOR_PASSWORD_UPDATE);
-		}
-
-		helper.verifyValidationCode(client);
-
-		String hashedPass = passwordEncoder.encode(request.getPassword());
-		client.setPassword(hashedPass);
-		repository.save(client);
-	}
-
-
-	@Override
-	@Transactional
-	public void updatePassword(PasswordUpdateRequestDto request, AuthenticatedUser authClient) {
-		Client client = authClient.client();
-		helper.verifyValidationCode(client);
-
-		if (!passwordEncoder.matches(request.getCurrentPassword(), authClient.getPassword())) {
-			throw new UnauthorizedException(AuthValidationMessageConstants.INVALID_CREDENTIALS);
-		}
-
-		String hashedPass = passwordEncoder.encode(request.getPassword());
-		client.setPassword(hashedPass);
-		repository.save(client);
-	}
-
-
-	@Transactional
-	@Override
-	public void update(ClientRequestDto request, UUID id) {
-		AuthenticatedUser authenticatedUser = authenticatedUserService.validateSelfOrAdmin(id);
-
-		Client client = findActiveEntityById(id);
-		helper.validateClientRequest(request, client);
-
-		CustomRevisionListener.setUsername(authenticatedUser.client().getBusinessName());
-
-		client.update(request, authenticatedUser.client().getBusinessName());
-		helper.updateAddresses(request.getAddresses(), client);
-		repository.save(client);
-	}
-
-
-	@Transactional
-	@Override
-	public void uploadAttachments(List<AttachmentRequestDto> request) {
-		attachmentHelper.validate(request);
-
-		Client logged = authenticatedUserService.getLoggedUser().client();
-		Client client = logged.isPartner()
-				? repository.findActiveIdFromToken(logged.getId())
-						.orElseThrow(() -> new ResourceNotFoundException(ClientValidationMessages.USER_NOT_FOUND))
-				: authenticatedUserService.validateActiveSubscription().client();
-		boolean isFirstUpload = client.getAttachments().isEmpty();
-		helper.validateAttachmentsCount(client, request);
-
-		if (!client.getAttachments().isEmpty()) {
-			CustomRevisionListener.setUsername(client.getBusinessName());
-			client.setUsernameUpdate(client.getBusinessName());
-		}
-
-		attachmentHelper.saveAttachments(request, client);
-		repository.save(client);
-
-		if (isFirstUpload) {
-			attachmentHelper.notifyAdminsClientFirstAttachmentsUploaded(client);
-			Map<String, String> clientAckParams = new HashMap<>();
-			clientAckParams.put("name", client.getBusinessName());
-			String materialsPath = client.isPartner() ? "/client/screens" : "/client/my-telas";
-			clientAckParams.put("link", frontBaseUrl + materialsPath);
-			notificationService.save(
-					NotificationReference.CLIENT_FIRST_ATTACHMENTS_UPLOADED_ACK,
-					client,
-					clientAckParams,
-					true
-			);
-		}
-	}
-
-
-	@Transactional
-	@Override
-	public void deleteClientAttachment(UUID attachmentId) {
-		Client client = repository.findActiveIdFromToken(authenticatedUserService.getLoggedUser().client().getId())
-				.orElseThrow(() -> new ResourceNotFoundException(ClientValidationMessages.USER_NOT_FOUND));
-		attachmentHelper.deleteClientAttachment(client, attachmentId);
-	}
-
-
-	@Transactional
-	@Override
-	public void requestAdCreation(ClientAdRequestToAdminDto request) {
-		Client client = authenticatedUserService.validateActiveSubscription().client();
-
-		if (Role.ADMIN.equals(client.getRole())) {
-			return;
-		}
-
-		if (Objects.nonNull(client.getAdRequest())) {
-			throw new ForbiddenException(ClientValidationMessages.AD_REQUEST_EXISTS);
-		}
-
-		validateMaxAds(client);
-		AdRequest created = helper.createAdRequest(request, client);
-		businessQuestionnaireService.createQuestionnaireForNewAdRequest(client.getId(), created, request.getBusinessAnswers());
-	}
-
-
-	@Transactional
-	@Override
-	public void uploadAds(AttachmentRequestDto request, UUID clientId) {
-		request.validate();
-
-		Client actor = authenticatedUserService.getLoggedUser().client();
-		Client client = findActiveEntityById(clientId);
-
-		if (actor.isPartner() && actor.getId().equals(clientId)) {
-			validateMaxAds(client);
-			attachmentHelper.saveAds(request, client);
-			return;
-		}
-
-		Client admin = authenticatedUserService.validateAdmin().client();
-
-		if (admin.getId().equals(clientId) || Role.ADMIN.equals(client.getRole())) {
-			attachmentHelper.saveAds(request, admin);
-			return;
-		}
-
-		if (client.isPartner()) {
-			throw new BusinessRuleException(ClientValidationMessages.PARTNER_USE_AD_REQUEST_UPLOAD);
-		}
-
-		if (Objects.isNull(client.getAdRequest())) {
-			throw new ResourceNotFoundException(ClientValidationMessages.AD_REQUEST_NOT_FOUND);
-		}
-
-		boolean isReplacingExistingAd = client.getAdRequest() != null && client.getAdRequest().getAd() != null;
-		if (!isReplacingExistingAd) {
-			validateMaxAds(client);
-		}
-		attachmentHelper.saveAds(request, client);
-	}
-
-	@Override
-	@Transactional
-	public void uploadAdsForAdRequest(AttachmentRequestDto request, UUID adRequestId) {
-		request.validate();
-		authenticatedUserService.validateAdminOrAdsManageAccess();
-		AdRequest adRequest = helper.getAdRequestById(adRequestId);
-		if (!AdRequestOrigin.PARTNER.equals(adRequest.getRequestOrigin())) {
-			throw new BusinessRuleException(ClientValidationMessages.AD_REQUEST_NOT_PARTNER);
-		}
-		if (!PartnerSubmissionMode.ADMIN_MATERIALS.equals(adRequest.getSubmissionMode())) {
-			throw new BusinessRuleException(ClientValidationMessages.AD_REQUEST_NOT_MATERIALS);
-		}
-		Client partner = adRequest.getClient();
-		boolean isReplacingExistingAd = adRequest.getAd() != null;
-		if (!isReplacingExistingAd) {
-			validateMaxAds(partner);
-		}
-		attachmentHelper.saveAdsForAdRequest(request, adRequest);
-	}
-
-	@Override
-	@Transactional
-	public void approveAdRequestToAds(UUID adRequestId) {
-		authenticatedUserService.validateAdminOrAdsManageAccess();
-		AdRequest adRequest = helper.getAdRequestById(adRequestId);
-		Client admin = authenticatedUserService.getLoggedUser().client();
-		attachmentHelper.adminApproveAdRequestToAds(adRequest, admin);
-	}
-
-	@Override
-	@Transactional
-	public void cancelAdRequest(UUID adRequestId) {
-		authenticatedUserService.validateAdminOrAdsManageAccess();
-		AdRequest adRequest = helper.getAdRequestById(adRequestId);
-		attachmentHelper.cancelAdRequest(adRequest);
-	}
-
-
-	@Transactional
-	@Override
-	public void acceptTermsAndConditions() {
-		Client client = authenticatedUserService.getLoggedUser().client();
-		TermCondition actualTermCondition = termConditionService.getLastTermCondition();
-		client.setTermCondition(actualTermCondition);
-		client.setTermAcceptedAt(Instant.now());
-		repository.save(client);
-	}
-
-
-	@Transactional
-	@Override
-	public void changeRoleToPartner(UUID clientId) {
-		Client admin = authenticatedUserService.validateAdmin().client();
-		Client partner = repository.findById(clientId)
-			.orElseThrow(() -> new ResourceNotFoundException(ClientValidationMessages.USER_NOT_FOUND));
-
-		if (!Role.PARTNER.equals(partner.getRole())) {
-			CustomRevisionListener.setUsername(admin.getBusinessName());
-
-			partner.setRole(Role.PARTNER);
-			partner.setUsernameUpdate(admin.getBusinessName());
-			repository.save(partner);
-		}
-	}
-
-	@Override
-	@Transactional
-	public ClientMinResponseDto createPartnerByAdmin(CreatePartnerRequestDto request) {
-		Client actor = authenticatedUserService.validateAdmin().client();
-		validateCreatePartnerByAdminAccess(actor);
-		helper.validateClientRequest(request, null);
-
-		PasswordRequestDto passwordRequest = new PasswordRequestDto(request.getPassword(), request.getConfirmPassword());
-		passwordRequest.validate();
-
-		Client client = new Client(request);
-		helper.verifyAddressesUnique(request.getAddresses(), client);
-
-		client.setRole(Role.PARTNER);
-		client.setStatus(DefaultStatus.ACTIVE);
-		client.setPassword(passwordEncoder.encode(passwordRequest.getPassword()));
-
-		VerificationCode verificationCode = verificationCodeService.savePreValidated(CodeType.PASSWORD, client);
-		client.setVerificationCode(verificationCode);
-
-		CustomRevisionListener.setUsername(actor.getBusinessName());
-		client.setUsernameCreate(actor.getBusinessName());
-
-		Client savedPartner = repository.save(client);
-		notifyAdminsNewPartnerCreated(savedPartner);
-
-		return new ClientMinResponseDto(savedPartner);
-	}
-
-	@Override
-	@Transactional
-	public void deactivateClientByDeveloper(UUID clientId) {
-		authenticatedUserService.validatePermission(Permission.ADMIN_CLIENTS_DEACTIVATE);
-		Client actor = authenticatedUserService.getLoggedUser().client();
-		Client target = repository.findById(clientId)
-				.orElseThrow(() -> new ResourceNotFoundException(ClientValidationMessages.USER_NOT_FOUND));
-		if (target.getId().equals(actor.getId())) {
-			throw new ForbiddenException(ClientValidationMessages.CANNOT_DEACTIVATE_USER);
-		}
-		if (target.isAdmin() || target.isDeveloper()) {
-			throw new ForbiddenException(ClientValidationMessages.CANNOT_DEACTIVATE_USER);
-		}
-		if (DefaultStatus.INACTIVE.equals(target.getStatus())
-				|| DefaultStatus.DELETED.equals(target.getStatus())) {
-			return;
-		}
-		CustomRevisionListener.setUsername(actor.getBusinessName());
-		target.setStatus(DefaultStatus.INACTIVE);
-		target.setInactiveByClientId(actor.getId());
-		target.setUsernameUpdate(actor.getBusinessName());
-		if (target.getAdRequest() != null && target.getAdRequest().isActive()) {
-			target.getAdRequest().closeRequest();
-		}
-		repository.save(target);
-	}
-
-	@Override
-	@Transactional
-	public void reactivateClientByDeveloper(UUID clientId) {
-		authenticatedUserService.validatePermission(Permission.ADMIN_CLIENTS_REACTIVATE);
-		Client actor = authenticatedUserService.getLoggedUser().client();
-		Client target = repository.findById(clientId)
-				.orElseThrow(() -> new ResourceNotFoundException(ClientValidationMessages.USER_NOT_FOUND));
-		if (target.getId().equals(actor.getId())) {
-			throw new ForbiddenException(ClientValidationMessages.CANNOT_DEACTIVATE_USER);
-		}
-		if (target.isAdmin() || target.isDeveloper()) {
-			throw new ForbiddenException(ClientValidationMessages.CANNOT_DEACTIVATE_USER);
-		}
-		if (!DefaultStatus.INACTIVE.equals(target.getStatus())) {
-			throw new ForbiddenException(ClientValidationMessages.CLIENT_NOT_INACTIVE);
-		}
-		CustomRevisionListener.setUsername(actor.getBusinessName());
-		target.setStatus(DefaultStatus.ACTIVE);
-		target.setInactiveByClientId(null);
-		target.setUsernameUpdate(actor.getBusinessName());
-		repository.save(target);
-	}
-
-	@Override
-	@Transactional
-	public void softDeleteClientByDeveloper(UUID clientId) {
-		authenticatedUserService.validatePermission(Permission.ADMIN_CLIENTS_SOFT_DELETE);
-		Client actor = authenticatedUserService.getLoggedUser().client();
-		Client target = repository.findById(clientId)
-				.orElseThrow(() -> new ResourceNotFoundException(ClientValidationMessages.USER_NOT_FOUND));
-		if (target.getId().equals(actor.getId())) {
-			throw new ForbiddenException(ClientValidationMessages.CANNOT_DEACTIVATE_USER);
-		}
-		if (target.isAdmin() || target.isDeveloper()) {
-			throw new ForbiddenException(ClientValidationMessages.CANNOT_DEACTIVATE_USER);
-		}
-		if (DefaultStatus.DELETED.equals(target.getStatus())) {
-			return;
-		}
-		CustomRevisionListener.setUsername(actor.getBusinessName());
-		target.setStatus(DefaultStatus.DELETED);
-		target.setUsernameUpdate(actor.getBusinessName());
-		repository.save(target);
-	}
-
-	@Override
-	@Transactional
-	public void restoreSoftDeletedClientByDeveloper(UUID clientId) {
-		authenticatedUserService.validatePermission(Permission.ADMIN_CLIENTS_RESTORE_DELETED);
-		Client actor = authenticatedUserService.getLoggedUser().client();
-		Client target = repository.findById(clientId)
-				.orElseThrow(() -> new ResourceNotFoundException(ClientValidationMessages.USER_NOT_FOUND));
-		if (target.getId().equals(actor.getId())) {
-			throw new ForbiddenException(ClientValidationMessages.CANNOT_DEACTIVATE_USER);
-		}
-		if (target.isAdmin() || target.isDeveloper()) {
-			throw new ForbiddenException(ClientValidationMessages.CANNOT_DEACTIVATE_USER);
-		}
-		if (!DefaultStatus.DELETED.equals(target.getStatus())) {
-			throw new ForbiddenException(ClientValidationMessages.CLIENT_NOT_DELETED);
-		}
-		CustomRevisionListener.setUsername(actor.getBusinessName());
-		target.setStatus(DefaultStatus.ACTIVE);
-		target.setUsernameUpdate(actor.getBusinessName());
-		repository.save(target);
-	}
-
-	@Override
-	@Transactional(readOnly = true)
-	public PermanentDeletionRequirementsDto getPermanentDeletionRequirements(UUID clientId) {
-		validatePermanentDeleteAccess();
-		return clientPermanentDeletionService.getRequirements(clientId);
-	}
-
-	@Override
-	@Transactional
-	public void permanentlyDeleteClientByDeveloper(UUID clientId, PermanentDeleteClientRequestDto request) {
-		validatePermanentDeleteAccess();
-		AuthenticatedUser logged = authenticatedUserService.getLoggedUser();
-		if (!passwordEncoder.matches(request.getPassword(), logged.getPassword())) {
-			throw new BusinessRuleException(AuthValidationMessageConstants.INVALID_CREDENTIALS);
-		}
-		Client actor = logged.client();
-		Client target = repository.findById(clientId)
-				.orElseThrow(() -> new ResourceNotFoundException(ClientValidationMessages.USER_NOT_FOUND));
-		if (target.getId().equals(actor.getId())) {
-			throw new ForbiddenException(ClientValidationMessages.CANNOT_DEACTIVATE_USER);
-		}
-		if (target.isAdmin() || target.isDeveloper()) {
-			throw new ForbiddenException(ClientValidationMessages.CANNOT_DEACTIVATE_USER);
-		}
-		clientPermanentDeletionService.deleteClientAndOwnedData(clientId, request.getMonitorSuccessorClientId());
-	}
-
-	@Override
-	@Transactional
-	public void validateAd(UUID adId, AdValidationType validation, RefusedAdRequestDto request) {
-		Ad ad = helper.getAdById(adId);
-		Client actor = authenticatedUserService.getLoggedUser().client();
-		attachmentHelper.validateAd(ad, actor, validation, request);
-	}
-
-	@Override
-	@Transactional(readOnly = true)
-	public List<AdMessageResponseDto> listAdMessages(UUID adId) {
-		Client actor = authenticatedUserService.getLoggedUser().client();
-		Ad ad = helper.getAdById(adId);
-		validateCanSeeAdConversation(actor, ad);
-		return adMessageRepository.findAllByAdIdOrderByCreatedAtAsc(adId).stream()
-				.map(AdMessageResponseDto::new)
-				.toList();
-	}
-
-	@Override
-	@Transactional
-	public void sendAdMessage(UUID adId, AdMessageRequestDto request) {
-		Client actor = authenticatedUserService.getLoggedUser().client();
-		Ad ad = helper.getAdById(adId);
-		validateCanSeeAdConversation(actor, ad);
-
-		AdMessage msg = new AdMessage(ad, actor.getRole(), request.getMessage());
-		msg.setUsernameCreate(actor.getBusinessName());
-		adMessageRepository.save(msg);
-	}
-
-	@Override
-	@Transactional(readOnly = true)
-	public List<AdminClientMessageRowDto> listClientMessagesHistory(UUID clientId) {
-		authenticatedUserService.validateAdmin();
-		return adMessageRepository.findAllByClientIdOrderByCreatedAtAsc(clientId).stream()
-				.map(AdminClientMessageRowDto::new)
-				.toList();
-	}
-
-	private void validateCanSeeAdConversation(Client actor, Ad ad) {
-		if (actor.isAdmin() || actor.isDeveloper()) {
-			return;
-		}
-		if (ad.getClient() != null && actor.getId().equals(ad.getClient().getId())) {
-			return;
-		}
-		throw new ForbiddenException("You are not allowed to access this ad conversation.");
-	}
-
-
-	@Override
-	@Transactional
-	public void incrementSubscriptionFlow() {
-		Client client = authenticatedUserService.getLoggedUser().client();
-		client.getSubscriptionFlow().nextStep();
-		repository.save(client);
-	}
-
-
-	@Override
-	@Transactional(readOnly = true)
-	public PaginationResponseDto<List<ClientMinResponseDto>> findAllFilters(ClientFilterRequestDto request) {
-		authenticatedUserService.validateAdmin();
-		Client actor = authenticatedUserService.getLoggedUser().client();
-		Sort order = request.setOrdering();
-
-		Pageable pageable = PaginationFilterUtil.getPageable(request, order);
-		Specification<Client> roleRestriction = actor.isDeveloper()
-			? (root, query, criteriaBuilder) -> criteriaBuilder.conjunction()
-			: (root, query, criteriaBuilder) -> criteriaBuilder.notEqual(root.get("role"), Role.ADMIN);
-		Specification<Client> statusVisibilityForPanel = (root, query, criteriaBuilder) -> {
-			if (actor.isDeveloper()) {
-				return criteriaBuilder.conjunction();
-			}
-			List<Predicate> allowed = new ArrayList<>();
-			allowed.add(criteriaBuilder.equal(root.get("status"), DefaultStatus.ACTIVE));
-			if (permissionService.hasPermission(actor, Permission.ADMIN_CLIENTS_VIEW_INACTIVE)) {
-				allowed.add(criteriaBuilder.equal(root.get("status"), DefaultStatus.INACTIVE));
-			}
-			if (permissionService.hasPermission(actor, Permission.ADMIN_CLIENTS_VIEW_DELETED)) {
-				allowed.add(criteriaBuilder.equal(root.get("status"), DefaultStatus.DELETED));
-			}
-			return criteriaBuilder.or(allowed.toArray(new jakarta.persistence.criteria.Predicate[0]));
-		};
-		Specification<Client> filter = PaginationFilterUtil.addSpecificationFilter(
-			Specification.where(roleRestriction).and(statusVisibilityForPanel),
-			request.getGenericFilter(), this::filterClients);
-
-		Page<Client> page = repository.findAll(filter, pageable);
-		boolean canDeactivate = permissionService.hasPermission(actor, Permission.ADMIN_CLIENTS_DEACTIVATE);
-		boolean canReactivate = permissionService.hasPermission(actor, Permission.ADMIN_CLIENTS_REACTIVATE);
-		boolean canRestoreDeleted =
-				permissionService.hasPermission(actor, Permission.ADMIN_CLIENTS_RESTORE_DELETED);
-		UUID viewerId = actor.getId();
-
-		List<Client> clients = page.getContent();
-		List<UUID> partnerIds = clients.stream()
-				.filter(c -> Role.PARTNER.equals(c.getRole()))
-				.map(Client::getId)
-				.filter(Objects::nonNull)
-				.toList();
-
-		Map<UUID, Integer> adsCountByPartnerId = new HashMap<>();
-		if (!partnerIds.isEmpty()) {
-			monitorAdRepository.countAdsInPartnerMonitors(partnerIds).forEach(row ->
-					adsCountByPartnerId.put(row.getPartnerId(), Math.toIntExact(row.getAdsCount())));
-		}
-
-		List<ClientMinResponseDto> response = clients.stream()
-				.map(c -> new ClientMinResponseDto(
-						c,
-						viewerId,
-						canDeactivate,
-						canReactivate,
-						canRestoreDeleted,
-						adsCountByPartnerId.get(c.getId())
-				))
-				.toList();
-		return PaginationResponseDto.fromResult(response, (int) page.getTotalElements(), page.getTotalPages(),
-				request.getPage());
-	}
-
-
-	@Override
-	@Transactional(readOnly = true)
-	public PaginationResponseDto<List<AdRequestAdminResponseDto>> findPendingAdRequest(FilterAdRequestDto request) {
-		authenticatedUserService.validateAdminOrAdsManageAccess();
-		Sort order = request.setOrdering();
-
-		Pageable pageable = PaginationFilterUtil.getPageable(request, order);
-		Specification<AdRequest> filter = PaginationFilterUtil.addSpecificationFilter((root, query, criteriaBuilder) -> {
-
-			Join<AdRequest, Client> clientJoin = root.join("client", JoinType.INNER);
-			Join<AdRequest, Ad> adJoin = root.join("ad", JoinType.LEFT);
-
-			Predicate activeClient = criteriaBuilder.equal(clientJoin.get("status"), DefaultStatus.ACTIVE);
-
-			Predicate noAdYet = criteriaBuilder.isNull(adJoin.get("id"));
-			Predicate rejectedAd =
-				criteriaBuilder.equal(adJoin.get("validation"), AdValidationType.REJECTED);
-			Predicate pendingValidation =
-				criteriaBuilder.equal(adJoin.get("validation"), AdValidationType.PENDING);
-
-			Predicate adminUploadNeeded = criteriaBuilder.and(
-				criteriaBuilder.equal(root.get("isActive"), true),
-				criteriaBuilder.or(noAdYet, rejectedAd)
-			);
-
-			Predicate pendingAdvertiserReview = criteriaBuilder.and(
-				pendingValidation,
-				criteriaBuilder.or(
-					criteriaBuilder.equal(root.get("requestOrigin"), AdRequestOrigin.CLIENT),
-					criteriaBuilder.and(
-						criteriaBuilder.equal(root.get("requestOrigin"), AdRequestOrigin.PARTNER),
-						criteriaBuilder.or(
-							criteriaBuilder.isNull(root.get("submissionMode")),
-							criteriaBuilder.notEqual(
-								root.get("submissionMode"),
-								PartnerSubmissionMode.PARTNER_FINISHED_CREATIVE
-							)
-						)
-					)
-				)
-			);
-
-			Predicate adminDirectApproval = criteriaBuilder.and(
-				criteriaBuilder.equal(root.get("submissionMode"), PartnerSubmissionMode.PARTNER_FINISHED_CREATIVE),
-				pendingValidation
-			);
-
-			Predicate visibleInAdminQueue = criteriaBuilder.or(
-				adminUploadNeeded,
-				pendingAdvertiserReview,
-				adminDirectApproval
-			);
-
-			Predicate refusalHistoryOk = criteriaBuilder.or(
-				noAdYet,
-				criteriaBuilder.and(
-					criteriaBuilder.isNotNull(adJoin.get("id")),
-					criteriaBuilder.le(
-						criteriaBuilder.size(adJoin.get("refusedAds")),
-						SharedConstants.MAX_ADS_VALIDATION
-					)
-				)
-			);
-
-			List<Predicate> predicates = new ArrayList<>();
-			predicates.add(activeClient);
-			predicates.add(visibleInAdminQueue);
-			predicates.add(refusalHistoryOk);
-
-			if (request.getRequestOrigin() != null) {
-				predicates.add(criteriaBuilder.equal(root.get("requestOrigin"), request.getRequestOrigin()));
-			}
-			if (request.getSubmissionMode() != null) {
-				predicates.add(criteriaBuilder.equal(root.get("submissionMode"), request.getSubmissionMode()));
-			}
-			if (request.getClientRole() != null) {
-				predicates.add(criteriaBuilder.equal(clientJoin.get("role"), request.getClientRole()));
-			}
-
-			return criteriaBuilder.and(predicates.toArray(new Predicate[0]));
-		}, request.getGenericFilter(), this::filterAdRequests);
-
-		Page<AdRequest> page = adRequestRepository.findAll(filter, pageable);
-		List<AdRequestAdminResponseDto> response = page.stream()
-			.map(adRequest -> new AdRequestAdminResponseDto(
-					adRequest,
-					attachmentHelper.getAdRequestData(adRequest),
-					businessQuestionnaireService.findLatestVersionByAdRequestId(adRequest.getId()).orElse(null),
-					businessQuestionnaireService.findLatestRevisionCreatedAt(adRequest.getId()).orElse(null)))
-			.toList();
-		return PaginationResponseDto.fromResult(response, (int) page.getTotalElements(), page.getTotalPages(),
-			request.getPage());
-	}
-
-
-	@Override
-	@Transactional(readOnly = true)
-	public PaginationResponseDto<List<PendingAdAdminValidationResponseDto>> findPendingAds(FilterAdRequestDto request) {
-		authenticatedUserService.validateAdminOrAdsManageAccess();
-		Sort order = sortForPendingAds(request);
-		Pageable pageable = PaginationFilterUtil.getPageable(request, order);
-		Specification<Ad> base = (root, query, criteriaBuilder) -> {
-			Join<Ad, Client> clientJoin = root.join("client", JoinType.INNER);
-			Predicate activeClient = criteriaBuilder.equal(clientJoin.get("status"), DefaultStatus.ACTIVE);
-			Predicate pending = criteriaBuilder.equal(root.get("validation"), AdValidationType.PENDING);
-			List<Predicate> predicates = new ArrayList<>();
-			predicates.add(activeClient);
-			predicates.add(pending);
-			if (request.getClientRole() != null) {
-				predicates.add(criteriaBuilder.equal(clientJoin.get("role"), request.getClientRole()));
-			}
-			return criteriaBuilder.and(predicates.toArray(new Predicate[0]));
-		};
-		Specification<Ad> filter = PaginationFilterUtil.addSpecificationFilter(base,
-				request.getGenericFilter(), this::filterPendingAds);
-		Page<Ad> page = adRepository.findAll(filter, pageable);
-		List<PendingAdAdminValidationResponseDto> response = page.stream()
-				.map(ad -> new PendingAdAdminValidationResponseDto(
-						ad,
-						attachmentHelper.getStringLinkFromAd(ad),
-						attachmentHelper.buildClientReferencesForAd(ad)))
-				.toList();
-		return PaginationResponseDto.fromResult(response, (int) page.getTotalElements(), page.getTotalPages(),
-				request.getPage());
-	}
-
-	@Override
-	@Transactional(readOnly = true)
-	public List<PendingAdAdminValidationResponseDto> findMyPendingValidationAds() {
-		Client partner = authenticatedUserService.getLoggedUser().client();
-		if (!partner.isPartner()) {
-			throw new ForbiddenException(AuthValidationMessageConstants.ERROR_NO_PERMISSION);
-		}
-		return adRepository.findByClientIdAndValidation(partner.getId(), AdValidationType.PENDING).stream()
-				.map(ad -> new PendingAdAdminValidationResponseDto(
-						ad,
-						attachmentHelper.getStringLinkFromAd(ad),
-						List.of()))
-				.toList();
-	}
-
-	@Override
-	@Transactional
-	public void requestPartnerAdRemoval(UUID adId, PartnerAdRemovalRequestDto request) {
-		Client partner = authenticatedUserService.getLoggedUser().client();
-		if (!partner.isPartner()) {
-			throw new ForbiddenException(AuthValidationMessageConstants.ERROR_NO_PERMISSION);
-		}
-		Ad ad = adRepository.findByIdWithClientAndAdRequest(adId)
-				.orElseThrow(() -> new ResourceNotFoundException(AdValidationMessages.AD_NOT_FOUND));
-		if (ad.getClient() == null || !partner.getId().equals(ad.getClient().getId())) {
-			throw new BusinessRuleException(AdValidationMessages.AD_NOT_OWNED_BY_PARTNER);
-		}
-		List<MonitorAd> placements = monitorAdRepository.findByAdIdWithMonitor(adId);
-		boolean canRemove = ad.getOnAirNotifiedAt() != null
-				|| (placements != null && !placements.isEmpty());
-		if (!canRemove) {
-			throw new BusinessRuleException(AdValidationMessages.AD_REMOVAL_NOT_ALLOWED);
-		}
-		Monitor monitor = null;
-		if (placements != null && !placements.isEmpty() && placements.get(0).getMonitor() != null) {
-			monitor = placements.get(0).getMonitor();
-		} else if (ad.getAdRequest() != null) {
-			monitor = ad.getAdRequest().getTargetMonitor();
-		}
-		String message = request != null && request.getMessage() != null ? request.getMessage().trim() : "";
-		adPublicationNotificationHelper.notifyPartnerAdRemovalRequested(partner, ad, monitor, message);
-	}
-
-
-	private Sort sortForPendingAds(FilterAdRequestDto request) {
-		String sortBy = request.getSortBy() != null ? request.getSortBy() : "";
-		boolean desc = "desc".equalsIgnoreCase(request.getSortDir());
-		return switch (sortBy) {
-			case "clientName" ->
-					Sort.by(desc ? Sort.Order.desc("client.businessName").ignoreCase()
-							: Sort.Order.asc("client.businessName").ignoreCase());
-			case "clientRole" ->
-					Sort.by(desc ? Sort.Order.desc("client.role") : Sort.Order.asc("client.role"));
-			case "name" ->
-					Sort.by(desc ? Sort.Order.desc("name").ignoreCase() : Sort.Order.asc("name").ignoreCase());
-			case "submissionDate", "waitingDays" ->
-					Sort.by(desc ? Sort.Order.desc("createdAt") : Sort.Order.asc("createdAt"));
-			default -> Sort.by(Sort.Order.desc("createdAt"));
-		};
-	}
-
-
-	Specification<Ad> filterPendingAds(Specification<Ad> specification, String genericFilter) {
-		if (genericFilter == null || genericFilter.isBlank()) {
-			return specification;
-		}
-		return specification.and((root, query, criteriaBuilder) -> {
-			List<Predicate> predicates = new ArrayList<>();
-			String filter = "%" + genericFilter.toLowerCase() + "%";
-			predicates.add(criteriaBuilder.like(criteriaBuilder.lower(root.get("client").get("businessName")), filter));
-			predicates.add(criteriaBuilder.like(root.get("client").get("contact").get("email"), filter));
-			predicates.add(criteriaBuilder.equal(root.get("client").get("contact").get("phone"), genericFilter));
-			predicates.add(criteriaBuilder.like(criteriaBuilder.lower(root.get("client").get("role")), filter));
-			addDatePredicatesForAd(genericFilter, root, criteriaBuilder, predicates);
-			return criteriaBuilder.or(predicates.toArray(new Predicate[0]));
-		});
-	}
-
-
-	private void addDatePredicatesForAd(String genericFilter, Root<Ad> root, CriteriaBuilder criteriaBuilder,
-			List<Predicate> predicates) {
-		try {
-			LocalDate submissionDate = LocalDate.parse(genericFilter);
-			predicates.add(criteriaBuilder.equal(criteriaBuilder.function("date", LocalDate.class, root.get("createdAt")),
-					submissionDate));
-		} catch (DateTimeParseException ignored) {
-		}
-
-		try {
-			DateTimeFormatter usFormatter = DateTimeFormatter.ofPattern("MM/dd/yyyy", US);
-			LocalDate date = LocalDate.parse(genericFilter, usFormatter);
-			predicates.add(
-					criteriaBuilder.equal(criteriaBuilder.function("date", LocalDate.class, root.get("createdAt")), date));
-		} catch (DateTimeParseException ignored) {
-		}
-	}
-
-
-	@Override
-	@Transactional
-	public void addMonitorToWishlist(UUID monitorId) {
-		Client client = authenticatedUserService.getLoggedUser().client();
-		helper.addMonitorToWishlist(monitorId, client);
-	}
-
-
-	@Override
-	@Transactional(readOnly = true)
-	public WishlistResponseDto getWishlistMonitors() {
-		Client client = authenticatedUserService.getLoggedUser().client();
-
-		if (client.getWishlist() == null) {
-			throw new ResourceNotFoundException(ClientValidationMessages.WISHLIST_NOT_FOUND);
-		}
-
-		return new WishlistResponseDto(client.getWishlist());
-	}
-
-
-
-	private void notifyAdminsNewPartnerCreated(Client partner) {
-		if (partner == null || !Role.PARTNER.equals(partner.getRole())) {
-			return;
-		}
-		String contactEmail = "";
-		if (partner.getContact() != null && partner.getContact().getEmail() != null) {
-			contactEmail = partner.getContact().getEmail();
-		}
-		String adminLink = frontBaseUrl + "/admin/clients/" + partner.getId();
-		Map<String, String> params = new HashMap<>();
-		params.put("businessName", partner.getBusinessName() != null ? partner.getBusinessName() : "");
-		params.put("contactEmail", contactEmail);
-		params.put("clientId", partner.getId().toString());
-		params.put("link", adminLink);
-		repository.findAllAdmins().forEach(admin ->
-			notificationService.save(NotificationReference.ADMIN_NEW_CLIENT_REGISTERED, admin, new HashMap<>(params), true));
-	}
-
-	private void sendContactConfirmationEmail(Client client, VerificationCode verificationCode) {
-		Map<String, String> params = new HashMap<>();
-		params.put("name", client.getBusinessName());
-		params.put("verificationCode", verificationCode.getCode());
-		params.put("clientId", client.getId().toString());
-
-		EmailDataDto emailData = new EmailDataDto(client.getContact().getEmail(),
-			SharedConstants.TEMPLATE_EMAIL_CONTACT_VERIFICATION, SharedConstants.EMAIL_SUBJECT_CONTACT_VERIFICATION,
-			params);
-		verificationCodeService.send(emailData);
-	}
-
-
-	Specification<Client> filterClients(Specification<Client> specification, String genericFilter) {
-		String filter = "%" + genericFilter.toLowerCase() + "%";
-
-		return specification.and((root, query, criteriaBuilder) -> criteriaBuilder.or(
-			criteriaBuilder.like(criteriaBuilder.lower(root.get("businessName")), filter),
-			criteriaBuilder.like(root.get("contact").get("email"), filter),
-			criteriaBuilder.equal(root.get("contact").get("phone"), genericFilter),
-			criteriaBuilder.equal(criteriaBuilder.lower(root.get("status")), genericFilter.toLowerCase()),
-			criteriaBuilder.like(criteriaBuilder.lower(root.get("role")), filter)));
-	}
-
-
-	Specification<AdRequest> filterAdRequests(Specification<AdRequest> specification, String genericFilter) {
-		return specification.and((root, query, criteriaBuilder) -> {
-			List<Predicate> predicates = new ArrayList<>();
-			String filter = "%" + genericFilter.toLowerCase() + "%";
-
-			predicates.add(criteriaBuilder.like(criteriaBuilder.lower(root.get("client").get("businessName")), filter));
-			predicates.add(criteriaBuilder.like(root.get("client").get("contact").get("email"), filter));
-			predicates.add(criteriaBuilder.equal(root.get("client").get("contact").get("phone"), genericFilter));
-			predicates.add(criteriaBuilder.like(criteriaBuilder.lower(root.get("client").get("role")), filter));
-
-			addDatePredicates(genericFilter, root, criteriaBuilder, predicates);
-
-			return criteriaBuilder.or(predicates.toArray(new Predicate[0]));
-		});
-	}
-
-
-	private void addDatePredicates(String genericFilter, Root<AdRequest> root, CriteriaBuilder criteriaBuilder,
-		List<Predicate> predicates) {
-		try {
-			LocalDate submissionDate = LocalDate.parse(genericFilter);
-			predicates.add(criteriaBuilder.equal(criteriaBuilder.function("date", LocalDate.class, root.get("createdAt")),
-				submissionDate));
-		} catch (DateTimeParseException ignored) {
-		}
-
-		try {
-			DateTimeFormatter usFormatter = DateTimeFormatter.ofPattern("MM/dd/yyyy", US);
-			LocalDate date = LocalDate.parse(genericFilter, usFormatter);
-			predicates.add(
-				criteriaBuilder.equal(criteriaBuilder.function("date", LocalDate.class, root.get("createdAt")), date));
-		} catch (DateTimeParseException ignored) {
-		}
-	}
-
-
-	ClientResponseDto buildClientResponse(Client client) {
-		List<LinkResponseDto> attachmentLinks = client.getAttachments().stream()
-				.filter(attachment -> !attachment.isReferenceConsumed())
-				.map(attachment -> new LinkResponseDto(
-						attachment.getId(),
-						attachment.getName(),
-						bucketService.getLink(AttachmentUtils.format(attachment)),
-						bucketService.getDownloadLink(AttachmentUtils.format(attachment), attachment.getName())))
-				.toList();
-
-		List<AdResponseDto> ads = client.getAds().stream()
-				.filter(ad -> !AdValidationType.REJECTED.equals(ad.getValidation()))
-				.map(ad -> new AdResponseDto(
-						ad,
-						attachmentHelper.getStringLinkFromAd(ad),
-						attachmentHelper.getDownloadLinkFromAd(ad)))
-				.toList();
-
-		AdRequestClientResponseDto adRequestDto = null;
-		if (client.getAdRequest() != null) {
-			AdRequest ar = client.getAdRequest();
-			var qa = businessQuestionnaireService.getLatestAnswersForClientAdRequest(client.getId(), ar.getId()).orElse(null);
-			var ver = businessQuestionnaireService.findLatestVersionByAdRequestId(ar.getId()).orElse(null);
-			var updatedAt = businessQuestionnaireService.findLatestRevisionCreatedAt(ar.getId()).orElse(null);
-			adRequestDto = new AdRequestClientResponseDto(ar, qa, ver, updatedAt);
-		}
-
-		boolean partnerSlotsAnyLocationEnabled =
-				Role.PARTNER.equals(client.getRole()) && partnerPlatformSettingsService.isSlotsAnyLocationEnabled();
-
-		boolean adminCanCreatePartnerEnabled = resolveAdminCanCreatePartnerEnabled(client);
-
-		return new ClientResponseDto(
-				client,
-				attachmentLinks,
-				ads,
-				permissionService.listEffectivePermissionCodesForDisplay(client),
-				partnerSlotsAnyLocationEnabled,
-				adminCanCreatePartnerEnabled,
-				adRequestDto);
-	}
-
-	private void validateCreatePartnerByAdminAccess(Client actor) {
-		if (actor.isDeveloper()) {
-			return;
-		}
-		if (actor.isAdmin() && partnerPlatformSettingsService.isAdminCanCreatePartnerEnabled()) {
-			return;
-		}
-		throw new ForbiddenException(ClientValidationMessages.ADMIN_CREATE_PARTNER_DISABLED);
-	}
-
-	private boolean resolveAdminCanCreatePartnerEnabled(Client client) {
-		if (!client.isPrivilegedPanelUser()) {
-			return false;
-		}
-		if (client.isDeveloper()) {
-			return true;
-		}
-		return partnerPlatformSettingsService.isAdminCanCreatePartnerEnabled();
-	}
-
-
-	protected Client findActiveByEmail(String email) {
-		return repository.findByEmail(email).filter(client -> DefaultStatus.ACTIVE.equals(client.getStatus()))
-			.orElseThrow(() -> new ResourceNotFoundException(ClientValidationMessages.USER_NOT_FOUND));
-	}
-
-
-	protected Client findByEmail(String email) {
-		return repository.findByEmail(email)
-			.orElseThrow(() -> new ResourceNotFoundException(ClientValidationMessages.USER_NOT_FOUND));
-	}
-
-
-	private void validateMaxAds(Client client) {
-		boolean hasReachedMaxAds = client.getAds().size() >= SharedConstants.MAX_ADS_PER_CLIENT;
-
-		if (hasReachedMaxAds) {
-			throw new BusinessRuleException(ClientValidationMessages.MAX_ADS_REACHED);
-		}
-	}
-
-	private void validatePermanentDeleteAccess() {
-		Client actor = authenticatedUserService.getLoggedUser().client();
-		if (actor.isDeveloper()) {
-			return;
-		}
-		if (permissionService.hasPermission(actor, Permission.ADMIN_CLIENTS_PERMANENT_DELETE)
-				|| permissionService.hasPermission(actor, Permission.ADMIN_CLIENTS_SOFT_DELETE)) {
-			return;
-		}
-		throw new ForbiddenException(AuthValidationMessageConstants.ERROR_NO_PERMISSION);
-	}
-
-	@Override
-	@Transactional(readOnly = true)
-	public Optional<BusinessQuestionnaireAnswersRequestDto> getBusinessQuestionnaireDraft() {
-		UUID clientId = authenticatedUserService.validateActiveSubscription().client().getId();
-		return businessQuestionnaireService.getDraftAnswers(clientId);
-	}
-
-	@Override
-	@Transactional
-	public void saveBusinessQuestionnaireDraft(BusinessQuestionnaireAnswersRequestDto answers) {
-		UUID clientId = authenticatedUserService.validateActiveSubscription().client().getId();
-		businessQuestionnaireService.saveDraft(clientId, answers);
-	}
-
-	@Override
-	@Transactional
-	public void updateAdRequestBusinessQuestionnaire(UUID adRequestId, BusinessQuestionnaireAnswersRequestDto answers) {
-		Client client = authenticatedUserService.validateActiveSubscription().client();
-		businessQuestionnaireService.updateQuestionnaireForAdRequest(client.getId(), adRequestId, answers);
-	}
-
-	@Override
-	@Transactional(readOnly = true)
-	public byte[] exportAdRequestBusinessQuestionnaireTxtAdmin(UUID adRequestId) {
-		authenticatedUserService.validateAdminOrAdsManageAccess();
-		return businessQuestionnaireService.exportTxtForAdRequest(adRequestId, null, true);
-	}
-
-	@Override
-	@Transactional(readOnly = true)
-	public String resolveAdRequestBusinessQuestionnaireExportFileName(UUID adRequestId) {
-		authenticatedUserService.validateAdminOrAdsManageAccess();
-		return businessQuestionnaireService.resolveExportFileNameForAdRequest(adRequestId, null, true);
-	}
-
+    private final ClientProfileService clientProfileService;
+    private final ClientAdRequestService clientAdRequestService;
+    private final PartnerPortalService partnerPortalService;
+    private final ClientAdminQueryService clientAdminQueryService;
+
+    @Override
+    @Transactional
+    public void save(ClientRequestDto request) {
+        clientProfileService.save(request);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public ClientResponseDto findById(UUID id) {
+        return clientProfileService.findById(id);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public ClientResponseDto findByEmailUnprotected(String email) {
+        return clientProfileService.findByEmailUnprotected(email);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Client findActiveEntityById(UUID id) {
+        return clientProfileService.findActiveEntityById(id);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Client findEntityById(UUID id) {
+        return clientProfileService.findEntityById(id);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public ClientResponseDto getDataFromToken() {
+        return clientProfileService.getDataFromToken();
+    }
+
+    @Override
+    @Transactional
+    public void validateCode(String email, String codigo) {
+        clientProfileService.validateCode(email, codigo);
+    }
+
+    @Override
+    @Transactional
+    public void resendCode(String email) {
+        clientProfileService.resendCode(email);
+    }
+
+    @Override
+    @Transactional
+    public void createPassword(String email, PasswordRequestDto request) {
+        clientProfileService.createPassword(email, request);
+    }
+
+    @Override
+    @Transactional
+    public void sendResetPasswordCode(String email) {
+        clientProfileService.sendResetPasswordCode(email);
+    }
+
+    @Override
+    @Transactional
+    public void resetPassword(String email, PasswordRequestDto request) {
+        clientProfileService.resetPassword(email, request);
+    }
+
+    @Override
+    @Transactional
+    public void updatePassword(PasswordUpdateRequestDto request, AuthenticatedUser authClient) {
+        clientProfileService.updatePassword(request, authClient);
+    }
+
+    @Override
+    @Transactional
+    public void update(ClientRequestDto request, UUID id) {
+        clientProfileService.update(request, id);
+    }
+
+    @Override
+    @Transactional
+    public void uploadAttachments(List<AttachmentRequestDto> request) {
+        clientProfileService.uploadAttachments(request);
+    }
+
+    @Override
+    @Transactional
+    public void deleteClientAttachment(UUID attachmentId) {
+        clientProfileService.deleteClientAttachment(attachmentId);
+    }
+
+    @Override
+    @Transactional
+    public void requestAdCreation(ClientAdRequestToAdminDto request) {
+        clientAdRequestService.requestAdCreation(request);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Optional<BusinessQuestionnaireAnswersRequestDto> getBusinessQuestionnaireDraft() {
+        return clientAdRequestService.getBusinessQuestionnaireDraft();
+    }
+
+    @Override
+    @Transactional
+    public void saveBusinessQuestionnaireDraft(BusinessQuestionnaireAnswersRequestDto answers) {
+        clientAdRequestService.saveBusinessQuestionnaireDraft(answers);
+    }
+
+    @Override
+    @Transactional
+    public void updateAdRequestBusinessQuestionnaire(UUID adRequestId, BusinessQuestionnaireAnswersRequestDto answers) {
+        clientAdRequestService.updateAdRequestBusinessQuestionnaire(adRequestId, answers);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public NamedDownloadResource exportAdRequestBusinessQuestionnaireTxtAdmin(UUID adRequestId) {
+        return clientAdRequestService.exportAdRequestBusinessQuestionnaireTxtAdmin(adRequestId);
+    }
+
+    @Override
+    @Transactional
+    public void uploadAds(AttachmentRequestDto request, UUID clientId) {
+        clientAdRequestService.uploadAds(request, clientId);
+    }
+
+    @Override
+    @Transactional
+    public void uploadAdsForAdRequest(AttachmentRequestDto request, UUID adRequestId) {
+        clientAdRequestService.uploadAdsForAdRequest(request, adRequestId);
+    }
+
+    @Override
+    @Transactional
+    public void approveAdRequestToAds(UUID adRequestId) {
+        clientAdRequestService.approveAdRequestToAds(adRequestId);
+    }
+
+    @Override
+    @Transactional
+    public void cancelAdRequest(UUID adRequestId) {
+        clientAdRequestService.cancelAdRequest(adRequestId);
+    }
+
+    @Override
+    @Transactional
+    public void acceptTermsAndConditions() {
+        clientProfileService.acceptTermsAndConditions();
+    }
+
+    @Override
+    @Transactional
+    public void changeRoleToPartner(UUID clientId) {
+        partnerPortalService.changeRoleToPartner(clientId);
+    }
+
+    @Override
+    @Transactional
+    public ClientMinResponseDto createPartnerByAdmin(CreatePartnerRequestDto request) {
+        return partnerPortalService.createPartnerByAdmin(request);
+    }
+
+    @Override
+    @Transactional
+    public void deactivateClientByDeveloper(UUID clientId) {
+        clientProfileService.deactivateClientByDeveloper(clientId);
+    }
+
+    @Override
+    @Transactional
+    public void reactivateClientByDeveloper(UUID clientId) {
+        clientProfileService.reactivateClientByDeveloper(clientId);
+    }
+
+    @Override
+    @Transactional
+    public void softDeleteClientByDeveloper(UUID clientId) {
+        clientProfileService.softDeleteClientByDeveloper(clientId);
+    }
+
+    @Override
+    @Transactional
+    public void restoreSoftDeletedClientByDeveloper(UUID clientId) {
+        clientProfileService.restoreSoftDeletedClientByDeveloper(clientId);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public PermanentDeletionRequirementsDto getPermanentDeletionRequirements(UUID clientId) {
+        return clientProfileService.getPermanentDeletionRequirements(clientId);
+    }
+
+    @Override
+    @Transactional
+    public void permanentlyDeleteClientByDeveloper(UUID clientId, PermanentDeleteClientRequestDto request) {
+        clientProfileService.permanentlyDeleteClientByDeveloper(clientId, request);
+    }
+
+    @Override
+    @Transactional
+    public void validateAd(UUID adId, AdValidationType validation, RefusedAdRequestDto request) {
+        clientAdRequestService.validateAd(adId, validation, request);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<AdMessageResponseDto> listAdMessages(UUID adId) {
+        return clientAdRequestService.listAdMessages(adId);
+    }
+
+    @Override
+    @Transactional
+    public void sendAdMessage(UUID adId, AdMessageRequestDto request) {
+        clientAdRequestService.sendAdMessage(adId, request);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<AdminClientMessageRowDto> listClientMessagesHistory(UUID clientId) {
+        return clientAdRequestService.listClientMessagesHistory(clientId);
+    }
+
+    @Override
+    @Transactional
+    public void incrementSubscriptionFlow() {
+        clientProfileService.incrementSubscriptionFlow();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public PaginationResponseDto<List<ClientMinResponseDto>> findAllFilters(ClientFilterRequestDto request) {
+        return clientAdminQueryService.findAllFilters(request);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public PaginationResponseDto<List<AdRequestAdminResponseDto>> findPendingAdRequest(FilterAdRequestDto request) {
+        return clientAdminQueryService.findPendingAdRequest(request);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public PaginationResponseDto<List<PendingAdAdminValidationResponseDto>> findPendingAds(FilterAdRequestDto request) {
+        return clientAdminQueryService.findPendingAds(request);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<PendingAdAdminValidationResponseDto> findMyPendingValidationAds() {
+        return partnerPortalService.findMyPendingValidationAds();
+    }
+
+    @Override
+    @Transactional
+    public void requestPartnerAdRemoval(UUID adId, PartnerAdRemovalRequestDto request) {
+        partnerPortalService.requestPartnerAdRemoval(adId, request);
+    }
+
+    @Override
+    @Transactional
+    public void addMonitorToWishlist(UUID monitorId) {
+        partnerPortalService.addMonitorToWishlist(monitorId);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public WishlistResponseDto getWishlistMonitors() {
+        return partnerPortalService.getWishlistMonitors();
+    }
 }
