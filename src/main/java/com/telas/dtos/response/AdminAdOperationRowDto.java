@@ -43,6 +43,8 @@ public class AdminAdOperationRowDto implements Serializable {
 
     private String adMediaType;
 
+    private boolean partnerRemovalRequested;
+
     public AdminAdOperationRowDto(
             UUID adId,
             String adName,

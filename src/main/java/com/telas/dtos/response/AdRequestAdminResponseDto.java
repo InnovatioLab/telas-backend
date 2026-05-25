@@ -62,6 +62,49 @@ public final class AdRequestAdminResponseDto implements Serializable {
 
     private final AdValidationType adValidation;
 
+    private final int attachmentCount;
+
+    private final boolean hasAdMedia;
+
+    private final boolean partnerRemovalRequested;
+
+    public AdRequestAdminResponseDto(
+            AdRequest adRequest,
+            Integer businessQuestionnaireVersion,
+            Instant businessQuestionnaireUpdatedAt,
+            int attachmentCount,
+            boolean partnerRemovalRequested) {
+        id = adRequest.getId();
+        clientId = adRequest.getClient().getId();
+        clientName = adRequest.getClient().getBusinessName();
+        clientRole = adRequest.getClient().getRole();
+        isActive = adRequest.isActive();
+        submissionDate = adRequest.getCreatedAt().atZone(ZoneId.systemDefault()).toLocalDate();
+        waitingDays = ChronoUnit.DAYS.between(adRequest.getCreatedAt(), Instant.now());
+        attachments = List.of();
+        ad = null;
+        this.businessQuestionnaireVersion = businessQuestionnaireVersion;
+        this.businessQuestionnaireUpdatedAt = businessQuestionnaireUpdatedAt;
+        this.requestOrigin = adRequest.getRequestOrigin();
+        this.submissionMode = adRequest.getSubmissionMode();
+        this.targetMonitorId = adRequest.getTargetMonitor() != null
+                ? adRequest.getTargetMonitor().getId()
+                : null;
+        this.targetMonitorSummary = buildMonitorSummary(adRequest);
+        this.workflowStatus = AdRequestWorkflowResolver.resolve(adRequest);
+        this.adminActionLabel = AdRequestWorkflowResolver.adminActionLabel(this.workflowStatus);
+        this.adValidation = adRequest.getAd() != null ? adRequest.getAd().getValidation() : null;
+        this.attachmentCount = attachmentCount;
+        this.hasAdMedia = adRequest.getAd() != null;
+        this.partnerRemovalRequested = partnerRemovalRequested;
+
+        refusedAds = adRequest.getAd() != null && !adRequest.getAd().getRefusedAds().isEmpty() ?
+                adRequest.getAd().getRefusedAds().stream()
+                        .sorted((a, b) -> b.getCreatedAt().compareTo(a.getCreatedAt()))
+                        .map(RefusedAdResponseDto::new)
+                        .toList() : List.of();
+    }
+
     public AdRequestAdminResponseDto(
             AdRequest adRequest,
             Map<String, Object> linkResponseData,
@@ -93,6 +136,10 @@ public final class AdRequestAdminResponseDto implements Serializable {
                         .sorted((a, b) -> b.getCreatedAt().compareTo(a.getCreatedAt()))
                         .map(RefusedAdResponseDto::new)
                         .toList() : List.of();
+        this.attachmentCount = attachments != null ? attachments.size() : 0;
+        this.hasAdMedia = ad != null;
+        this.partnerRemovalRequested = adRequest.getAd() != null
+                && adRequest.getAd().getPartnerRemovalRequestedAt() != null;
     }
 
     private static String buildMonitorSummary(AdRequest adRequest) {

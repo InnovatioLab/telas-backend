@@ -6,6 +6,11 @@ import com.telas.dtos.response.*;
 import com.telas.entities.Ad;
 import com.telas.entities.AdRequest;
 import com.telas.entities.Client;
+import com.telas.entities.RefusedAd;
+import com.telas.infra.exceptions.ResourceNotFoundException;
+import com.telas.services.QuestionnaireLatestMeta;
+import com.telas.shared.constants.valitation.AdValidationMessages;
+import com.telas.shared.utils.ValidateDataUtils;
 import com.telas.enums.AdRequestOrigin;
 import com.telas.enums.AdValidationType;
 import com.telas.enums.DefaultStatus;
@@ -26,6 +31,8 @@ import com.telas.shared.utils.PaginationFilterUtil;
 import jakarta.persistence.criteria.Join;
 import jakarta.persistence.criteria.JoinType;
 import jakarta.persistence.criteria.Predicate;
+import jakarta.persistence.criteria.Root;
+import jakarta.persistence.criteria.Subquery;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -34,6 +41,7 @@ import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -171,13 +179,18 @@ public class ClientAdminQueryServiceImpl implements ClientAdminQueryService {
                     adminDirectApproval
             );
 
+            Subquery<Long> refusedCountSq = query.subquery(Long.class);
+            Root<RefusedAd> refusedRoot = refusedCountSq.from(RefusedAd.class);
+            refusedCountSq.select(criteriaBuilder.count(refusedRoot));
+            refusedCountSq.where(criteriaBuilder.equal(refusedRoot.get("ad"), adJoin));
+
             Predicate refusalHistoryOk = criteriaBuilder.or(
                     noAdYet,
                     criteriaBuilder.and(
                             criteriaBuilder.isNotNull(adJoin.get("id")),
-                            criteriaBuilder.le(
-                                    criteriaBuilder.size(adJoin.get("refusedAds")),
-                                    SharedConstants.MAX_ADS_VALIDATION
+                            criteriaBuilder.lessThanOrEqualTo(
+                                    refusedCountSq,
+                                    (long) SharedConstants.MAX_ADS_VALIDATION
                             )
                     )
             );
@@ -201,15 +214,42 @@ public class ClientAdminQueryServiceImpl implements ClientAdminQueryService {
         }, request.getGenericFilter(), this::filterAdRequests);
 
         Page<AdRequest> page = adRequestRepository.findAll(filter, pageable);
-        List<AdRequestAdminResponseDto> response = page.stream()
-                .map(adRequest -> new AdRequestAdminResponseDto(
-                        adRequest,
-                        adUploadService.getAdRequestData(adRequest),
-                        businessQuestionnaireService.findLatestVersionByAdRequestId(adRequest.getId()).orElse(null),
-                        businessQuestionnaireService.findLatestRevisionCreatedAt(adRequest.getId()).orElse(null)))
+        List<AdRequest> adRequests = page.getContent();
+        List<UUID> adRequestIds = adRequests.stream().map(AdRequest::getId).toList();
+        Map<UUID, QuestionnaireLatestMeta> questionnaireByAdRequestId =
+                businessQuestionnaireService.findLatestMetadataByAdRequestIds(adRequestIds);
+
+        List<AdRequestAdminResponseDto> response = adRequests.stream()
+                .map(adRequest -> {
+                    QuestionnaireLatestMeta meta = questionnaireByAdRequestId.get(adRequest.getId());
+                    Integer version = meta != null ? meta.version() : null;
+                    Instant updatedAt = meta != null ? meta.updatedAt() : null;
+                    int attachmentCount = ValidateDataUtils.countCsvIds(adRequest.getAttachmentIds());
+                    boolean partnerRemovalRequested = adRequest.getAd() != null
+                            && adRequest.getAd().getPartnerRemovalRequestedAt() != null;
+                    return new AdRequestAdminResponseDto(
+                            adRequest,
+                            version,
+                            updatedAt,
+                            attachmentCount,
+                            partnerRemovalRequested);
+                })
                 .toList();
         return PaginationResponseDto.fromResult(response, (int) page.getTotalElements(), page.getTotalPages(),
                 request.getPage());
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public AdRequestMediaResponseDto findAdRequestMedia(UUID adRequestId) {
+        authenticatedUserService.validateAdminOrAdsManageAccess();
+        AdRequest adRequest = adRequestRepository.findById(adRequestId)
+                .orElseThrow(() -> new ResourceNotFoundException(AdValidationMessages.AD_REQUEST_NOT_FOUND));
+        Map<String, Object> linkData = adUploadService.getAdRequestData(adRequest);
+        LinkResponseDto ad = (LinkResponseDto) linkData.get("ad");
+        @SuppressWarnings("unchecked")
+        List<LinkResponseDto> attachments = (List<LinkResponseDto>) linkData.get("attachments");
+        return new AdRequestMediaResponseDto(ad, attachments != null ? attachments : List.of());
     }
 
     @Override

@@ -22,4 +22,17 @@ public class ValidateDataUtils {
     public static boolean isNullOrEmptyString(String valor) {
         return Objects.isNull(valor) || valor.trim().isEmpty();
     }
+
+    public static int countCsvIds(String csv) {
+        if (isNullOrEmptyString(csv)) {
+            return 0;
+        }
+        int count = 0;
+        for (String part : csv.split(",")) {
+            if (!part.trim().isEmpty()) {
+                count++;
+            }
+        }
+        return count;
+    }
 }

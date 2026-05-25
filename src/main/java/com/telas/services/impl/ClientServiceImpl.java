@@ -269,6 +269,11 @@ public class ClientServiceImpl implements ClientService {
     }
 
     @Override
+    public com.telas.dtos.response.AdRequestMediaResponseDto findAdRequestMedia(UUID adRequestId) {
+        return clientAdminQueryService.findAdRequestMedia(adRequestId);
+    }
+
+    @Override
     @Transactional(readOnly = true)
     public PaginationResponseDto<List<PendingAdAdminValidationResponseDto>> findPendingAds(FilterAdRequestDto request) {
         return clientAdminQueryService.findPendingAds(request);

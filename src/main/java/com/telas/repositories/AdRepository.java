@@ -83,6 +83,9 @@ public interface AdRepository extends JpaRepository<Ad, UUID>, JpaSpecificationE
 		""")
 	List<Ad> findApprovedNonPdfByIds(@Param("ids") Collection<UUID> ids);
 
+	@Query("SELECT a.id, a.partnerRemovalRequestedAt FROM Ad a WHERE a.id IN :ids")
+	List<Object[]> findPartnerRemovalMetaByIds(@Param("ids") Collection<UUID> ids);
+
 	@Query("""
 		SELECT ad FROM Ad ad
 		WHERE ad.validation = 'APPROVED'

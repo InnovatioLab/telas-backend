@@ -331,6 +331,15 @@ public class ClientControllerImpl implements ClientController {
     }
 
     @Override
+    @GetMapping("/ads-requests/{adRequestId}/media")
+    @SecurityRequirement(name = "jwt")
+    public ResponseEntity<?> findAdRequestMedia(@PathVariable UUID adRequestId) {
+        var response = service.findAdRequestMedia(adRequestId);
+        return ResponseEntity.status(HttpStatus.OK)
+                .body(ResponseDto.fromData(response, HttpStatus.OK, MessageCommonsConstants.FIND_ALL_SUCCESS_MESSAGE));
+    }
+
+    @Override
     @GetMapping("/pending-ads")
     @SecurityRequirement(name = "jwt")
     public ResponseEntity<?> findPendingAds(FilterAdRequestDto request) {

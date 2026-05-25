@@ -2,6 +2,7 @@ package com.telas.services.impl;
 
 import com.telas.dtos.request.AttachmentRequestDto;
 import com.telas.dtos.request.filters.AdminAdOperationsFilterRequestDto;
+import com.telas.dtos.response.AdPreviewLinkResponseDto;
 import com.telas.dtos.response.AdminAdOperationRowDto;
 import com.telas.dtos.response.AdminExpiryNotificationDto;
 import com.telas.dtos.response.PaginationResponseDto;
@@ -47,6 +48,7 @@ import java.time.Instant;
 import java.time.ZoneOffset;
 import java.time.format.DateTimeFormatter;
 import java.util.EnumMap;
+import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -104,7 +106,7 @@ public class AdminAdOperationsServiceImpl implements AdminAdOperationsService {
         return value.trim();
     }
 
-    private void enrichRowsWithAdLinks(List<AdminAdOperationRowDto> rows) {
+    private void enrichRowsWithPartnerRemovalFlags(List<AdminAdOperationRowDto> rows) {
         if (rows == null || rows.isEmpty()) {
             return;
         }
@@ -116,13 +118,17 @@ public class AdminAdOperationsServiceImpl implements AdminAdOperationsService {
         if (ids.isEmpty()) {
             return;
         }
-        Map<UUID, Ad> byId = adRepository.findAllById(ids).stream()
-                .collect(Collectors.toMap(Ad::getId, a -> a));
+        Map<UUID, Boolean> removalByAdId = new HashMap<>();
+        for (Object[] row : adRepository.findPartnerRemovalMetaByIds(ids)) {
+            if (row == null || row.length < 2 || row[0] == null) {
+                continue;
+            }
+            UUID adId = (UUID) row[0];
+            removalByAdId.put(adId, row[1] != null);
+        }
         for (AdminAdOperationRowDto row : rows) {
-            Ad ad = byId.get(row.getAdId());
-            if (ad != null) {
-                row.setAdLink(adUploadService.getStringLinkFromAd(ad));
-                row.setAdMediaType(ad.getType());
+            if (row.getAdId() != null) {
+                row.setPartnerRemovalRequested(Boolean.TRUE.equals(removalByAdId.get(row.getAdId())));
             }
         }
     }
@@ -163,13 +169,24 @@ public class AdminAdOperationsServiceImpl implements AdminAdOperationsService {
                     pageable
             );
         }
-        enrichRowsWithAdLinks(page.getContent());
+        enrichRowsWithPartnerRemovalFlags(page.getContent());
         return PaginationResponseDto.fromResult(
                 page.getContent(),
                 (int) page.getTotalElements(),
                 page.getTotalPages(),
                 request.getPage()
         );
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public AdPreviewLinkResponseDto getAdPreviewLink(UUID adId) {
+        authenticatedUserService.validateAdminOrAdsManageAccess();
+        Ad ad = adRepository.findById(adId)
+                .orElseThrow(() -> new ResourceNotFoundException(AdValidationMessages.AD_NOT_FOUND));
+        return new AdPreviewLinkResponseDto(
+                adUploadService.getStringLinkFromAd(ad),
+                ad.getType());
     }
 
     @Override

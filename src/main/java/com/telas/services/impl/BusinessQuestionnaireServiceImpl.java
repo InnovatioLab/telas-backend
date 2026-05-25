@@ -20,6 +20,7 @@ import com.telas.repositories.BusinessQuestionnaireRepository;
 import com.telas.repositories.BusinessQuestionnaireRevisionRepository;
 import com.telas.repositories.ClientRepository;
 import com.telas.services.BusinessQuestionnaireService;
+import com.telas.services.QuestionnaireLatestMeta;
 import com.telas.services.notification.AdminAdsNotificationService;
 import com.telas.shared.constants.BusinessQuestionnaireConstants;
 import com.telas.shared.constants.valitation.AdValidationMessages;
@@ -32,6 +33,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.nio.charset.StandardCharsets;
 import java.time.Instant;
+import java.util.Collection;
 import java.util.EnumMap;
 import java.util.HashMap;
 import java.util.List;
@@ -185,6 +187,26 @@ public class BusinessQuestionnaireServiceImpl implements BusinessQuestionnaireSe
         return questionnaireRepository.findByAdRequest_Id(adRequestId)
                 .flatMap(q -> revisionRepository.findTopByQuestionnaire_IdOrderByVersionDesc(q.getId()))
                 .map(BusinessQuestionnaireRevision::getCreatedAt);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Map<UUID, QuestionnaireLatestMeta> findLatestMetadataByAdRequestIds(Collection<UUID> adRequestIds) {
+        if (adRequestIds == null || adRequestIds.isEmpty()) {
+            return Map.of();
+        }
+        List<Object[]> rows = revisionRepository.findLatestRevisionMetaByAdRequestIds(adRequestIds);
+        Map<UUID, QuestionnaireLatestMeta> result = new java.util.HashMap<>();
+        for (Object[] row : rows) {
+            if (row == null || row.length < 3 || row[0] == null) {
+                continue;
+            }
+            UUID adRequestId = (UUID) row[0];
+            Integer version = row[1] instanceof Integer i ? i : null;
+            Instant updatedAt = row[2] instanceof Instant instant ? instant : null;
+            result.put(adRequestId, new QuestionnaireLatestMeta(version, updatedAt));
+        }
+        return result;
     }
 
     @Override

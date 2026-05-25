@@ -215,6 +215,14 @@ public interface ClientController {
     })
     ResponseEntity<?> findAdRequestsByFilter(FilterAdRequestDto request);
 
+    @Operation(summary = "Load presigned media links for an ad request (admin)", responses = {
+            @ApiResponse(responseCode = "200", description = "Media links loaded successfully."),
+            @ApiResponse(responseCode = "401", description = "Unauthorized."),
+            @ApiResponse(responseCode = "403", description = "Forbidden."),
+            @ApiResponse(responseCode = "404", description = "Ad request not found."),
+    })
+    ResponseEntity<?> findAdRequestMedia(UUID adRequestId);
+
     @Operation(summary = "Endpoint contract to list ads pending client validation (admin)", responses = {
             @ApiResponse(responseCode = "200", description = "Records found successfully."),
             @ApiResponse(responseCode = "401", description = "Unauthorized."),

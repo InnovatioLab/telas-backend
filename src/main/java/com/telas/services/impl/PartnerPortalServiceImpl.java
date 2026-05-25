@@ -143,6 +143,9 @@ public class PartnerPortalServiceImpl implements PartnerPortalService {
             monitor = ad.getAdRequest().getTargetMonitor();
         }
         String message = request != null && request.getMessage() != null ? request.getMessage().trim() : "";
+        ad.setPartnerRemovalRequestedAt(java.time.Instant.now());
+        ad.setPartnerRemovalMessage(message.isEmpty() ? null : message);
+        adRepository.save(ad);
         adPublicationNotificationHelper.notifyPartnerAdRemovalRequested(partner, ad, monitor, message);
     }
 

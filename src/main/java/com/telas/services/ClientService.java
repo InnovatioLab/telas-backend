@@ -105,6 +105,8 @@ public interface ClientService {
 
     PaginationResponseDto<List<AdRequestAdminResponseDto>> findPendingAdRequest(FilterAdRequestDto request);
 
+    com.telas.dtos.response.AdRequestMediaResponseDto findAdRequestMedia(UUID adRequestId);
+
     PaginationResponseDto<List<PendingAdAdminValidationResponseDto>> findPendingAds(FilterAdRequestDto request);
 
     List<PendingAdAdminValidationResponseDto> findMyPendingValidationAds();

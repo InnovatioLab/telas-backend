@@ -4,6 +4,8 @@ import com.telas.dtos.request.BusinessQuestionnaireAnswersRequestDto;
 import com.telas.entities.AdRequest;
 
 import java.time.Instant;
+import java.util.Collection;
+import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -24,6 +26,8 @@ public interface BusinessQuestionnaireService {
     Optional<Integer> findLatestVersionByAdRequestId(UUID adRequestId);
 
     Optional<Instant> findLatestRevisionCreatedAt(UUID adRequestId);
+
+    Map<UUID, QuestionnaireLatestMeta> findLatestMetadataByAdRequestIds(Collection<UUID> adRequestIds);
 
     Optional<BusinessQuestionnaireAnswersRequestDto> getLatestAnswersForClientAdRequest(UUID clientId, UUID adRequestId);
 }

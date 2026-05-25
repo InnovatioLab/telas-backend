@@ -3,6 +3,7 @@ package com.telas.controllers.impl;
 import com.telas.dtos.request.AttachmentRequestDto;
 import com.telas.dtos.request.filters.AdminAdOperationsFilterRequestDto;
 import jakarta.validation.Valid;
+import com.telas.dtos.response.AdPreviewLinkResponseDto;
 import com.telas.dtos.response.AdminAdOperationRowDto;
 import com.telas.dtos.response.AdminExpiryNotificationDto;
 import com.telas.dtos.response.PaginationResponseDto;
@@ -43,6 +44,14 @@ public class AdminAdOperationsControllerImpl {
     public ResponseEntity<ResponseDto<PaginationResponseDto<List<AdminAdOperationRowDto>>>> list(
             @ModelAttribute AdminAdOperationsFilterRequestDto request) {
         PaginationResponseDto<List<AdminAdOperationRowDto>> data = adminAdOperationsService.findPage(request);
+        return ResponseEntity.status(HttpStatus.OK)
+                .body(ResponseDto.fromData(data, HttpStatus.OK, MessageCommonsConstants.FIND_ALL_SUCCESS_MESSAGE));
+    }
+
+    @GetMapping("/ads/{adId}/preview-link")
+    @SecurityRequirement(name = "jwt")
+    public ResponseEntity<ResponseDto<AdPreviewLinkResponseDto>> getAdPreviewLink(@PathVariable UUID adId) {
+        AdPreviewLinkResponseDto data = adminAdOperationsService.getAdPreviewLink(adId);
         return ResponseEntity.status(HttpStatus.OK)
                 .body(ResponseDto.fromData(data, HttpStatus.OK, MessageCommonsConstants.FIND_ALL_SUCCESS_MESSAGE));
     }

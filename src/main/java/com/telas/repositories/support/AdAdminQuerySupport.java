@@ -144,8 +144,9 @@ public class AdAdminQuerySupport {
             Instant submissionDateFrom,
             Instant submissionDateTo,
             Pageable pageable) {
-        String countJpql = "SELECT COUNT(ad.id) " + ADMIN_PLACEMENT_FROM + ADMIN_PLACEMENT_FILTERS;
-        String dataJpql = ADMIN_PLACEMENT_SELECT + ADMIN_PLACEMENT_FROM + ADMIN_PLACEMENT_FILTERS;
+        String countJpql = "SELECT COUNT(DISTINCT ad.id) " + ADMIN_PLACEMENT_FROM + ADMIN_PLACEMENT_FILTERS;
+        String dataJpql = "SELECT DISTINCT " + ADMIN_PLACEMENT_SELECT.substring("SELECT ".length())
+                + ADMIN_PLACEMENT_FROM + ADMIN_PLACEMENT_FILTERS;
         return paginate(dataJpql, countJpql, pageable, query -> applyApprovedAdminFilters(
                 query, genericFilter, advertiserNameFilter, partnerNameFilter,
                 boxIpFilter, screenContainsFilter, submissionDateFrom, submissionDateTo));
