@@ -116,11 +116,21 @@ public class ClientProfileServiceImpl implements ClientProfileService {
     @Transactional(readOnly = true)
     public ClientResponseDto getDataFromToken() {
         UUID clientId = authenticatedUserService.getLoggedUser().client().getId();
+        Client client = repository.findActiveForAuthenticatedSession(clientId)
+                .orElseThrow(() -> new ResourceNotFoundException(ClientValidationMessages.USER_NOT_FOUND));
+        return buildAuthenticatedSessionResponse(client);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public ClientWorkspaceResponseDto getClientWorkspace() {
+        UUID clientId = authenticatedUserService.getLoggedUser().client().getId();
         Client client = repository.findActiveIdFromToken(clientId)
                 .orElseThrow(() -> new ResourceNotFoundException(ClientValidationMessages.USER_NOT_FOUND));
         client.getAttachments().size();
         client.getAds().size();
-        return buildClientResponse(client);
+        client.getAdRequests().size();
+        return buildClientWorkspace(client);
     }
 
     @Override
@@ -422,6 +432,32 @@ public class ClientProfileServiceImpl implements ClientProfileService {
     @Override
     @Transactional(readOnly = true)
     public ClientResponseDto buildClientResponse(Client client) {
+        ClientWorkspaceResponseDto workspace = buildClientWorkspace(client);
+        return toClientResponse(client, workspace);
+    }
+
+    private ClientResponseDto buildAuthenticatedSessionResponse(Client client) {
+        return toClientResponse(client, new ClientWorkspaceResponseDto(null, List.of(), List.of()));
+    }
+
+    private ClientResponseDto toClientResponse(Client client, ClientWorkspaceResponseDto workspace) {
+        boolean partnerSlotsAnyLocationEnabled =
+                Role.PARTNER.equals(client.getRole()) && partnerPlatformSettingsService.isSlotsAnyLocationEnabled();
+        boolean adminCanCreatePartnerEnabled = resolveAdminCanCreatePartnerEnabled(client);
+        boolean hasAdRequest = adRequestRepository.existsByClientId(client.getId());
+
+        return new ClientResponseDto(
+                client,
+                workspace.getAttachments(),
+                workspace.getAds(),
+                permissionService.listEffectivePermissionCodesForDisplay(client),
+                partnerSlotsAnyLocationEnabled,
+                adminCanCreatePartnerEnabled,
+                workspace.getAdRequest(),
+                hasAdRequest);
+    }
+
+    private ClientWorkspaceResponseDto buildClientWorkspace(Client client) {
         List<LinkResponseDto> attachmentLinks = client.getAttachments().stream()
                 .filter(attachment -> !attachment.isReferenceConsumed())
                 .map(attachment -> new LinkResponseDto(
@@ -450,19 +486,7 @@ public class ClientProfileServiceImpl implements ClientProfileService {
             adRequestDto = new AdRequestClientResponseDto(activeAdRequest, qa, ver, updatedAt);
         }
 
-        boolean partnerSlotsAnyLocationEnabled =
-                Role.PARTNER.equals(client.getRole()) && partnerPlatformSettingsService.isSlotsAnyLocationEnabled();
-
-        boolean adminCanCreatePartnerEnabled = resolveAdminCanCreatePartnerEnabled(client);
-
-        return new ClientResponseDto(
-                client,
-                attachmentLinks,
-                ads,
-                permissionService.listEffectivePermissionCodesForDisplay(client),
-                partnerSlotsAnyLocationEnabled,
-                adminCanCreatePartnerEnabled,
-                adRequestDto);
+        return new ClientWorkspaceResponseDto(adRequestDto, attachmentLinks, ads);
     }
 
     private void notifyAdminsNewClientRegistered(Client client) {

@@ -97,6 +97,14 @@ public class ClientControllerImpl implements ClientController {
     }
 
     @Override
+    @GetMapping("/me/workspace")
+    @SecurityRequirement(name = "jwt")
+    public ResponseEntity<?> getClientWorkspace() {
+        return ResponseEntity.status(HttpStatus.OK)
+                .body(ResponseDto.fromData(service.getClientWorkspace(), HttpStatus.OK, MessageCommonsConstants.FIND_ID_SUCCESS_MESSAGE));
+    }
+
+    @Override
     @PutMapping("/{id}")
     @SecurityRequirement(name = "jwt")
     public ResponseEntity<?> update(@Valid @RequestBody ClientRequestDto request, @PathVariable(name = "id") UUID clientId) {

@@ -96,6 +96,7 @@ class ClientServiceImplAdsSoftHideTest {
         when(adUploadService.getStringLinkFromAd(approved)).thenReturn("link-approved");
         when(adUploadService.getDownloadLinkFromAd(approved)).thenReturn("dl-approved");
         when(permissionService.listEffectivePermissionCodesForDisplay(client)).thenReturn(List.of());
+        when(adRequestRepository.existsByClientId(client.getId())).thenReturn(false);
 
         ClientResponseDto dto = service.buildClientResponse(client);
 

@@ -75,6 +75,13 @@ public interface ClientController {
     })
     ResponseEntity<?> getDataFromToken();
 
+    @Operation(summary = "Ads, attachments and ad-request data for the authenticated client workspace", responses = {
+            @ApiResponse(responseCode = "200", description = "Workspace data loaded successfully."),
+            @ApiResponse(responseCode = "401", description = "Unauthorized."),
+            @ApiResponse(responseCode = "404", description = "Client not found."),
+    })
+    ResponseEntity<?> getClientWorkspace();
+
     @Operation(summary = "Endpoint contract to update a client", responses = {
             @ApiResponse(responseCode = "200", description = "Client updated successfully."),
             @ApiResponse(responseCode = "422", description = "Request with invalid data."),
