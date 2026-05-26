@@ -23,6 +23,16 @@ public interface ClientRepository extends JpaRepository<Client, UUID>, JpaSpecif
     @Query("SELECT DISTINCT c FROM Client c LEFT JOIN FETCH c.addresses WHERE c.id = :id AND c.status = 'ACTIVE'")
     Optional<Client> findActiveById(UUID id);
 
+    @Query("""
+            SELECT DISTINCT c FROM Client c
+            LEFT JOIN FETCH c.addresses
+            LEFT JOIN FETCH c.contact
+            LEFT JOIN FETCH c.subscriptions
+            LEFT JOIN FETCH c.subscriptionFlow
+            WHERE c.id = :id AND c.status = 'ACTIVE'
+            """)
+    Optional<Client> findActiveForAuthenticatedSession(UUID id);
+
     @Query("SELECT DISTINCT c FROM Client c LEFT JOIN FETCH c.addresses LEFT JOIN c.attachments LEFT JOIN c.ads LEFT JOIN c.subscriptions WHERE c.id = :id AND c.status = 'ACTIVE'")
     Optional<Client> findActiveIdFromToken(UUID id);
 

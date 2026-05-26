@@ -34,4 +34,6 @@ public final class AdValidationMessages {
           "This ad cannot be removed yet — it must be on a screen playlist first";
   public static final String AD_NOT_OWNED_BY_PARTNER =
           "You can only request removal for your own ads";
+  public static final String AD_REMOVAL_ALREADY_REQUESTED =
+          "A removal request for this ad was already submitted";
 }

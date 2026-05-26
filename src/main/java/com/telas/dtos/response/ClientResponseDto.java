@@ -13,7 +13,6 @@ import java.io.Serial;
 import java.io.Serializable;
 import java.util.Collections;
 import java.util.List;
-import java.util.Objects;
 import java.util.UUID;
 
 @Getter
@@ -68,7 +67,8 @@ public final class ClientResponseDto implements Serializable {
             List<String> permissions,
             boolean partnerSlotsAnyLocationEnabled,
             boolean adminCanCreatePartnerEnabled,
-            AdRequestClientResponseDto adRequestDto) {
+            AdRequestClientResponseDto adRequestDto,
+            boolean hasAdRequest) {
         id = entity.getId();
         businessName = entity.getBusinessName();
         role = entity.getRole();
@@ -86,7 +86,7 @@ public final class ClientResponseDto implements Serializable {
         hasSubscription = !entity.getSubscriptions().isEmpty();
         shouldDisplayAttachments = !entity.getSubscriptions().isEmpty()
                 && entity.getSubscriptions().stream().anyMatch(subscription -> SubscriptionStatus.ACTIVE.equals(subscription.getStatus()));
-        hasAdRequest = Objects.nonNull(entity.getAdRequest());
+        this.hasAdRequest = hasAdRequest;
         this.permissions = permissions != null ? List.copyOf(permissions) : Collections.emptyList();
         this.partnerSlotsAnyLocationEnabled = partnerSlotsAnyLocationEnabled;
         this.adminCanCreatePartnerEnabled = adminCanCreatePartnerEnabled;

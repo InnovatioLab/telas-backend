@@ -23,6 +23,7 @@ import com.telas.infra.security.model.AuthenticatedUser;
 import com.telas.infra.security.model.PasswordRequestDto;
 import com.telas.infra.security.model.PasswordUpdateRequestDto;
 import com.telas.infra.security.services.AuthenticatedUserService;
+import com.telas.repositories.AdRequestRepository;
 import com.telas.repositories.ClientRepository;
 import com.telas.services.*;
 import com.telas.shared.audit.CustomRevisionListener;
@@ -44,6 +45,7 @@ import java.util.*;
 public class ClientProfileServiceImpl implements ClientProfileService {
 
     private final ClientRepository repository;
+    private final AdRequestRepository adRequestRepository;
     private final PasswordEncoder passwordEncoder;
     private final ClientHelper helper;
     private final AdUploadService adUploadService;
@@ -438,12 +440,14 @@ public class ClientProfileServiceImpl implements ClientProfileService {
                 .toList();
 
         AdRequestClientResponseDto adRequestDto = null;
-        if (client.getAdRequest() != null) {
-            AdRequest ar = client.getAdRequest();
-            var qa = businessQuestionnaireService.getLatestAnswersForClientAdRequest(client.getId(), ar.getId()).orElse(null);
-            var ver = businessQuestionnaireService.findLatestVersionByAdRequestId(ar.getId()).orElse(null);
-            var updatedAt = businessQuestionnaireService.findLatestRevisionCreatedAt(ar.getId()).orElse(null);
-            adRequestDto = new AdRequestClientResponseDto(ar, qa, ver, updatedAt);
+        AdRequest activeAdRequest = client.getAdRequest();
+        if (activeAdRequest != null) {
+            var qa = businessQuestionnaireService
+                    .getLatestAnswersForClientAdRequest(client.getId(), activeAdRequest.getId())
+                    .orElse(null);
+            var ver = businessQuestionnaireService.findLatestVersionByAdRequestId(activeAdRequest.getId()).orElse(null);
+            var updatedAt = businessQuestionnaireService.findLatestRevisionCreatedAt(activeAdRequest.getId()).orElse(null);
+            adRequestDto = new AdRequestClientResponseDto(activeAdRequest, qa, ver, updatedAt);
         }
 
         boolean partnerSlotsAnyLocationEnabled =

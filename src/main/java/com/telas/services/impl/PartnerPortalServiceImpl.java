@@ -136,6 +136,9 @@ public class PartnerPortalServiceImpl implements PartnerPortalService {
         if (!canRemove) {
             throw new BusinessRuleException(AdValidationMessages.AD_REMOVAL_NOT_ALLOWED);
         }
+        if (ad.getPartnerRemovalRequestedAt() != null) {
+            throw new BusinessRuleException(AdValidationMessages.AD_REMOVAL_ALREADY_REQUESTED);
+        }
         Monitor monitor = null;
         if (placements != null && !placements.isEmpty() && placements.get(0).getMonitor() != null) {
             monitor = placements.get(0).getMonitor();

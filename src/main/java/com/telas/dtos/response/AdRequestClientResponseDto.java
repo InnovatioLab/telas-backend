@@ -7,10 +7,11 @@ import lombok.Getter;
 
 import java.io.Serial;
 import java.io.Serializable;
+import com.telas.shared.utils.ValidateDataUtils;
+
 import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
-import java.util.stream.Stream;
 
 @Getter
 public final class AdRequestClientResponseDto implements Serializable {
@@ -37,11 +38,7 @@ public final class AdRequestClientResponseDto implements Serializable {
             Instant businessQuestionnaireUpdatedAt) {
         id = adRequest.getId();
         isActive = adRequest.isActive();
-        attachmentsIds = adRequest.getAttachmentIds() != null
-                ? Stream.of(adRequest.getAttachmentIds().split(","))
-                .map(UUID::fromString)
-                .toList()
-                : List.of();
+        attachmentsIds = ValidateDataUtils.parseCsvUuids(adRequest.getAttachmentIds());
         this.businessAnswers = businessAnswers;
         this.businessQuestionnaireVersion = businessQuestionnaireVersion;
         this.businessQuestionnaireUpdatedAt = businessQuestionnaireUpdatedAt;

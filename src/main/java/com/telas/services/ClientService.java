@@ -37,6 +37,8 @@ public interface ClientService {
 
     ClientResponseDto getDataFromToken();
 
+    ClientWorkspaceResponseDto getClientWorkspace();
+
     void validateCode(String email, String codigo);
 
     void resendCode(String email);

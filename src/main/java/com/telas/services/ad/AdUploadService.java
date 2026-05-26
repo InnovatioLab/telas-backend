@@ -99,9 +99,10 @@ public class AdUploadService {
 
     @Transactional
     public List<Attachment> getAttachmentsFromAdRequest(AdRequest adRequestEntity) {
-        List<UUID> attachmentIds = Arrays.stream(adRequestEntity.getAttachmentIds().split(","))
-                .map(UUID::fromString)
-                .toList();
+        List<UUID> attachmentIds = ValidateDataUtils.parseCsvUuids(adRequestEntity.getAttachmentIds());
+        if (attachmentIds.isEmpty()) {
+            return Collections.emptyList();
+        }
         return getAttachmentsByIds(attachmentIds);
     }
 
@@ -122,11 +123,7 @@ public class AdUploadService {
         if (adRequest == null || ValidateDataUtils.isNullOrEmptyString(adRequest.getAttachmentIds())) {
             return;
         }
-        List<UUID> ids = Arrays.stream(adRequest.getAttachmentIds().split(","))
-                .map(String::trim)
-                .filter(s -> !s.isEmpty())
-                .map(UUID::fromString)
-                .toList();
+        List<UUID> ids = ValidateDataUtils.parseCsvUuids(adRequest.getAttachmentIds());
         if (ids.isEmpty()) {
             return;
         }

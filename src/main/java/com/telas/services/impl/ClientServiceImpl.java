@@ -65,6 +65,12 @@ public class ClientServiceImpl implements ClientService {
     }
 
     @Override
+    @Transactional(readOnly = true)
+    public ClientWorkspaceResponseDto getClientWorkspace() {
+        return clientProfileService.getClientWorkspace();
+    }
+
+    @Override
     @Transactional
     public void validateCode(String email, String codigo) {
         clientProfileService.validateCode(email, codigo);

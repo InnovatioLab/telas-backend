@@ -4,6 +4,7 @@ import com.telas.dtos.request.AttachmentRequestDto;
 import com.telas.dtos.request.ClientRequestDto;
 import com.telas.dtos.request.PermanentDeleteClientRequestDto;
 import com.telas.dtos.response.ClientResponseDto;
+import com.telas.dtos.response.ClientWorkspaceResponseDto;
 import com.telas.dtos.response.PermanentDeletionRequirementsDto;
 import com.telas.entities.Client;
 import com.telas.infra.security.model.AuthenticatedUser;
@@ -26,6 +27,8 @@ public interface ClientProfileService {
     Client findEntityById(UUID id);
 
     ClientResponseDto getDataFromToken();
+
+    ClientWorkspaceResponseDto getClientWorkspace();
 
     void validateCode(String email, String codigo);
 

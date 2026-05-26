@@ -42,6 +42,8 @@ public final class MonitorAdResponseDto implements Serializable {
 
   private Boolean canRequestRemoval;
 
+  private Boolean partnerRemovalRequested;
+
   public MonitorAdResponseDto(MonitorAd entity, String adLink) {
     id = entity.getAd().getId();
     orderIndex = entity.getOrderIndex();

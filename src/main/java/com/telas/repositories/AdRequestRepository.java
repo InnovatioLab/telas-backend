@@ -23,4 +23,6 @@ public interface AdRequestRepository extends JpaRepository<AdRequest, UUID>, Jpa
             AdRequestOrigin requestOrigin,
             UUID targetMonitorId,
             PartnerSubmissionMode submissionMode);
+
+    boolean existsByClientId(UUID clientId);
 }

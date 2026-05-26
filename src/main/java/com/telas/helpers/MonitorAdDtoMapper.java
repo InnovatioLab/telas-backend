@@ -63,7 +63,10 @@ public class MonitorAdDtoMapper {
         }
         PartnerAdDeploymentStatus status = resolvePartnerDeploymentStatus(ad, monitorAd);
         dto.setDeploymentStatus(status.name());
-        dto.setCanRequestRemoval(monitorAd != null || ad.getOnAirNotifiedAt() != null);
+        boolean removalRequested = ad.getPartnerRemovalRequestedAt() != null;
+        dto.setPartnerRemovalRequested(removalRequested);
+        boolean eligibleForRemoval = monitorAd != null || ad.getOnAirNotifiedAt() != null;
+        dto.setCanRequestRemoval(eligibleForRemoval && !removalRequested);
         return dto;
     }
 
