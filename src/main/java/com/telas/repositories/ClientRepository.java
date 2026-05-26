@@ -27,7 +27,6 @@ public interface ClientRepository extends JpaRepository<Client, UUID>, JpaSpecif
             SELECT DISTINCT c FROM Client c
             LEFT JOIN FETCH c.addresses
             LEFT JOIN FETCH c.contact
-            LEFT JOIN FETCH c.subscriptions
             LEFT JOIN FETCH c.subscriptionFlow
             WHERE c.id = :id AND c.status = 'ACTIVE'
             """)
