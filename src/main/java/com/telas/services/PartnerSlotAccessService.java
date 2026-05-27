@@ -16,4 +16,6 @@ public interface PartnerSlotAccessService {
     boolean canAddBlocks(Client client, Monitor monitor, int additionalBlocks);
 
     int resolveCartBlockQuantity(Client client, Monitor monitor, Integer requestedQuantity);
+
+    void validatePartnerAdCreationAllowed(Client partner, Monitor monitor, boolean createsAdEntity);
 }

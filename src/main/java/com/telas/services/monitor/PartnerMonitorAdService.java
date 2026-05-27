@@ -177,10 +177,8 @@ public class PartnerMonitorAdService {
 		materialsRequest.setAttachmentIds(request.getAttachmentIds());
 		materialsRequest.setOptionalLabel(request.getOptionalLabel());
 
-		if (partner.getAds().size() >= SharedConstants.MAX_ADS_PER_CLIENT) {
-			throw new BusinessRuleException(ClientValidationMessages.MAX_ADS_REACHED);
-		}
 		validatePartnerPlacementAccess(partner, monitor);
+		partnerSlotAccessService.validatePartnerAdCreationAllowed(partner, monitor, false);
 
 		AdRequest created = clientHelper.createPartnerAdRequest(materialsRequest, partner, monitor);
 		notifyAdminsCreateAdSubmitted(partner, monitor, created);
@@ -193,10 +191,8 @@ public class PartnerMonitorAdService {
 			PartnerAdSubmissionRequestDto request,
 			Client partner,
 			Monitor monitor) {
-		if (partner.getAds().size() >= SharedConstants.MAX_ADS_PER_CLIENT) {
-			throw new BusinessRuleException(ClientValidationMessages.MAX_ADS_REACHED);
-		}
 		validatePartnerPlacementAccess(partner, monitor);
+		partnerSlotAccessService.validatePartnerAdCreationAllowed(partner, monitor, true);
 
 		PartnerAdRequestToAdminDto dto = new PartnerAdRequestToAdminDto();
 		dto.setTargetMonitorId(monitorId);
@@ -226,9 +222,7 @@ public class PartnerMonitorAdService {
 			validatePartnerPlacementAccess(actor, monitor);
 			adOwner = clientRepository.findById(actor.getId())
 					.orElseThrow(() -> new ResourceNotFoundException(ClientValidationMessages.USER_NOT_FOUND));
-			if (adOwner.getAds().size() >= SharedConstants.MAX_ADS_PER_CLIENT) {
-				throw new BusinessRuleException(ClientValidationMessages.MAX_ADS_REACHED);
-			}
+			partnerSlotAccessService.validatePartnerAdCreationAllowed(adOwner, monitor, true);
 		} else {
 			adOwner = actor;
 		}

@@ -1,13 +1,17 @@
 package com.telas.services.impl;
 
+import com.telas.entities.Ad;
 import com.telas.entities.CartItem;
 import com.telas.entities.Client;
 import com.telas.entities.Monitor;
 import com.telas.entities.MonitorAd;
 import com.telas.entities.SubscriptionMonitor;
+import com.telas.enums.AdValidationType;
+import com.telas.infra.exceptions.BusinessRuleException;
 import com.telas.services.PartnerPlatformSettingsService;
 import com.telas.services.PartnerSlotAccessService;
 import com.telas.shared.constants.SharedConstants;
+import com.telas.shared.constants.valitation.ClientValidationMessages;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
@@ -81,6 +85,27 @@ public class PartnerSlotAccessServiceImpl implements PartnerSlotAccessService {
         CartItem probe = new CartItem();
         probe.setBlockQuantity(additionalBlocks);
         return monitor.hasAvailableBlocks(probe);
+    }
+
+    @Override
+    public void validatePartnerAdCreationAllowed(Client partner, Monitor monitor, boolean createsAdEntity) {
+        if (partner == null || !partner.isPartner() || !createsAdEntity) {
+            return;
+        }
+        if (usesPartnerQuotaOnMonitor(partner, monitor)) {
+            return;
+        }
+        long activeAds = partner.getAds().stream()
+                .filter(this::countsTowardPartnerActiveAdLimit)
+                .count();
+        if (activeAds >= SharedConstants.MAX_ADS_PER_CLIENT) {
+            throw new BusinessRuleException(ClientValidationMessages.MAX_ADS_REACHED);
+        }
+    }
+
+    private boolean countsTowardPartnerActiveAdLimit(Ad ad) {
+        AdValidationType validation = ad.getValidation();
+        return AdValidationType.APPROVED.equals(validation) || AdValidationType.PENDING.equals(validation);
     }
 
     @Override

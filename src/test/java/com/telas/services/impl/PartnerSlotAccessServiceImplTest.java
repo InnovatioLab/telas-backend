@@ -6,7 +6,9 @@ import com.telas.entities.Client;
 import com.telas.entities.Monitor;
 import com.telas.entities.MonitorAd;
 import com.telas.entities.MonitorAdPK;
+import com.telas.enums.AdValidationType;
 import com.telas.enums.Role;
+import com.telas.infra.exceptions.BusinessRuleException;
 import com.telas.services.PartnerPlatformSettingsService;
 import com.telas.shared.constants.SharedConstants;
 import org.junit.jupiter.api.BeforeEach;
@@ -19,8 +21,10 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import java.util.HashSet;
 import java.util.UUID;
 
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.when;
 
@@ -42,6 +46,7 @@ class PartnerSlotAccessServiceImplTest {
         partner = new Client();
         partner.setId(UUID.randomUUID());
         partner.setRole(Role.PARTNER);
+        partner.setAds(new java.util.ArrayList<>());
 
         addressOwner = new Client();
         addressOwner.setId(UUID.randomUUID());
@@ -120,5 +125,42 @@ class PartnerSlotAccessServiceImplTest {
         assertEquals(3, service.usedBlocksByClientOnMonitor(partner, monitor));
         assertTrue(service.canAddBlocks(partner, monitor, 2));
         assertFalse(service.canAddBlocks(partner, monitor, 3));
+    }
+
+    @Test
+    void validatePartnerAdCreationAllowed_withGlobalSlots_skipsAccountWideLimit() {
+        when(partnerPlatformSettingsService.isSlotsAnyLocationEnabled()).thenReturn(true);
+        for (int i = 0; i < 6; i++) {
+            Ad ad = new Ad();
+            ad.setValidation(AdValidationType.APPROVED);
+            partner.getAds().add(ad);
+        }
+
+        assertDoesNotThrow(() -> service.validatePartnerAdCreationAllowed(partner, monitor, true));
+    }
+
+    @Test
+    void validatePartnerAdCreationAllowed_foreignMonitorWithoutGlobalSlots_enforcesFiveActiveAds() {
+        when(partnerPlatformSettingsService.isSlotsAnyLocationEnabled()).thenReturn(false);
+
+        for (int i = 0; i < 5; i++) {
+            Ad ad = new Ad();
+            ad.setValidation(AdValidationType.APPROVED);
+            partner.getAds().add(ad);
+        }
+
+        assertThrows(BusinessRuleException.class,
+                () -> service.validatePartnerAdCreationAllowed(partner, monitor, true));
+    }
+
+    @Test
+    void validatePartnerAdCreationAllowed_createAdRequestOnly_neverThrows() {
+        for (int i = 0; i < 10; i++) {
+            Ad ad = new Ad();
+            ad.setValidation(AdValidationType.APPROVED);
+            partner.getAds().add(ad);
+        }
+
+        assertDoesNotThrow(() -> service.validatePartnerAdCreationAllowed(partner, monitor, false));
     }
 }

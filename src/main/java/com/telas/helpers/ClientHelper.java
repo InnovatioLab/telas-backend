@@ -199,6 +199,9 @@ public class ClientHelper {
 
     @Transactional(readOnly = true)
     public void validateAttachmentsCount(Client client, List<AttachmentRequestDto> request) {
+        if (client.isPartner()) {
+            return;
+        }
         if (!client.isPrivilegedPanelUser()) {
             int newAttachments = (int) request.stream().filter(r -> r.getId() == null).count();
             int totalAttachments = client.getAttachments().size() + newAttachments;
