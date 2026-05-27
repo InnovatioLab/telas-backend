@@ -31,6 +31,9 @@ import com.telas.repositories.MonitorRepository;
 import com.telas.repositories.NotificationRepository;
 import com.telas.repositories.SubscriptionRepository;
 import com.telas.services.AdminAdOperationsService;
+import com.telas.services.PartnerSlotAccessService;
+import com.telas.shared.constants.SharedConstants;
+import com.telas.shared.constants.valitation.MonitorValidationMessages;
 import com.telas.shared.constants.valitation.AdValidationMessages;
 import com.telas.shared.utils.PaginationFilterUtil;
 import lombok.RequiredArgsConstructor;
@@ -98,6 +101,7 @@ public class AdminAdOperationsServiceImpl implements AdminAdOperationsService {
     private final BoxAdPushNotificationHelper boxAdPushNotificationHelper;
     private final AdPublicationNotificationHelper adPublicationNotificationHelper;
     private final UnusedSingleAdDeletionService unusedSingleAdDeletionService;
+    private final PartnerSlotAccessService partnerSlotAccessService;
 
     private static String trimOrEmpty(String value) {
         if (value == null) {
@@ -305,6 +309,7 @@ public class AdminAdOperationsServiceImpl implements AdminAdOperationsService {
             boolean alreadyLinked = placements != null && placements.stream()
                     .anyMatch(p -> p.getMonitor() != null && target.getId().equals(p.getMonitor().getId()));
             if (!alreadyLinked) {
+                assertPartnerCanPlaceOnMonitor(ad, target);
                 monitorHelper.attachAdToMonitor(target, ad);
             }
 
@@ -389,5 +394,16 @@ public class AdminAdOperationsServiceImpl implements AdminAdOperationsService {
             return "\"" + x + "\"";
         }
         return x;
+    }
+
+    private void assertPartnerCanPlaceOnMonitor(Ad ad, Monitor monitor) {
+        Client advertiser = ad.getClient();
+        if (advertiser == null || !advertiser.isPartner()) {
+            return;
+        }
+        partnerSlotAccessService.assertCanAddBlocks(
+                advertiser,
+                monitor,
+                SharedConstants.MIN_QUANTITY_MONITOR_BLOCK);
     }
 }

@@ -147,10 +147,6 @@ public class ClientAdRequestServiceImpl implements ClientAdRequestService {
             throw new BusinessRuleException(ClientValidationMessages.AD_REQUEST_NOT_MATERIALS);
         }
         Client partner = adRequest.getClient();
-        boolean isReplacingExistingAd = adRequest.getAd() != null;
-        if (!isReplacingExistingAd) {
-            validateMaxAds(partner);
-        }
         adApprovalWorkflow.saveAdsForAdRequest(request, adRequest);
     }
 

@@ -88,6 +88,13 @@ public class PartnerSlotAccessServiceImpl implements PartnerSlotAccessService {
     }
 
     @Override
+    public void assertCanAddBlocks(Client client, Monitor monitor, int additionalBlocks) {
+        if (!canAddBlocks(client, monitor, additionalBlocks)) {
+            throw new BusinessRuleException(MonitorValidationMessages.MONITOR_BLOCKS_UNAVAILABLE);
+        }
+    }
+
+    @Override
     public void validatePartnerAdCreationAllowed(Client partner, Monitor monitor, boolean createsAdEntity) {
         if (partner == null || !partner.isPartner() || !createsAdEntity) {
             return;

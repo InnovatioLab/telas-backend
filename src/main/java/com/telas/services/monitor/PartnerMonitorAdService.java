@@ -92,7 +92,6 @@ public class PartnerMonitorAdService {
 	public MonitorResponseDto findMonitorForPartnerPlacement(UUID monitorId) {
 		Client partner = authenticatedUserService.validatePartner().client();
 		Monitor monitor = monitorCrudService.findEntityById(monitorId);
-		validatePartnerPlacementAccess(partner, monitor);
 		return new MonitorResponseDto(
 				monitor,
 				helper.getMonitorAdsResponse(monitor),
@@ -177,9 +176,6 @@ public class PartnerMonitorAdService {
 		materialsRequest.setAttachmentIds(request.getAttachmentIds());
 		materialsRequest.setOptionalLabel(request.getOptionalLabel());
 
-		validatePartnerPlacementAccess(partner, monitor);
-		partnerSlotAccessService.validatePartnerAdCreationAllowed(partner, monitor, false);
-
 		AdRequest created = clientHelper.createPartnerAdRequest(materialsRequest, partner, monitor);
 		notifyAdminsCreateAdSubmitted(partner, monitor, created);
 		notifyPartnerSubmissionAck(partner, monitor, "Create Ad");
@@ -191,9 +187,6 @@ public class PartnerMonitorAdService {
 			PartnerAdSubmissionRequestDto request,
 			Client partner,
 			Monitor monitor) {
-		validatePartnerPlacementAccess(partner, monitor);
-		partnerSlotAccessService.validatePartnerAdCreationAllowed(partner, monitor, true);
-
 		PartnerAdRequestToAdminDto dto = new PartnerAdRequestToAdminDto();
 		dto.setTargetMonitorId(monitorId);
 		dto.setOptionalLabel(request.getOptionalLabel());

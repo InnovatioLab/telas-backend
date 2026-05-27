@@ -102,7 +102,6 @@ class PartnerMonitorAdServiceNotificationTest {
         when(monitorCrudService.findEntityById(monitorId)).thenReturn(monitor);
         when(partnerPlacementRules.partnerOwnsMonitorAddress(partner, monitor)).thenReturn(false);
         when(partnerSlotAccessService.hasGlobalSlotsPermission(partner)).thenReturn(true);
-        when(partnerSlotAccessService.canAddBlocks(eq(partner), eq(monitor), anyInt())).thenReturn(true);
     }
 
     @Test

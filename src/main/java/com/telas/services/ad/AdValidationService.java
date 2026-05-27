@@ -18,8 +18,10 @@ import com.telas.repositories.MonitorAdRepository;
 import com.telas.repositories.MonitorRepository;
 import com.telas.services.AdUnusedTrackingService;
 import com.telas.services.NotificationService;
+import com.telas.services.PartnerSlotAccessService;
 import com.telas.services.notification.AdminAdsNotificationService;
 import com.telas.services.partner.PartnerPlacementRules;
+import com.telas.shared.constants.SharedConstants;
 import com.telas.shared.audit.CustomRevisionListener;
 import com.telas.shared.constants.valitation.AdValidationMessages;
 import com.telas.shared.constants.valitation.AttachmentValidationMessages;
@@ -48,6 +50,7 @@ public class AdValidationService {
     private final MonitorHelper monitorHelper;
     private final AdOnAirNotificationHelper adOnAirNotificationHelper;
     private final PartnerPlacementRules partnerPlacementRules;
+    private final PartnerSlotAccessService partnerSlotAccessService;
 
     @Transactional
     public void adminApproveAdRequestToAds(AdRequest adRequest, Client admin) {
@@ -146,6 +149,13 @@ public class AdValidationService {
         }
         Monitor monitor = monitorRepository.findById(adRequest.getTargetMonitor().getId())
                 .orElseThrow(() -> new ResourceNotFoundException(MonitorValidationMessages.MONITOR_NOT_FOUND));
+        Client advertiser = ad.getClient();
+        if (advertiser != null && advertiser.isPartner()) {
+            partnerSlotAccessService.assertCanAddBlocks(
+                    advertiser,
+                    monitor,
+                    SharedConstants.MIN_QUANTITY_MONITOR_BLOCK);
+        }
         monitor.getMonitorAds().add(new MonitorAd(monitor, ad));
         monitorRepository.save(monitor);
     }
