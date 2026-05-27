@@ -65,11 +65,14 @@ public final class SharedConstants {
 
     public static final String TEMPLATE_EMAIL_ADMIN_CLIENT_AD_APPROVED = "email_admin_client_ad_approved.ftlh";
     public static final String EMAIL_SUBJECT_ADMIN_CLIENT_AD_APPROVED = "Customer approved an ad — Telas";
+    public static final String EMAIL_SUBJECT_ADMIN_PARTNER_AD_APPROVED = "Partner approved an ad — Telas";
 
     public static final String TEMPLATE_EMAIL_ADMIN_CLIENT_FIRST_ATTACHMENTS_UPLOADED =
             "email_admin_client_first_attachments_uploaded.ftlh";
     public static final String EMAIL_SUBJECT_ADMIN_CLIENT_FIRST_ATTACHMENTS_UPLOADED =
             "Customer uploaded attachments — Telas";
+    public static final String EMAIL_SUBJECT_ADMIN_PARTNER_FIRST_ATTACHMENTS_UPLOADED =
+            "Partner uploaded attachments — Telas";
 
     public static final String TEMPLATE_EMAIL_CLIENT_FIRST_ATTACHMENTS_UPLOADED_ACK =
             "email_client_first_attachments_uploaded_ack.ftlh";
@@ -87,11 +90,34 @@ public final class SharedConstants {
 
     public static final String TEMPLATE_EMAIL_ADMIN_CLIENT_AD_DEPLOYED_TO_BOX = "email_admin_client_ad_deployed_to_box.ftlh";
     public static final String EMAIL_SUBJECT_ADMIN_CLIENT_AD_DEPLOYED_TO_BOX = "Customer ad deployed to box — Telas";
+    public static final String EMAIL_SUBJECT_ADMIN_PARTNER_AD_DEPLOYED_TO_BOX = "Partner ad deployed to box — Telas";
 
     public static final String TEMPLATE_EMAIL_PARTNER_AD_REMOVAL_REQUESTED = "email_partner_ad_removal_requested.ftlh";
     public static final String EMAIL_SUBJECT_PARTNER_AD_REMOVAL_REQUESTED = "Partner requested ad removal — Telas";
     public static final String TEMPLATE_EMAIL_PARTNER_AD_REMOVAL_CONFIRMED = "email_partner_ad_removal_confirmed.ftlh";
     public static final String EMAIL_SUBJECT_PARTNER_AD_REMOVAL_CONFIRMED = "We received your ad removal request — Telas";
+
+    public static final String TEMPLATE_EMAIL_ADMIN_PARTNER_PLACEMENT_REQUEST =
+            "email_admin_partner_placement_request.ftlh";
+    public static final String EMAIL_SUBJECT_ADMIN_PARTNER_PLACEMENT_REQUEST =
+            "Partner Create Ad request — Telas";
+
+    public static final String TEMPLATE_EMAIL_ADMIN_PARTNER_FINISHED_AD_SUBMITTED =
+            "email_admin_partner_finished_ad_submitted.ftlh";
+    public static final String EMAIL_SUBJECT_ADMIN_PARTNER_FINISHED_AD_SUBMITTED =
+            "Partner Finished Ad submitted — Telas";
+
+    public static final String TEMPLATE_EMAIL_ADMIN_PARTNER_FOREIGN_AD_SUBMITTED =
+            "email_admin_partner_foreign_ad_submitted.ftlh";
+    public static final String EMAIL_SUBJECT_ADMIN_PARTNER_FOREIGN_AD_SUBMITTED =
+            "Partner ad submitted — Telas";
+
+    public static final String TEMPLATE_EMAIL_CLIENT_PARTNER_SUBMISSION_ACK =
+            "email_client_partner_submission_ack.ftlh";
+    public static final String EMAIL_SUBJECT_CLIENT_PARTNER_SUBMISSION_ACK =
+            "We received your submission — Telas";
+
+    public static final String EMAIL_SUBJECT_CLIENT_AD_REJECTED_PARTNER = "Partner rejected an ad — Telas";
 
     public static final String TEMPLATE_EMAIL_SCHEDULER_PRERUN = "email_scheduler_prerun.ftlh";
     public static final String TEMPLATE_EMAIL_MONITOR_WISHLIST_AVAILABLE = "email_monitor_wishlist_available.ftlh";

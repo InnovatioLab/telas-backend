@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <title>Telas — Customer uploaded attachments</title>
+    <title>Telas — <#if actorType?? && actorType == "partner">Partner<#else>Customer</#if> uploaded attachments</title>
     <meta charset="UTF-8"/>
     <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
     <link rel="preconnect" href="https://fonts.googleapis.com"/>
@@ -23,7 +23,7 @@
     <div class="content">
         <table role="presentation" style="width: 100%; border-collapse: collapse;">
             <tr>
-                <td style="padding-bottom: 16px"><h3>Customer uploaded attachments</h3></td>
+                <td style="padding-bottom: 16px"><h3><#if actorType?? && actorType == "partner">Partner<#else>Customer</#if> uploaded attachments</h3></td>
             </tr>
             <tr>
                 <td style="padding-bottom: 16px">
@@ -33,7 +33,7 @@
             <tr>
                 <td style="padding-top: 8px;">
                     <#if link?has_content>
-                    <a href="${link}" style="color: #075473; font-weight: 600;">Open client</a>
+                    <a href="${link}" style="color: #075473; font-weight: 600;">Open <#if actorType?? && actorType == "partner">partner<#else>client</#if></a>
                     </#if>
                 </td>
             </tr>

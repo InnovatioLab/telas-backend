@@ -24,6 +24,7 @@ import com.telas.services.BucketService;
 import com.telas.services.NotificationService;
 import com.telas.services.PartnerSlotAccessService;
 import com.telas.services.ad.AdValidationService;
+import com.telas.services.notification.AdminAdsNotificationService;
 import com.telas.services.partner.PartnerPlacementRules;
 import com.telas.shared.constants.SharedConstants;
 import com.telas.shared.constants.valitation.AuthValidationMessageConstants;
@@ -52,6 +53,7 @@ public class PartnerMonitorAdService {
 	private final PartnerPlacementRules partnerPlacementRules;
 	private final AdValidationService adValidationService;
 	private final NotificationService notificationService;
+	private final AdminAdsNotificationService adminAdsNotificationService;
 	private final ClientHelper clientHelper;
 	private final MonitorCrudService monitorCrudService;
 
@@ -181,7 +183,8 @@ public class PartnerMonitorAdService {
 		validatePartnerPlacementAccess(partner, monitor);
 
 		AdRequest created = clientHelper.createPartnerAdRequest(materialsRequest, partner, monitor);
-		notifyAdminsPartnerMaterialsSubmitted(partner, monitor, created);
+		notifyAdminsCreateAdSubmitted(partner, monitor, created);
+		notifyPartnerSubmissionAck(partner, monitor, "Create Ad");
 		return created.getId();
 	}
 
@@ -204,7 +207,8 @@ public class PartnerMonitorAdService {
 				partner,
 				monitor,
 				request.getAttachment());
-		notifyAdminsPartnerMaterialsSubmitted(partner, monitor, created);
+		notifyAdminsFinishedAdSubmitted(partner, monitor, created);
+		notifyPartnerSubmissionAck(partner, monitor, "Finished Ad");
 		return created.getId();
 	}
 
@@ -278,22 +282,51 @@ public class PartnerMonitorAdService {
 		params.put("adId", ad.getId().toString());
 		params.put("clientId", partner.getId().toString());
 		params.put("link", frontBaseUrl + "/admin/ads");
-		clientRepository.findAllAdmins().forEach(admin ->
-				notificationService.save(NotificationReference.ADMIN_PARTNER_FOREIGN_AD_SUBMITTED, admin, params, true));
+		adminAdsNotificationService.notifyAdmins(
+				NotificationReference.ADMIN_PARTNER_FOREIGN_AD_SUBMITTED, params);
 	}
 
-	private void notifyAdminsPartnerMaterialsSubmitted(Client partner, Monitor monitor, AdRequest adRequest) {
-		String monitorLabel = monitor.getAddress() != null
-				? monitor.getAddress().resolveMapLocationName()
-				: monitor.getId().toString();
+	private void notifyAdminsCreateAdSubmitted(Client partner, Monitor monitor, AdRequest adRequest) {
+		adminAdsNotificationService.notifyAdmins(
+				NotificationReference.ADMIN_PARTNER_PLACEMENT_REQUEST,
+				buildPartnerAdRequestAdminParams(partner, monitor, adRequest));
+	}
+
+	private void notifyAdminsFinishedAdSubmitted(Client partner, Monitor monitor, AdRequest adRequest) {
+		adminAdsNotificationService.notifyAdmins(
+				NotificationReference.ADMIN_PARTNER_FINISHED_AD_SUBMITTED,
+				buildPartnerAdRequestAdminParams(partner, monitor, adRequest));
+	}
+
+	private Map<String, String> buildPartnerAdRequestAdminParams(
+			Client partner, Monitor monitor, AdRequest adRequest) {
+		String monitorLabel = resolveMonitorLabel(monitor);
 		Map<String, String> params = new HashMap<>();
 		params.put("partnerName", partner.getBusinessName() != null ? partner.getBusinessName() : "");
-		params.put("monitorLabel", monitorLabel != null ? monitorLabel : "");
-		params.put("adLabel", adRequest.getSlogan() != null ? adRequest.getSlogan() : "");
+		params.put("monitorLabel", monitorLabel);
+		params.put("instructions", adRequest.getSlogan() != null ? adRequest.getSlogan() : "");
 		params.put("adId", adRequest.getId().toString());
 		params.put("clientId", partner.getId().toString());
 		params.put("link", frontBaseUrl + "/admin/ad-requests");
-		clientRepository.findAllAdmins().forEach(admin ->
-				notificationService.save(NotificationReference.ADMIN_PARTNER_PLACEMENT_REQUEST, admin, params, true));
+		return params;
+	}
+
+	private void notifyPartnerSubmissionAck(Client partner, Monitor monitor, String submissionType) {
+		Map<String, String> params = new HashMap<>();
+		params.put("name", partner.getBusinessName() != null ? partner.getBusinessName() : "");
+		params.put("submissionType", submissionType);
+		params.put("monitorLabel", resolveMonitorLabel(monitor));
+		params.put("link", frontBaseUrl + "/client/screens");
+		notificationService.save(NotificationReference.CLIENT_PARTNER_SUBMISSION_ACK, partner, params, true);
+	}
+
+	private String resolveMonitorLabel(Monitor monitor) {
+		if (monitor.getAddress() != null) {
+			String label = monitor.getAddress().resolveMapLocationName();
+			if (label != null) {
+				return label;
+			}
+		}
+		return monitor.getId().toString();
 	}
 }

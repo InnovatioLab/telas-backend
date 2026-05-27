@@ -259,18 +259,14 @@ public class AdValidationService {
 
     private void notifyAdminsClientApprovedAd(Ad entity) {
         Client client = entity.getClient();
-        Map<String, String> params = new HashMap<>();
-        params.put("clientName", client.getBusinessName());
-        params.put("adName", entity.getName());
+        Map<String, String> params = buildAdminAdActorParams(client, entity);
         params.put("link", clientPortalLinkResolver.adminClientMessagesLink(client.getId()));
         adminAdsNotificationService.notifyAdmins(NotificationReference.ADMIN_CLIENT_AD_APPROVED, params);
     }
 
     private void notifyAdminsClientApprovedAdForAdsTab(Ad entity) {
         Client client = entity.getClient();
-        Map<String, String> params = new HashMap<>();
-        params.put("clientName", client.getBusinessName());
-        params.put("adName", entity.getName());
+        Map<String, String> params = buildAdminAdActorParams(client, entity);
         params.put("link", clientPortalLinkResolver.adminAdsLink());
         adminAdsNotificationService.notifyAdmins(NotificationReference.ADMIN_CLIENT_AD_APPROVED, params);
     }
@@ -280,6 +276,7 @@ public class AdValidationService {
         Map<String, String> params = new HashMap<>();
         params.put("name", client.getBusinessName());
         params.put("adName", entity.getName());
+        params.put("actorType", client.isPartner() ? "partner" : "customer");
         params.put("locations", "");
         if (request != null) {
             if (!ValidateDataUtils.isNullOrEmptyString(request.getJustification())) {
@@ -296,6 +293,14 @@ public class AdValidationService {
         Map<String, String> clientParams = new HashMap<>(params);
         clientParams.put("link", clientPortalLinkResolver.clientPartnerAdsReviewLink(client));
         notificationService.save(NotificationReference.CLIENT_AD_REJECTION_CONFIRMED, client, clientParams, true);
+    }
+
+    private Map<String, String> buildAdminAdActorParams(Client client, Ad entity) {
+        Map<String, String> params = new HashMap<>();
+        params.put("clientName", client.getBusinessName());
+        params.put("adName", entity.getName());
+        params.put("actorType", client.isPartner() ? "partner" : "customer");
+        return params;
     }
 
     private void validateValidatorPermissions(Ad entity, Client validator) {

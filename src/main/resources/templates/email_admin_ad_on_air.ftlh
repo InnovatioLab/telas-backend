@@ -26,7 +26,7 @@
                 <td style="padding-bottom: 16px"><h3>Ad is now live</h3></td>
             </tr>
             <tr>
-                <td style="padding-bottom: 8px"><strong>Customer:</strong> ${clientName!""}</td>
+                <td style="padding-bottom: 8px"><strong><#if actorType?? && actorType == "partner">Partner<#else>Customer</#if>:</strong> ${clientName!""}</td>
             </tr>
             <tr>
                 <td style="padding-bottom: 16px"><strong>Ad:</strong> ${adName!""}</td>

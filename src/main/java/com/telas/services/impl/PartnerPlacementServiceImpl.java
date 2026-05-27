@@ -9,8 +9,8 @@ import com.telas.infra.exceptions.BusinessRuleException;
 import com.telas.infra.exceptions.ForbiddenException;
 import com.telas.repositories.ClientRepository;
 import com.telas.repositories.CartRepository;
-import com.telas.services.NotificationService;
 import com.telas.services.PartnerPlacementService;
+import com.telas.services.notification.AdminAdsNotificationService;
 import com.telas.services.PartnerSlotAccessService;
 import com.telas.services.partner.PartnerPlacementRules;
 import com.telas.shared.constants.SharedConstants;
@@ -34,7 +34,7 @@ public class PartnerPlacementServiceImpl implements PartnerPlacementService {
     private final AuthenticatedUserService authenticatedUserService;
     private final CartRepository cartRepository;
     private final ClientRepository clientRepository;
-    private final NotificationService notificationService;
+    private final AdminAdsNotificationService adminAdsNotificationService;
     private final PartnerSlotAccessService partnerSlotAccessService;
     private final PartnerPlacementRules partnerPlacementRules;
 
@@ -95,9 +95,7 @@ public class PartnerPlacementServiceImpl implements PartnerPlacementService {
                 "link", frontBaseUrl + "/admin/clients/" + partner.getId()
         );
 
-        clientRepository.findAllAdmins().forEach(admin ->
-                notificationService.save(
-                        NotificationReference.ADMIN_PARTNER_PLACEMENT_REQUEST, admin, params, true));
+        adminAdsNotificationService.notifyAdmins(NotificationReference.ADMIN_PARTNER_PLACEMENT_REQUEST, params);
 
         cart.setActive(false);
         cartRepository.save(cart);

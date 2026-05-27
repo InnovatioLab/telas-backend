@@ -273,6 +273,8 @@ public class ClientProfileServiceImpl implements ClientProfileService {
             clientAckParams.put("name", client.getBusinessName());
             String materialsPath = client.isPartner() ? "/client/screens" : "/client/my-telas";
             clientAckParams.put("link", frontBaseUrl + materialsPath);
+            clientAckParams.put("partner", client.isPartner() ? "true" : "false");
+            clientAckParams.put("linkLabel", client.isPartner() ? "My screens" : "My Telas");
             notificationService.save(
                     NotificationReference.CLIENT_FIRST_ATTACHMENTS_UPLOADED_ACK,
                     client,

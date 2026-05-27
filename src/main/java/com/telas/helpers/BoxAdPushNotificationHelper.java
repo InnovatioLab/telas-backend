@@ -138,6 +138,7 @@ public class BoxAdPushNotificationHelper {
         adminBase.put("monitorsSummary", monitorsSummary);
         adminBase.put("subscriptionEndsAt", subscriptionEndsAt);
         adminBase.put("link", clientPortalLinkResolver.adminClientMessagesLink(client.getId()));
+        adminBase.put("actorType", client.isPartner() ? "partner" : "customer");
         adminAdsNotificationService.notifyAdmins(NotificationReference.ADMIN_CLIENT_AD_DEPLOYED_TO_BOX, adminBase);
     }
 }

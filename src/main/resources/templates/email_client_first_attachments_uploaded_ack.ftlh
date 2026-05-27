@@ -38,7 +38,7 @@
             <tr>
                 <td style="padding-top: 8px;">
                     <#if link?has_content>
-                    <a href="${link}" style="color: #075473; font-weight: 600;">Open My Telas</a>
+                    <a href="${link}" style="color: #075473; font-weight: 600;">Open ${linkLabel!"My Telas"}</a>
                     </#if>
                 </td>
             </tr>

@@ -183,8 +183,10 @@ public enum NotificationReference {
             String name = params.getOrDefault("name", "Customer");
             String adName = params.getOrDefault("adName", "Ad");
             String link = params.getOrDefault("link", "");
+            boolean partner = isPartnerActor(params);
+            String title = partner ? "Ad rejected by partner" : "Ad rejected by customer";
             return formatNotificationMessage(
-                    "Ad rejected by customer",
+                    title,
                     String.format("%s rejected the ad %s.", name, adName),
                     params,
                     null,
@@ -259,8 +261,10 @@ public enum NotificationReference {
             String clientName = params.getOrDefault("clientName", "Customer");
             String adName = params.getOrDefault("adName", "Ad");
             String link = params.getOrDefault("link", "");
+            boolean partner = isPartnerActor(params);
+            String title = partner ? "Partner approved an ad" : "Customer approved an ad";
             return formatNotificationMessage(
-                    "Customer approved an ad",
+                    title,
                     String.format("%s approved the ad %s.", clientName, adName),
                     params,
                     null,
@@ -279,8 +283,10 @@ public enum NotificationReference {
         public String getNotificationMessage(Map<String, String> params) {
             String clientName = params.getOrDefault("clientName", "Customer");
             String link = params.getOrDefault("link", "");
+            boolean partner = isPartnerActor(params);
+            String title = partner ? "Partner uploaded attachments" : "Customer uploaded attachments";
             return formatNotificationMessage(
-                    "Customer uploaded attachments",
+                    title,
                     String.format("%s uploaded attachments for the first time.", clientName),
                     params,
                     null,
@@ -297,18 +303,39 @@ public enum NotificationReference {
     CLIENT_FIRST_ATTACHMENTS_UPLOADED_ACK {
         @Override
         public String getNotificationMessage(Map<String, String> params) {
+            String linkLabel = "true".equals(params.get("partner")) ? "My screens" : "My Telas";
             return String.format("""
                     <div class="informacoes">
                         <h4 id="notification-title" class="notification-title">We received your files</h4>
                         <p>Your attachments were uploaded successfully. We will use them to prepare your ad.</p>
                     </div>
-                    <p>Open <a id="link-details" class='details link-text' href="%s">My Telas</a> anytime.</p>
-                    """, params.getOrDefault("link", "#"));
+                    <p>Open <a id="link-details" class='details link-text' href="%s">%s</a> anytime.</p>
+                    """, params.getOrDefault("link", "#"), linkLabel);
         }
 
         @Override
         public EmailDataDto getEmailData(Map<String, String> params) {
             return createClientFirstAttachmentsUploadedAckEmailData(params);
+        }
+    },
+    CLIENT_PARTNER_SUBMISSION_ACK {
+        @Override
+        public String getNotificationMessage(Map<String, String> params) {
+            return String.format("""
+                    <div class="informacoes">
+                        <h4 id="notification-title" class="notification-title">Submission received</h4>
+                        <p>We received your <strong>%s</strong> submission for screen <strong>%s</strong>.</p>
+                    </div>
+                    <p>Open <a id="link-details" class='details link-text' href="%s">My screens</a>.</p>
+                    """,
+                    params.getOrDefault("submissionType", "ad"),
+                    params.getOrDefault("monitorLabel", ""),
+                    params.getOrDefault("link", "#"));
+        }
+
+        @Override
+        public EmailDataDto getEmailData(Map<String, String> params) {
+            return createClientPartnerSubmissionAckEmailData(params);
         }
     },
     CLIENT_AD_ON_AIR {
@@ -761,7 +788,7 @@ public enum NotificationReference {
                         </div>
                         <p>Review the attachment and configure the ad before it goes on air.</p>
                     </div>
-                    <p><a id="link-details" class='details link-text' href="%s">Open partner</a></p>
+                    <p><a id="link-details" class='details link-text' href="%s">Open ads</a></p>
                     """,
                     params.getOrDefault("partnerName", ""),
                     params.getOrDefault("monitorLabel", ""),
@@ -771,43 +798,48 @@ public enum NotificationReference {
 
         @Override
         public EmailDataDto getEmailData(Map<String, String> params) {
-            EmailDataDto emailData = new EmailDataDto();
-            emailData.setParams(new HashMap<>());
-            emailData.setSubject("Partner ad submitted — Telas");
-            emailData.setTemplate(SharedConstants.TEMPLATE_EMAIL_ADMIN_CLIENT_FIRST_ATTACHMENTS_UPLOADED);
-            emailData.getParams().put("clientName", params.getOrDefault("partnerName", ""));
-            emailData.getParams().put("link", params.getOrDefault("link", ""));
-            return emailData;
+            return createAdminPartnerForeignAdSubmittedEmailData(params);
         }
     },
     ADMIN_PARTNER_PLACEMENT_REQUEST {
         @Override
         public String getNotificationMessage(Map<String, String> params) {
+            String monitorLabel = params.getOrDefault("monitorLabel", params.getOrDefault("monitorsSummary", ""));
             return String.format("""
                     <div class="informacoes">
-                        <h4 id="notification-title" class="notification-title">Partner placement request</h4>
-                        <p>Partner <strong>%s</strong> requested ad placement on external screen(s).</p>
-                        <div class="field">
-                            <span class="field-label">Screens: </span>
-                            <span class="field-value">%s</span>
-                        </div>
+                        <h4 id="notification-title" class="notification-title">Partner Create Ad request</h4>
+                        <p>Partner <strong>%s</strong> submitted a Create Ad request for screen <strong>%s</strong>.</p>
                     </div>
-                    <p><a id="link-details" class='details link-text' href="%s">Open partner</a></p>
+                    <p><a id="link-details" class='details link-text' href="%s">Open partner ad requests</a></p>
                     """,
                     params.getOrDefault("partnerName", ""),
-                    params.getOrDefault("monitorsSummary", ""),
+                    monitorLabel,
                     params.getOrDefault("link", "#"));
         }
 
         @Override
         public EmailDataDto getEmailData(Map<String, String> params) {
-            EmailDataDto emailData = new EmailDataDto();
-            emailData.setParams(new HashMap<>());
-            emailData.setSubject("Partner placement request — Telas");
-            emailData.setTemplate(SharedConstants.TEMPLATE_EMAIL_ADMIN_CLIENT_FIRST_ATTACHMENTS_UPLOADED);
-            emailData.getParams().put("clientName", params.getOrDefault("partnerName", ""));
-            emailData.getParams().put("link", params.getOrDefault("link", ""));
-            return emailData;
+            return createAdminPartnerPlacementRequestEmailData(params);
+        }
+    },
+    ADMIN_PARTNER_FINISHED_AD_SUBMITTED {
+        @Override
+        public String getNotificationMessage(Map<String, String> params) {
+            return String.format("""
+                    <div class="informacoes">
+                        <h4 id="notification-title" class="notification-title">Partner Finished Ad submitted</h4>
+                        <p>Partner <strong>%s</strong> submitted a Finished Ad for screen <strong>%s</strong>.</p>
+                    </div>
+                    <p><a id="link-details" class='details link-text' href="%s">Open partner ad requests</a></p>
+                    """,
+                    params.getOrDefault("partnerName", ""),
+                    params.getOrDefault("monitorLabel", ""),
+                    params.getOrDefault("link", "#"));
+        }
+
+        @Override
+        public EmailDataDto getEmailData(Map<String, String> params) {
+            return createAdminPartnerFinishedAdSubmittedEmailData(params);
         }
     },
     ADMIN_NEW_PURCHASE {
@@ -1141,7 +1173,10 @@ public enum NotificationReference {
 
     private static EmailDataDto createClientAdRejectedAdminEmailData(Map<String, String> params) {
         EmailDataDto emailData = new EmailDataDto();
-        emailData.setSubject(SharedConstants.EMAIL_SUBJECT_CLIENT_AD_REJECTED);
+        boolean partner = isPartnerActor(params);
+        emailData.setSubject(partner
+                ? SharedConstants.EMAIL_SUBJECT_CLIENT_AD_REJECTED_PARTNER
+                : SharedConstants.EMAIL_SUBJECT_CLIENT_AD_REJECTED);
         emailData.setTemplate(SharedConstants.TEMPLATE_EMAIL_CLIENT_AD_REJECTED);
         emailData.setParams(new HashMap<>());
         emailData.getParams().put("clientName", params.getOrDefault("name", ""));
@@ -1149,6 +1184,7 @@ public enum NotificationReference {
         emailData.getParams().put("link", params.getOrDefault("link", ""));
         emailData.getParams().put("justification", params.getOrDefault("justification", ""));
         emailData.getParams().put("description", params.getOrDefault("description", ""));
+        emailData.getParams().put("actorType", partner ? "partner" : "customer");
         return emailData;
     }
 
@@ -1224,22 +1260,30 @@ public enum NotificationReference {
 
     private static EmailDataDto createAdminClientAdApprovedEmailData(Map<String, String> params) {
         EmailDataDto emailData = new EmailDataDto();
-        emailData.setSubject(SharedConstants.EMAIL_SUBJECT_ADMIN_CLIENT_AD_APPROVED);
+        boolean partner = isPartnerActor(params);
+        emailData.setSubject(partner
+                ? SharedConstants.EMAIL_SUBJECT_ADMIN_PARTNER_AD_APPROVED
+                : SharedConstants.EMAIL_SUBJECT_ADMIN_CLIENT_AD_APPROVED);
         emailData.setTemplate(SharedConstants.TEMPLATE_EMAIL_ADMIN_CLIENT_AD_APPROVED);
         emailData.setParams(new HashMap<>());
         emailData.getParams().put("clientName", params.getOrDefault("clientName", ""));
         emailData.getParams().put("adName", params.getOrDefault("adName", "Ad"));
         emailData.getParams().put("link", params.getOrDefault("link", ""));
+        emailData.getParams().put("actorType", partner ? "partner" : "customer");
         return emailData;
     }
 
     private static EmailDataDto createAdminClientFirstAttachmentsUploadedEmailData(Map<String, String> params) {
         EmailDataDto emailData = new EmailDataDto();
-        emailData.setSubject(SharedConstants.EMAIL_SUBJECT_ADMIN_CLIENT_FIRST_ATTACHMENTS_UPLOADED);
+        boolean partner = isPartnerActor(params);
+        emailData.setSubject(partner
+                ? SharedConstants.EMAIL_SUBJECT_ADMIN_PARTNER_FIRST_ATTACHMENTS_UPLOADED
+                : SharedConstants.EMAIL_SUBJECT_ADMIN_CLIENT_FIRST_ATTACHMENTS_UPLOADED);
         emailData.setTemplate(SharedConstants.TEMPLATE_EMAIL_ADMIN_CLIENT_FIRST_ATTACHMENTS_UPLOADED);
         emailData.setParams(new HashMap<>());
         emailData.getParams().put("clientName", params.getOrDefault("clientName", ""));
         emailData.getParams().put("link", params.getOrDefault("link", ""));
+        emailData.getParams().put("actorType", partner ? "partner" : "customer");
         return emailData;
     }
 
@@ -1250,7 +1294,61 @@ public enum NotificationReference {
         emailData.setParams(new HashMap<>());
         emailData.getParams().put("name", params.getOrDefault("name", ""));
         emailData.getParams().put("link", params.getOrDefault("link", ""));
+        emailData.getParams().put("partner", params.getOrDefault("partner", "false"));
+        emailData.getParams().put("linkLabel", params.getOrDefault("linkLabel", "My Telas"));
         return emailData;
+    }
+
+    private static EmailDataDto createClientPartnerSubmissionAckEmailData(Map<String, String> params) {
+        EmailDataDto emailData = new EmailDataDto();
+        emailData.setSubject(SharedConstants.EMAIL_SUBJECT_CLIENT_PARTNER_SUBMISSION_ACK);
+        emailData.setTemplate(SharedConstants.TEMPLATE_EMAIL_CLIENT_PARTNER_SUBMISSION_ACK);
+        emailData.setParams(new HashMap<>());
+        emailData.getParams().put("name", params.getOrDefault("name", ""));
+        emailData.getParams().put("submissionType", params.getOrDefault("submissionType", ""));
+        emailData.getParams().put("monitorLabel", params.getOrDefault("monitorLabel", ""));
+        emailData.getParams().put("link", params.getOrDefault("link", ""));
+        return emailData;
+    }
+
+    private static EmailDataDto createAdminPartnerPlacementRequestEmailData(Map<String, String> params) {
+        EmailDataDto emailData = new EmailDataDto();
+        emailData.setSubject(SharedConstants.EMAIL_SUBJECT_ADMIN_PARTNER_PLACEMENT_REQUEST);
+        emailData.setTemplate(SharedConstants.TEMPLATE_EMAIL_ADMIN_PARTNER_PLACEMENT_REQUEST);
+        emailData.setParams(new HashMap<>());
+        emailData.getParams().put("partnerName", params.getOrDefault("partnerName", ""));
+        emailData.getParams().put("monitorLabel", params.getOrDefault("monitorLabel", params.getOrDefault("monitorsSummary", "")));
+        emailData.getParams().put("instructions", params.getOrDefault("instructions", ""));
+        emailData.getParams().put("link", params.getOrDefault("link", ""));
+        return emailData;
+    }
+
+    private static EmailDataDto createAdminPartnerFinishedAdSubmittedEmailData(Map<String, String> params) {
+        EmailDataDto emailData = new EmailDataDto();
+        emailData.setSubject(SharedConstants.EMAIL_SUBJECT_ADMIN_PARTNER_FINISHED_AD_SUBMITTED);
+        emailData.setTemplate(SharedConstants.TEMPLATE_EMAIL_ADMIN_PARTNER_FINISHED_AD_SUBMITTED);
+        emailData.setParams(new HashMap<>());
+        emailData.getParams().put("partnerName", params.getOrDefault("partnerName", ""));
+        emailData.getParams().put("monitorLabel", params.getOrDefault("monitorLabel", ""));
+        emailData.getParams().put("instructions", params.getOrDefault("instructions", ""));
+        emailData.getParams().put("link", params.getOrDefault("link", ""));
+        return emailData;
+    }
+
+    private static EmailDataDto createAdminPartnerForeignAdSubmittedEmailData(Map<String, String> params) {
+        EmailDataDto emailData = new EmailDataDto();
+        emailData.setSubject(SharedConstants.EMAIL_SUBJECT_ADMIN_PARTNER_FOREIGN_AD_SUBMITTED);
+        emailData.setTemplate(SharedConstants.TEMPLATE_EMAIL_ADMIN_PARTNER_FOREIGN_AD_SUBMITTED);
+        emailData.setParams(new HashMap<>());
+        emailData.getParams().put("partnerName", params.getOrDefault("partnerName", ""));
+        emailData.getParams().put("monitorLabel", params.getOrDefault("monitorLabel", ""));
+        emailData.getParams().put("adLabel", params.getOrDefault("adLabel", ""));
+        emailData.getParams().put("link", params.getOrDefault("link", ""));
+        return emailData;
+    }
+
+    private static boolean isPartnerActor(Map<String, String> params) {
+        return "partner".equals(params.get("actorType"));
     }
 
     private static EmailDataDto createAdminAdRequestQuestionnaireUpdatedEmailData(Map<String, String> params) {
@@ -1285,6 +1383,7 @@ public enum NotificationReference {
         emailData.getParams().put("clientName", params.getOrDefault("clientName", ""));
         emailData.getParams().put("adName", params.getOrDefault("adName", "Ad"));
         emailData.getParams().put("link", params.getOrDefault("link", ""));
+        emailData.getParams().put("actorType", params.getOrDefault("actorType", "customer"));
         return emailData;
     }
 
@@ -1304,7 +1403,10 @@ public enum NotificationReference {
 
     private static EmailDataDto createAdminClientAdDeployedToBoxEmailData(Map<String, String> params) {
         EmailDataDto emailData = new EmailDataDto();
-        emailData.setSubject(SharedConstants.EMAIL_SUBJECT_ADMIN_CLIENT_AD_DEPLOYED_TO_BOX);
+        boolean partner = isPartnerActor(params);
+        emailData.setSubject(partner
+                ? SharedConstants.EMAIL_SUBJECT_ADMIN_PARTNER_AD_DEPLOYED_TO_BOX
+                : SharedConstants.EMAIL_SUBJECT_ADMIN_CLIENT_AD_DEPLOYED_TO_BOX);
         emailData.setTemplate(SharedConstants.TEMPLATE_EMAIL_ADMIN_CLIENT_AD_DEPLOYED_TO_BOX);
         emailData.setParams(new HashMap<>());
         emailData.getParams().put("clientName", params.getOrDefault("clientName", ""));
@@ -1312,6 +1414,7 @@ public enum NotificationReference {
         emailData.getParams().put("link", params.getOrDefault("link", ""));
         emailData.getParams().put("monitorsSummary", params.getOrDefault("monitorsSummary", ""));
         emailData.getParams().put("subscriptionEndsAt", params.getOrDefault("subscriptionEndsAt", ""));
+        emailData.getParams().put("actorType", partner ? "partner" : "customer");
         return emailData;
     }
 

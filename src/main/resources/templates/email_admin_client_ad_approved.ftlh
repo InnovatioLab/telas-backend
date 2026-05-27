@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <title>Telas — Customer approved an ad</title>
+    <title>Telas — <#if actorType?? && actorType == "partner">Partner<#else>Customer</#if> approved an ad</title>
     <meta charset="UTF-8"/>
     <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
     <link rel="preconnect" href="https://fonts.googleapis.com"/>
@@ -23,10 +23,10 @@
     <div class="content">
         <table role="presentation" style="width: 100%; border-collapse: collapse;">
             <tr>
-                <td style="padding-bottom: 16px"><h3>Customer approved an ad</h3></td>
+                <td style="padding-bottom: 16px"><h3><#if actorType?? && actorType == "partner">Partner<#else>Customer</#if> approved an ad</h3></td>
             </tr>
             <tr>
-                <td style="padding-bottom: 8px"><strong>Customer:</strong> ${clientName!""}</td>
+                <td style="padding-bottom: 8px"><strong><#if actorType?? && actorType == "partner">Partner<#else>Customer</#if>:</strong> ${clientName!""}</td>
             </tr>
             <tr>
                 <td style="padding-bottom: 16px"><strong>Ad:</strong> ${adName!""}</td>

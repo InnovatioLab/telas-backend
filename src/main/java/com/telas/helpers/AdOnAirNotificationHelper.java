@@ -76,6 +76,7 @@ public class AdOnAirNotificationHelper {
             adminParams.put("clientName", client.getBusinessName());
             adminParams.put("adName", ad.getName());
             adminParams.put("link", clientPortalLinkResolver.adminClientMessagesLink(client.getId()));
+            adminParams.put("actorType", client.isPartner() ? "partner" : "customer");
             adminAdsNotificationService.notifyAdmins(
                     NotificationReference.ADMIN_AD_ON_AIR,
                     adminParams,

@@ -128,12 +128,13 @@ public class AdApprovalWorkflow {
     }
 
     public void notifyAdminsClientFirstAttachmentsUploaded(Client client) {
-        if (client == null) {
+        if (client == null || client.isPartner()) {
             return;
         }
         Map<String, String> params = new HashMap<>();
         params.put("clientName", client.getBusinessName());
         params.put("link", clientPortalLinkResolver.adminClientLink(client.getId()));
+        params.put("actorType", "customer");
         adminAdsNotificationService.notifyAdmins(NotificationReference.ADMIN_CLIENT_FIRST_ATTACHMENTS_UPLOADED, params);
     }
 
