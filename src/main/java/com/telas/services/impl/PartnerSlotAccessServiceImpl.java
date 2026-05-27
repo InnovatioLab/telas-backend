@@ -12,6 +12,7 @@ import com.telas.services.PartnerPlatformSettingsService;
 import com.telas.services.PartnerSlotAccessService;
 import com.telas.shared.constants.SharedConstants;
 import com.telas.shared.constants.valitation.ClientValidationMessages;
+import com.telas.shared.constants.valitation.MonitorValidationMessages;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
