@@ -321,16 +321,22 @@ public enum NotificationReference {
     CLIENT_PARTNER_SUBMISSION_ACK {
         @Override
         public String getNotificationMessage(Map<String, String> params) {
+            boolean createAd = "create_ad".equals(params.get("submissionKind"));
+            String title = createAd ? "Create Ad request received" : "Finished Ad received";
+            String body = createAd
+                    ? "We received your materials and instructions. Our team will create the ad for screen <strong>%s</strong>."
+                    : "We received your finished ad for screen <strong>%s</strong>. Our team will review it shortly.";
             return String.format("""
                     <div class="informacoes">
-                        <h4 id="notification-title" class="notification-title">Submission received</h4>
-                        <p>We received your <strong>%s</strong> submission for screen <strong>%s</strong>.</p>
+                        <h4 id="notification-title" class="notification-title">%s</h4>
+                        <p>%s</p>
                     </div>
-                    <p>Open <a id="link-details" class='details link-text' href="%s">My screens</a>.</p>
+                    <p>Open <a id="link-details" class='details link-text' href="%s">%s</a>.</p>
                     """,
-                    params.getOrDefault("submissionType", "ad"),
-                    params.getOrDefault("monitorLabel", ""),
-                    params.getOrDefault("link", "#"));
+                    title,
+                    String.format(body, params.getOrDefault("monitorLabel", "")),
+                    params.getOrDefault("link", "#"),
+                    params.getOrDefault("linkLabel", "My screens"));
         }
 
         @Override
@@ -1306,8 +1312,10 @@ public enum NotificationReference {
         emailData.setParams(new HashMap<>());
         emailData.getParams().put("name", params.getOrDefault("name", ""));
         emailData.getParams().put("submissionType", params.getOrDefault("submissionType", ""));
+        emailData.getParams().put("submissionKind", params.getOrDefault("submissionKind", ""));
         emailData.getParams().put("monitorLabel", params.getOrDefault("monitorLabel", ""));
         emailData.getParams().put("link", params.getOrDefault("link", ""));
+        emailData.getParams().put("linkLabel", params.getOrDefault("linkLabel", "My screens"));
         return emailData;
     }
 

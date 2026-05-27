@@ -306,11 +306,14 @@ public class PartnerMonitorAdService {
 	}
 
 	private void notifyPartnerSubmissionAck(Client partner, Monitor monitor, String submissionType) {
+		boolean createAd = "Create Ad".equals(submissionType);
 		Map<String, String> params = new HashMap<>();
 		params.put("name", partner.getBusinessName() != null ? partner.getBusinessName() : "");
 		params.put("submissionType", submissionType);
+		params.put("submissionKind", createAd ? "create_ad" : "finished_ad");
 		params.put("monitorLabel", resolveMonitorLabel(monitor));
-		params.put("link", frontBaseUrl + "/client/screens");
+		params.put("link", frontBaseUrl + (createAd ? "/client/screens" : "/client/partner-ads"));
+		params.put("linkLabel", createAd ? "My screens" : "Review ads");
 		notificationService.save(NotificationReference.CLIENT_PARTNER_SUBMISSION_ACK, partner, params, true);
 	}
 
