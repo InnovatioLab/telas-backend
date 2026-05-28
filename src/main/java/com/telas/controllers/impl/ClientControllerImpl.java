@@ -370,6 +370,17 @@ public class ClientControllerImpl implements ClientController {
     }
 
     @Override
+    @GetMapping("/me/partner-ad-requests")
+    @SecurityRequirement(name = "jwt")
+    public ResponseEntity<?> findMyPartnerAdRequests(FilterAdRequestDto request) {
+        PaginationResponseDto<List<AdRequestAdminResponseDto>> response = service.findMyPartnerAdRequests(request);
+        String msg = response.getList().isEmpty()
+                ? MessageCommonsConstants.FIND_FILTER_EMPTY_MESSAGE
+                : MessageCommonsConstants.FIND_ALL_SUCCESS_MESSAGE;
+        return ResponseEntity.status(HttpStatus.OK).body(ResponseDto.fromData(response, HttpStatus.OK, msg));
+    }
+
+    @Override
     @PatchMapping("/validate-ad/{id}")
     @SecurityRequirement(name = "jwt")
     public ResponseEntity<?> validateAd(

@@ -14,27 +14,35 @@ public class ClientPortalLinkResolver {
 
     public String clientAdsTabLink(Client client) {
         if (client != null && client.isPartner()) {
-            return frontBaseUrl + "/client/screens";
+            return partnerScreensLink();
         }
         return frontBaseUrl + "/client/my-telas?tab=ads";
     }
 
     public String clientPartnerAdsReviewLink(Client client) {
         if (client != null && client.isPartner()) {
-            return frontBaseUrl + "/client/partner-ads";
+            return partnerAdsReviewLink();
         }
         return clientAdsTabLink(client);
     }
 
     public String clientApprovedConfirmationLink(Client client, boolean liveOnScreen) {
         if (client != null && client.isPartner()) {
-            return liveOnScreen ? clientScreensLink() : frontBaseUrl + "/client/partner-ads";
+            return liveOnScreen ? partnerScreensLink() : partnerAdsReviewLink();
         }
         return frontBaseUrl + "/client/my-telas?tab=ads";
     }
 
+    public String partnerScreensLink() {
+        return frontBaseUrl + "/partner/screens";
+    }
+
+    public String partnerAdsReviewLink() {
+        return frontBaseUrl + "/partner/ads-review";
+    }
+
     public String clientScreensLink() {
-        return frontBaseUrl + "/client/screens";
+        return partnerScreensLink();
     }
 
     public String adminClientMessagesLink(UUID clientId) {

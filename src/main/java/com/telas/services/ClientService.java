@@ -113,6 +113,8 @@ public interface ClientService {
 
     List<PendingAdAdminValidationResponseDto> findMyPendingValidationAds();
 
+    PaginationResponseDto<List<AdRequestAdminResponseDto>> findMyPartnerAdRequests(FilterAdRequestDto request);
+
     void requestPartnerAdRemoval(UUID adId, PartnerAdRemovalRequestDto request);
 
     void addMonitorToWishlist(UUID monitorId);

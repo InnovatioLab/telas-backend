@@ -241,6 +241,50 @@ public class ClientAdminQueryServiceImpl implements ClientAdminQueryService {
 
     @Override
     @Transactional(readOnly = true)
+    public PaginationResponseDto<List<AdRequestAdminResponseDto>> findMyPartnerAdRequests(FilterAdRequestDto request) {
+        Client partner = authenticatedUserService.validatePartner().client();
+        Sort order = request.setOrdering();
+        Pageable pageable = PaginationFilterUtil.getPageable(request, order);
+
+        Specification<AdRequest> base = (root, query, criteriaBuilder) -> criteriaBuilder.and(
+                criteriaBuilder.equal(root.get("client").get("id"), partner.getId()),
+                criteriaBuilder.equal(root.get("requestOrigin"), AdRequestOrigin.PARTNER)
+        );
+
+        Specification<AdRequest> filter = PaginationFilterUtil.addSpecificationFilter(
+                base,
+                request.getGenericFilter(),
+                this::filterPartnerAdRequests
+        );
+
+        Page<AdRequest> page = adRequestRepository.findAll(filter, pageable);
+        List<AdRequest> adRequests = page.getContent();
+        List<UUID> adRequestIds = adRequests.stream().map(AdRequest::getId).toList();
+        Map<UUID, QuestionnaireLatestMeta> questionnaireByAdRequestId =
+                businessQuestionnaireService.findLatestMetadataByAdRequestIds(adRequestIds);
+
+        List<AdRequestAdminResponseDto> response = adRequests.stream()
+                .map(adRequest -> {
+                    QuestionnaireLatestMeta meta = questionnaireByAdRequestId.get(adRequest.getId());
+                    Integer version = meta != null ? meta.version() : null;
+                    Instant updatedAt = meta != null ? meta.updatedAt() : null;
+                    int attachmentCount = ValidateDataUtils.countCsvIds(adRequest.getAttachmentIds());
+                    boolean partnerRemovalRequested = adRequest.getAd() != null
+                            && adRequest.getAd().getPartnerRemovalRequestedAt() != null;
+                    return new AdRequestAdminResponseDto(
+                            adRequest,
+                            version,
+                            updatedAt,
+                            attachmentCount,
+                            partnerRemovalRequested);
+                })
+                .toList();
+        return PaginationResponseDto.fromResult(response, (int) page.getTotalElements(), page.getTotalPages(),
+                request.getPage());
+    }
+
+    @Override
+    @Transactional(readOnly = true)
     public AdRequestMediaResponseDto findAdRequestMedia(UUID adRequestId) {
         authenticatedUserService.validateAdminOrAdsManageAccess();
         AdRequest adRequest = adRequestRepository.findById(adRequestId)
@@ -339,6 +383,27 @@ public class ClientAdminQueryServiceImpl implements ClientAdminQueryService {
 
             SpecificationFactory.addDatePredicates(predicates, criteriaBuilder, root, genericFilter, "createdAt");
 
+            return criteriaBuilder.or(predicates.toArray(new Predicate[0]));
+        });
+    }
+
+    private Specification<AdRequest> filterPartnerAdRequests(
+            Specification<AdRequest> specification,
+            String genericFilter) {
+        if (genericFilter == null || genericFilter.isBlank()) {
+            return specification;
+        }
+        return specification.and((root, query, criteriaBuilder) -> {
+            List<Predicate> predicates = new ArrayList<>();
+            String filter = "%" + genericFilter.toLowerCase() + "%";
+            Join<?, ?> monitorJoin = root.join("targetMonitor", JoinType.LEFT);
+            Join<?, ?> addressJoin = monitorJoin.join("address", JoinType.LEFT);
+
+            predicates.add(criteriaBuilder.like(criteriaBuilder.lower(root.get("slogan")), filter));
+            predicates.add(criteriaBuilder.like(criteriaBuilder.lower(addressJoin.get("street")), filter));
+            predicates.add(criteriaBuilder.like(criteriaBuilder.lower(addressJoin.get("city")), filter));
+            predicates.add(criteriaBuilder.like(criteriaBuilder.lower(addressJoin.get("state")), filter));
+            SpecificationFactory.addDatePredicates(predicates, criteriaBuilder, root, genericFilter, "createdAt");
             return criteriaBuilder.or(predicates.toArray(new Predicate[0]));
         });
     }

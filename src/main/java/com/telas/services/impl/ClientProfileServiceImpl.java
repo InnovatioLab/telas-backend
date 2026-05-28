@@ -271,7 +271,7 @@ public class ClientProfileServiceImpl implements ClientProfileService {
             adApprovalWorkflow.notifyAdminsClientFirstAttachmentsUploaded(client);
             Map<String, String> clientAckParams = new HashMap<>();
             clientAckParams.put("name", client.getBusinessName());
-            String materialsPath = client.isPartner() ? "/client/screens" : "/client/my-telas";
+            String materialsPath = client.isPartner() ? "/partner/screens" : "/client/my-telas";
             clientAckParams.put("link", frontBaseUrl + materialsPath);
             clientAckParams.put("partner", client.isPartner() ? "true" : "false");
             clientAckParams.put("linkLabel", client.isPartner() ? "My screens" : "My Telas");

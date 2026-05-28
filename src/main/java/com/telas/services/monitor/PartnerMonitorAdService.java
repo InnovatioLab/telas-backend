@@ -305,7 +305,7 @@ public class PartnerMonitorAdService {
 		params.put("submissionType", submissionType);
 		params.put("submissionKind", createAd ? "create_ad" : "finished_ad");
 		params.put("monitorLabel", resolveMonitorLabel(monitor));
-		params.put("link", frontBaseUrl + (createAd ? "/client/screens" : "/client/partner-ads"));
+		params.put("link", frontBaseUrl + (createAd ? "/partner/screens?tab=requests" : "/partner/ads-review"));
 		params.put("linkLabel", createAd ? "My screens" : "Review ads");
 		notificationService.save(NotificationReference.CLIENT_PARTNER_SUBMISSION_ACK, partner, params, true);
 	}

@@ -17,6 +17,8 @@ public interface ClientAdminQueryService {
 
     PaginationResponseDto<List<AdRequestAdminResponseDto>> findPendingAdRequest(FilterAdRequestDto request);
 
+    PaginationResponseDto<List<AdRequestAdminResponseDto>> findMyPartnerAdRequests(FilterAdRequestDto request);
+
     AdRequestMediaResponseDto findAdRequestMedia(UUID adRequestId);
 
     PaginationResponseDto<List<PendingAdAdminValidationResponseDto>> findPendingAds(FilterAdRequestDto request);

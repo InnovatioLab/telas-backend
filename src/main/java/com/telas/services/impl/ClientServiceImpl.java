@@ -292,6 +292,12 @@ public class ClientServiceImpl implements ClientService {
     }
 
     @Override
+    @Transactional(readOnly = true)
+    public PaginationResponseDto<List<AdRequestAdminResponseDto>> findMyPartnerAdRequests(FilterAdRequestDto request) {
+        return clientAdminQueryService.findMyPartnerAdRequests(request);
+    }
+
+    @Override
     @Transactional
     public void requestPartnerAdRemoval(UUID adId, PartnerAdRemovalRequestDto request) {
         partnerPortalService.requestPartnerAdRemoval(adId, request);

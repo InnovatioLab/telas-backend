@@ -23,7 +23,7 @@ class ClientPortalLinkResolverTest {
     void clientAdsTabLink_whenPartner_returnsScreensPath() {
         Client partner = partnerClient();
 
-        assertEquals("https://front.test/client/screens", resolver.clientAdsTabLink(partner));
+        assertEquals("https://front.test/partner/screens", resolver.clientAdsTabLink(partner));
     }
 
     @Test
@@ -37,7 +37,7 @@ class ClientPortalLinkResolverTest {
     void clientPartnerAdsReviewLink_whenPartner_returnsPartnerAdsPath() {
         Client partner = partnerClient();
 
-        assertEquals("https://front.test/client/partner-ads", resolver.clientPartnerAdsReviewLink(partner));
+        assertEquals("https://front.test/partner/ads-review", resolver.clientPartnerAdsReviewLink(partner));
     }
 
     @Test
@@ -45,7 +45,7 @@ class ClientPortalLinkResolverTest {
         Client partner = partnerClient();
 
         assertEquals(
-                "https://front.test/client/screens",
+                "https://front.test/partner/screens",
                 resolver.clientApprovedConfirmationLink(partner, true));
     }
 

@@ -244,6 +244,13 @@ public interface ClientController {
     })
     ResponseEntity<?> findMyPendingValidationAds();
 
+    @Operation(summary = "List ad requests submitted by the logged partner", responses = {
+            @ApiResponse(responseCode = "200", description = "Records found successfully."),
+            @ApiResponse(responseCode = "401", description = "Unauthorized."),
+            @ApiResponse(responseCode = "403", description = "Forbidden."),
+    })
+    ResponseEntity<?> findMyPartnerAdRequests(FilterAdRequestDto request);
+
     @Operation(summary = "Endpoint contract to validate an ad", responses = {
             @ApiResponse(responseCode = "200", description = "Ad validated successfully."),
             @ApiResponse(responseCode = "422", description = "Request with invalid data."),
