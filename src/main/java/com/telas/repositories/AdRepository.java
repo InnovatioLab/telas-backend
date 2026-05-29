@@ -88,28 +88,80 @@ public interface AdRepository extends JpaRepository<Ad, UUID>, JpaSpecificationE
 
 	@Query("""
 		SELECT ad FROM Ad ad
+		JOIN FETCH ad.client c
+		LEFT JOIN ad.adRequest ar
 		WHERE ad.validation = 'APPROVED'
 		  AND ad.id NOT IN (
 		      SELECT ma.id.ad.id FROM MonitorAd ma WHERE ma.id.monitor.id = :monitorId
 		  )
-		AND ad.type <> 'application/pdf'
+		  AND ad.type <> 'application/pdf'
+		  AND (
+		      c.role = 'ADMIN'
+		      OR EXISTS (
+		          SELECT 1 FROM Subscription s
+		          JOIN s.subscriptionMonitors sm
+		          WHERE s.client.id = c.id
+		            AND s.status = 'ACTIVE'
+		            AND (s.endsAt IS NULL OR s.endsAt > CURRENT_TIMESTAMP)
+		            AND sm.id.monitor.id = :monitorId
+		      )
+		      OR ar.targetMonitor.id = :monitorId
+		  )
 		  AND (
 		      COALESCE(TRIM(:name), '') = ''
 		      OR LOWER(ad.name) LIKE CONCAT('%', LOWER(TRIM(:name)), '%')
-		      OR LOWER(ad.client.businessName) LIKE CONCAT('%', LOWER(TRIM(:name)), '%')
+		      OR LOWER(c.businessName) LIKE CONCAT('%', LOWER(TRIM(:name)), '%')
 		  )
 		""")
 	List<Ad> findAllApprovedNotInMonitorFiltered(@Param("monitorId") UUID monitorId, @Param("name") String name);
 
 	@Query("""
 		SELECT COUNT(ad) FROM Ad ad
+		JOIN ad.client c
+		LEFT JOIN ad.adRequest ar
 		WHERE ad.validation = 'APPROVED'
 		  AND ad.id NOT IN (
 		      SELECT ma.id.ad.id FROM MonitorAd ma WHERE ma.id.monitor.id = :monitorId
 		  )
 		  AND ad.type <> 'application/pdf'
+		  AND (
+		      c.role = 'ADMIN'
+		      OR EXISTS (
+		          SELECT 1 FROM Subscription s
+		          JOIN s.subscriptionMonitors sm
+		          WHERE s.client.id = c.id
+		            AND s.status = 'ACTIVE'
+		            AND (s.endsAt IS NULL OR s.endsAt > CURRENT_TIMESTAMP)
+		            AND sm.id.monitor.id = :monitorId
+		      )
+		      OR ar.targetMonitor.id = :monitorId
+		  )
 		""")
 	long countAllApprovedNotInMonitor(@Param("monitorId") UUID monitorId);
+
+	@Query("""
+		SELECT ad FROM Ad ad
+		JOIN FETCH ad.client c
+		LEFT JOIN ad.adRequest ar
+		WHERE ad.id IN :ids
+		  AND ad.validation = 'APPROVED'
+		  AND ad.type <> 'application/pdf'
+		  AND (
+		      c.role = 'ADMIN'
+		      OR EXISTS (
+		          SELECT 1 FROM Subscription s
+		          JOIN s.subscriptionMonitors sm
+		          WHERE s.client.id = c.id
+		            AND s.status = 'ACTIVE'
+		            AND (s.endsAt IS NULL OR s.endsAt > CURRENT_TIMESTAMP)
+		            AND sm.id.monitor.id = :monitorId
+		      )
+		      OR ar.targetMonitor.id = :monitorId
+		  )
+		""")
+	List<Ad> findApprovedEligibleForMonitorByIds(
+			@Param("ids") Collection<UUID> ids,
+			@Param("monitorId") UUID monitorId);
 
 	@Query(value = "SELECT EXISTS (SELECT 1 FROM ads_attachments WHERE attachment_id = :attachmentId)", nativeQuery = true)
 	boolean existsAdReferencingAttachment(@Param("attachmentId") UUID attachmentId);

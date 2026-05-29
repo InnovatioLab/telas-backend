@@ -71,14 +71,14 @@ public class ClientAdRequestServiceImpl implements ClientAdRequestService {
     @Override
     @Transactional(readOnly = true)
     public Optional<BusinessQuestionnaireAnswersRequestDto> getBusinessQuestionnaireDraft() {
-        UUID clientId = authenticatedUserService.validateActiveSubscription().client().getId();
+        UUID clientId = authenticatedUserService.validateNonPartner().client().getId();
         return businessQuestionnaireService.getDraftAnswers(clientId);
     }
 
     @Override
     @Transactional
     public void saveBusinessQuestionnaireDraft(BusinessQuestionnaireAnswersRequestDto answers) {
-        UUID clientId = authenticatedUserService.validateActiveSubscription().client().getId();
+        UUID clientId = authenticatedUserService.validateNonPartner().client().getId();
         businessQuestionnaireService.saveDraft(clientId, answers);
     }
 

@@ -146,10 +146,7 @@ public class ClientAdminQueryServiceImpl implements ClientAdminQueryService {
             Predicate pendingValidation =
                     criteriaBuilder.equal(adJoin.get("validation"), AdValidationType.PENDING);
 
-            Predicate adminUploadNeeded = criteriaBuilder.and(
-                    criteriaBuilder.equal(root.get("isActive"), true),
-                    criteriaBuilder.or(noAdYet, rejectedAd)
-            );
+            Predicate adminUploadNeeded = criteriaBuilder.or(noAdYet, rejectedAd);
 
             Predicate pendingAdvertiserReview = criteriaBuilder.and(
                     pendingValidation,
@@ -173,10 +170,13 @@ public class ClientAdminQueryServiceImpl implements ClientAdminQueryService {
                     pendingValidation
             );
 
-            Predicate visibleInAdminQueue = criteriaBuilder.or(
-                    adminUploadNeeded,
-                    pendingAdvertiserReview,
-                    adminDirectApproval
+            Predicate visibleInAdminQueue = criteriaBuilder.and(
+                    criteriaBuilder.equal(root.get("isActive"), true),
+                    criteriaBuilder.or(
+                            adminUploadNeeded,
+                            pendingAdvertiserReview,
+                            adminDirectApproval
+                    )
             );
 
             Subquery<Long> refusedCountSq = query.subquery(Long.class);

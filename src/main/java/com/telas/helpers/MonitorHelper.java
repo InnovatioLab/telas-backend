@@ -62,23 +62,13 @@ public class MonitorHelper {
 			return Collections.emptyList();
 		}
 
-		Client actor = authenticatedUserService.getLoggedUser().client();
-		if (actor.isPrivilegedPanelUser()) {
-			List<Ad> approvedAds = adRepository.findApprovedNonPdfByIds(adsIds);
-			Set<UUID> approvedIds = approvedAds.stream().map(Ad::getId).collect(Collectors.toSet());
-			if (!approvedIds.containsAll(adsIds)) {
-				throw new BusinessRuleException(MonitorValidationMessages.AD_NOT_ABLE_TO_ASSIGN_TO_MONITOR);
-			}
-			return approvedAds;
-		}
-
-		List<Ad> assignableAds = adRepository.findAllValidAdsForMonitor(AdValidationType.APPROVED, monitorId);
+		List<Ad> assignableAds = adRepository.findApprovedEligibleForMonitorByIds(adsIds, monitorId);
 		Set<UUID> assignableIds = assignableAds.stream().map(Ad::getId).collect(Collectors.toSet());
 		if (!assignableIds.containsAll(adsIds)) {
 			throw new BusinessRuleException(MonitorValidationMessages.AD_NOT_ABLE_TO_ASSIGN_TO_MONITOR);
 		}
 
-		return assignableAds.stream().filter(ad -> adsIds.contains(ad.getId())).collect(Collectors.toList());
+		return assignableAds;
 	}
 
 	@Transactional
