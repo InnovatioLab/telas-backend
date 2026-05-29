@@ -14,6 +14,6 @@ public class BoxInterceptorConfig implements WebMvcConfigurer {
 
     @Override
     public void addInterceptors(InterceptorRegistry registry) {
-        registry.addInterceptor(interceptor).addPathPatterns("/boxes/ads");
+        registry.addInterceptor(interceptor).addPathPatterns("/boxes/ads", "/boxes/player-settings");
     }
 }

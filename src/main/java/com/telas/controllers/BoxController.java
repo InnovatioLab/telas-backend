@@ -57,6 +57,10 @@ public interface BoxController {
     })
     ResponseEntity<?> getMonitorsAdsByIp(@RequestHeader("X-Box-Address") String address);
 
+    @Hidden
+    @Operation(summary = "Player carousel timing settings for box devices")
+    ResponseEntity<?> getPlayerSettings();
+
     @Operation(
             summary = "Atualiza saúde da box ou de um monitor (integração monitoramento / webhook)",
             description = "Requer o header X-Monitoring-Key com o mesmo valor configurado em MONITORING_API_KEY (servidor).",

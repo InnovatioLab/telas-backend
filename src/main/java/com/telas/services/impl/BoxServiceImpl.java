@@ -12,6 +12,8 @@ import com.telas.infra.exceptions.ResourceNotFoundException;
 import com.telas.infra.security.services.AuthenticatedUserService;
 import com.telas.repositories.BoxRepository;
 import com.telas.repositories.MonitorRepository;
+import com.telas.dtos.response.BoxPlayerSettingsResponseDto;
+import com.telas.services.BoxCarouselSettingsService;
 import com.telas.services.BoxService;
 import com.telas.services.HealthUpdateService;
 import com.telas.shared.constants.valitation.BoxValidationMessages;
@@ -37,6 +39,8 @@ public class BoxServiceImpl implements BoxService {
 	private final BoxHelper helper;
 
 	private final HealthUpdateService healthUpdateService;
+
+	private final BoxCarouselSettingsService boxCarouselSettingsService;
 
 
 	@Override
@@ -74,6 +78,12 @@ public class BoxServiceImpl implements BoxService {
 		return helper.getBoxMonitorAdResponse(box);
 	}
 
+
+	@Override
+	@Transactional(readOnly = true)
+	public BoxPlayerSettingsResponseDto getPlayerSettings() {
+		return boxCarouselSettingsService.getSettings();
+	}
 
 	@Override
 	@Transactional

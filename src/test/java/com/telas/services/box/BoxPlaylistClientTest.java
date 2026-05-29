@@ -1,6 +1,9 @@
 package com.telas.services.box;
 
+import com.telas.dtos.request.BoxPlaylistPushRequestDto;
 import com.telas.dtos.request.UpdateBoxMonitorsAdRequestDto;
+import com.telas.dtos.response.BoxPlayerSettingsResponseDto;
+import com.telas.services.BoxCarouselSettingsService;
 import com.telas.shared.utils.HttpClientUtil;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -17,12 +20,15 @@ import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
+import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
 class BoxPlaylistClientTest {
@@ -30,12 +36,19 @@ class BoxPlaylistClientTest {
     @Mock
     private HttpClientUtil httpClient;
 
+    @Mock
+    private BoxCarouselSettingsService boxCarouselSettingsService;
+
     @InjectMocks
     private BoxPlaylistClient boxPlaylistClient;
+
+    private static final BoxPlayerSettingsResponseDto PLAYER_SETTINGS =
+            new BoxPlayerSettingsResponseDto(5000, 2000, 15);
 
     @BeforeEach
     void setUp() {
         ReflectionTestUtils.setField(boxPlaylistClient, "apiKey", "test-api-key");
+        lenient().when(boxCarouselSettingsService.getSettings()).thenReturn(PLAYER_SETTINGS);
     }
 
     @Test
@@ -51,12 +64,16 @@ class BoxPlaylistClientTest {
     @Test
     void pushEmptyPlaylist_returnsTrueOnSuccess() {
         assertTrue(boxPlaylistClient.pushEmptyPlaylist("http://10.0.0.1:8081/", UUID.randomUUID()));
+
+        ArgumentCaptor<BoxPlaylistPushRequestDto> bodyCaptor = ArgumentCaptor.forClass(BoxPlaylistPushRequestDto.class);
         verify(httpClient).makePostRequest(
                 eq("http://10.0.0.1:8081/update-ads"),
-                eq(List.of()),
+                bodyCaptor.capture(),
                 eq(Void.class),
                 eq(null),
                 any());
+        assertTrue(bodyCaptor.getValue().getAds().isEmpty());
+        assertNotNull(bodyCaptor.getValue().getPlayerSettings());
     }
 
     @Test
@@ -89,19 +106,20 @@ class BoxPlaylistClientTest {
     }
 
     @Test
-    void pushPlaylistUpdates_postsGroupedItems() {
+    void pushPlaylistUpdates_postsGroupedItemsWithPlayerSettings() {
         UpdateBoxMonitorsAdRequestDto dto = new UpdateBoxMonitorsAdRequestDto();
         dto.setBaseUrl("http://10.0.0.1:8081/");
 
         boxPlaylistClient.pushPlaylistUpdates(List.of(dto));
 
-        ArgumentCaptor<List<UpdateBoxMonitorsAdRequestDto>> bodyCaptor = ArgumentCaptor.forClass(List.class);
+        ArgumentCaptor<BoxPlaylistPushRequestDto> bodyCaptor = ArgumentCaptor.forClass(BoxPlaylistPushRequestDto.class);
         verify(httpClient).makePostRequest(
                 eq("http://10.0.0.1:8081/update-ads"),
                 bodyCaptor.capture(),
                 eq(Void.class),
                 eq(null),
                 any());
-        assertEquals(1, bodyCaptor.getValue().size());
+        assertEquals(1, bodyCaptor.getValue().getAds().size());
+        assertEquals(PLAYER_SETTINGS, bodyCaptor.getValue().getPlayerSettings());
     }
 }

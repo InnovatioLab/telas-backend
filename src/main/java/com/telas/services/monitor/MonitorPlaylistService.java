@@ -14,7 +14,6 @@ import com.telas.helpers.MonitorHelper;
 import com.telas.infra.exceptions.BusinessRuleException;
 import com.telas.services.AdUnusedTrackingService;
 import com.telas.services.PartnerSlotAccessService;
-import com.telas.services.box.BoxPlaylistClient;
 import com.telas.shared.constants.SharedConstants;
 import com.telas.shared.constants.valitation.MonitorValidationMessages;
 import com.telas.shared.utils.ValidateDataUtils;
@@ -40,7 +39,6 @@ import java.util.stream.IntStream;
 public class MonitorPlaylistService {
 
 	private final MonitorHelper helper;
-	private final BoxPlaylistClient boxPlaylistClient;
 	private final AdPublicationNotificationHelper adPublicationNotificationHelper;
 	private final AdMediaLinkFactory adMediaLinkFactory;
 	private final AdUnusedTrackingService adUnusedTrackingService;
@@ -76,11 +74,11 @@ public class MonitorPlaylistService {
 
 		addNewMonitorAdsToMonitor(monitor, newMonitorAds);
 
+		Set<String> successfulBaseUrls = new HashSet<>();
+		if (monitor.isAbleToSendBoxRequest()) {
+			successfulBaseUrls = helper.syncBoxAdsPlaylist(monitor, requestList);
+		}
 		if (!newMonitorAds.isEmpty()) {
-			Set<String> successfulBaseUrls = new HashSet<>();
-			if (monitor.isAbleToSendBoxRequest()) {
-				successfulBaseUrls = syncBoxAdsPlaylist(monitor, requestList);
-			}
 			adPublicationNotificationHelper.notifyAfterPlaylistUpdate(
 					monitor, newMonitorAds, successfulBaseUrls, requestList);
 		}
@@ -91,23 +89,7 @@ public class MonitorPlaylistService {
 	}
 
 	public Set<String> syncBoxAdsPlaylist(Monitor monitor, List<UpdateBoxMonitorsAdRequestDto> requestList) {
-		Set<String> successfulBaseUrls = new HashSet<>();
-		if (monitor == null || monitor.getBox() == null || monitor.getBox().getBoxAddress() == null) {
-			return successfulBaseUrls;
-		}
-		String ip = monitor.getBox().getBoxAddress().getIp();
-		if (ip == null || ip.isBlank()) {
-			return successfulBaseUrls;
-		}
-		String baseUrl = String.format("http://%s:8081/", ip);
-		List<UpdateBoxMonitorsAdRequestDto> items = requestList != null ? requestList : List.of();
-		if (items.isEmpty()) {
-			if (boxPlaylistClient.pushEmptyPlaylist(baseUrl, monitor.getId())) {
-				successfulBaseUrls.add(baseUrl);
-			}
-			return successfulBaseUrls;
-		}
-		return boxPlaylistClient.pushPlaylistUpdates(items);
+		return helper.syncBoxAdsPlaylist(monitor, requestList);
 	}
 
 	public Map<UUID, Integer> distributePartnerBlockQuantities(List<Ad> partnerAds) {

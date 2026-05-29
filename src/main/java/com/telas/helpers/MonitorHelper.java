@@ -7,6 +7,7 @@ import com.telas.dtos.response.MonitorAdResponseDto;
 import com.telas.dtos.response.MonitorValidAdResponseDto;
 import com.telas.entities.Ad;
 import com.telas.entities.Address;
+import com.telas.entities.Box;
 import com.telas.entities.Monitor;
 import com.telas.entities.MonitorAd;
 import com.telas.entities.SubscriptionMonitor;
@@ -196,23 +197,42 @@ public class MonitorHelper {
 		return staged;
 	}
 
+	@Transactional(readOnly = true)
+	public List<UpdateBoxMonitorsAdRequestDto> buildAggregatedBoxPlaylist(Box box) {
+		if (box == null || box.getMonitors() == null) {
+			return List.of();
+		}
+		return box.getMonitors().stream()
+				.filter(Monitor::isAbleToSendBoxRequest)
+				.flatMap(m -> buildOrderedBoxUpdateDtos(m).stream())
+				.sorted(
+						Comparator.comparingInt((UpdateBoxMonitorsAdRequestDto dto) ->
+										Optional.ofNullable(dto.getOrderIndex()).orElse(0))
+								.thenComparing(
+										dto -> dto.getFileName() != null ? dto.getFileName() : "",
+										String.CASE_INSENSITIVE_ORDER))
+				.toList();
+	}
+
 	public Set<String> syncBoxAdsPlaylist(Monitor monitor, List<UpdateBoxMonitorsAdRequestDto> requestList) {
 		Set<String> successfulBaseUrls = new HashSet<>();
 		if (monitor == null || monitor.getBox() == null || monitor.getBox().getBoxAddress() == null) {
 			return successfulBaseUrls;
 		}
-		String baseUrl = boxPlaylistClient.resolveBoxBaseUrl(monitor.getBox().getBoxAddress().getIp());
+		Box box = monitor.getBox();
+		String baseUrl = boxPlaylistClient.resolveBoxBaseUrl(box.getBoxAddress().getIp());
 		if (baseUrl == null) {
 			return successfulBaseUrls;
 		}
-		List<UpdateBoxMonitorsAdRequestDto> items = requestList != null ? requestList : List.of();
-		if (items.isEmpty()) {
+		List<UpdateBoxMonitorsAdRequestDto> aggregated = buildAggregatedBoxPlaylist(box);
+		if (aggregated.isEmpty()) {
 			if (boxPlaylistClient.pushEmptyPlaylist(baseUrl, monitor.getId())) {
 				successfulBaseUrls.add(baseUrl);
 			}
 			return successfulBaseUrls;
 		}
-		return boxPlaylistClient.pushPlaylistUpdates(items);
+		aggregated.forEach(dto -> dto.setBaseUrl(baseUrl));
+		return boxPlaylistClient.pushPlaylistUpdates(aggregated);
 	}
 
 	public Set<String> sendBoxesMonitorsUpdateAdsReturnSuccess(List<UpdateBoxMonitorsAdRequestDto> requestList) {

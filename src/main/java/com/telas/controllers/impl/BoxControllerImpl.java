@@ -65,6 +65,17 @@ public class BoxControllerImpl implements BoxController {
     }
 
     @Override
+    @GetMapping("/player-settings")
+    public ResponseEntity<?> getPlayerSettings() {
+        return ResponseEntity.status(HttpStatus.OK)
+                .body(
+                        ResponseDto.fromData(
+                                service.getPlayerSettings(),
+                                HttpStatus.OK,
+                                MessageCommonsConstants.FIND_ID_SUCCESS_MESSAGE));
+    }
+
+    @Override
     @PostMapping("/health")
     public ResponseEntity<?> updateHealth(@RequestBody StatusBoxMonitorsRequestDto request) {
         service.updateHealth(request);
