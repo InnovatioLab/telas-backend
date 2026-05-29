@@ -207,6 +207,8 @@ public interface AdRepository extends JpaRepository<Ad, UUID>, JpaSpecificationE
 			WHERE ad.client.id = :partnerId
 			AND ad.validation = com.telas.enums.AdValidationType.APPROVED
 			AND ar.targetMonitor.id = :monitorId
+			AND ad.onAirNotifiedAt IS NULL
+			AND ad.partnerBoxStagedAt IS NULL
 			AND NOT EXISTS (
 			    SELECT 1 FROM MonitorAd ma
 			    WHERE ma.id.ad.id = ad.id AND ma.id.monitor.id = :monitorId

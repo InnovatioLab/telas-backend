@@ -12,8 +12,6 @@ import lombok.Getter;
 import java.io.Serial;
 import java.io.Serializable;
 import java.time.Instant;
-import java.time.LocalDate;
-import java.time.ZoneId;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.Map;
@@ -34,7 +32,7 @@ public final class AdRequestAdminResponseDto implements Serializable {
 
     private final boolean isActive;
 
-    private final LocalDate submissionDate;
+    private final Instant submissionDate;
 
     private final long waitingDays;
 
@@ -79,7 +77,7 @@ public final class AdRequestAdminResponseDto implements Serializable {
         clientName = adRequest.getClient().getBusinessName();
         clientRole = adRequest.getClient().getRole();
         isActive = adRequest.isActive();
-        submissionDate = adRequest.getCreatedAt().atZone(ZoneId.systemDefault()).toLocalDate();
+        submissionDate = adRequest.getCreatedAt();
         waitingDays = ChronoUnit.DAYS.between(adRequest.getCreatedAt(), Instant.now());
         attachments = List.of();
         ad = null;
@@ -115,7 +113,7 @@ public final class AdRequestAdminResponseDto implements Serializable {
         clientName = adRequest.getClient().getBusinessName();
         clientRole = adRequest.getClient().getRole();
         isActive = adRequest.isActive();
-        submissionDate = adRequest.getCreatedAt().atZone(ZoneId.systemDefault()).toLocalDate();
+        submissionDate = adRequest.getCreatedAt();
         waitingDays = ChronoUnit.DAYS.between(adRequest.getCreatedAt(), Instant.now());
         attachments = (List<LinkResponseDto>) linkResponseData.get("attachments");
         ad = (LinkResponseDto) linkResponseData.get("ad");

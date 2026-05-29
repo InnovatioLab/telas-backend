@@ -2,13 +2,12 @@ package com.telas.dtos.response;
 
 import com.telas.entities.CartItem;
 import com.telas.entities.Monitor;
-import com.telas.enums.SubscriptionStatus;
 import com.telas.shared.constants.SharedConstants;
 import lombok.Getter;
 
 import java.io.Serial;
 import java.io.Serializable;
-import java.time.LocalDateTime;
+import java.time.Instant;
 import java.util.UUID;
 
 @Getter
@@ -25,7 +24,7 @@ public final class MonitorWishlistResponseDto implements Serializable {
     private final Double latitude;
     private final Double longitude;
     private final boolean hasAvailableSlots;
-    private final LocalDateTime estimatedSlotReleaseDate;
+    private final Instant estimatedSlotReleaseDate;
 
 
     public MonitorWishlistResponseDto(Monitor entity) {
@@ -40,10 +39,6 @@ public final class MonitorWishlistResponseDto implements Serializable {
         CartItem cartItem = new CartItem();
         cartItem.setBlockQuantity(SharedConstants.MIN_QUANTITY_MONITOR_BLOCK);
         hasAvailableSlots = entity.hasAvailableBlocks(cartItem);
-        estimatedSlotReleaseDate = entity.getSubscriptions().stream()
-                .filter(subscription -> subscription.getEndsAt() != null && SubscriptionStatus.ACTIVE.equals(subscription.getStatus()))
-                .map(subscription -> subscription.getEndsAt().atZone(java.time.ZoneId.of(SharedConstants.ZONE_ID)).toLocalDateTime())
-                .min(LocalDateTime::compareTo)
-                .orElse(null);
+        estimatedSlotReleaseDate = hasAvailableSlots ? null : entity.getEstimatedSlotReleaseDate();
     }
 }

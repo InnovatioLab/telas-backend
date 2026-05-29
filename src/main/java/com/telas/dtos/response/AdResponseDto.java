@@ -7,8 +7,6 @@ import lombok.Getter;
 import java.io.Serial;
 import java.io.Serializable;
 import java.time.Instant;
-import java.time.LocalDate;
-import java.time.ZoneId;
 import java.time.temporal.ChronoUnit;
 import java.util.UUID;
 
@@ -21,9 +19,9 @@ public final class AdResponseDto implements Serializable {
 
     private final String name;
 
-    private final LocalDate submissionDate;
+    private final Instant submissionDate;
 
-    private final LocalDate onAirSince;
+    private final Instant onAirSince;
 
     private final String link;
 
@@ -38,10 +36,8 @@ public final class AdResponseDto implements Serializable {
     public AdResponseDto(Ad ad, String link, String downloadLink) {
         id = ad.getId();
         name = ad.getName();
-        submissionDate = ad.getCreatedAt().atZone(ZoneId.systemDefault()).toLocalDate();
-        onAirSince = ad.getOnAirNotifiedAt() == null
-                ? null
-                : ad.getOnAirNotifiedAt().atZone(ZoneId.systemDefault()).toLocalDate();
+        submissionDate = ad.getCreatedAt();
+        onAirSince = ad.getOnAirNotifiedAt();
         this.link = link;
         this.downloadLink = downloadLink;
         validation = ad.getValidation();

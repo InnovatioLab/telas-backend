@@ -52,6 +52,7 @@ public class MonitorPlaylistService {
 						.map(ma -> ma.getAd().getId())
 						.collect(Collectors.toSet());
 		removeStaleMonitorAds(monitor, newAdIds);
+		helper.syncPartnerPortalAfterAdsRemovedFromMonitor(monitor, removedAdIds);
 
 		Map<UUID, MonitorAdRequestDto> adRequestMap = mapAdsById(request);
 		Map<UUID, MonitorAd> existingAfterRemoval = buildExistingAfterRemoval(monitor);

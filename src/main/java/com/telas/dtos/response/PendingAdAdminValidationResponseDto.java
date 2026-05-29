@@ -8,8 +8,6 @@ import lombok.Getter;
 import java.io.Serial;
 import java.io.Serializable;
 import java.time.Instant;
-import java.time.LocalDate;
-import java.time.ZoneId;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.UUID;
@@ -29,7 +27,7 @@ public final class PendingAdAdminValidationResponseDto implements Serializable {
 
     private final Role clientRole;
 
-    private final LocalDate submissionDate;
+    private final Instant submissionDate;
 
     private final AdValidationType validation;
 
@@ -48,7 +46,7 @@ public final class PendingAdAdminValidationResponseDto implements Serializable {
         name = ad.getName();
         clientName = ad.getClient().getBusinessName();
         clientRole = ad.getClient().getRole();
-        submissionDate = ad.getCreatedAt().atZone(ZoneId.systemDefault()).toLocalDate();
+        submissionDate = ad.getCreatedAt();
         validation = ad.getValidation();
         waitingDays = ChronoUnit.DAYS.between(ad.getCreatedAt(), Instant.now());
         link = linkResponse;

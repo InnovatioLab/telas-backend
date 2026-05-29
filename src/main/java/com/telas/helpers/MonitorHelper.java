@@ -15,7 +15,9 @@ import com.telas.enums.AdValidationType;
 import com.telas.entities.Client;
 import com.telas.infra.exceptions.BusinessRuleException;
 import com.telas.infra.security.services.AuthenticatedUserService;
+import com.telas.entities.AdRequest;
 import com.telas.repositories.AdRepository;
+import com.telas.repositories.AdRequestRepository;
 import com.telas.repositories.MonitorRepository;
 import com.telas.repositories.SubscriptionMonitorRepository;
 import com.telas.services.AddressService;
@@ -43,6 +45,8 @@ public class MonitorHelper {
 	private final MapsService mapsService;
 
 	private final AdRepository adRepository;
+
+	private final AdRequestRepository adRequestRepository;
 
 	private final MonitorRepository repository;
 
@@ -122,6 +126,30 @@ public class MonitorHelper {
 			}
 		}
 		return result;
+	}
+
+	@Transactional
+	public void syncPartnerPortalAfterAdsRemovedFromMonitor(Monitor monitor, Set<UUID> removedAdIds) {
+		if (monitor == null || monitor.getId() == null || removedAdIds == null || removedAdIds.isEmpty()) {
+			return;
+		}
+		UUID monitorId = monitor.getId();
+		for (UUID adId : removedAdIds) {
+			adRepository.findByIdWithClientAndAdRequest(adId).ifPresent(ad -> {
+				if (ad.getClient() == null || !ad.getClient().isPartner()) {
+					return;
+				}
+				AdRequest adRequest = ad.getAdRequest();
+				if (adRequest == null || adRequest.getTargetMonitor() == null) {
+					return;
+				}
+				if (!monitorId.equals(adRequest.getTargetMonitor().getId())) {
+					return;
+				}
+				adRequest.setTargetMonitor(null);
+				adRequestRepository.save(adRequest);
+			});
+		}
 	}
 
 	@Transactional(readOnly = true)
