@@ -11,7 +11,7 @@ public final class SharedConstants {
 
     public static final String EMAIL_SENDER = "support@telas-ads.com";
     public static final String RECIPIENT = "Recipient";
-    public static final String EMAIL_SUBJECT_CONTACT_VERIFICATION = "Registry Confirmation - Telas";
+    public static final String EMAIL_SUBJECT_CONTACT_VERIFICATION = "Registration Confirmation - Telas";
     public static final String TEMPLATE_EMAIL_CONTACT_VERIFICATION = "email_contact_confirmation.ftlh";
     public static final String TEMPLATE_EMAIL_RESET_PASSWORD = "email_reset_password.ftlh";
     public static final String EMAIL_SUBJECT_RESET_PASSWORD = "Password Reset - Telas";
@@ -61,7 +61,8 @@ public final class SharedConstants {
     public static final String EMAIL_SUBJECT_CLIENT_AD_RECEIVED = "Your ad is ready for approval — Telas";
 
     public static final String TEMPLATE_EMAIL_CLIENT_AD_APPROVED = "email_client_ad_approved.ftlh";
-    public static final String EMAIL_SUBJECT_CLIENT_AD_APPROVED = "Thanks — your ad was approved — Telas";
+    public static final String EMAIL_SUBJECT_CLIENT_AD_APPROVED =
+            "Thank you for approving the Ad. Your Ad is being prepared to be displayed";
 
     public static final String TEMPLATE_EMAIL_ADMIN_CLIENT_AD_APPROVED = "email_admin_client_ad_approved.ftlh";
     public static final String EMAIL_SUBJECT_ADMIN_CLIENT_AD_APPROVED = "Customer approved an ad — Telas";

@@ -23,11 +23,11 @@
     <div class="content">
         <table role="presentation" style="width: 100%; border-collapse: collapse;">
             <tr>
-                <td style="padding-bottom: 16px"><h3>Thanks — your ad was approved</h3></td>
+                <td style="padding-bottom: 16px"><h3>Thank you for approving the Ad</h3></td>
             </tr>
             <tr>
                 <td style="padding-bottom: 8px">
-                    Hi <strong>${name!""}</strong>, thanks for approving <strong>${adName!""}</strong>.
+                    Hi <strong>${name!""}</strong>, your Ad <strong>${adName!""}</strong> is being prepared to be displayed.
                 </td>
             </tr>
             <tr>
