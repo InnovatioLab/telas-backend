@@ -122,9 +122,30 @@ class PartnerSlotAccessServiceImplTest {
 
         monitor.getMonitorAds().add(monitorAd);
 
-        assertEquals(3, service.usedBlocksByClientOnMonitor(partner, monitor));
-        assertTrue(service.canAddBlocks(partner, monitor, 2));
-        assertFalse(service.canAddBlocks(partner, monitor, 3));
+        assertEquals(1, service.usedBlocksByClientOnMonitor(partner, monitor));
+        assertTrue(service.canAddBlocks(partner, monitor, 1));
+    }
+
+    @Test
+    void singlePartnerAdWithFullCarouselBlocksStillAllowsAnotherAd() {
+        when(partnerPlatformSettingsService.isSlotsAnyLocationEnabled()).thenReturn(true);
+
+        Ad ad = new Ad();
+        ad.setClient(partner);
+
+        MonitorAd monitorAd = new MonitorAd();
+        MonitorAdPK pk = new MonitorAdPK();
+        pk.setMonitor(monitor);
+        pk.setAd(ad);
+        monitorAd.setId(pk);
+        monitorAd.setBlockQuantity(SharedConstants.PARTNER_RESERVED_SLOTS);
+        monitorAd.setOrderIndex(1);
+
+        monitor.getMonitorAds().add(monitorAd);
+
+        assertEquals(1, service.usedBlocksByClientOnMonitor(partner, monitor));
+        assertTrue(service.canAddBlocks(partner, monitor, 1));
+        assertFalse(service.canAddBlocks(partner, monitor, 6));
     }
 
     @Test

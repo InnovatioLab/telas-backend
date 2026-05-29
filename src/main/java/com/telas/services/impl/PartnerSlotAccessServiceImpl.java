@@ -46,23 +46,7 @@ public class PartnerSlotAccessServiceImpl implements PartnerSlotAccessService {
 
     @Override
     public int usedBlocksByClientOnMonitor(Client client, Monitor monitor) {
-        if (client == null || monitor == null) {
-            return 0;
-        }
-
-        int fromAds = monitor.getMonitorAds().stream()
-                .filter(ma -> isAdOwnedByClient(ma, client))
-                .mapToInt(ma -> normalizeBlockQuantity(ma.getBlockQuantity()))
-                .sum();
-
-        int fromSubscriptions = monitor.getActiveSubscriptionMonitors().stream()
-                .filter(sm -> sm.getSubscription() != null
-                        && sm.getSubscription().getClient() != null
-                        && client.getId().equals(sm.getSubscription().getClient().getId()))
-                .mapToInt(sm -> normalizeBlockQuantity(sm.getSlotsQuantity()))
-                .sum();
-
-        return fromAds + fromSubscriptions;
+        return countPartnerPlacementsOnMonitor(client, monitor);
     }
 
     @Override
@@ -79,7 +63,11 @@ public class PartnerSlotAccessServiceImpl implements PartnerSlotAccessService {
         }
 
         if (usesPartnerQuotaOnMonitor(client, monitor)) {
-            return usedBlocksByClientOnMonitor(client, monitor) + additionalBlocks
+            if (additionalBlocks <= SharedConstants.MIN_QUANTITY_MONITOR_BLOCK) {
+                return countPartnerPlacementsOnMonitor(client, monitor) + 1
+                        <= SharedConstants.PARTNER_RESERVED_SLOTS;
+            }
+            return sumPartnerCarouselBlocksOnMonitor(client, monitor) + additionalBlocks
                     <= SharedConstants.PARTNER_RESERVED_SLOTS;
         }
 
@@ -160,5 +148,34 @@ public class PartnerSlotAccessServiceImpl implements PartnerSlotAccessService {
 
     private static int normalizeBlockQuantity(Integer quantity) {
         return quantity != null && quantity > 0 ? quantity : SharedConstants.MIN_QUANTITY_MONITOR_BLOCK;
+    }
+
+    private static int countPartnerPlacementsOnMonitor(Client client, Monitor monitor) {
+        if (client == null || monitor == null) {
+            return 0;
+        }
+
+        int fromAds = (int) monitor.getMonitorAds().stream()
+                .filter(ma -> isAdOwnedByClient(ma, client))
+                .count();
+
+        int fromSubscriptions = (int) monitor.getActiveSubscriptionMonitors().stream()
+                .filter(sm -> sm.getSubscription() != null
+                        && sm.getSubscription().getClient() != null
+                        && client.getId().equals(sm.getSubscription().getClient().getId()))
+                .count();
+
+        return fromAds + fromSubscriptions;
+    }
+
+    private static int sumPartnerCarouselBlocksOnMonitor(Client client, Monitor monitor) {
+        if (client == null || monitor == null) {
+            return 0;
+        }
+
+        return monitor.getMonitorAds().stream()
+                .filter(ma -> isAdOwnedByClient(ma, client))
+                .mapToInt(ma -> normalizeBlockQuantity(ma.getBlockQuantity()))
+                .sum();
     }
 }

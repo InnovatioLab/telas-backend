@@ -32,7 +32,6 @@ import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
-import java.util.stream.IntStream;
 
 @Service
 @RequiredArgsConstructor
@@ -97,14 +96,8 @@ public class MonitorPlaylistService {
 			return Collections.emptyMap();
 		}
 
-		int adsCount = partnerAds.size();
-		int capacity = (int) (adsCount / 0.75f) + 1;
-		Map<UUID, Integer> blockQuantities = new HashMap<>(capacity);
-
-		final int[][] distributions = {{}, {5}, {3, 2}, {2, 2, 1}, {2, 1, 1, 1}, {1, 1, 1, 1, 1}};
-
-		int[] dist = distributions[adsCount];
-		IntStream.range(0, adsCount).forEach(i -> blockQuantities.put(partnerAds.get(i).getId(), dist[i]));
+		Map<UUID, Integer> blockQuantities = new HashMap<>(partnerAds.size());
+		partnerAds.forEach(ad -> blockQuantities.put(ad.getId(), SharedConstants.MIN_QUANTITY_MONITOR_BLOCK));
 		return blockQuantities;
 	}
 
