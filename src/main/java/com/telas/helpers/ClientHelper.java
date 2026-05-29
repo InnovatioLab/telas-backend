@@ -248,7 +248,7 @@ public class ClientHelper {
                     Monitor monitor = sm.getMonitor();
 
                     MonitorAd monitorAd = new MonitorAd(monitor, ad);
-                    monitorAd.setBlockQuantity(sm.getSlotsQuantity());
+                    monitorAd.setBlockQuantity(SharedConstants.MIN_QUANTITY_MONITOR_BLOCK);
 
                     UpdateBoxMonitorsAdRequestDto dto = monitor.isAbleToSendBoxRequest()
                             ? new UpdateBoxMonitorsAdRequestDto(ad, monitorAd, sm, bucketService.getLink(AttachmentUtils.format(ad)))

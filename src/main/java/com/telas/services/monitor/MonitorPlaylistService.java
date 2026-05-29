@@ -7,7 +7,6 @@ import com.telas.entities.Ad;
 import com.telas.entities.Client;
 import com.telas.entities.Monitor;
 import com.telas.entities.MonitorAd;
-import com.telas.entities.SubscriptionMonitor;
 import com.telas.helpers.AdMediaLinkFactory;
 import com.telas.helpers.AdPublicationNotificationHelper;
 import com.telas.helpers.MonitorHelper;
@@ -56,7 +55,6 @@ public class MonitorPlaylistService {
 
 		Map<UUID, MonitorAdRequestDto> adRequestMap = mapAdsById(request);
 		Map<UUID, MonitorAd> existingAfterRemoval = buildExistingAfterRemoval(monitor);
-		Map<UUID, SubscriptionMonitor> subscriptionByClientId = buildSubscriptionByClientId(monitor);
 
 		List<MonitorAd> newMonitorAds = createNewMonitorAds(ads, existingAfterRemoval, adRequestMap, monitor);
 		updateOrderIndexes(ads, existingAfterRemoval, adRequestMap);
@@ -64,8 +62,7 @@ public class MonitorPlaylistService {
 		Map<UUID, MonitorAd> newMonitorAdsByAdId = newMonitorAds.stream()
 			.collect(Collectors.toMap(ma -> ma.getAd().getId(), ma -> ma));
 
-		Map<UUID, Integer> blockQuantities =
-				resolveBlockQuantities(ads, adRequestMap, subscriptionByClientId, monitor);
+		Map<UUID, Integer> blockQuantities = resolveBlockQuantities(ads, adRequestMap, monitor);
 		applyBlockQuantities(existingAfterRemoval, newMonitorAdsByAdId, blockQuantities);
 		validatePartnerBlockTotalsOnMonitor(monitor);
 
@@ -155,14 +152,6 @@ public class MonitorPlaylistService {
 		return monitor.getMonitorAds().stream().collect(Collectors.toMap(ma -> ma.getAd().getId(), ma -> ma));
 	}
 
-	private Map<UUID, SubscriptionMonitor> buildSubscriptionByClientId(Monitor monitor) {
-		List<SubscriptionMonitor> subscriptionMonitors = helper.getSubscriptionsMonitorsFromMonitor(monitor.getId());
-		return subscriptionMonitors.stream()
-			.filter(sm -> sm.getSubscription() != null && sm.getSubscription().getClient() != null
-				&& sm.getSubscription().getClient().getId() != null)
-			.collect(Collectors.toMap(sm -> sm.getSubscription().getClient().getId(), sm -> sm, (a, b) -> a));
-	}
-
 	private List<MonitorAd> createNewMonitorAds(List<Ad> ads, Map<UUID, MonitorAd> existingAfterRemoval,
 		Map<UUID, MonitorAdRequestDto> adRequestMap, Monitor monitor) {
 		return ads.stream().filter(ad -> !existingAfterRemoval.containsKey(ad.getId())).map(ad -> {
@@ -185,23 +174,10 @@ public class MonitorPlaylistService {
 	private Map<UUID, Integer> resolveBlockQuantities(
 			List<Ad> ads,
 			Map<UUID, MonitorAdRequestDto> adRequestMap,
-			Map<UUID, SubscriptionMonitor> subscriptionByClientId,
 			Monitor monitor) {
 		Map<UUID, Integer> blockQuantities = new HashMap<>(ads.size());
 
-		ads.forEach(ad -> {
-			UUID adId = ad.getId();
-			UUID clientId = ad.getClient() != null ? ad.getClient().getId() : null;
-			SubscriptionMonitor matched = clientId != null ? subscriptionByClientId.get(clientId) : null;
-
-			Integer blockQuantity = (matched != null && matched.getSlotsQuantity() != null
-				&& matched.getSlotsQuantity() != SharedConstants.PARTNER_RESERVED_SLOTS)
-				? matched.getSlotsQuantity()
-				: Optional.ofNullable(adRequestMap.get(adId)).map(MonitorAdRequestDto::getBlockQuantity)
-					.orElse(SharedConstants.MIN_QUANTITY_MONITOR_BLOCK);
-
-			blockQuantities.put(adId, blockQuantity);
-		});
+		ads.forEach(ad -> blockQuantities.put(ad.getId(), resolveMonitorAdBlockQuantity(adRequestMap.get(ad.getId()))));
 
 		Map<UUID, List<Ad>> partnerQuotaAdsByClient =
 				ads.stream()
@@ -217,6 +193,10 @@ public class MonitorPlaylistService {
 				.forEach(clientAds -> blockQuantities.putAll(distributePartnerBlockQuantities(clientAds)));
 
 		return blockQuantities;
+	}
+
+	private static int resolveMonitorAdBlockQuantity(MonitorAdRequestDto requestDto) {
+		return SharedConstants.MIN_QUANTITY_MONITOR_BLOCK;
 	}
 
 	private void validatePartnerBlockTotalsOnMonitor(Monitor monitor) {
