@@ -3,9 +3,13 @@ package com.telas.helpers;
 import com.telas.dtos.request.MonitorAdRequestDto;
 import com.telas.dtos.request.MonitorRequestDto;
 import com.telas.entities.Ad;
+import com.telas.entities.Address;
+import com.telas.entities.Client;
 import com.telas.enums.AdValidationType;
+import com.telas.enums.Role;
 import com.telas.infra.exceptions.BusinessRuleException;
 import com.telas.entities.Monitor;
+import com.telas.infra.security.model.AuthenticatedUser;
 import com.telas.infra.security.services.AuthenticatedUserService;
 import com.telas.repositories.AdRepository;
 import com.telas.repositories.MonitorRepository;
@@ -87,6 +91,32 @@ class MonitorHelperAvailableAdsEligibilityTest {
 
         assertThat(result).containsExactly(ad);
         verify(adRepository).findApprovedEligibleForMonitorByIds(any(), eq(monitorId));
+    }
+
+    @Test
+    void getAddress_allowsAdminWhenAddressOwnerIsNotPartner() {
+        UUID addressId = UUID.randomUUID();
+        Client addressOwner = new Client();
+        addressOwner.setId(UUID.randomUUID());
+        addressOwner.setRole(Role.CLIENT);
+
+        Address address = new Address();
+        address.setId(addressId);
+        address.setClient(addressOwner);
+
+        Client admin = new Client();
+        admin.setId(UUID.randomUUID());
+        admin.setRole(Role.ADMIN);
+
+        MonitorRequestDto request = new MonitorRequestDto();
+        request.setAddressId(addressId);
+
+        when(addressService.findById(addressId)).thenReturn(address);
+        when(authenticatedUserService.getLoggedUser()).thenReturn(new AuthenticatedUser(admin));
+
+        Address result = monitorHelper.getAddress(request);
+
+        assertThat(result).isSameAs(address);
     }
 
     @Test

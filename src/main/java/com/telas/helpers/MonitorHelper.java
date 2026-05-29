@@ -273,7 +273,8 @@ public class MonitorHelper {
 			? addressService.findById(request.getAddressId())
 			: addressService.getPartnerAddress(request.getAddress());
 
-		if (!address.getClient().isPartner()) {
+		Client actor = authenticatedUserService.getLoggedUser().client();
+		if (!actor.isPrivilegedPanelUser() && !address.getClient().isPartner()) {
 			throw new BusinessRuleException(MonitorValidationMessages.CLIENT_NOT_PARTNER);
 		}
 

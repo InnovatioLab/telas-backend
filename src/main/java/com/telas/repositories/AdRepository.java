@@ -97,15 +97,22 @@ public interface AdRepository extends JpaRepository<Ad, UUID>, JpaSpecificationE
 		  AND ad.type <> 'application/pdf'
 		  AND (
 		      c.role = 'ADMIN'
-		      OR EXISTS (
-		          SELECT 1 FROM Subscription s
-		          JOIN s.subscriptionMonitors sm
-		          WHERE s.client.id = c.id
-		            AND s.status = 'ACTIVE'
-		            AND (s.endsAt IS NULL OR s.endsAt > CURRENT_TIMESTAMP)
-		            AND sm.id.monitor.id = :monitorId
+		      OR (
+		          ar IS NOT NULL
+		          AND ar.targetMonitor IS NOT NULL
+		          AND ar.targetMonitor.id = :monitorId
 		      )
-		      OR ar.targetMonitor.id = :monitorId
+		      OR (
+		          (ar IS NULL OR ar.targetMonitor IS NULL)
+		          AND EXISTS (
+		              SELECT 1 FROM Subscription s
+		              JOIN s.subscriptionMonitors sm
+		              WHERE s.client.id = c.id
+		                AND s.status = 'ACTIVE'
+		                AND (s.endsAt IS NULL OR s.endsAt > CURRENT_TIMESTAMP)
+		                AND sm.id.monitor.id = :monitorId
+		          )
+		      )
 		  )
 		  AND (
 		      COALESCE(TRIM(:name), '') = ''
@@ -126,15 +133,22 @@ public interface AdRepository extends JpaRepository<Ad, UUID>, JpaSpecificationE
 		  AND ad.type <> 'application/pdf'
 		  AND (
 		      c.role = 'ADMIN'
-		      OR EXISTS (
-		          SELECT 1 FROM Subscription s
-		          JOIN s.subscriptionMonitors sm
-		          WHERE s.client.id = c.id
-		            AND s.status = 'ACTIVE'
-		            AND (s.endsAt IS NULL OR s.endsAt > CURRENT_TIMESTAMP)
-		            AND sm.id.monitor.id = :monitorId
+		      OR (
+		          ar IS NOT NULL
+		          AND ar.targetMonitor IS NOT NULL
+		          AND ar.targetMonitor.id = :monitorId
 		      )
-		      OR ar.targetMonitor.id = :monitorId
+		      OR (
+		          (ar IS NULL OR ar.targetMonitor IS NULL)
+		          AND EXISTS (
+		              SELECT 1 FROM Subscription s
+		              JOIN s.subscriptionMonitors sm
+		              WHERE s.client.id = c.id
+		                AND s.status = 'ACTIVE'
+		                AND (s.endsAt IS NULL OR s.endsAt > CURRENT_TIMESTAMP)
+		                AND sm.id.monitor.id = :monitorId
+		          )
+		      )
 		  )
 		""")
 	long countAllApprovedNotInMonitor(@Param("monitorId") UUID monitorId);
@@ -148,15 +162,22 @@ public interface AdRepository extends JpaRepository<Ad, UUID>, JpaSpecificationE
 		  AND ad.type <> 'application/pdf'
 		  AND (
 		      c.role = 'ADMIN'
-		      OR EXISTS (
-		          SELECT 1 FROM Subscription s
-		          JOIN s.subscriptionMonitors sm
-		          WHERE s.client.id = c.id
-		            AND s.status = 'ACTIVE'
-		            AND (s.endsAt IS NULL OR s.endsAt > CURRENT_TIMESTAMP)
-		            AND sm.id.monitor.id = :monitorId
+		      OR (
+		          ar IS NOT NULL
+		          AND ar.targetMonitor IS NOT NULL
+		          AND ar.targetMonitor.id = :monitorId
 		      )
-		      OR ar.targetMonitor.id = :monitorId
+		      OR (
+		          (ar IS NULL OR ar.targetMonitor IS NULL)
+		          AND EXISTS (
+		              SELECT 1 FROM Subscription s
+		              JOIN s.subscriptionMonitors sm
+		              WHERE s.client.id = c.id
+		                AND s.status = 'ACTIVE'
+		                AND (s.endsAt IS NULL OR s.endsAt > CURRENT_TIMESTAMP)
+		                AND sm.id.monitor.id = :monitorId
+		          )
+		      )
 		  )
 		""")
 	List<Ad> findApprovedEligibleForMonitorByIds(
