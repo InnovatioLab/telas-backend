@@ -6,6 +6,7 @@ import com.telas.entities.BoxCarouselSettings;
 import com.telas.infra.exceptions.BusinessRuleException;
 import com.telas.repositories.BoxCarouselSettingsRepository;
 import com.telas.services.BoxCarouselSettingsService;
+import com.telas.shared.constants.SharedConstants;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
@@ -31,7 +32,23 @@ public class BoxCarouselSettingsServiceImpl implements BoxCarouselSettingsServic
     @Override
     @Transactional(readOnly = true)
     public BoxPlayerSettingsResponseDto getSettings() {
-        return repository.findById(ROW_ID).map(BoxPlayerSettingsResponseDto::fromEntity).orElseGet(this::defaultSettings);
+        BoxPlayerSettingsResponseDto settings =
+                repository.findById(ROW_ID).map(BoxPlayerSettingsResponseDto::fromEntity).orElseGet(this::defaultSettings);
+        return normalizeSettings(settings);
+    }
+
+    private BoxPlayerSettingsResponseDto normalizeSettings(BoxPlayerSettingsResponseDto settings) {
+        int minSlots = SharedConstants.MAX_MONITOR_ADS;
+        if (settings.getTotalSlots() < minSlots) {
+            settings.setTotalSlots(minSlots);
+        }
+        if (settings.getDisplayDurationMs() < 1000 || settings.getDisplayDurationMs() > 60000) {
+            settings.setDisplayDurationMs(defaultDisplayDurationMs);
+        }
+        if (settings.getTransitionDurationMs() < 0 || settings.getTransitionDurationMs() > 10000) {
+            settings.setTransitionDurationMs(defaultTransitionDurationMs);
+        }
+        return settings;
     }
 
     @Override
