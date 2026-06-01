@@ -3,6 +3,7 @@ package com.telas.repositories;
 import com.telas.entities.MonitorAd;
 import com.telas.entities.MonitorAdPK;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
@@ -49,6 +50,10 @@ public interface MonitorAdRepository extends JpaRepository<MonitorAd, MonitorAdP
             WHERE ma.id.ad.id = :adId
             """)
     java.util.List<MonitorAd> findByAdIdWithMonitor(@Param("adId") java.util.UUID adId);
+
+    @Modifying
+    @Query("DELETE FROM MonitorAd ma WHERE ma.id.ad.id = :adId")
+    void deleteByAdId(@Param("adId") java.util.UUID adId);
 
     @Query("""
             SELECT addr.client.id as partnerId, COUNT(ma) as adsCount

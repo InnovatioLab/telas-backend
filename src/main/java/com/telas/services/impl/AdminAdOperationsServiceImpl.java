@@ -230,21 +230,21 @@ public class AdminAdOperationsServiceImpl implements AdminAdOperationsService {
         }
         String adName = ad.getName();
         List<MonitorAd> placements = monitorAdRepository.findByAdIdWithMonitor(adId);
-        Map<UUID, Monitor> monitorsById = new LinkedHashMap<>();
-        for (MonitorAd placement : placements) {
-            Monitor monitor = placement.getMonitor();
-            if (monitor != null) {
-                monitorsById.putIfAbsent(monitor.getId(), monitor);
-            }
+
+        List<Monitor> monitorsForBox = placements.stream()
+                .map(MonitorAd::getMonitor)
+                .filter(java.util.Objects::nonNull)
+                .filter(Monitor::isAbleToSendBoxRequest)
+                .toList();
+
+        if (!placements.isEmpty()) {
+            monitorAdRepository.deleteByAdId(adId);
         }
-        for (Monitor monitor : monitorsById.values()) {
-            monitor.getMonitorAds().removeIf(ma ->
-                    ma.getAd() != null && adId.equals(ma.getAd().getId()));
-            monitorRepository.save(monitor);
-            if (monitor.isAbleToSendBoxRequest()) {
-                monitorHelper.sendBoxesMonitorsRemoveAds(monitor, List.of(adName));
-            }
+
+        for (Monitor monitor : monitorsForBox) {
+            monitorHelper.sendBoxesMonitorsRemoveAds(monitor, List.of(adName));
         }
+
         unusedSingleAdDeletionService.deleteAdInNewTransaction(adId);
         log.info("deleteApprovedAd completed adId={}", adId);
     }

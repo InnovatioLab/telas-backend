@@ -322,10 +322,13 @@ public enum NotificationReference {
         @Override
         public String getNotificationMessage(Map<String, String> params) {
             boolean createAd = "create_ad".equals(params.get("submissionKind"));
-            String title = createAd ? "Create Ad request received" : "Finished Ad received";
+            String title = createAd ? "Create Ad request received" : "Ad upload received";
             String body = createAd
                     ? "We received your materials and instructions. Our team will create the ad for screen <strong>%s</strong>."
-                    : "We received your finished ad for screen <strong>%s</strong>. Our team will review it shortly.";
+                    : "Thank you for uploading your Ad. We'll notify you once it has been uploaded to the screen.";
+            String bodyFormatted = createAd
+                    ? String.format(body, params.getOrDefault("monitorLabel", ""))
+                    : body;
             return String.format("""
                     <div class="informacoes">
                         <h4 id="notification-title" class="notification-title">%s</h4>
@@ -334,7 +337,7 @@ public enum NotificationReference {
                     <p>Open <a id="link-details" class='details link-text' href="%s">%s</a>.</p>
                     """,
                     title,
-                    String.format(body, params.getOrDefault("monitorLabel", "")),
+                    bodyFormatted,
                     params.getOrDefault("link", "#"),
                     params.getOrDefault("linkLabel", "My screens"));
         }

@@ -12,6 +12,7 @@ import com.telas.infra.exceptions.ResourceNotFoundException;
 import com.telas.infra.security.model.AuthenticatedUser;
 import com.telas.infra.security.services.AuthenticatedUserService;
 import com.telas.repositories.AdRepository;
+import com.telas.repositories.MonitorAdRepository;
 import com.telas.repositories.MonitorRepository;
 import com.telas.services.AdUnusedTrackingService;
 import com.telas.services.MonitorSubscriptionService;
@@ -50,6 +51,7 @@ public class MonitorCrudService {
 	private final AuthenticatedUserService authenticatedUserService;
 	private final MonitorRepository repository;
 	private final AdRepository adRepository;
+	private final MonitorAdRepository monitorAdRepository;
 	private final MonitorHelper helper;
 	private final SubscriptionService subscriptionService;
 	private final MonitorSubscriptionService monitorSubscriptionService;
@@ -146,17 +148,11 @@ public class MonitorCrudService {
 	@Transactional
 	public void deleteAvailableAd(UUID monitorId, UUID adId) {
 		authenticatedUserService.validateAdmin();
-		Monitor monitor = findEntityById(monitorId);
 		Ad ad = adRepository.findById(adId)
 				.orElseThrow(() -> new ResourceNotFoundException("Ad not found"));
 
-		boolean alreadyInMonitor = monitor.getMonitorAds().stream()
-				.anyMatch(ma -> ma.getAd() != null && adId.equals(ma.getAd().getId()));
-		if (alreadyInMonitor) {
-			throw new BusinessRuleException("Ad is already attached to this monitor.");
-		}
 		if (ad.getMonitorAds() != null && !ad.getMonitorAds().isEmpty()) {
-			throw new BusinessRuleException("Ad is attached to a monitor and cannot be removed.");
+			monitorAdRepository.deleteByAdId(adId);
 		}
 		unusedSingleAdDeletionService.deleteAdInNewTransaction(adId);
 	}
