@@ -187,18 +187,23 @@ public class PartnerMonitorAdService {
 			PartnerAdSubmissionRequestDto request,
 			Client partner,
 			Monitor monitor) {
-		PartnerAdRequestToAdminDto dto = new PartnerAdRequestToAdminDto();
-		dto.setTargetMonitorId(monitorId);
-		dto.setOptionalLabel(request.getOptionalLabel());
+		List<AttachmentRequestDto> batch = (request.getAttachments() != null && !request.getAttachments().isEmpty())
+				? request.getAttachments()
+				: List.of(request.getAttachment());
 
-		AdRequest created = clientHelper.createPartnerFinishedCreativeRequest(
-				dto,
-				partner,
-				monitor,
-				request.getAttachment());
-		notifyAdminsFinishedAdSubmitted(partner, monitor, created);
+		AdRequest first = null;
+		for (AttachmentRequestDto attachment : batch) {
+			PartnerAdRequestToAdminDto dto = new PartnerAdRequestToAdminDto();
+			dto.setTargetMonitorId(monitorId);
+			dto.setOptionalLabel(request.getOptionalLabel());
+			AdRequest created = clientHelper.createPartnerFinishedCreativeRequest(dto, partner, monitor, attachment);
+			if (first == null) {
+				first = created;
+			}
+		}
+		notifyAdminsFinishedAdSubmitted(partner, monitor, first);
 		notifyPartnerSubmissionAck(partner, monitor, "Finished Ad");
-		return created.getId();
+		return first.getId();
 	}
 
 	private UUID executeDirectAdUpload(

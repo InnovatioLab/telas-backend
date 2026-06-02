@@ -3,6 +3,7 @@ package com.telas.dtos.request;
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import com.telas.enums.PartnerSubmissionMode;
 import com.telas.infra.exceptions.BusinessRuleException;
+import com.telas.shared.constants.SharedConstants;
 import com.telas.shared.constants.valitation.AttachmentValidationMessages;
 import com.telas.shared.utils.TrimStringDeserializer;
 import jakarta.validation.Valid;
@@ -33,6 +34,9 @@ public class PartnerAdSubmissionRequestDto implements Serializable {
     @Valid
     private AttachmentRequestDto attachment;
 
+    @Valid
+    private List<AttachmentRequestDto> attachments = new ArrayList<>();
+
     private List<UUID> attachmentIds = new ArrayList<>();
 
     @Size(max = 255, message = AttachmentValidationMessages.NAME_SIZE)
@@ -56,10 +60,17 @@ public class PartnerAdSubmissionRequestDto implements Serializable {
                 }
             }
             case PARTNER_FINISHED_CREATIVE -> {
-                if (attachment == null) {
+                if (attachments != null && !attachments.isEmpty()) {
+                    if (attachments.size() > SharedConstants.MAX_ADS_PER_CLIENT) {
+                        throw new BusinessRuleException(
+                                "Maximum " + SharedConstants.MAX_ADS_PER_CLIENT + " ads per submission.");
+                    }
+                    attachments.forEach(AttachmentRequestDto::validate);
+                } else if (attachment != null) {
+                    attachment.validate();
+                } else {
                     throw new BusinessRuleException(AttachmentValidationMessages.ATTACHMENT_LIST_EMPTY);
                 }
-                attachment.validate();
             }
             default -> throw new BusinessRuleException("Unsupported submission mode.");
         }
