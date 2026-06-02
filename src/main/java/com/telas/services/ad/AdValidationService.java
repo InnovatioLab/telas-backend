@@ -67,7 +67,6 @@ public class AdValidationService {
         CustomRevisionListener.setUsername(admin.getBusinessName());
         ad.setValidation(AdValidationType.APPROVED);
         adRepository.save(ad);
-        attachAdToTargetMonitorIfNeeded(ad, adRequest);
         adUnusedTrackingService.syncUnusedStateForAdIds(List.of(ad.getId()));
         adRequest.closeRequest();
         adRequestRepository.save(adRequest);
