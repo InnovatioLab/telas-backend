@@ -30,6 +30,8 @@ public final class MonitorAdResponseDto implements Serializable {
 
   private String clientName;
 
+  private UUID clientId;
+
   private Instant subscriptionEndsAt;
 
   private Long subscriptionDaysLeft;
@@ -51,6 +53,7 @@ public final class MonitorAdResponseDto implements Serializable {
     fileName = entity.getAd().getName();
     blockQuantity = entity.getBlockQuantity();
     clientName = entity.getAd().getClient() != null ? entity.getAd().getClient().getBusinessName() : null;
+    clientId = entity.getAd().getClient() != null ? entity.getAd().getClient().getId() : null;
   }
 
   public void setSubscriptionEndsAt(Instant endsAt) {

@@ -207,7 +207,7 @@ public class MonitorPlaylistService {
 				continue;
 			}
 			Client client = monitorAd.getAd().getClient();
-			if (!partnerSlotAccessService.usesPartnerQuotaOnMonitor(client, monitor)) {
+			if (!client.isPartner()) {
 				continue;
 			}
 			int blocks =
