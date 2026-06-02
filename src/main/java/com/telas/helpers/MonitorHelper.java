@@ -130,26 +130,10 @@ public class MonitorHelper {
 
 	@Transactional
 	public void syncPartnerPortalAfterAdsRemovedFromMonitor(Monitor monitor, Set<UUID> removedAdIds) {
-		if (monitor == null || monitor.getId() == null || removedAdIds == null || removedAdIds.isEmpty()) {
-			return;
-		}
-		UUID monitorId = monitor.getId();
-		for (UUID adId : removedAdIds) {
-			adRepository.findByIdWithClientAndAdRequest(adId).ifPresent(ad -> {
-				if (ad.getClient() == null || !ad.getClient().isPartner()) {
-					return;
-				}
-				AdRequest adRequest = ad.getAdRequest();
-				if (adRequest == null || adRequest.getTargetMonitor() == null) {
-					return;
-				}
-				if (!monitorId.equals(adRequest.getTargetMonitor().getId())) {
-					return;
-				}
-				adRequest.setTargetMonitor(null);
-				adRequestRepository.save(adRequest);
-			});
-		}
+		// targetMonitor is preserved intentionally: removing an ad from Screen Ads
+		// must not clear the reference, because the query that populates Available Ads
+		// uses adRequest.targetMonitor to decide which monitor an approved ad belongs to.
+		// Clearing it here would make the ad invisible in Available Ads after removal.
 	}
 
 	@Transactional(readOnly = true)
