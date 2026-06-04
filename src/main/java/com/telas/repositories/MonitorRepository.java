@@ -1,12 +1,16 @@
 package com.telas.repositories;
 
 import com.telas.entities.Monitor;
+import jakarta.persistence.LockModeType;
+import jakarta.persistence.QueryHint;
 import org.jetbrains.annotations.NotNull;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
+import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.jpa.repository.QueryHints;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
@@ -110,6 +114,23 @@ public interface MonitorRepository extends JpaRepository<Monitor, UUID>, JpaSpec
     boolean existsByAddressId(UUID addressId);
 
     boolean existsByAddressIdAndIdNot(UUID addressId, UUID monitorId);
+
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @QueryHints(@QueryHint(name = "jakarta.persistence.lock.timeout", value = "5000"))
+    @Query("""
+            SELECT m FROM Monitor m
+            LEFT JOIN FETCH m.monitorAds
+            LEFT JOIN FETCH m.subscriptionMonitors sm
+            LEFT JOIN FETCH sm.id.subscription
+            WHERE m.id IN :ids
+            ORDER BY m.id
+            """)
+    List<Monitor> findAllByIdInForUpdate(@Param("ids") List<UUID> ids);
+
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @QueryHints(@QueryHint(name = "jakarta.persistence.lock.timeout", value = "5000"))
+    @Query("SELECT m FROM Monitor m LEFT JOIN FETCH m.monitorAds WHERE m.id = :id")
+    Optional<Monitor> findByIdForUpdate(@Param("id") UUID id);
 
     @Query("""
             SELECT DISTINCT m FROM Monitor m

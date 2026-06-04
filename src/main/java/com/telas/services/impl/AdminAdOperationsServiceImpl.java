@@ -44,6 +44,8 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import java.math.BigDecimal;
 import java.nio.charset.StandardCharsets;
@@ -217,6 +219,13 @@ public class AdminAdOperationsServiceImpl implements AdminAdOperationsService {
         authenticatedUserService.validateAdminOrAdsManageAccess();
         Ad ad = adRepository.findById(adId)
                 .orElseThrow(() -> new ResourceNotFoundException(AdValidationMessages.AD_NOT_FOUND));
+
+        // Idempotency guard: already scheduled by a concurrent request, return immediately.
+        if (ad.getDeletionScheduledAt() != null) {
+            log.info("deleteApprovedAd: already scheduled adId={}", adId);
+            return;
+        }
+
         boolean partnerAdvertiser = ad.getClient() != null && ad.getClient().isPartner();
         if (partnerAdvertiser) {
             AdValidationType validation = ad.getValidation();
@@ -228,12 +237,17 @@ public class AdminAdOperationsServiceImpl implements AdminAdOperationsService {
         } else if (!AdValidationType.APPROVED.equals(ad.getValidation())) {
             throw new BusinessRuleException(AdValidationMessages.AD_MUST_BE_APPROVED_TO_DELETE);
         }
+
+        // Stamp deletion intent immediately — this is what prevents duplicate in-flight deletes.
+        ad.setDeletionScheduledAt(Instant.now());
+        adRepository.save(ad);
+
         String adName = ad.getName();
         List<MonitorAd> placements = monitorAdRepository.findByAdIdWithMonitor(adId);
 
         List<Monitor> monitorsForBox = placements.stream()
                 .map(MonitorAd::getMonitor)
-                .filter(java.util.Objects::nonNull)
+                .filter(Objects::nonNull)
                 .filter(Monitor::isAbleToSendBoxRequest)
                 .toList();
 
@@ -241,12 +255,18 @@ public class AdminAdOperationsServiceImpl implements AdminAdOperationsService {
             monitorAdRepository.deleteByAdId(adId);
         }
 
-        for (Monitor monitor : monitorsForBox) {
-            monitorHelper.sendBoxesMonitorsRemoveAds(monitor, List.of(adName));
-        }
+        // After this transaction commits (DB connection released), fire cleanup outside the request thread.
+        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+            @Override
+            public void afterCommit() {
+                for (Monitor monitor : monitorsForBox) {
+                    monitorHelper.sendBoxesMonitorsRemoveAds(monitor, List.of(adName));
+                }
+                unusedSingleAdDeletionService.deleteAdAsync(adId);
+            }
+        });
 
-        unusedSingleAdDeletionService.deleteAdInNewTransaction(adId);
-        log.info("deleteApprovedAd completed adId={}", adId);
+        log.info("deleteApprovedAd scheduled adId={}", adId);
     }
 
     @Override

@@ -218,4 +218,26 @@ public interface AdRepository extends JpaRepository<Ad, UUID>, JpaSpecificationE
 			@Param("partnerId") UUID partnerId,
 			@Param("monitorId") UUID monitorId);
 
+	@Query(
+			value = """
+					SELECT a.id FROM ads a
+					INNER JOIN clients c ON c.id = a.client_id
+					WHERE a.validation = 'APPROVED'
+					  AND a.unused_since IS NOT NULL
+					  AND a.deletion_scheduled_at IS NULL
+					  AND NOT EXISTS (SELECT 1 FROM monitors_ads ma WHERE ma.ad_id = a.id)
+					  AND NOT EXISTS (
+					      SELECT 1 FROM ad_requests r
+					      WHERE a.ad_request_id IS NOT NULL AND r.id = a.ad_request_id AND r.active = true
+					  )
+					  AND a.unused_since < (
+					      NOW() - (COALESCE(c.ads_retention_days_override, :globalDays) * INTERVAL '1 DAY')
+					  )
+					FOR UPDATE SKIP LOCKED LIMIT :batchSize
+					""",
+			nativeQuery = true)
+	List<UUID> findUnusedAdIdsForUpdate(
+			@Param("globalDays") int globalDays,
+			@Param("batchSize") int batchSize);
+
 }

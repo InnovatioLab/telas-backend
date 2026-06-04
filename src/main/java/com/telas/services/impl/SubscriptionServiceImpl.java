@@ -54,6 +54,7 @@ import java.util.*;
 public class SubscriptionServiceImpl implements SubscriptionService {
 
     private static final int SCHEDULER_SUMMARY_MAX_ITEMS = 80;
+    private static final int EXPIRED_SUBS_BATCH_SIZE = 1000;
 
     private final Logger log = LoggerFactory.getLogger(SubscriptionServiceImpl.class);
     private final SubscriptionRepository repository;
@@ -254,7 +255,10 @@ public class SubscriptionServiceImpl implements SubscriptionService {
             zone = "${app.scheduler.zone:America/New_York}")
     @SchedulerLock(name = "removeAdsFromExpiredSubscriptionsLock", lockAtLeastFor = "PT10M", lockAtMostFor = "PT1H")
     public void removeAdsFromExpiredSubscriptions() {
-        List<Subscription> expiredSubscriptions = repository.getActiveAndExpiredSubscriptions(Instant.now());
+        List<UUID> expiredIds = repository.findExpiredSubscriptionIdsForUpdate(Instant.now(), EXPIRED_SUBS_BATCH_SIZE);
+        List<Subscription> expiredSubscriptions = expiredIds.isEmpty()
+                ? List.of()
+                : repository.findByIdsWithMonitors(expiredIds);
 
         if (expiredSubscriptions.isEmpty()) {
             log.info("No expired subscriptions found.");

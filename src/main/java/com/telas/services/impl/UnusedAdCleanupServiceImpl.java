@@ -34,9 +34,11 @@ public class UnusedAdCleanupServiceImpl implements UnusedAdCleanupService {
     @Value("${cleanup.ads.retention.days:30}")
     private int globalRetentionDays;
 
+    private static final int CLEANUP_BATCH_SIZE = 50;
+
     @Override
     public int deleteEligibleUnusedAds() {
-        List<UUID> ids = adRepository.findIdsEligibleForRetentionCleanup(globalRetentionDays);
+        List<UUID> ids = adRepository.findUnusedAdIdsForUpdate(globalRetentionDays, CLEANUP_BATCH_SIZE);
         if (ids.isEmpty()) {
             schedulerJobRunContext.put("adsDeletedCount", 0);
             schedulerJobRunContext.put("deletedAds", List.of());

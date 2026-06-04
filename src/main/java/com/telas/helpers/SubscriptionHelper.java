@@ -264,14 +264,17 @@ public class SubscriptionHelper {
     private void validateItems(List<CartItem> items) {
         Client client = items.get(0).getCart().getClient();
 
-        Map<UUID, Monitor> monitors = monitorRepository.findAllByIdIn(
-                items.stream()
-                        .map(CartItem::getMonitor)
-                        .filter(Objects::nonNull)
-                        .filter(monitor -> !partnerPlacementRules.partnerOwnsMonitor(monitor, client))
-                        .map(Monitor::getId)
-                        .toList()
-        ).stream().collect(Collectors.toMap(Monitor::getId, monitor -> monitor));
+        // Sort IDs before locking to ensure consistent lock ordering across transactions (prevents deadlocks).
+        List<UUID> monitorIds = items.stream()
+                .map(CartItem::getMonitor)
+                .filter(Objects::nonNull)
+                .filter(monitor -> !partnerPlacementRules.partnerOwnsMonitor(monitor, client))
+                .map(Monitor::getId)
+                .sorted()
+                .toList();
+
+        Map<UUID, Monitor> monitors = monitorRepository.findAllByIdInForUpdate(monitorIds)
+                .stream().collect(Collectors.toMap(Monitor::getId, monitor -> monitor));
 
         items.removeIf(item -> !monitors.containsKey(item.getMonitor().getId()));
 

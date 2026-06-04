@@ -75,4 +75,24 @@ public interface SubscriptionRepository extends JpaRepository<Subscription, UUID
   List<Subscription> findByStatusInForExport(@Param("statuses") Collection<SubscriptionStatus> statuses);
 
   List<Subscription> findByClient_Id(UUID clientId);
+
+  @Query("""
+      SELECT DISTINCT s FROM Subscription s
+      LEFT JOIN FETCH s.subscriptionMonitors sm
+      LEFT JOIN FETCH sm.id.monitor
+      WHERE s.id IN :ids
+      """)
+  List<Subscription> findByIdsWithMonitors(@Param("ids") List<UUID> ids);
+
+  @Query(
+      value = """
+          SELECT id FROM subscriptions
+          WHERE status IN ('ACTIVE', 'EXPIRED')
+            AND ends_at IS NOT NULL AND ends_at < :now
+          FOR UPDATE SKIP LOCKED LIMIT :batchSize
+          """,
+      nativeQuery = true)
+  List<UUID> findExpiredSubscriptionIdsForUpdate(
+      @Param("now") Instant now,
+      @Param("batchSize") int batchSize);
 }

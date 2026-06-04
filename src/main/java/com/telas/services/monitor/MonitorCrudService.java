@@ -245,7 +245,9 @@ public class MonitorCrudService {
 
 	private void updateExistingMonitor(MonitorRequestDto request, UUID monitorId, AuthenticatedUser authenticatedUser,
 		Address address, List<Ad> ads) {
-		Monitor monitor = findEntityById(monitorId);
+		Monitor monitor = repository.findByIdForUpdate(monitorId)
+			.orElseThrow(() -> new com.telas.infra.exceptions.ResourceNotFoundException(
+					com.telas.shared.constants.valitation.MonitorValidationMessages.MONITOR_NOT_FOUND));
 
 		if (isAddressChanged(monitor.getAddress(), address)) {
 			ads = handleAddressChange(monitor, address, ads, request);

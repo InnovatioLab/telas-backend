@@ -11,6 +11,9 @@ import com.telas.shared.utils.AttachmentUtils;
 import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Lazy;
+import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
@@ -28,6 +31,19 @@ public class UnusedSingleAdDeletionService {
     private final AdRepository adRepository;
     private final AttachmentRepository attachmentRepository;
     private final BucketService bucketService;
+
+    @Autowired
+    @Lazy
+    private UnusedSingleAdDeletionService self;
+
+    @Async
+    public void deleteAdAsync(UUID adId) {
+        try {
+            self.deleteAdInNewTransaction(adId);
+        } catch (Exception ex) {
+            log.error("Async ad deletion failed adId={}: {}", adId, ex.getMessage(), ex);
+        }
+    }
 
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void deleteAdInNewTransaction(UUID adId) {
