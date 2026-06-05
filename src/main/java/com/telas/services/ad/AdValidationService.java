@@ -127,9 +127,6 @@ public class AdValidationService {
                 notifyClientApprovedAd(refreshed);
                 notifyAdminsClientApprovedAd(refreshed);
             } else {
-                if (entity.getAdRequest() != null) {
-                    attachAdToTargetMonitorIfNeeded(entity, entity.getAdRequest());
-                }
                 syncMonitorsPlaylistAfterAdApproved(entity);
                 notifyPartnerOnAirAfterApprovalIfEligible(entity);
                 Ad refreshed = adRepository.findByIdWithClientAndAdRequest(entity.getId()).orElse(entity);

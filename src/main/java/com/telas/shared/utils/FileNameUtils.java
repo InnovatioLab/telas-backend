@@ -19,17 +19,14 @@ public final class FileNameUtils {
 
     public static String buildQuestionnaireExportFileName(String clientName, String adName) {
         String client = sanitizeFileNameSegment(clientName);
-        String ad = sanitizeFileNameSegment(adName);
-        if (client.isEmpty() && ad.isEmpty()) {
-            return "questionnaire.txt";
-        }
-        if (client.isEmpty()) {
-            return truncate(ad) + ".txt";
-        }
-        if (ad.isEmpty()) {
+        if (!client.isEmpty()) {
             return truncate(client) + ".txt";
         }
-        return truncate(client + ad) + ".txt";
+        String ad = sanitizeFileNameSegment(adName);
+        if (!ad.isEmpty()) {
+            return truncate(ad) + ".txt";
+        }
+        return "questionnaire.txt";
     }
 
     private static String truncate(String value) {
