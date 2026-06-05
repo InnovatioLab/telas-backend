@@ -103,7 +103,7 @@ public interface AdRepository extends JpaRepository<Ad, UUID>, JpaSpecificationE
 		          AND ar.targetMonitor.id = :monitorId
 		      )
 		      OR (
-		          ar IS NULL
+		          (ar IS NULL OR ar.targetMonitor IS NULL)
 		          AND EXISTS (
 		              SELECT 1 FROM Subscription s
 		              JOIN s.subscriptionMonitors sm
@@ -139,7 +139,7 @@ public interface AdRepository extends JpaRepository<Ad, UUID>, JpaSpecificationE
 		          AND ar.targetMonitor.id = :monitorId
 		      )
 		      OR (
-		          ar IS NULL
+		          (ar IS NULL OR ar.targetMonitor IS NULL)
 		          AND EXISTS (
 		              SELECT 1 FROM Subscription s
 		              JOIN s.subscriptionMonitors sm
@@ -168,7 +168,7 @@ public interface AdRepository extends JpaRepository<Ad, UUID>, JpaSpecificationE
 		          AND ar.targetMonitor.id = :monitorId
 		      )
 		      OR (
-		          ar IS NULL
+		          (ar IS NULL OR ar.targetMonitor IS NULL)
 		          AND EXISTS (
 		              SELECT 1 FROM Subscription s
 		              JOIN s.subscriptionMonitors sm
