@@ -64,13 +64,13 @@ public interface AdRepository extends JpaRepository<Ad, UUID>, JpaSpecificationE
 		    LEFT JOIN FETCH c.subscriptions s
 		    LEFT JOIN FETCH s.subscriptionMonitors sm
 		    WHERE (
-		        c.role <> 'ADMIN'
+		        c.role NOT IN ('ADMIN', 'DEVELOPER')
 		        AND ad.validation = :validation
 		        AND s.status = 'ACTIVE'
 		        AND (s.endsAt IS NULL OR s.endsAt > CURRENT_TIMESTAMP)
 		        AND sm.id.monitor.id = :monitorId
 		    )
-		    OR c.role = 'ADMIN'
+		    OR c.role IN ('ADMIN', 'DEVELOPER')
 		""")
 	List<Ad> findAllValidAdsForMonitor(@Param("validation") AdValidationType validation, @Param("monitorId") UUID monitorId);
 
@@ -96,7 +96,7 @@ public interface AdRepository extends JpaRepository<Ad, UUID>, JpaSpecificationE
 		  )
 		  AND ad.type <> 'application/pdf'
 		  AND (
-		      c.role = 'ADMIN'
+		      c.role IN ('ADMIN', 'DEVELOPER')
 		      OR (
 		          ar IS NOT NULL
 		          AND ar.targetMonitor IS NOT NULL
@@ -132,7 +132,7 @@ public interface AdRepository extends JpaRepository<Ad, UUID>, JpaSpecificationE
 		  )
 		  AND ad.type <> 'application/pdf'
 		  AND (
-		      c.role = 'ADMIN'
+		      c.role IN ('ADMIN', 'DEVELOPER')
 		      OR (
 		          ar IS NOT NULL
 		          AND ar.targetMonitor IS NOT NULL
@@ -161,7 +161,7 @@ public interface AdRepository extends JpaRepository<Ad, UUID>, JpaSpecificationE
 		  AND ad.validation = 'APPROVED'
 		  AND ad.type <> 'application/pdf'
 		  AND (
-		      c.role = 'ADMIN'
+		      c.role IN ('ADMIN', 'DEVELOPER')
 		      OR (
 		          ar IS NOT NULL
 		          AND ar.targetMonitor IS NOT NULL
