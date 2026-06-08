@@ -6,6 +6,7 @@ import com.telas.entities.Attachment;
 import com.telas.entities.Client;
 import com.telas.repositories.AdRepository;
 import com.telas.repositories.AttachmentRepository;
+import com.telas.repositories.MonitorAdRepository;
 import com.telas.services.BucketService;
 import com.telas.shared.utils.AttachmentUtils;
 import lombok.RequiredArgsConstructor;
@@ -30,6 +31,7 @@ public class UnusedSingleAdDeletionService {
 
     private final AdRepository adRepository;
     private final AttachmentRepository attachmentRepository;
+    private final MonitorAdRepository monitorAdRepository;
     private final BucketService bucketService;
 
     @Autowired
@@ -78,6 +80,7 @@ public class UnusedSingleAdDeletionService {
             req.setAd(null);
             ad.setAdRequest(null);
         }
+        monitorAdRepository.deleteByAdId(adId);
         adRepository.delete(ad);
     }
 }

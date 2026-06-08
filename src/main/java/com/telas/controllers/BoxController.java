@@ -1,5 +1,6 @@
 package com.telas.controllers;
 
+import com.telas.dtos.request.BoxAddressRequestDto;
 import com.telas.dtos.request.BoxRequestDto;
 import com.telas.dtos.request.StatusBoxMonitorsRequestDto;
 import io.swagger.v3.oas.annotations.Hidden;
@@ -48,6 +49,18 @@ public interface BoxController {
             @ApiResponse(responseCode = "404", description = "Box not found."),
     })
     ResponseEntity<?> update(@Valid BoxRequestDto request, UUID boxId);
+
+    @Operation(summary = "List all box addresses for admin management")
+    ResponseEntity<?> findAllAddressesForAdmin();
+
+    @Operation(summary = "Create a new box address")
+    ResponseEntity<?> createAddress(@Valid @RequestBody BoxAddressRequestDto request);
+
+    @Operation(summary = "Update an existing box address")
+    ResponseEntity<?> updateAddress(@Valid @RequestBody BoxAddressRequestDto request, UUID id);
+
+    @Operation(summary = "Delete a box address (only if not in use)")
+    ResponseEntity<?> deleteAddress(UUID id);
 
     @Hidden
     @Operation(summary = "Endpoint to fetch monitors and ads data by Ip or MacAddress, this endpoint should be accessed only by Box API", responses = {

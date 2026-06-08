@@ -37,6 +37,8 @@ public interface SubscriptionService {
 
     void handleCheckoutSessionExpired(Session session);
 
+    void handleCheckoutSessionCompleted(Session session);
+
     void removeAdsFromExpiredSubscriptions();
 
     void sendSubscriptionExpirationEmail();

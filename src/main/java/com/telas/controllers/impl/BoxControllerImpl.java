@@ -1,6 +1,7 @@
 package com.telas.controllers.impl;
 
 import com.telas.controllers.BoxController;
+import com.telas.dtos.request.BoxAddressRequestDto;
 import com.telas.dtos.request.BoxRequestDto;
 import com.telas.dtos.request.StatusBoxMonitorsRequestDto;
 import com.telas.dtos.response.ResponseDto;
@@ -55,6 +56,38 @@ public class BoxControllerImpl implements BoxController {
         service.save(request, boxId);
         return ResponseEntity.status(HttpStatus.OK)
                 .body(ResponseDto.fromData(null, HttpStatus.OK, MessageCommonsConstants.UPDATE_SUCCESS_MESSAGE));
+    }
+
+    @Override
+    @GetMapping("/addresses/all")
+    @SecurityRequirement(name = "jwt")
+    public ResponseEntity<?> findAllAddressesForAdmin() {
+        return ResponseEntity.status(HttpStatus.OK)
+                .body(ResponseDto.fromData(boxAddressService.findAllForAdmin(), HttpStatus.OK, MessageCommonsConstants.FIND_ALL_SUCCESS_MESSAGE));
+    }
+
+    @Override
+    @PostMapping("/addresses")
+    @SecurityRequirement(name = "jwt")
+    public ResponseEntity<?> createAddress(@Valid @RequestBody BoxAddressRequestDto request) {
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(ResponseDto.fromData(boxAddressService.create(request), HttpStatus.CREATED, MessageCommonsConstants.SAVE_SUCCESS_MESSAGE));
+    }
+
+    @Override
+    @PutMapping("/addresses/{id}")
+    @SecurityRequirement(name = "jwt")
+    public ResponseEntity<?> updateAddress(@Valid @RequestBody BoxAddressRequestDto request, @PathVariable(name = "id") UUID id) {
+        return ResponseEntity.status(HttpStatus.OK)
+                .body(ResponseDto.fromData(boxAddressService.update(id, request), HttpStatus.OK, MessageCommonsConstants.UPDATE_SUCCESS_MESSAGE));
+    }
+
+    @Override
+    @DeleteMapping("/addresses/{id}")
+    @SecurityRequirement(name = "jwt")
+    public ResponseEntity<?> deleteAddress(@PathVariable(name = "id") UUID id) {
+        boxAddressService.delete(id);
+        return ResponseEntity.status(HttpStatus.NO_CONTENT).build();
     }
 
     @Override

@@ -33,6 +33,9 @@ public class PaymentWorkerImpl implements PaymentWorker {
             log.info("[WORKER]: Processing event with ID: {} and type: {}", event.getId(), event.getType());
 
             switch (event.getType()) {
+                case "checkout.session.completed":
+                    handleCheckoutSessionCompleted(event);
+                    break;
                 case "checkout.session.expired":
                     handleCheckoutSessionExpired(event);
                     break;
@@ -61,6 +64,20 @@ public class PaymentWorkerImpl implements PaymentWorker {
         } catch (Exception ex) {
             log.error("Error during worker event processing, event with ID {}: {}", event != null ? event.getId() : "unknown", ex.getMessage());
             throw ex;
+        }
+    }
+
+    private void handleCheckoutSessionCompleted(Event event) {
+        EventDataObjectDeserializer dataObjectDeserializer = event.getDataObjectDeserializer();
+
+        if (dataObjectDeserializer.getObject().isPresent()) {
+            StripeObject stripeObject = dataObjectDeserializer.getObject().get();
+
+            if (stripeObject instanceof Session session) {
+                log.info("[WORKER]: Handling completed checkout session with ID: {}", session.getId());
+                subscriptionService.handleCheckoutSessionCompleted(session);
+                saveEvent(event);
+            }
         }
     }
 

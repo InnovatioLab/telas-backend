@@ -250,6 +250,41 @@ public class SubscriptionServiceImpl implements SubscriptionService {
 
     @Override
     @Transactional
+    public void handleCheckoutSessionCompleted(Session session) {
+        String rawId = session.getClientReferenceId();
+        log.info("Handling checkout.session.completed for subscriptionId: {}", rawId);
+
+        if (rawId == null || rawId.isBlank()) {
+            log.warn("checkout.session.completed received with no clientReferenceId — skipping");
+            return;
+        }
+
+        if (!"paid".equals(session.getPaymentStatus())) {
+            log.info("checkout.session.completed paymentStatus={} for subscriptionId={} — not activating",
+                    session.getPaymentStatus(), rawId);
+            return;
+        }
+
+        try {
+            Subscription subscription = helper.findEntityById(UUID.fromString(rawId));
+
+            if (subscription.getStartedAt() != null) {
+                log.info("Subscription {} already initialized (idempotency guard) — skipping", rawId);
+                return;
+            }
+
+            subscription.initialize();
+            subscription.setStatus(SubscriptionStatus.ACTIVE);
+            subscription.setUsernameUpdate("Stripe Webhook");
+            repository.save(subscription);
+            log.info("Subscription {} activated via checkout.session.completed", rawId);
+        } catch (ResourceNotFoundException e) {
+            log.warn("Subscription {} not found for checkout.session.completed", rawId);
+        }
+    }
+
+    @Override
+    @Transactional
     @Scheduled(
             cron = "${subscription.cron.remove-expired-ads:0 0 4 * * *}",
             zone = "${app.scheduler.zone:America/New_York}")

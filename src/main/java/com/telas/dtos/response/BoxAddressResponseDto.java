@@ -14,13 +14,19 @@ public final class BoxAddressResponseDto implements Serializable {
 
   private final UUID id;
 
+  private final String ip;
+
   private final String mac;
 
-  private final String ip;
+  private final String dns;
+
+  private final boolean inUse;
 
   public BoxAddressResponseDto(BoxAddress entity) {
     id = entity.getId();
-    mac = entity.getMac();
     ip = entity.getIp();
+    mac = entity.getMac();
+    dns = entity.getDns();
+    inUse = entity.getBox() != null;
   }
 }
