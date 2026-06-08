@@ -104,7 +104,7 @@ public class BoxPlaylistClient {
         try {
             log.info("Sending request to get current displayed ads from box for monitor with ID: {}, URL: {}",
                     monitorId, url);
-            Object raw = httpClient.makeGetRequest(url, List.class, null);
+            Object raw = httpClient.makeGetRequest(url, List.class, null, authHeaders());
             if (!(raw instanceof List<?> list)) {
                 return List.of();
             }

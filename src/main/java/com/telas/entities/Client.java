@@ -51,6 +51,7 @@ public class Client extends BaseAudit implements Serializable {
     private Integer adsRetentionDaysOverride;
 
     @NotAudited
+    @JsonIgnore
     @Column(name = "password", columnDefinition = "TEXT")
     private String password;
 

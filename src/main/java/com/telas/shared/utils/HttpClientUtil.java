@@ -78,6 +78,10 @@ public class HttpClientUtil {
     }
 
     public <T> T makeGetRequest(String url, Class<T> responseType, Map<String, String> queryParams) {
+        return makeGetRequest(url, responseType, queryParams, null);
+    }
+
+    public <T> T makeGetRequest(String url, Class<T> responseType, Map<String, String> queryParams, Map<String, String> headers) {
         try {
             UriComponentsBuilder uriBuilder = UriComponentsBuilder.fromHttpUrl(url);
 
@@ -87,8 +91,14 @@ public class HttpClientUtil {
                 }
             }
 
-            return webClient.get()
-                    .uri(uriBuilder.build().toUri())
+            WebClient.RequestHeadersSpec<?> requestSpec = webClient.get()
+                    .uri(uriBuilder.build().toUri());
+
+            if (headers != null) {
+                requestSpec.headers(httpHeaders -> headers.forEach(httpHeaders::add));
+            }
+
+            return requestSpec
                     .retrieve()
                     .bodyToMono(responseType)
                     .block();

@@ -39,6 +39,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionSynchronization;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
 
+import java.time.Instant;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -151,10 +152,27 @@ public class MonitorCrudService {
 		Ad ad = adRepository.findById(adId)
 				.orElseThrow(() -> new ResourceNotFoundException("Ad not found"));
 
+		// Idempotency guard: already scheduled by a concurrent request, return immediately.
+		if (ad.getDeletionScheduledAt() != null) {
+			return;
+		}
+
+		// Stamp deletion intent immediately and defer the bucket cleanup (slow/blocking I/O)
+		// to run asynchronously after commit — same pattern as AdminAdOperationsServiceImpl#deleteApprovedAd,
+		// so the request thread never blocks on S3/MinIO.
+		ad.setDeletionScheduledAt(Instant.now());
+		adRepository.save(ad);
+
 		if (ad.getMonitorAds() != null && !ad.getMonitorAds().isEmpty()) {
 			monitorAdRepository.deleteByAdId(adId);
 		}
-		unusedSingleAdDeletionService.deleteAdInNewTransaction(adId);
+
+		TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+			@Override
+			public void afterCommit() {
+				unusedSingleAdDeletionService.deleteAdAsync(adId);
+			}
+		});
 	}
 
 	@Transactional
