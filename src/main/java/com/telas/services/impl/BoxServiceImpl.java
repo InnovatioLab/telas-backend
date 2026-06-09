@@ -8,6 +8,8 @@ import com.telas.entities.Box;
 import com.telas.entities.BoxAddress;
 import com.telas.entities.Monitor;
 import com.telas.helpers.BoxHelper;
+import com.telas.helpers.MonitorHelper;
+import com.telas.infra.exceptions.BusinessRuleException;
 import com.telas.infra.exceptions.ResourceNotFoundException;
 import com.telas.infra.security.services.AuthenticatedUserService;
 import com.telas.repositories.BoxRepository;
@@ -38,6 +40,8 @@ public class BoxServiceImpl implements BoxService {
 
 	private final BoxHelper helper;
 
+	private final MonitorHelper monitorHelper;
+
 	private final HealthUpdateService healthUpdateService;
 
 	private final BoxCarouselSettingsService boxCarouselSettingsService;
@@ -60,9 +64,27 @@ public class BoxServiceImpl implements BoxService {
 		BoxAddress boxAddress = helper.getBoxAddress(request.getBoxAddressId());
 		Monitor monitor = findMonitorById(request.getMonitorId());
 
+		if (monitor.getBox() != null) {
+			boolean isSameBox = boxId != null && monitor.getBox().getId().equals(boxId);
+			if (!isSameBox) {
+				throw new BusinessRuleException(BoxValidationMessages.MONITOR_ALREADY_ASSOCIATED);
+			}
+		}
+
 		Box box = (boxId != null) ? updateBox(request, boxId, boxAddress, monitor) : new Box(boxAddress, monitor);
 
 		repository.save(box);
+	}
+
+	@Override
+	@Transactional
+	public void syncPlaylist(UUID boxId) {
+		authenticatedUserService.validateAdmin();
+		Box box = findById(boxId);
+		if (box.getMonitors() == null || box.getMonitors().isEmpty()) {
+			return;
+		}
+		monitorHelper.syncBoxAdsPlaylist(box.getMonitors().get(0), List.of());
 	}
 
 

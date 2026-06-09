@@ -14,6 +14,8 @@ public interface BoxService {
 
     void save(BoxRequestDto request, UUID boxId);
 
+    void syncPlaylist(UUID boxId);
+
     List<BoxMonitorAdResponseDto> getMonitorsAdsByAddress(String address);
 
     BoxPlayerSettingsResponseDto getPlayerSettings();

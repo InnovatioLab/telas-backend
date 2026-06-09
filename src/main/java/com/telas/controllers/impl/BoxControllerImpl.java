@@ -50,6 +50,14 @@ public class BoxControllerImpl implements BoxController {
     }
 
     @Override
+    @PostMapping("/{id}/sync-playlist")
+    @SecurityRequirement(name = "jwt")
+    public ResponseEntity<?> syncPlaylist(@PathVariable(name = "id") UUID boxId) {
+        service.syncPlaylist(boxId);
+        return ResponseEntity.status(HttpStatus.NO_CONTENT).build();
+    }
+
+    @Override
     @PutMapping("/{id}")
     @SecurityRequirement(name = "jwt")
     public ResponseEntity<?> update(@Valid @RequestBody BoxRequestDto request, @PathVariable(name = "id") UUID boxId) {

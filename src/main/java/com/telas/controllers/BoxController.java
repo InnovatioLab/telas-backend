@@ -32,6 +32,14 @@ public interface BoxController {
     })
     ResponseEntity<?> findAllAvailableAddresses();
 
+    @Operation(summary = "Force a box to re-sync its ad playlist", responses = {
+            @ApiResponse(responseCode = "204", description = "Sync triggered successfully."),
+            @ApiResponse(responseCode = "401", description = "Unauthorized."),
+            @ApiResponse(responseCode = "403", description = "Forbidden."),
+            @ApiResponse(responseCode = "404", description = "Box not found."),
+    })
+    ResponseEntity<?> syncPlaylist(UUID boxId);
+
     @Operation(summary = "Endpoint to create a box", responses = {
             @ApiResponse(responseCode = "201", description = "Box created successfully."),
             @ApiResponse(responseCode = "422", description = "Request with invalid data."),
