@@ -54,12 +54,16 @@ public class BoxConnectivityProbeServiceImpl implements BoxConnectivityProbeServ
     private final DeveloperNotificationService developerNotificationService;
 
     private final Map<UUID, SideApiAlertState> sideApiAlertStates = new ConcurrentHashMap<>();
+    private final Map<UUID, Integer> consecutiveProbeFailures = new ConcurrentHashMap<>();
 
     @Value("${monitoring.box-connectivity-probe.enabled:true}")
     private boolean probeEnabled;
 
     @Value("${monitoring.box-connectivity-probe.drives-box-active-state:true}")
     private boolean drivesBoxActiveState;
+
+    @Value("${monitoring.box-connectivity-probe.deactivate-after-consecutive-failures:2}")
+    private int deactivateAfterConsecutiveFailures;
 
     @Value("${monitoring.sideapi.enabled:true}")
     private boolean sideApiEnabled;
@@ -311,19 +315,32 @@ public class BoxConnectivityProbeServiceImpl implements BoxConnectivityProbeServ
         if (!drivesBoxActiveState || !outcome.attempted()) {
             return;
         }
-        if (reachable && !box.isActive()) {
-            StatusBoxMonitorsRequestDto dto = new StatusBoxMonitorsRequestDto();
-            dto.setIp(ip);
-            dto.setStatus(DefaultStatus.ACTIVE);
-            healthUpdateService.applyHealthUpdate(dto);
-        } else if (!reachable && box.isActive()) {
-            log.warn(
-                    "box.connectivity.probe: box inacessível; não alterando active (apenas fluxo web/API inativa). boxId={} ip={}",
-                    box.getId(),
-                    ip);
-        }
+        UUID boxId = box.getId();
         if (reachable) {
+            consecutiveProbeFailures.remove(boxId);
+            if (!box.isActive()) {
+                StatusBoxMonitorsRequestDto dto = new StatusBoxMonitorsRequestDto();
+                dto.setIp(ip);
+                dto.setStatus(DefaultStatus.ACTIVE);
+                healthUpdateService.applyHealthUpdate(dto);
+            }
             heartbeatRecoveryService.recoverAfterSuccessfulHeartbeat(box);
+        } else {
+            int failures = consecutiveProbeFailures.merge(boxId, 1, Integer::sum);
+            if (box.isActive() && failures >= deactivateAfterConsecutiveFailures) {
+                log.warn(
+                        "box.connectivity.probe: {} falhas consecutivas — desativando box. boxId={} ip={}",
+                        failures, boxId, ip);
+                consecutiveProbeFailures.remove(boxId);
+                StatusBoxMonitorsRequestDto dto = new StatusBoxMonitorsRequestDto();
+                dto.setIp(ip);
+                dto.setStatus(DefaultStatus.INACTIVE);
+                healthUpdateService.applyHealthUpdate(dto);
+            } else {
+                log.warn(
+                        "box.connectivity.probe: box inacessível ({}/{} falhas). boxId={} ip={}",
+                        failures, deactivateAfterConsecutiveFailures, boxId, ip);
+            }
         }
     }
 }
