@@ -140,7 +140,7 @@ class ClientServiceImplCreatePartnerTest {
         verify(verificationCodeService).savePreValidated(eq(CodeType.PASSWORD), any(Client.class));
 
         verify(notificationService).save(
-                eq(NotificationReference.ADMIN_NEW_CLIENT_REGISTERED),
+                eq(NotificationReference.ADMIN_NEW_PARTNER_REGISTERED),
                 eq(admin),
                 any(),
                 eq(true));

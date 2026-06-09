@@ -784,6 +784,33 @@ public enum NotificationReference {
             return createAdminNewClientRegisteredEmailData(params);
         }
     },
+    ADMIN_NEW_PARTNER_REGISTERED {
+        @Override
+        public String getNotificationMessage(Map<String, String> params) {
+            return String.format("""
+                    <div class="informacoes">
+                        <h4 id="notification-title" class="notification-title">New partner registration</h4>
+                        <p><strong>%s</strong> registered as a partner with e-mail <strong>%s</strong>.</p>
+                        <div class="field">
+                            <span class="field-label">Partner ID: </span>
+                            <span class="field-value">%s</span>
+                        </div>
+                    </div>
+                    <a id="link-details" class='details link-text' href="%s">Open partner</a>
+                    """,
+                    params.getOrDefault("businessName", "Partner"),
+                    params.getOrDefault("contactEmail", ""),
+                    params.getOrDefault("clientId", ""),
+                    params.getOrDefault("link", "#"));
+        }
+
+        @Override
+        public EmailDataDto getEmailData(Map<String, String> params) {
+            EmailDataDto emailData = createAdminNewClientRegisteredEmailData(params);
+            emailData.setSubject(SharedConstants.EMAIL_SUBJECT_ADMIN_NEW_PARTNER_REGISTERED);
+            return emailData;
+        }
+    },
     ADMIN_PARTNER_FOREIGN_AD_SUBMITTED {
         @Override
         public String getNotificationMessage(Map<String, String> params) {

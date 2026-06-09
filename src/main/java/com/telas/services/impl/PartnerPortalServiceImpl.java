@@ -186,7 +186,7 @@ public class PartnerPortalServiceImpl implements PartnerPortalService {
         params.put("clientId", partner.getId().toString());
         params.put("link", adminLink);
         repository.findAllAdmins().forEach(admin ->
-                notificationService.save(NotificationReference.ADMIN_NEW_CLIENT_REGISTERED, admin, new HashMap<>(params), true));
+                notificationService.save(NotificationReference.ADMIN_NEW_PARTNER_REGISTERED, admin, new HashMap<>(params), true));
     }
 
     private void validateCreatePartnerByAdminAccess(Client actor) {
