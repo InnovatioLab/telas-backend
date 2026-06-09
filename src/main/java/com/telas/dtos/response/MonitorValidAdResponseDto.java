@@ -28,12 +28,20 @@ public final class MonitorValidAdResponseDto implements Serializable {
 
       private UUID clientId;
 
+      private String clientName;
+
+      private String clientRole;
+
     public MonitorValidAdResponseDto(Ad ad, String adLink, Boolean isAttachedToMonitor, Integer orderIndex) {
         id = ad.getId();
         link = adLink;
         fileName = ad.getName();
         this.isAttachedToMonitor = isAttachedToMonitor;
         this.orderIndex = orderIndex;
-        clientId = ad.getClient() != null ? ad.getClient().getId() : null;
+        if (ad.getClient() != null) {
+            clientId = ad.getClient().getId();
+            clientName = ad.getClient().getBusinessName();
+            clientRole = ad.getClient().getRole() != null ? ad.getClient().getRole().name() : null;
+        }
     }
 }

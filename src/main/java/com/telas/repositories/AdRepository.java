@@ -96,7 +96,12 @@ public interface AdRepository extends JpaRepository<Ad, UUID>, JpaSpecificationE
 		  )
 		  AND ad.type <> 'application/pdf'
 		  AND (
-		      c.role IN ('ADMIN', 'DEVELOPER')
+		      (
+		          c.role IN ('ADMIN', 'DEVELOPER')
+		          AND NOT EXISTS (
+		              SELECT 1 FROM MonitorAd ma2 WHERE ma2.id.ad.id = ad.id
+		          )
+		      )
 		      OR (
 		          ar IS NOT NULL
 		          AND ar.targetMonitor IS NOT NULL
@@ -132,7 +137,12 @@ public interface AdRepository extends JpaRepository<Ad, UUID>, JpaSpecificationE
 		  )
 		  AND ad.type <> 'application/pdf'
 		  AND (
-		      c.role IN ('ADMIN', 'DEVELOPER')
+		      (
+		          c.role IN ('ADMIN', 'DEVELOPER')
+		          AND NOT EXISTS (
+		              SELECT 1 FROM MonitorAd ma2 WHERE ma2.id.ad.id = ad.id
+		          )
+		      )
 		      OR (
 		          ar IS NOT NULL
 		          AND ar.targetMonitor IS NOT NULL
