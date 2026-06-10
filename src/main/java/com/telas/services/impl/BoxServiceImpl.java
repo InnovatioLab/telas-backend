@@ -81,6 +81,9 @@ public class BoxServiceImpl implements BoxService {
 	public void syncPlaylist(UUID boxId) {
 		authenticatedUserService.validateAdmin();
 		Box box = findById(boxId);
+		if (!box.isActive()) {
+			return;
+		}
 		if (box.getMonitors() == null || box.getMonitors().isEmpty()) {
 			return;
 		}
