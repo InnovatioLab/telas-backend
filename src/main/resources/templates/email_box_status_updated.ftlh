@@ -1,5 +1,5 @@
 <#import "email_monitoring_layout.ftlh" as mon>
-<#assign isDown = (statusLabel!"" == "deactivated") />
+<#assign isDown = ((statusLabel!"") == "deactivated") />
 <#assign emphasisVariant = "" />
 <#if isDown><#assign emphasisVariant = "warning" /></#if>
 <@mon.monitoringEmail title="Box status updated" emphasis=emphasisVariant>

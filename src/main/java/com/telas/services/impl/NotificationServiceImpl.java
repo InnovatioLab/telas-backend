@@ -23,11 +23,14 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionSynchronization;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
 
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -40,6 +43,20 @@ public class NotificationServiceImpl implements NotificationService {
 
     @Value("${front.base.url}")
     private String frontBaseUrl;
+
+    @Value("${telas.email.no-send-addresses:}")
+    private String noSendAddressesRaw;
+
+    private Set<String> noSendAddresses() {
+        if (noSendAddressesRaw == null || noSendAddressesRaw.isBlank()) {
+            return Set.of();
+        }
+        return Arrays.stream(noSendAddressesRaw.split(","))
+                .map(String::trim)
+                .map(String::toLowerCase)
+                .filter(s -> !s.isEmpty())
+                .collect(Collectors.toSet());
+    }
 
     @Override
     @Transactional
@@ -125,6 +142,14 @@ public class NotificationServiceImpl implements NotificationService {
                     "notification.email.skip.no_recipient_email reference={} notificationId={} clientId={}",
                     notification.getReference(),
                     notification.getId(),
+                    recipientClient.getId()
+            );
+            return;
+        }
+        if (noSendAddresses().contains(email.toLowerCase())) {
+            LOGGER.debug(
+                    "notification.email.skip.no_send_list reference={} clientId={}",
+                    notification.getReference(),
                     recipientClient.getId()
             );
             return;
