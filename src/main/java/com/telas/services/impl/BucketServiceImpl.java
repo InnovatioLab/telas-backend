@@ -9,7 +9,6 @@ import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.context.annotation.Profile;
-import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import software.amazon.awssdk.core.sync.RequestBody;
 import software.amazon.awssdk.services.s3.S3Client;
@@ -36,7 +35,6 @@ public class BucketServiceImpl implements BucketService {
   private final S3Presigner s3Presigner;
 
   @Override
-  @Async
   public void upload(byte[] bytes, String fileName, String contentType, InputStream inputStream) {
     try {
       PutObjectRequest putObjectRequest = PutObjectRequest.builder()
@@ -53,14 +51,12 @@ public class BucketServiceImpl implements BucketService {
   }
 
   @Override
-  @Async
   public void deleteAttachment(String fileName) {
     try {
       DeleteObjectRequest deleteObjectRequest = DeleteObjectRequest.builder()
               .bucket(bucketProperties.getName())
               .key(fileName)
               .build();
-      // Remove o objeto do bucket
       s3Client.deleteObject(deleteObjectRequest);
       log.info("File {} deleted successfully from bucket {}.", fileName, bucketProperties.getName());
     } catch (Exception e) {
