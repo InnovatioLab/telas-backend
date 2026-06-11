@@ -60,7 +60,8 @@ public class AllowedEndpointsConstants {
         return ALLOWED_ENDPOINTS.getOrDefault(method, List.of()).stream()
                 .anyMatch(allowedUri -> {
                     String normalizedAllowed = allowedUri.replaceAll("\\{\\w+}", "*");
-                    return normalizedAllowed.equals(normalizedUri) || PATH_MATCHER.match(normalizedAllowed, uri);
+                    if (normalizedAllowed.equals(normalizedUri)) return true;
+                    return allowedUri.contains("/**") && PATH_MATCHER.match(allowedUri, uri);
                 });
     }
 }
