@@ -18,4 +18,6 @@ public interface NotificationService {
     NotificationResponseDto findById(UUID id);
 
     Page<NotificationResponseDto> listClientNotifications(List<UUID> ids, Specification<Notification> spec, Pageable pageable);
+
+    void markAllAsRead();
 }

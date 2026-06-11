@@ -36,6 +36,12 @@ public interface NotificationController {
             }) Specification<Notification> spec,
             Pageable pageable);
 
+    @Operation(summary = "Endpoint to mark all client notifications as read", responses = {
+            @ApiResponse(responseCode = "204", description = "All notifications marked as read."),
+            @ApiResponse(responseCode = "401", description = "Unauthorized.")
+    })
+    ResponseEntity<?> markAllAsRead();
+
     @Operation(summary = "Endpoint to fetch notifications by ids", responses = {
             @ApiResponse(responseCode = "200", description = "Notification founded successfully."),
             @ApiResponse(responseCode = "401", description = "Unauthorized."),

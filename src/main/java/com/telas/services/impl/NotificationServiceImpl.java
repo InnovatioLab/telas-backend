@@ -113,6 +113,13 @@ public class NotificationServiceImpl implements NotificationService {
         return repository.findAll(finalSpec, pageable).map(NotificationResponseDto::new);
     }
 
+    @Override
+    @Transactional
+    public void markAllAsRead() {
+        Client client = authenticatedUserService.getLoggedUser().client();
+        repository.markAllAsReadByClientId(client.getId());
+    }
+
     private void loadAndNotify(UUID notificationId, Map<String, String> params) {
         repository.findWithClientAndContactForEmail(notificationId).ifPresentOrElse(n -> notify(n, params), () ->
                 LOGGER.warn("notification.not_found.after_commit id={}", notificationId)

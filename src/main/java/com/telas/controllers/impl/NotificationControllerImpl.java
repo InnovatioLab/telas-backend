@@ -36,6 +36,14 @@ public class NotificationControllerImpl implements NotificationController {
     }
 
     @Override
+    @PatchMapping("/mark-all-read")
+    @SecurityRequirement(name = "jwt")
+    public ResponseEntity<?> markAllAsRead() {
+        service.markAllAsRead();
+        return ResponseEntity.noContent().build();
+    }
+
+    @Override
     @GetMapping("/{id}")
     @SecurityRequirement(name = "jwt")
     public ResponseEntity<?> findById(@PathVariable(name = "id") UUID notificationId) {

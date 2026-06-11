@@ -30,6 +30,11 @@ public interface NotificationRepository extends JpaRepository<Notification, UUID
 
   List<Notification> findByIdIn(List<UUID> ids);
 
+  @org.springframework.data.jpa.repository.Modifying
+  @org.springframework.transaction.annotation.Transactional
+  @org.springframework.data.jpa.repository.Query("UPDATE Notification n SET n.visualized = true WHERE n.client.id = :clientId AND n.visualized = false")
+  void markAllAsReadByClientId(@org.springframework.data.repository.query.Param("clientId") UUID clientId);
+
   @Query(
           """
           SELECT n FROM Notification n
