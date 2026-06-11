@@ -9,14 +9,11 @@ import com.telas.monitoring.repositories.BoxConnectivityProbeEntityRepository;
 import com.telas.dtos.request.StatusBoxMonitorsRequestDto;
 import com.telas.enums.DefaultStatus;
 import com.telas.repositories.BoxRepository;
-import com.telas.services.ApplicationLogService;
 import com.telas.services.BoxConnectivityProbeService;
 import com.telas.services.BoxTailscalePingOutcome;
 import com.telas.services.BoxTailscalePingService;
-import com.telas.services.DeveloperNotificationService;
 import com.telas.services.HealthUpdateService;
 import com.telas.services.HeartbeatRecoveryService;
-import com.telas.services.SideApiHealthCheckService;
 import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -25,18 +22,13 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
-import java.time.ZoneOffset;
-import java.time.Duration;
-import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
-import com.telas.shared.utils.DateUtils;
 
 @Service
 @RequiredArgsConstructor
@@ -49,11 +41,8 @@ public class BoxConnectivityProbeServiceImpl implements BoxConnectivityProbeServ
     private final BoxConnectivityProbeEntityRepository boxConnectivityProbeEntityRepository;
     private final HealthUpdateService healthUpdateService;
     private final HeartbeatRecoveryService heartbeatRecoveryService;
-    private final ApplicationLogService applicationLogService;
-    private final SideApiHealthCheckService sideApiHealthCheckService;
-    private final DeveloperNotificationService developerNotificationService;
+    private final SideApiAlertManager sideApiAlertManager;
 
-    private final Map<UUID, SideApiAlertState> sideApiAlertStates = new ConcurrentHashMap<>();
     private final Map<UUID, Integer> consecutiveProbeFailures = new ConcurrentHashMap<>();
 
     @Value("${monitoring.box-connectivity-probe.enabled:true}")
@@ -64,18 +53,6 @@ public class BoxConnectivityProbeServiceImpl implements BoxConnectivityProbeServ
 
     @Value("${monitoring.box-connectivity-probe.deactivate-after-consecutive-failures:2}")
     private int deactivateAfterConsecutiveFailures;
-
-    @Value("${monitoring.sideapi.enabled:true}")
-    private boolean sideApiEnabled;
-
-    @Value("${monitoring.sideapi.port:8099}")
-    private int sideApiPort;
-
-    @Value("${monitoring.sideapi.path:/health}")
-    private String sideApiPath;
-
-    @Value("${monitoring.sideapi.alert.cooldown-ms:600000}")
-    private long sideApiAlertCooldownMs;
 
     @Override
     @Transactional(readOnly = true)
@@ -137,176 +114,57 @@ public class BoxConnectivityProbeServiceImpl implements BoxConnectivityProbeServ
 
     private void executeProbeCycle() {
         List<Box> boxes = boxRepository.findAllForTestingOverview();
+        Instant now = Instant.now();
         int ok = 0;
         int fail = 0;
-        Instant now = Instant.now();
         for (Box box : boxes) {
-            String ip = box.getBoxAddress() != null ? box.getBoxAddress().getIp() : null;
-            BoxTailscalePingOutcome outcome = boxTailscalePingService.pingBoxAddressIp(ip);
-            boolean reachable = outcome.attempted() && outcome.reachable();
-            if (reachable) {
+            if (probeBox(box, now)) {
                 ok++;
             } else {
                 fail++;
             }
-            String detail = outcome.detail();
-            if (detail != null && detail.length() > 2000) {
-                detail = detail.substring(0, 2000) + "…";
-            }
-            BoxConnectivityProbeEntity row =
-                    boxConnectivityProbeEntityRepository
-                            .findById(box.getId())
-                            .orElseGet(
-                                    () -> {
-                                        BoxConnectivityProbeEntity e = new BoxConnectivityProbeEntity();
-                                        e.setBoxId(box.getId());
-                                        return e;
-                                    });
-            row.setLastProbeAt(now);
-            row.setReachable(reachable);
-            row.setProbeDetail(detail);
-            row.setBoxIp(ip);
-            row.setUpdatedAt(now);
-            boxConnectivityProbeEntityRepository.save(row);
-            if (reachable) {
-                log.debug(
-                        "box.connectivity.probe boxId={} ip={} reachable={} detail={}",
-                        box.getId(),
-                        ip,
-                        true,
-                        detail);
-            } else {
-                log.warn(
-                        "box.connectivity.probe.failed boxId={} ip={} detail={}",
-                        box.getId(),
-                        ip,
-                        detail);
-            }
-
-            if (reachable) {
-                checkSideApiAndAlertDevIfDown(box, ip, now);
-            }
-
-            applyActiveStateFromProbeIfEnabled(box, ip, outcome, reachable);
         }
-        if (fail > 0) {
-            log.info(
-                    "box.connectivity.probe.summary totalBoxes={} reachableCount={} unreachableCount={}",
-                    boxes.size(),
-                    ok,
-                    fail);
+        logProbeSummary(boxes.size(), ok, fail);
+    }
+
+    private boolean probeBox(Box box, Instant now) {
+        String ip = box.getBoxAddress() != null ? box.getBoxAddress().getIp() : null;
+        BoxTailscalePingOutcome outcome = boxTailscalePingService.pingBoxAddressIp(ip);
+        boolean reachable = outcome.attempted() && outcome.reachable();
+
+        persistProbeResult(box, ip, outcome, reachable, now);
+
+        if (reachable) {
+            sideApiAlertManager.checkAndAlert(box.getId(), ip, now);
+        }
+        applyActiveStateFromProbeIfEnabled(box, ip, outcome, reachable);
+        return reachable;
+    }
+
+    private void persistProbeResult(Box box, String ip, BoxTailscalePingOutcome outcome, boolean reachable, Instant now) {
+        String detail = outcome.detail();
+        if (detail != null && detail.length() > 2000) {
+            detail = detail.substring(0, 2000) + "…";
+        }
+        BoxConnectivityProbeEntity row =
+                boxConnectivityProbeEntityRepository
+                        .findById(box.getId())
+                        .orElseGet(() -> {
+                            BoxConnectivityProbeEntity e = new BoxConnectivityProbeEntity();
+                            e.setBoxId(box.getId());
+                            return e;
+                        });
+        row.setLastProbeAt(now);
+        row.setReachable(reachable);
+        row.setProbeDetail(detail);
+        row.setBoxIp(ip);
+        row.setUpdatedAt(now);
+        boxConnectivityProbeEntityRepository.save(row);
+
+        if (reachable) {
+            log.debug("box.connectivity.probe boxId={} ip={} reachable=true detail={}", box.getId(), ip, detail);
         } else {
-            log.debug(
-                    "box.connectivity.probe.summary totalBoxes={} reachableCount={} unreachableCount={}",
-                    boxes.size(),
-                    ok,
-                    0);
-        }
-    }
-
-    private void checkSideApiAndAlertDevIfDown(Box box, String ip, Instant now) {
-        if (!sideApiEnabled) {
-            return;
-        }
-        if (ip == null || ip.isBlank()) {
-            return;
-        }
-
-        SideApiHealthCheckService.SideApiHealthOutcome outcome = sideApiHealthCheckService.check(ip);
-
-        UUID boxId = box.getId();
-        SideApiAlertState prev = sideApiAlertStates.getOrDefault(boxId, SideApiAlertState.initial());
-        String url = "http://" + ip + ":" + sideApiPort + normalizePath(sideApiPath);
-        String notifiedAt = DateTimeFormatter.ISO_INSTANT.format(now.atOffset(ZoneOffset.UTC));
-        boolean prevUp = Boolean.TRUE.equals(prev.lastUp);
-        boolean prevDown = Boolean.FALSE.equals(prev.lastUp);
-        boolean isInitial = prev.lastUp == null;
-
-        if (!outcome.up()) {
-            Instant downSinceAt = prevDown ? prev.downSinceAt : now;
-            SideApiAlertState next = prev.withLatest(false, now, downSinceAt);
-
-            boolean cooldownOk = prev.lastAlertAt == null
-                    || Duration.between(prev.lastAlertAt, now).toMillis() >= sideApiAlertCooldownMs;
-
-            if ((isInitial || prevUp) && cooldownOk) {
-                String detail = outcome.detail() != null ? outcome.detail() : "DOWN";
-
-                Map<String, Object> meta = new HashMap<>();
-                meta.put("boxId", boxId.toString());
-                meta.put("boxIp", ip);
-                meta.put("sideApiUrl", url);
-                meta.put("detail", detail);
-                if (outcome.httpStatus() != null) {
-                    meta.put("httpStatus", outcome.httpStatus());
-                }
-                applicationLogService.persistSystemLog(
-                        "WARN",
-                        String.format("SIDE_API: box %s side API DOWN (%s)", ip, detail),
-                        "MONITORING",
-                        meta
-                );
-
-                Map<String, String> params = new HashMap<>();
-                params.put("boxIp", ip);
-                params.put("sideApiUrl", url);
-                params.put("detail", detail);
-                params.put("notifiedAt", notifiedAt);
-                developerNotificationService.notifyDevelopers(com.telas.enums.NotificationReference.SIDE_API_DOWN, params);
-
-                next = next.withAlertAt(now);
-            }
-            sideApiAlertStates.put(boxId, next);
-            return;
-        }
-
-        if (prevDown) {
-            Map<String, Object> meta = new HashMap<>();
-            meta.put("boxId", boxId.toString());
-            meta.put("boxIp", ip);
-            meta.put("sideApiUrl", url);
-            applicationLogService.persistSystemLog(
-                    "INFO",
-                    String.format("SIDE_API: box %s side API reactivated.", ip),
-                    "MONITORING",
-                    meta
-            );
-
-            Map<String, String> params = new HashMap<>();
-            params.put("boxIp", ip);
-            params.put("sideApiUrl", url);
-            params.put("notifiedAt", notifiedAt);
-            if (prev.downSinceAt != null) {
-                String downtime = DateUtils.formatDurationHuman(Duration.between(prev.downSinceAt, now));
-                if (downtime != null && !downtime.isBlank()) {
-                    params.put("downtime", downtime);
-                }
-            }
-            developerNotificationService.notifyDevelopers(com.telas.enums.NotificationReference.SIDE_API_UP, params);
-        }
-
-        sideApiAlertStates.put(boxId, prev.withLatest(true, now, null));
-    }
-
-    private static String normalizePath(String p) {
-        if (p == null || p.trim().isEmpty()) {
-            return "/health";
-        }
-        String trimmed = p.trim();
-        return trimmed.startsWith("/") ? trimmed : "/" + trimmed;
-    }
-
-    private record SideApiAlertState(Boolean lastUp, Instant lastCheckedAt, Instant lastAlertAt, Instant downSinceAt) {
-        static SideApiAlertState initial() {
-            return new SideApiAlertState(null, null, null, null);
-        }
-
-        SideApiAlertState withLatest(boolean up, Instant checkedAt, Instant downSinceAt) {
-            return new SideApiAlertState(up, checkedAt, lastAlertAt, downSinceAt);
-        }
-
-        SideApiAlertState withAlertAt(Instant alertAt) {
-            return new SideApiAlertState(lastUp, lastCheckedAt, alertAt, downSinceAt);
+            log.warn("box.connectivity.probe.failed boxId={} ip={} detail={}", box.getId(), ip, detail);
         }
     }
 
@@ -328,8 +186,7 @@ public class BoxConnectivityProbeServiceImpl implements BoxConnectivityProbeServ
         } else {
             int failures = consecutiveProbeFailures.merge(boxId, 1, Integer::sum);
             if (box.isActive() && failures >= deactivateAfterConsecutiveFailures) {
-                log.warn(
-                        "box.connectivity.probe: {} falhas consecutivas — desativando box. boxId={} ip={}",
+                log.warn("box.connectivity.probe: {} falhas consecutivas — desativando box. boxId={} ip={}",
                         failures, boxId, ip);
                 consecutiveProbeFailures.remove(boxId);
                 StatusBoxMonitorsRequestDto dto = new StatusBoxMonitorsRequestDto();
@@ -337,10 +194,19 @@ public class BoxConnectivityProbeServiceImpl implements BoxConnectivityProbeServ
                 dto.setStatus(DefaultStatus.INACTIVE);
                 healthUpdateService.applyHealthUpdate(dto);
             } else {
-                log.warn(
-                        "box.connectivity.probe: box inacessível ({}/{} falhas). boxId={} ip={}",
+                log.warn("box.connectivity.probe: box inacessível ({}/{} falhas). boxId={} ip={}",
                         failures, deactivateAfterConsecutiveFailures, boxId, ip);
             }
+        }
+    }
+
+    private void logProbeSummary(int total, int ok, int fail) {
+        if (fail > 0) {
+            log.info("box.connectivity.probe.summary totalBoxes={} reachableCount={} unreachableCount={}",
+                    total, ok, fail);
+        } else {
+            log.debug("box.connectivity.probe.summary totalBoxes={} reachableCount={} unreachableCount={}",
+                    total, ok, 0);
         }
     }
 }

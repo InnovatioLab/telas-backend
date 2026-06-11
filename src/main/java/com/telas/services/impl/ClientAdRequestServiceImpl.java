@@ -14,7 +14,7 @@ import com.telas.entities.Client;
 import com.telas.enums.AdRequestOrigin;
 import com.telas.enums.AdValidationType;
 import com.telas.enums.PartnerSubmissionMode;
-import com.telas.enums.Role;
+import com.telas.enums.SubscriptionStatus;
 import com.telas.services.ad.AdApprovalWorkflow;
 import com.telas.helpers.ClientHelper;
 import com.telas.infra.exceptions.BusinessRuleException;
@@ -55,11 +55,16 @@ public class ClientAdRequestServiceImpl implements ClientAdRequestService {
     public void requestAdCreation(ClientAdRequestToAdminDto request) {
         Client client = authenticatedUserService.validateActiveSubscription().client();
 
-        if (Role.ADMIN.equals(client.getRole())) {
+        if (client.isAdmin()) {
             return;
         }
 
-        if (Objects.nonNull(client.getAdRequest())) {
+        long activeRequests = client.getAdRequests().stream().filter(AdRequest::isActive).count();
+        long slots = client.getSubscriptions().stream()
+                .filter(s -> SubscriptionStatus.ACTIVE.equals(s.getStatus()))
+                .flatMap(s -> s.getMonitors().stream())
+                .distinct().count();
+        if (activeRequests >= slots) {
             throw new ForbiddenException(ClientValidationMessages.AD_REQUEST_EXISTS);
         }
 
@@ -114,7 +119,7 @@ public class ClientAdRequestServiceImpl implements ClientAdRequestService {
 
         Client admin = authenticatedUserService.validateAdmin().client();
 
-        if (admin.getId().equals(clientId) || Role.ADMIN.equals(client.getRole())) {
+        if (admin.getId().equals(clientId) || client.isAdmin()) {
             adApprovalWorkflow.saveAds(request, admin);
             return;
         }

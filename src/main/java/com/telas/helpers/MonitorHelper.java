@@ -156,7 +156,8 @@ public class MonitorHelper {
 			return List.of();
 		}
 		return monitor.getMonitorAds().stream()
-				.filter(ma -> ma.getAd() != null
+				.filter(ma -> ma.isScreenAd()
+						&& ma.getAd() != null
 						&& ma.getMonitor() != null
 						&& ma.getMonitor().getBox() != null
 						&& ma.getMonitor().getBox().getBoxAddress() != null)

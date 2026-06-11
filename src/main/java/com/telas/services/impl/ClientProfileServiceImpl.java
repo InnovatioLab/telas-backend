@@ -78,7 +78,7 @@ public class ClientProfileServiceImpl implements ClientProfileService {
         client.setRole(Role.CLIENT);
 
         Client savedClient = repository.save(client);
-        if (Role.ADMIN.equals(savedClient.getRole())) {
+        if (savedClient.isAdmin()) {
             adminEmailAlertPreferenceService.ensureDefaultEmailPreferencesForAdmin(savedClient.getId());
         }
         sendContactConfirmationEmail(savedClient, verificationCode);

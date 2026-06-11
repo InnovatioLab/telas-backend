@@ -1,0 +1,1 @@
+ALTER TABLE monitors_ads ADD COLUMN is_screen_ad BOOLEAN NOT NULL DEFAULT TRUE;

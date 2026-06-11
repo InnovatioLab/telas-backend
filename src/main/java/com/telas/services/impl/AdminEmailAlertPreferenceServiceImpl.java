@@ -5,7 +5,6 @@ import com.telas.dtos.response.EmailAlertPreferencesResponseDto;
 import com.telas.entities.AdminEmailAlertPreference;
 import com.telas.entities.Client;
 import com.telas.enums.AdminEmailAlertCategory;
-import com.telas.enums.Role;
 import com.telas.infra.exceptions.ResourceNotFoundException;
 import com.telas.repositories.AdminEmailAlertPreferenceRepository;
 import com.telas.repositories.ClientRepository;
@@ -37,7 +36,7 @@ public class AdminEmailAlertPreferenceServiceImpl implements AdminEmailAlertPref
                 clientRepository
                         .findById(clientId)
                         .orElseThrow(() -> new ResourceNotFoundException(ClientValidationMessages.USER_NOT_FOUND));
-        if (!Role.ADMIN.equals(client.getRole())) {
+        if (!client.isAdmin()) {
             return;
         }
         ensureEnabledIfMissing(client, AdminEmailAlertCategory.BOX_HEARTBEAT_CONNECTIVITY);
@@ -71,8 +70,17 @@ public class AdminEmailAlertPreferenceServiceImpl implements AdminEmailAlertPref
         }
         return clientRepository
                 .findById(clientId)
-                .map(c -> Role.DEVELOPER.equals(c.getRole()))
+                .map(c -> c.isDeveloper())
                 .orElse(false);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public boolean shouldSendEmail(Client recipient, AdminEmailAlertCategory category) {
+        if (recipient == null || recipient.isDeveloper()) {
+            return false;
+        }
+        return wantsEmail(recipient.getId(), category);
     }
 
     @Override
@@ -82,7 +90,7 @@ public class AdminEmailAlertPreferenceServiceImpl implements AdminEmailAlertPref
                 clientRepository
                         .findById(clientId)
                         .orElseThrow(() -> new ResourceNotFoundException(ClientValidationMessages.USER_NOT_FOUND));
-        if (!Role.ADMIN.equals(client.getRole())) {
+        if (!client.isAdmin()) {
             throw new IllegalArgumentException("Email alert preferences apply only to ADMIN users.");
         }
         EnumMap<AdminEmailAlertCategory, Boolean> map = new EnumMap<>(AdminEmailAlertCategory.class);
@@ -146,7 +154,7 @@ public class AdminEmailAlertPreferenceServiceImpl implements AdminEmailAlertPref
                 clientRepository
                         .findById(targetClientId)
                         .orElseThrow(() -> new ResourceNotFoundException(ClientValidationMessages.USER_NOT_FOUND));
-        if (!Role.ADMIN.equals(target.getRole())) {
+        if (!target.isAdmin()) {
             throw new IllegalArgumentException("Email alert preferences apply only to ADMIN users.");
         }
         preferenceRepository.deleteByClient_Id(targetClientId);

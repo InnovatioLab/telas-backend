@@ -2,6 +2,7 @@ package com.telas.services;
 
 import com.telas.dtos.response.EmailAlertCategoryOptionDto;
 import com.telas.dtos.response.EmailAlertPreferencesResponseDto;
+import com.telas.entities.Client;
 import com.telas.enums.AdminEmailAlertCategory;
 
 import java.util.EnumMap;
@@ -12,6 +13,8 @@ import java.util.UUID;
 public interface AdminEmailAlertPreferenceService {
 
     boolean wantsEmail(UUID clientId, AdminEmailAlertCategory category);
+
+    boolean shouldSendEmail(Client recipient, AdminEmailAlertCategory category);
 
     EnumMap<AdminEmailAlertCategory, Boolean> getPreferencesForAdmin(UUID clientId);
 

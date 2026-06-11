@@ -33,9 +33,7 @@ public class AdminAdsNotificationService {
                 continue;
             }
             boolean sendEmail = sendEmailNotifications
-                    && !recipient.isDeveloper()
-                    && adminEmailAlertPreferenceService.wantsEmail(
-                            recipient.getId(), AdminEmailAlertCategory.ADS_MANAGEMENT);
+                    && adminEmailAlertPreferenceService.shouldSendEmail(recipient, AdminEmailAlertCategory.ADS_MANAGEMENT);
             notificationService.save(reference, recipient, new HashMap<>(params), sendEmail);
         }
     }

@@ -31,6 +31,9 @@ public class MonitorAd extends BaseAudit {
     @Column(name = "block_quantity", nullable = false)
     private Integer blockQuantity = SharedConstants.MIN_QUANTITY_MONITOR_BLOCK;
 
+    @Column(name = "is_screen_ad", nullable = false)
+    private boolean isScreenAd = true;
+
     public MonitorAd(MonitorAdRequestDto request, Monitor monitor, Ad ad) {
         id.setMonitor(monitor);
         id.setAd(ad);
