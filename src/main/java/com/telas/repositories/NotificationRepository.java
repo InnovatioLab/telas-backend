@@ -3,6 +3,7 @@ package com.telas.repositories;
 import com.telas.entities.Notification;
 import com.telas.enums.NotificationReference;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
@@ -13,7 +14,8 @@ import java.util.Optional;
 import java.util.UUID;
 
 @Repository
-public interface NotificationRepository extends JpaRepository<Notification, UUID> {
+public interface NotificationRepository extends JpaRepository<Notification, UUID>,
+        JpaSpecificationExecutor<Notification> {
   @Query("SELECT n FROM Notification n JOIN n.client c WHERE c.id = :clientId ORDER BY n.createdAt DESC")
   List<Notification> findAllByClientIdOrderByCreatedAtDesc(UUID clientId);
 

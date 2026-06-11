@@ -6,6 +6,7 @@ import lombok.Getter;
 
 import java.io.Serial;
 import java.io.Serializable;
+import java.time.Instant;
 import java.util.UUID;
 
 @Getter
@@ -15,14 +16,12 @@ public final class NotificationResponseDto implements Serializable {
   private static final long serialVersionUID = -8277181783061288942L;
 
   private final UUID id;
-
   private final NotificationReference reference;
-
   private final String message;
-
   private final String actionUrl;
-
   private final boolean visualized;
+  
+  private final Instant createdAt;
 
   public NotificationResponseDto(Notification entity) {
     id = entity.getId();
@@ -30,5 +29,6 @@ public final class NotificationResponseDto implements Serializable {
     message = entity.getMessage();
     actionUrl = entity.getActionUrl();
     visualized = entity.isVisualized();
+    createdAt = entity.getCreatedAt();
   }
 }

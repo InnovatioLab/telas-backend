@@ -2,7 +2,11 @@ package com.telas.services;
 
 import com.telas.dtos.response.NotificationResponseDto;
 import com.telas.entities.Client;
+import com.telas.entities.Notification;
 import com.telas.enums.NotificationReference;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.domain.Specification;
 
 import java.util.List;
 import java.util.Map;
@@ -13,5 +17,5 @@ public interface NotificationService {
 
     NotificationResponseDto findById(UUID id);
 
-    List<NotificationResponseDto> listClientNotifications(List<UUID> ids);
+    Page<NotificationResponseDto> listClientNotifications(List<UUID> ids, Specification<Notification> spec, Pageable pageable);
 }

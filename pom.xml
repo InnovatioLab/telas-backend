@@ -185,6 +185,11 @@
             <artifactId>cron-utils</artifactId>
             <version>9.2.1</version>
         </dependency>
+        <dependency>
+            <groupId>net.kaczmarzyk</groupId>
+            <artifactId>specification-arg-resolver</artifactId>
+            <version>3.1.0</version>
+        </dependency>
     </dependencies>
 
     <build>

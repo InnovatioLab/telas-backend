@@ -18,6 +18,9 @@ import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionSynchronization;
@@ -27,7 +30,6 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
@@ -95,20 +97,20 @@ public class NotificationServiceImpl implements NotificationService {
 
     @Override
     @Transactional
-    public List<NotificationResponseDto> listClientNotifications(List<UUID> ids) {
+    public Page<NotificationResponseDto> listClientNotifications(List<UUID> ids, Specification<Notification> spec, Pageable pageable) {
         Client client = authenticatedUserService.getLoggedUser().client();
-        List<Notification> notifications = repository.findAllByClientIdOrderByCreatedAtDesc(client.getId());
 
-        if (Objects.nonNull(ids) && !ValidateDataUtils.isNullOrEmpty(ids)) {
-            notifications.stream()
-                    .filter(notification -> ids.contains(notification.getId()))
-                    .forEach(notification -> {
-                        notification.setVisualized(true);
-                        repository.save(notification);
-                    });
+        if (ids != null && !ids.isEmpty()) {
+            repository.findByIdIn(ids).forEach(n -> {
+                n.setVisualized(true);
+                repository.save(n);
+            });
         }
 
-        return notifications.stream().map(NotificationResponseDto::new).toList();
+        Specification<Notification> clientFilter = (root, q, cb) -> cb.equal(root.get("client").get("id"), client.getId());
+        Specification<Notification> finalSpec = Specification.where(clientFilter).and(spec);
+
+        return repository.findAll(finalSpec, pageable).map(NotificationResponseDto::new);
     }
 
     private void loadAndNotify(UUID notificationId, Map<String, String> params) {
