@@ -1,12 +1,14 @@
 package com.telas.shared.constants;
 
 import org.springframework.http.HttpMethod;
+import org.springframework.util.AntPathMatcher;
 
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
 public class AllowedEndpointsConstants {
+    private static final AntPathMatcher PATH_MATCHER = new AntPathMatcher();
     protected static final Map<HttpMethod, List<String>> ALLOWED_ENDPOINTS = new HashMap<>();
 
     static {
@@ -56,6 +58,9 @@ public class AllowedEndpointsConstants {
     public static boolean isAllowedURL(HttpMethod method, String uri) {
         String normalizedUri = uri.replaceAll("/\\d+", "/*").replaceAll("/[a-f0-9\\-]{36}", "/*").replaceAll("\\{\\w+}", "*");
         return ALLOWED_ENDPOINTS.getOrDefault(method, List.of()).stream()
-                .anyMatch(allowedUri -> allowedUri.replaceAll("\\{\\w+}", "*").equals(normalizedUri));
+                .anyMatch(allowedUri -> {
+                    String normalizedAllowed = allowedUri.replaceAll("\\{\\w+}", "*");
+                    return normalizedAllowed.equals(normalizedUri) || PATH_MATCHER.match(normalizedAllowed, uri);
+                });
     }
 }
