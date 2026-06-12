@@ -10,8 +10,6 @@ import org.springframework.stereotype.Component;
 
 import java.time.Duration;
 import java.time.Instant;
-import java.time.ZoneOffset;
-import java.time.format.DateTimeFormatter;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
@@ -47,7 +45,7 @@ public class SideApiAlertManager {
         SideApiHealthCheckService.SideApiHealthOutcome outcome = sideApiHealthCheckService.check(ip);
         SideApiAlertState prev = states.getOrDefault(boxId, SideApiAlertState.initial());
         String url = "http://" + ip + ":" + sideApiPort + normalizePath(sideApiPath);
-        String notifiedAt = DateTimeFormatter.ISO_INSTANT.format(now.atOffset(ZoneOffset.UTC));
+        String notifiedAt = DateUtils.formatInstantToUsDateTime(now);
         boolean prevDown = Boolean.FALSE.equals(prev.lastUp());
         boolean isInitial = prev.lastUp() == null;
 
