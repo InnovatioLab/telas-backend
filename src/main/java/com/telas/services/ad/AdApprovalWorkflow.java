@@ -31,6 +31,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 
 @Service
 @RequiredArgsConstructor
@@ -105,7 +106,7 @@ public class AdApprovalWorkflow {
                 NotificationReference.AD_RECEIVED,
                 partner,
                 Map.of(
-                        "name", partner.getBusinessName(),
+                        "name", Objects.toString(partner.getBusinessName(), ""),
                         "link", clientAdsReviewLink(partner)
                 ),
                 true
@@ -178,7 +179,7 @@ public class AdApprovalWorkflow {
                 NotificationReference.AD_RECEIVED,
                 client,
                 Map.of(
-                        "name", client.getBusinessName(),
+                        "name", Objects.toString(client.getBusinessName(), ""),
                         "link", recipientLink
                 ),
                 true
@@ -219,12 +220,13 @@ public class AdApprovalWorkflow {
             );
             notifyAdminsAdResubmittedToClient(ad, actor);
         } else {
+            Client adClient = ad.getClient();
             notificationService.save(
                     NotificationReference.AD_RECEIVED,
-                    ad.getClient(),
+                    adClient,
                     Map.of(
-                            "name", ad.getClient().getBusinessName(),
-                            "link", clientAdsReviewLink(ad.getClient())
+                            "name", Objects.toString(adClient.getBusinessName(), ""),
+                            "link", clientAdsReviewLink(adClient)
                     ),
                     true
             );
