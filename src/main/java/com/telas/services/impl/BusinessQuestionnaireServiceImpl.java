@@ -107,10 +107,11 @@ public class BusinessQuestionnaireServiceImpl implements BusinessQuestionnaireSe
             q.setAdRequest(adRequest);
             q.setUpdatedAt(Instant.now());
             q.getRevisions().clear();
+            questionnaireRepository.saveAndFlush(q);
         } else {
             q = new BusinessQuestionnaire(client, adRequest);
+            questionnaireRepository.save(q);
         }
-        questionnaireRepository.save(q);
         BusinessQuestionnaireRevision rev = new BusinessQuestionnaireRevision();
         rev.setQuestionnaire(q);
         rev.setVersion(1);
