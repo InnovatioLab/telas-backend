@@ -10,6 +10,7 @@ import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.time.Instant;
+import java.util.List;
 import java.util.UUID;
 
 @Repository
@@ -18,6 +19,23 @@ public interface ApplicationLogEntityRepository extends JpaRepository<Applicatio
     @Modifying(clearAutomatically = true)
     @Query("DELETE FROM ApplicationLogEntity e WHERE e.createdAt < :cutoff")
     int deleteOlderThan(@Param("cutoff") Instant cutoff);
+
+    @Query(value = """
+            SELECT e.* FROM monitoring.application_logs e
+            WHERE e.level IN ('ERROR', 'WARN')
+            AND (
+                (e.metadata_json IS NOT NULL AND (
+                    e.metadata_json->>'adId' = ANY(string_to_array(:ids, ','))
+                    OR e.metadata_json->>'adRequestId' = ANY(string_to_array(:ids, ','))
+                ))
+                OR (e.endpoint IS NOT NULL AND e.endpoint ~ :uuidPattern)
+            )
+            ORDER BY e.created_at ASC
+            """, nativeQuery = true)
+    List<ApplicationLogEntity> findByAdFlowIds(
+            @Param("ids") String commaSeparatedIds,
+            @Param("uuidPattern") String uuidPattern
+    );
 
     @Query(
             value = """

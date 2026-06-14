@@ -19,5 +19,7 @@ public interface AdMessageRepository extends JpaRepository<AdMessage, UUID> {
         ORDER BY m.createdAt ASC
         """)
     List<AdMessage> findAllByClientIdOrderByCreatedAtAsc(@org.springframework.data.repository.query.Param("clientId") UUID clientId);
+
+    List<AdMessage> findAllByAdIdInOrderByCreatedAtAsc(java.util.Collection<UUID> adIds);
 }
 
